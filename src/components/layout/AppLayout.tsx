@@ -5,14 +5,14 @@ import {
   Menu,
   Moon,
   Sun,
-  Building2
+  Building2,
+  Search
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
 import { AlertsPanel } from '@/components/dashboard/AlertsPanel';
 import { Alert } from '@/hooks/useAlerts';
-
-type View = 'dashboard' | 'investments';
+import { View } from '@/types/investment';
 
 interface AppLayoutProps {
   children: React.ReactNode;
@@ -42,6 +42,7 @@ export function AppLayout({
   const navItems = [
     { id: 'dashboard' as View, label: 'Dashboard', icon: LayoutDashboard },
     { id: 'investments' as View, label: 'Inversiones', icon: Wallet },
+    { id: 'opportunities' as View, label: 'Oportunidades', icon: Search },
   ];
 
   return (

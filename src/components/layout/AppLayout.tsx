@@ -9,6 +9,8 @@ import {
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
+import { AlertsPanel } from '@/components/dashboard/AlertsPanel';
+import { Alert } from '@/hooks/useAlerts';
 
 type View = 'dashboard' | 'investments';
 
@@ -16,9 +18,19 @@ interface AppLayoutProps {
   children: React.ReactNode;
   currentView: View;
   onViewChange: (view: View) => void;
+  alerts?: Alert[];
+  alertCount?: number;
+  hasUrgentAlerts?: boolean;
 }
 
-export function AppLayout({ children, currentView, onViewChange }: AppLayoutProps) {
+export function AppLayout({ 
+  children, 
+  currentView, 
+  onViewChange,
+  alerts = [],
+  alertCount = 0,
+  hasUrgentAlerts = false
+}: AppLayoutProps) {
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [darkMode, setDarkMode] = useState(false);
 
@@ -43,9 +55,16 @@ export function AppLayout({ children, currentView, onViewChange }: AppLayoutProp
           <Building2 className="h-5 w-5 text-primary" />
           <span className="font-semibold">CrowdInvest</span>
         </div>
-        <Button variant="ghost" size="icon" onClick={toggleDarkMode}>
-          {darkMode ? <Sun className="h-5 w-5" /> : <Moon className="h-5 w-5" />}
-        </Button>
+        <div className="flex items-center gap-1">
+          <AlertsPanel 
+            alerts={alerts} 
+            alertCount={alertCount} 
+            hasUrgentAlerts={hasUrgentAlerts} 
+          />
+          <Button variant="ghost" size="icon" onClick={toggleDarkMode}>
+            {darkMode ? <Sun className="h-5 w-5" /> : <Moon className="h-5 w-5" />}
+          </Button>
+        </div>
       </header>
 
       <div className="flex">
@@ -80,7 +99,13 @@ export function AppLayout({ children, currentView, onViewChange }: AppLayoutProp
             ))}
           </nav>
 
-          <div className="absolute bottom-4 left-4 right-4">
+          <div className="absolute bottom-4 left-4 right-4 hidden space-y-2 lg:block">
+            <AlertsPanel 
+              alerts={alerts} 
+              alertCount={alertCount} 
+              hasUrgentAlerts={hasUrgentAlerts}
+              variant="full"
+            />
             <Button
               variant="outline"
               className="w-full justify-start"

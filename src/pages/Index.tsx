@@ -1,6 +1,7 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Wallet, TrendingUp, PiggyBank, CalendarClock, Target } from 'lucide-react';
 import { useInvestments } from '@/hooks/useInvestments';
+import { useAlerts } from '@/hooks/useAlerts';
 import { AppLayout } from '@/components/layout/AppLayout';
 import { KPICard } from '@/components/dashboard/KPICard';
 import { PlatformDistributionChart } from '@/components/dashboard/PlatformDistributionChart';
@@ -11,6 +12,7 @@ import { InvestmentList } from '@/components/investments/InvestmentList';
 import { InvestmentForm } from '@/components/investments/InvestmentForm';
 import { ImportExport } from '@/components/investments/ImportExport';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { toast } from 'sonner';
 
 type View = 'dashboard' | 'investments';
 
@@ -28,6 +30,19 @@ const Index = () => {
     importInvestments,
     exportInvestments,
   } = useInvestments();
+
+  const { alerts, alertCount, hasUrgentAlerts } = useAlerts(investments);
+
+  // Show toast notification on initial load if there are urgent alerts
+  useEffect(() => {
+    if (!isLoading && hasUrgentAlerts) {
+      const urgentCount = alerts.filter(a => a.severity === 'danger').length;
+      toast.warning(`Tienes ${urgentCount} alerta${urgentCount !== 1 ? 's' : ''} urgente${urgentCount !== 1 ? 's' : ''}`, {
+        description: 'Revisa las notificaciones para más detalles',
+        duration: 5000,
+      });
+    }
+  }, [isLoading, hasUrgentAlerts, alerts]);
 
   const formatCurrency = (value: number) => {
     return new Intl.NumberFormat('es-ES', {
@@ -47,7 +62,13 @@ const Index = () => {
   }
 
   return (
-    <AppLayout currentView={currentView} onViewChange={setCurrentView}>
+    <AppLayout 
+      currentView={currentView} 
+      onViewChange={setCurrentView}
+      alerts={alerts}
+      alertCount={alertCount}
+      hasUrgentAlerts={hasUrgentAlerts}
+    >
       {currentView === 'dashboard' ? (
         <div className="p-6 lg:p-8">
           <div className="mb-8 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">

@@ -1,13 +1,163 @@
-// Update this page (the content is just a fallback if you fail to update the page)
+import { useState } from 'react';
+import { Wallet, TrendingUp, PiggyBank, CalendarClock, Target } from 'lucide-react';
+import { useInvestments } from '@/hooks/useInvestments';
+import { AppLayout } from '@/components/layout/AppLayout';
+import { KPICard } from '@/components/dashboard/KPICard';
+import { PlatformDistributionChart } from '@/components/dashboard/PlatformDistributionChart';
+import { InvestmentTimelineChart } from '@/components/dashboard/InvestmentTimelineChart';
+import { ReturnComparisonChart } from '@/components/dashboard/ReturnComparisonChart';
+import { UpcomingMaturityList } from '@/components/dashboard/UpcomingMaturityList';
+import { InvestmentList } from '@/components/investments/InvestmentList';
+import { InvestmentForm } from '@/components/investments/InvestmentForm';
+import { ImportExport } from '@/components/investments/ImportExport';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+
+type View = 'dashboard' | 'investments';
 
 const Index = () => {
-  return (
-    <div className="flex min-h-screen items-center justify-center bg-background">
-      <div className="text-center">
-        <h1 className="mb-4 text-4xl font-bold">Welcome to Your Blank App</h1>
-        <p className="text-xl text-muted-foreground">Start building your amazing project here!</p>
+  const [currentView, setCurrentView] = useState<View>('dashboard');
+  const {
+    investments,
+    isLoading,
+    summary,
+    addInvestment,
+    updateInvestment,
+    deleteInvestment,
+    addPayment,
+    deletePayment,
+    importInvestments,
+    exportInvestments,
+  } = useInvestments();
+
+  const formatCurrency = (value: number) => {
+    return new Intl.NumberFormat('es-ES', {
+      style: 'currency',
+      currency: 'EUR',
+      minimumFractionDigits: 0,
+      maximumFractionDigits: 0,
+    }).format(value);
+  };
+
+  if (isLoading) {
+    return (
+      <div className="flex min-h-screen items-center justify-center">
+        <div className="animate-pulse text-muted-foreground">Cargando...</div>
       </div>
-    </div>
+    );
+  }
+
+  return (
+    <AppLayout currentView={currentView} onViewChange={setCurrentView}>
+      {currentView === 'dashboard' ? (
+        <div className="p-6 lg:p-8">
+          <div className="mb-8 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+            <div>
+              <h1 className="text-3xl font-bold">Dashboard</h1>
+              <p className="text-muted-foreground">Resumen de tus inversiones inmobiliarias</p>
+            </div>
+            <InvestmentForm onSubmit={addInvestment} />
+          </div>
+
+          {/* KPI Cards */}
+          <div className="mb-8 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+            <KPICard
+              title="Capital Invertido"
+              value={formatCurrency(summary.totalInvested)}
+              subtitle={`${investments.length} proyectos`}
+              icon={Wallet}
+            />
+            <KPICard
+              title="Retornos Recibidos"
+              value={formatCurrency(summary.totalReturns)}
+              icon={TrendingUp}
+              trend={summary.totalInvested > 0 ? {
+                value: (summary.totalReturns / summary.totalInvested) * 100,
+                isPositive: true
+              } : undefined}
+            />
+            <KPICard
+              title="Retornos Esperados"
+              value={formatCurrency(summary.expectedReturns)}
+              subtitle="Basado en rendimientos estimados"
+              icon={Target}
+            />
+            <KPICard
+              title="Rendimiento Promedio"
+              value={`${summary.averageReturn.toFixed(1)}%`}
+              subtitle={`${summary.activeInvestments} inversiones activas`}
+              icon={PiggyBank}
+            />
+          </div>
+
+          {/* Charts */}
+          <div className="mb-8 grid gap-6 lg:grid-cols-2">
+            <Card>
+              <CardHeader>
+                <CardTitle>Distribución por Plataforma</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <PlatformDistributionChart investments={investments} />
+              </CardContent>
+            </Card>
+            <Card>
+              <CardHeader>
+                <CardTitle>Evolución Temporal</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <InvestmentTimelineChart investments={investments} />
+              </CardContent>
+            </Card>
+          </div>
+
+          <div className="grid gap-6 lg:grid-cols-2">
+            <Card>
+              <CardHeader>
+                <CardTitle>Comparativa de Rendimientos</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <ReturnComparisonChart investments={investments} />
+              </CardContent>
+            </Card>
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <CalendarClock className="h-5 w-5" />
+                  Próximos Vencimientos
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <UpcomingMaturityList investments={investments} />
+              </CardContent>
+            </Card>
+          </div>
+        </div>
+      ) : (
+        <div className="p-6 lg:p-8">
+          <div className="mb-8 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+            <div>
+              <h1 className="text-3xl font-bold">Inversiones</h1>
+              <p className="text-muted-foreground">Gestiona todas tus inversiones</p>
+            </div>
+            <div className="flex flex-wrap gap-2">
+              <ImportExport
+                investments={investments}
+                onImport={importInvestments}
+                exportData={exportInvestments}
+              />
+              <InvestmentForm onSubmit={addInvestment} />
+            </div>
+          </div>
+
+          <InvestmentList
+            investments={investments}
+            onUpdate={updateInvestment}
+            onDelete={deleteInvestment}
+            onAddPayment={addPayment}
+            onDeletePayment={deletePayment}
+          />
+        </div>
+      )}
+    </AppLayout>
   );
 };
 

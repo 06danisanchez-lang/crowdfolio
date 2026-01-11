@@ -1,7 +1,8 @@
 import { useState, useEffect } from 'react';
-import { Wallet, TrendingUp, PiggyBank, CalendarClock, Target } from 'lucide-react';
+import { Wallet, TrendingUp, PiggyBank, CalendarClock, Target, Heart, Search as SearchIcon } from 'lucide-react';
 import { useInvestments } from '@/hooks/useInvestments';
 import { useAlerts } from '@/hooks/useAlerts';
+import { useOpportunities } from '@/hooks/useOpportunities';
 import { AppLayout } from '@/components/layout/AppLayout';
 import { KPICard } from '@/components/dashboard/KPICard';
 import { PlatformDistributionChart } from '@/components/dashboard/PlatformDistributionChart';
@@ -11,10 +12,15 @@ import { UpcomingMaturityList } from '@/components/dashboard/UpcomingMaturityLis
 import { InvestmentList } from '@/components/investments/InvestmentList';
 import { InvestmentForm } from '@/components/investments/InvestmentForm';
 import { ImportExport } from '@/components/investments/ImportExport';
+import { OpportunityList } from '@/components/opportunities/OpportunityList';
+import { OpportunityFilters } from '@/components/opportunities/OpportunityFilters';
+import { OpportunityForm } from '@/components/opportunities/OpportunityForm';
+import { OpportunityDetail } from '@/components/opportunities/OpportunityDetail';
+import { ScrapeButton } from '@/components/opportunities/ScrapeButton';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { toast } from 'sonner';
-
-type View = 'dashboard' | 'investments';
+import { View } from '@/types/investment';
+import { Opportunity } from '@/types/opportunity';
 
 const Index = () => {
   const [currentView, setCurrentView] = useState<View>('dashboard');

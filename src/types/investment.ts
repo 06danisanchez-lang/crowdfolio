@@ -7,6 +7,8 @@ export type Platform =
   | 'wecity'
   | 'other';
 
+export type View = 'dashboard' | 'investments' | 'opportunities';
+
 export type InvestmentStatus = 'active' | 'pending' | 'completed' | 'defaulted';
 
 export interface Payment {

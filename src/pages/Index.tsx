@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Wallet, TrendingUp, PiggyBank, CalendarClock, Target, Heart, Search as SearchIcon } from 'lucide-react';
+import { Wallet, TrendingUp, PiggyBank, CalendarClock, Target, Heart, Search as SearchIcon, Plus } from 'lucide-react';
 import { useInvestments } from '@/hooks/useInvestments';
 import { useAlerts } from '@/hooks/useAlerts';
 import { useOpportunities } from '@/hooks/useOpportunities';
@@ -24,6 +24,8 @@ import { Opportunity } from '@/types/opportunity';
 
 const Index = () => {
   const [currentView, setCurrentView] = useState<View>('dashboard');
+  const [selectedOpportunity, setSelectedOpportunity] = useState<Opportunity | null>(null);
+  
   const {
     investments,
     isLoading,
@@ -36,6 +38,26 @@ const Index = () => {
     importInvestments,
     exportInvestments,
   } = useInvestments();
+
+  const {
+    opportunities,
+    allOpportunities,
+    isLoading: opportunitiesLoading,
+    isScraping,
+    lastScrapedAt,
+    scrapeError,
+    requiresFirecrawlSetup,
+    filters,
+    setFilters,
+    sortConfig,
+    setSortConfig,
+    summary: opportunitiesSummary,
+    scrape,
+    addOpportunity,
+    updateOpportunity,
+    deleteOpportunity,
+    toggleFavorite,
+  } = useOpportunities();
 
   const { alerts, alertCount, hasUrgentAlerts } = useAlerts(investments);
 
@@ -75,7 +97,7 @@ const Index = () => {
       alertCount={alertCount}
       hasUrgentAlerts={hasUrgentAlerts}
     >
-      {currentView === 'dashboard' ? (
+      {currentView === 'dashboard' && (
         <div className="p-6 lg:p-8">
           <div className="mb-8 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
             <div>
@@ -158,7 +180,9 @@ const Index = () => {
             </Card>
           </div>
         </div>
-      ) : (
+      )}
+
+      {currentView === 'investments' && (
         <div className="p-6 lg:p-8">
           <div className="mb-8 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
             <div>
@@ -181,6 +205,80 @@ const Index = () => {
             onDelete={deleteInvestment}
             onAddPayment={addPayment}
             onDeletePayment={deletePayment}
+          />
+        </div>
+      )}
+
+      {currentView === 'opportunities' && (
+        <div className="p-6 lg:p-8">
+          <div className="mb-8 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+            <div>
+              <h1 className="text-3xl font-bold">Oportunidades de Inversión</h1>
+              <p className="text-muted-foreground">Descubre y analiza nuevas oportunidades</p>
+            </div>
+            <div className="flex flex-wrap gap-2">
+              <ScrapeButton
+                onScrape={scrape}
+                isScraping={isScraping}
+                lastScrapedAt={lastScrapedAt}
+                error={scrapeError}
+                requiresSetup={requiresFirecrawlSetup}
+              />
+              <OpportunityForm onSubmit={addOpportunity} />
+            </div>
+          </div>
+
+          {/* Summary Stats */}
+          <div className="mb-6 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+            <KPICard
+              title="Total Oportunidades"
+              value={opportunitiesSummary.total.toString()}
+              subtitle={`${opportunitiesSummary.open} abiertas`}
+              icon={SearchIcon}
+            />
+            <KPICard
+              title="Favoritas"
+              value={opportunitiesSummary.favorites.toString()}
+              icon={Heart}
+            />
+            <KPICard
+              title="Rentabilidad Media"
+              value={`${opportunitiesSummary.averageReturn.toFixed(1)}%`}
+              subtitle="De oportunidades abiertas"
+              icon={TrendingUp}
+            />
+            <KPICard
+              title="Plataformas"
+              value={Object.keys(opportunitiesSummary.byPlatform).length.toString()}
+              subtitle="Con oportunidades"
+              icon={Target}
+            />
+          </div>
+
+          {/* Filters */}
+          <OpportunityFilters
+            filters={filters}
+            onFiltersChange={setFilters}
+            sortConfig={sortConfig}
+            onSortChange={setSortConfig}
+            resultCount={opportunities.length}
+          />
+
+          {/* Opportunity List */}
+          <OpportunityList
+            opportunities={opportunities}
+            isLoading={opportunitiesLoading}
+            onToggleFavorite={toggleFavorite}
+            onSelect={setSelectedOpportunity}
+          />
+
+          {/* Opportunity Detail Sheet */}
+          <OpportunityDetail
+            opportunity={selectedOpportunity}
+            onClose={() => setSelectedOpportunity(null)}
+            onToggleFavorite={toggleFavorite}
+            onDelete={deleteOpportunity}
+            onUpdate={updateOpportunity}
           />
         </div>
       )}

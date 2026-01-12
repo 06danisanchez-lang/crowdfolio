@@ -61,11 +61,33 @@ interface InvestmentFormProps {
   onSubmit: (data: Omit<Investment, 'id' | 'createdAt' | 'updatedAt' | 'payments'>) => void;
   initialData?: Investment;
   trigger?: React.ReactNode;
+  investmentCount?: number;
+  isPro?: boolean;
+  onProRequired?: () => void;
 }
 
-export function InvestmentForm({ onSubmit, initialData, trigger }: InvestmentFormProps) {
+export function InvestmentForm({ 
+  onSubmit, 
+  initialData, 
+  trigger,
+  investmentCount = 0,
+  isPro = true,
+  onProRequired
+}: InvestmentFormProps) {
   const [open, setOpen] = useState(false);
   const [entryMode, setEntryMode] = useState<EntryMode>(initialData ? 'manual' : 'select');
+  const [extractedFields, setExtractedFields] = useState<Set<string>>(new Set());
+  const [highAmountWarning, setHighAmountWarning] = useState<number | null>(null);
+
+  const canAddInvestment = isPro || investmentCount < 3 || !!initialData;
+
+  const handleOpenChange = (newOpen: boolean) => {
+    if (newOpen && !canAddInvestment) {
+      onProRequired?.();
+      return;
+    }
+    setOpen(newOpen);
+  };
   const [extractedFields, setExtractedFields] = useState<Set<string>>(new Set());
   const [highAmountWarning, setHighAmountWarning] = useState<number | null>(null);
   
@@ -524,12 +546,20 @@ export function InvestmentForm({ onSubmit, initialData, trigger }: InvestmentFor
   );
 
   return (
-    <Dialog open={open} onOpenChange={setOpen}>
+    <Dialog open={open} onOpenChange={handleOpenChange}>
       <DialogTrigger asChild>
         {trigger || (
-          <Button>
+          <Button onClick={(e) => {
+            if (!canAddInvestment) {
+              e.preventDefault();
+              onProRequired?.();
+            }
+          }}>
             <Plus className="mr-2 h-4 w-4" />
             Nueva Inversión
+            {!isPro && investmentCount >= 3 && (
+              <span className="ml-1 text-xs opacity-70">(Pro)</span>
+            )}
           </Button>
         )}
       </DialogTrigger>

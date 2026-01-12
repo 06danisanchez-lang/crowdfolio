@@ -3,6 +3,7 @@ import { Wallet, TrendingUp, PiggyBank, CalendarClock, Target, Heart, Search as 
 import { useInvestments } from '@/hooks/useInvestments';
 import { useAlerts } from '@/hooks/useAlerts';
 import { useOpportunities } from '@/hooks/useOpportunities';
+import { useSubscription } from '@/contexts/SubscriptionContext';
 import { AppLayout } from '@/components/layout/AppLayout';
 import { KPICard } from '@/components/dashboard/KPICard';
 import { PlatformDistributionChart } from '@/components/dashboard/PlatformDistributionChart';
@@ -18,6 +19,8 @@ import { OpportunityForm } from '@/components/opportunities/OpportunityForm';
 import { OpportunityDetail } from '@/components/opportunities/OpportunityDetail';
 import { ScrapeButton } from '@/components/opportunities/ScrapeButton';
 import { TaxDashboard } from '@/components/tax/TaxDashboard';
+import { BillingSettings } from '@/components/subscription/BillingSettings';
+import { UpgradeModal } from '@/components/subscription/UpgradeModal';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { toast } from 'sonner';
 import { View } from '@/types/investment';
@@ -26,6 +29,10 @@ import { Opportunity } from '@/types/opportunity';
 const Index = () => {
   const [currentView, setCurrentView] = useState<View>('dashboard');
   const [selectedOpportunity, setSelectedOpportunity] = useState<Opportunity | null>(null);
+  const [upgradeModalOpen, setUpgradeModalOpen] = useState(false);
+  const [upgradeFeature, setUpgradeFeature] = useState('default');
+  
+  const { isPro, subscription } = useSubscription();
   
   const {
     investments,
@@ -62,6 +69,11 @@ const Index = () => {
 
   const { alerts, alertCount, hasUrgentAlerts } = useAlerts(investments);
 
+  const openUpgradeModal = (feature: string) => {
+    setUpgradeFeature(feature);
+    setUpgradeModalOpen(true);
+  };
+
   // Show toast notification on initial load if there are urgent alerts
   useEffect(() => {
     if (!isLoading && hasUrgentAlerts) {
@@ -97,6 +109,7 @@ const Index = () => {
       alerts={alerts}
       alertCount={alertCount}
       hasUrgentAlerts={hasUrgentAlerts}
+      isPro={isPro}
     >
       {currentView === 'dashboard' && (
         <div className="p-6 lg:p-8">
@@ -105,7 +118,12 @@ const Index = () => {
               <h1 className="text-3xl font-bold">Dashboard</h1>
               <p className="text-muted-foreground">Resumen de tus inversiones inmobiliarias</p>
             </div>
-            <InvestmentForm onSubmit={addInvestment} />
+            <InvestmentForm 
+              onSubmit={addInvestment}
+              investmentCount={investments.length}
+              isPro={isPro}
+              onProRequired={() => openUpgradeModal('unlimited_investments')}
+            />
           </div>
 
           {/* KPI Cards */}
@@ -188,15 +206,26 @@ const Index = () => {
           <div className="mb-8 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
             <div>
               <h1 className="text-3xl font-bold">Inversiones</h1>
-              <p className="text-muted-foreground">Gestiona todas tus inversiones</p>
+              <p className="text-muted-foreground">
+                Gestiona todas tus inversiones
+                {!isPro && ` (${investments.length}/3)`}
+              </p>
             </div>
             <div className="flex flex-wrap gap-2">
               <ImportExport
                 investments={investments}
                 onImport={importInvestments}
                 exportData={exportInvestments}
+                isPro={isPro}
+                onProRequired={() => openUpgradeModal('unlimited_imports')}
+                importsThisMonth={0} // TODO: Track imports per month
               />
-              <InvestmentForm onSubmit={addInvestment} />
+              <InvestmentForm 
+                onSubmit={addInvestment}
+                investmentCount={investments.length}
+                isPro={isPro}
+                onProRequired={() => openUpgradeModal('unlimited_investments')}
+              />
             </div>
           </div>
 
@@ -290,9 +319,31 @@ const Index = () => {
             <h1 className="text-3xl font-bold">Fiscalidad</h1>
             <p className="text-muted-foreground">Gestión fiscal de tus inversiones (España)</p>
           </div>
-          <TaxDashboard />
+          <TaxDashboard 
+            isPro={isPro} 
+            onProRequired={() => openUpgradeModal('export_irpf')} 
+          />
         </div>
       )}
+
+      {currentView === 'settings' && (
+        <div className="p-6 lg:p-8">
+          <div className="mb-8">
+            <h1 className="text-3xl font-bold">Configuración</h1>
+            <p className="text-muted-foreground">Gestiona tu cuenta y suscripción</p>
+          </div>
+          <div className="max-w-2xl">
+            <BillingSettings />
+          </div>
+        </div>
+      )}
+
+      {/* Upgrade Modal */}
+      <UpgradeModal
+        open={upgradeModalOpen}
+        onOpenChange={setUpgradeModalOpen}
+        feature={upgradeFeature}
+      />
     </AppLayout>
   );
 };

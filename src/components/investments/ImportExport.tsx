@@ -27,6 +27,9 @@ interface ImportExportProps {
   investments: Investment[];
   onImport: (investments: Investment[], replace: boolean) => void;
   exportData: () => string;
+  isPro?: boolean;
+  onProRequired?: () => void;
+  importsThisMonth?: number;
 }
 
 // Helper to format Zod errors for user display
@@ -43,11 +46,28 @@ const formatZodError = (error: ZodError): string => {
   return messages.join('\n');
 };
 
-export function ImportExport({ investments, onImport, exportData }: ImportExportProps) {
+export function ImportExport({ 
+  investments, 
+  onImport, 
+  exportData,
+  isPro = true,
+  onProRequired,
+  importsThisMonth = 0
+}: ImportExportProps) {
   const [importOpen, setImportOpen] = useState(false);
   const [importError, setImportError] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const csvInputRef = useRef<HTMLInputElement>(null);
+
+  const canImport = isPro || importsThisMonth < 1;
+
+  const handleImportClick = () => {
+    if (!canImport) {
+      onProRequired?.();
+      return;
+    }
+    setImportOpen(true);
+  };
 
   const handleExportJSON = () => {
     const data = exportData();
@@ -318,9 +338,17 @@ export function ImportExport({ investments, onImport, exportData }: ImportExport
     <div className="flex gap-2">
       <Dialog open={importOpen} onOpenChange={setImportOpen}>
         <DialogTrigger asChild>
-          <Button variant="outline">
+          <Button variant="outline" onClick={(e) => {
+            if (!canImport) {
+              e.preventDefault();
+              onProRequired?.();
+            }
+          }}>
             <Upload className="mr-2 h-4 w-4" />
             Importar
+            {!isPro && importsThisMonth >= 1 && (
+              <span className="ml-1 text-xs text-muted-foreground">(Pro)</span>
+            )}
           </Button>
         </DialogTrigger>
         <DialogContent>

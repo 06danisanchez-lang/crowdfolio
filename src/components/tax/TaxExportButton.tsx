@@ -28,8 +28,21 @@ interface TaxExportButtonProps {
   expenses: TaxExpense[];
 }
 
-export function TaxExportButton({ summary, expenses }: TaxExportButtonProps) {
+interface ExtendedTaxExportButtonProps extends TaxExportButtonProps {
+  onProRequired?: () => void;
+  isPro?: boolean;
+}
+
+export function TaxExportButton({ summary, expenses, onProRequired, isPro = true }: ExtendedTaxExportButtonProps) {
   const [isExporting, setIsExporting] = useState(false);
+
+  const handleExportClick = (exportFn: () => Promise<void>) => {
+    if (!isPro) {
+      onProRequired?.();
+      return;
+    }
+    exportFn();
+  };
 
   const getCategoryLabel = (category: string): string => {
     const cat = TAX_EXPENSE_CATEGORIES.find(c => c.value === category);
@@ -298,13 +311,15 @@ export function TaxExportButton({ summary, expenses }: TaxExportButtonProps) {
           Datos listos para tu declaración o tu gestor
         </div>
         <DropdownMenuSeparator />
-        <DropdownMenuItem onClick={handleExportExcel} disabled={isExporting}>
+        <DropdownMenuItem onClick={() => handleExportClick(handleExportExcel)} disabled={isExporting}>
           <FileSpreadsheet className="mr-2 h-4 w-4" />
           Descargar Excel (.xlsx)
+          {!isPro && <span className="ml-auto text-xs text-muted-foreground">Pro</span>}
         </DropdownMenuItem>
-        <DropdownMenuItem onClick={handleExportPDF} disabled={isExporting}>
+        <DropdownMenuItem onClick={() => handleExportClick(handleExportPDF)} disabled={isExporting}>
           <FileText className="mr-2 h-4 w-4" />
           Descargar PDF
+          {!isPro && <span className="ml-auto text-xs text-muted-foreground">Pro</span>}
         </DropdownMenuItem>
       </DropdownMenuContent>
     </DropdownMenu>

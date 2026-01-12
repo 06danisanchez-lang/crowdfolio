@@ -3,7 +3,7 @@ import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import { format } from 'date-fns';
-import { CalendarIcon, Plus, FileUp, PenLine, Sparkles } from 'lucide-react';
+import { CalendarIcon, Plus, FileUp, PenLine, Sparkles, AlertTriangle } from 'lucide-react';
 import { Investment, Platform, InvestmentStatus, PLATFORMS, STATUS_OPTIONS } from '@/types/investment';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -67,6 +67,7 @@ export function InvestmentForm({ onSubmit, initialData, trigger }: InvestmentFor
   const [open, setOpen] = useState(false);
   const [entryMode, setEntryMode] = useState<EntryMode>(initialData ? 'manual' : 'select');
   const [extractedFields, setExtractedFields] = useState<Set<string>>(new Set());
+  const [highAmountWarning, setHighAmountWarning] = useState<number | null>(null);
   
   const { isExtracting, extractFromFile, clearExtractedData } = useInvestmentExtraction();
 
@@ -99,6 +100,7 @@ export function InvestmentForm({ onSubmit, initialData, trigger }: InvestmentFor
     if (!open) {
       setEntryMode(initialData ? 'manual' : 'select');
       setExtractedFields(new Set());
+      setHighAmountWarning(null);
       clearExtractedData();
       if (!initialData) {
         form.reset({
@@ -138,6 +140,10 @@ export function InvestmentForm({ onSubmit, initialData, trigger }: InvestmentFor
     if (data.amount) {
       form.setValue('amount', data.amount);
       fieldsSet.add('amount');
+      // Show warning if amount seems too high for a personal investment
+      if (data.amount > 50000) {
+        setHighAmountWarning(data.amount);
+      }
     }
     if (data.expectedReturn !== undefined) {
       form.setValue('expectedReturn', data.expectedReturn);
@@ -324,9 +330,24 @@ export function InvestmentForm({ onSubmit, initialData, trigger }: InvestmentFor
                     type="number"
                     placeholder="1000"
                     {...field}
-                    onChange={(e) => field.onChange(parseFloat(e.target.value) || 0)}
+                    onChange={(e) => {
+                      const value = parseFloat(e.target.value) || 0;
+                      field.onChange(value);
+                      // Clear warning if user modifies the amount
+                      if (highAmountWarning && value !== highAmountWarning) {
+                        setHighAmountWarning(null);
+                      }
+                    }}
                   />
                 </FormControl>
+                {highAmountWarning && (
+                  <div className="flex items-start gap-2 p-2 rounded-md bg-amber-500/10 border border-amber-500/30 text-amber-700 dark:text-amber-400">
+                    <AlertTriangle className="h-4 w-4 shrink-0 mt-0.5" />
+                    <span className="text-xs">
+                      El importe ({highAmountWarning.toLocaleString('es-ES')}€) parece alto. ¿Es tu inversión personal o el total del proyecto?
+                    </span>
+                  </div>
+                )}
                 <FormMessage />
               </FormItem>
             )}

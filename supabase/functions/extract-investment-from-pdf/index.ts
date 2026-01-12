@@ -50,24 +50,30 @@ serve(async (req) => {
 
     // Send extracted text to Gemini for analysis
     const systemPrompt = `Eres un experto en análisis de documentos de inversión en crowdfunding inmobiliario español.
-Tu tarea es extraer información de inversión de documentos PDF de plataformas como Urbanitae, Housers, Estateguru, Crowdcube, Brickstarter, Wecity, etc.
+Tu tarea es extraer información de la inversión PERSONAL del usuario de documentos PDF de plataformas como Urbanitae, Housers, Estateguru, Crowdcube, Brickstarter, Wecity, etc.
+
+IMPORTANTE - DISTINCIÓN DE IMPORTES:
+- Busca ESPECÍFICAMENTE la inversión personal del usuario: "mi inversión", "mi aportación", "cantidad aportada", "importe de tu inversión", "has invertido", "tu participación", "importe invertido", "capital invertido", "tu aportación"
+- NO confundas con importes del proyecto total: "objetivo de financiación", "préstamo total", "importe del proyecto", "capital objetivo", "financiación obtenida", "importe del préstamo", "volumen total", "financiación total", "importe total del proyecto"
+- Las inversiones personales típicas están entre 50€ y 50.000€
+- Si el importe supera 100.000€, probablemente sea el total del proyecto y NO la inversión personal
+- Si solo encuentras el importe total del proyecto y no la inversión personal, devuelve amount: null
 
 Analiza el texto extraído del PDF y devuelve SOLO un objeto JSON con la siguiente estructura:
 {
   "platform": "urbanitae" | "housers" | "estateguru" | "crowdcube" | "brickstarter" | "wecity" | "other",
   "customPlatformName": "nombre si es 'other'",
   "projectName": "nombre del proyecto",
-  "amount": número (importe invertido en euros, sin símbolo),
+  "amount": número (TU inversión personal en euros, sin símbolo) o null si solo se encontró el total del proyecto,
   "expectedReturn": número (rentabilidad anual esperada en porcentaje, ej: 12.5),
   "investmentDate": "YYYY-MM-DD",
   "expectedEndDate": "YYYY-MM-DD" o null,
   "status": "active" | "pending" | "completed" | "defaulted",
-  "notes": "información adicional relevante",
+  "notes": "información adicional relevante. Si no encontraste la inversión personal pero sí el total del proyecto, indica: 'Solo se encontró el importe total del proyecto (X€), no la inversión personal'",
   "confidence": número entre 0 y 1 indicando confianza en la extracción
 }
 
-Instrucciones:
-- Busca términos como: "importe invertido", "cantidad", "inversión", "aportación"
+Instrucciones adicionales:
 - Busca rentabilidad: "TIR", "rentabilidad", "rendimiento", "interés anual"
 - Busca fechas: "fecha de inversión", "fecha de aportación", "vencimiento", "duración"
 - Identifica la plataforma por el logo, nombre o formato del documento
@@ -76,8 +82,7 @@ Instrucciones:
 - Si está "finalizado", "completado", "devuelto" → status: "completed"
 - Si hay "impago", "default", "morosidad" → status: "defaulted"
 - Convierte importes con formato español (1.000,50) a número (1000.50)
-- Si no puedes extraer un campo, usa null
-- Añade en notes cualquier información relevante como tipo de proyecto, ubicación, etc.`;
+- Si no puedes extraer un campo, usa null`;
 
     const response = await fetch('https://ai.gateway.lovable.dev/v1/chat/completions', {
       method: 'POST',

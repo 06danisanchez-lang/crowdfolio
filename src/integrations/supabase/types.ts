@@ -181,6 +181,51 @@ export type Database = {
           },
         ]
       }
+      subscriptions: {
+        Row: {
+          created_at: string
+          current_period_end: string | null
+          current_period_start: string | null
+          id: string
+          import_count_this_month: number
+          import_reset_date: string
+          plan: Database["public"]["Enums"]["subscription_plan"]
+          status: Database["public"]["Enums"]["subscription_status"]
+          stripe_customer_id: string | null
+          stripe_subscription_id: string | null
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          current_period_end?: string | null
+          current_period_start?: string | null
+          id?: string
+          import_count_this_month?: number
+          import_reset_date?: string
+          plan?: Database["public"]["Enums"]["subscription_plan"]
+          status?: Database["public"]["Enums"]["subscription_status"]
+          stripe_customer_id?: string | null
+          stripe_subscription_id?: string | null
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          current_period_end?: string | null
+          current_period_start?: string | null
+          id?: string
+          import_count_this_month?: number
+          import_reset_date?: string
+          plan?: Database["public"]["Enums"]["subscription_plan"]
+          status?: Database["public"]["Enums"]["subscription_status"]
+          stripe_customer_id?: string | null
+          stripe_subscription_id?: string | null
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       tax_expenses: {
         Row: {
           amount: number
@@ -236,9 +281,11 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
-      [_ in never]: never
+      is_user_pro: { Args: { _user_id: string }; Returns: boolean }
     }
     Enums: {
+      subscription_plan: "free" | "monthly" | "yearly"
+      subscription_status: "free" | "active" | "past_due" | "canceled"
       tax_expense_category:
         | "platform_fees"
         | "advisory"
@@ -372,6 +419,8 @@ export type CompositeTypes<
 export const Constants = {
   public: {
     Enums: {
+      subscription_plan: ["free", "monthly", "yearly"],
+      subscription_status: ["free", "active", "past_due", "canceled"],
       tax_expense_category: [
         "platform_fees",
         "advisory",

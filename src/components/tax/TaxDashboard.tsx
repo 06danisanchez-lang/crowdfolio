@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Receipt, Calculator, TrendingDown, Percent, Euro, FileText } from 'lucide-react';
+import { Receipt, Calculator, FileText } from 'lucide-react';
 import { useTaxSummary } from '@/hooks/useTaxSummary';
 import { useTaxExpenses } from '@/hooks/useTaxExpenses';
 import { TaxSummaryCards } from './TaxSummaryCards';
@@ -7,6 +7,7 @@ import { TaxBreakdownTable } from './TaxBreakdownTable';
 import { TaxExpensesList } from './TaxExpensesList';
 import { TaxExpenseForm } from './TaxExpenseForm';
 import { TaxYearSelector } from './TaxYearSelector';
+import { TaxExportButton } from './TaxExportButton';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 
@@ -42,11 +43,14 @@ export function TaxDashboard() {
             Visualiza tus rendimientos y obligaciones fiscales
           </p>
         </div>
-        <TaxYearSelector
-          selectedYear={selectedYear}
-          onYearChange={setSelectedYear}
-          availableYears={availableYears}
-        />
+        <div className="flex items-center gap-3">
+          <TaxExportButton summary={summary} expenses={expenses} />
+          <TaxYearSelector
+            selectedYear={selectedYear}
+            onYearChange={setSelectedYear}
+            availableYears={availableYears}
+          />
+        </div>
       </div>
 
       {/* KPI Summary Cards */}

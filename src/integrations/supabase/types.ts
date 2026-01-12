@@ -149,6 +149,7 @@ export type Database = {
           investment_id: string
           notes: string | null
           type: string
+          withholding_applied: number | null
         }
         Insert: {
           amount: number
@@ -158,6 +159,7 @@ export type Database = {
           investment_id: string
           notes?: string | null
           type: string
+          withholding_applied?: number | null
         }
         Update: {
           amount?: number
@@ -167,10 +169,61 @@ export type Database = {
           investment_id?: string
           notes?: string | null
           type?: string
+          withholding_applied?: number | null
         }
         Relationships: [
           {
             foreignKeyName: "payments_investment_id_fkey"
+            columns: ["investment_id"]
+            isOneToOne: false
+            referencedRelation: "investments"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      tax_expenses: {
+        Row: {
+          amount: number
+          category: Database["public"]["Enums"]["tax_expense_category"]
+          created_at: string
+          date: string
+          description: string
+          id: string
+          investment_id: string | null
+          notes: string | null
+          updated_at: string
+          user_id: string
+          year: number
+        }
+        Insert: {
+          amount: number
+          category: Database["public"]["Enums"]["tax_expense_category"]
+          created_at?: string
+          date: string
+          description: string
+          id?: string
+          investment_id?: string | null
+          notes?: string | null
+          updated_at?: string
+          user_id: string
+          year: number
+        }
+        Update: {
+          amount?: number
+          category?: Database["public"]["Enums"]["tax_expense_category"]
+          created_at?: string
+          date?: string
+          description?: string
+          id?: string
+          investment_id?: string | null
+          notes?: string | null
+          updated_at?: string
+          user_id?: string
+          year?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "tax_expenses_investment_id_fkey"
             columns: ["investment_id"]
             isOneToOne: false
             referencedRelation: "investments"
@@ -186,7 +239,12 @@ export type Database = {
       [_ in never]: never
     }
     Enums: {
-      [_ in never]: never
+      tax_expense_category:
+        | "platform_fees"
+        | "advisory"
+        | "management"
+        | "travel"
+        | "other"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -313,6 +371,14 @@ export type CompositeTypes<
 
 export const Constants = {
   public: {
-    Enums: {},
+    Enums: {
+      tax_expense_category: [
+        "platform_fees",
+        "advisory",
+        "management",
+        "travel",
+        "other",
+      ],
+    },
   },
 } as const

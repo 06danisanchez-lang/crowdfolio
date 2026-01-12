@@ -1,4 +1,7 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
+// @ts-ignore - esm.sh dynamic import
+const unpdf = await import("https://esm.sh/unpdf@0.12.1");
+const { extractText } = unpdf;
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -25,33 +28,17 @@ serve(async (req) => {
       throw new Error('LOVABLE_API_KEY is not configured');
     }
 
-    // Extract text from PDF using pdf-parse via esm.sh
-    const pdfData = Uint8Array.from(atob(pdfBase64.replace(/^data:application\/pdf;base64,/, '')), c => c.charCodeAt(0));
+    // Extract text from PDF using unpdf (Deno-compatible via esm.sh)
+    const base64Data = pdfBase64.replace(/^data:application\/pdf;base64,/, '');
+    const pdfData = Uint8Array.from(atob(base64Data), c => c.charCodeAt(0));
     
-    // Use pdfjs-dist for text extraction
-    const { getDocument, GlobalWorkerOptions } = await import('https://esm.sh/pdfjs-dist@4.0.379/build/pdf.mjs');
+    console.log('Processing PDF, size:', pdfData.length, 'bytes');
     
-    // Disable worker for Deno environment
-    GlobalWorkerOptions.workerSrc = '';
-    
-    const loadingTask = getDocument({ data: pdfData });
-    const pdf = await loadingTask.promise;
-    
-    let extractedText = '';
-    const maxPages = Math.min(pdf.numPages, 5); // Process first 5 pages max
-    
-    for (let i = 1; i <= maxPages; i++) {
-      const page = await pdf.getPage(i);
-      const textContent = await page.getTextContent();
-      const pageText = textContent.items
-        .map((item: any) => item.str)
-        .join(' ');
-      extractedText += pageText + '\n\n';
-    }
+    const { text: extractedText, totalPages } = await extractText(pdfData, { mergePages: true });
 
-    console.log('Extracted text from PDF:', extractedText.substring(0, 500) + '...');
+    console.log('Extracted text from PDF (', totalPages, 'pages):', extractedText.substring(0, 500) + '...');
 
-    if (!extractedText.trim()) {
+    if (!extractedText || !extractedText.trim()) {
       return new Response(
         JSON.stringify({ 
           error: 'No se pudo extraer texto del PDF. Puede ser un documento escaneado. Prueba subiendo un pantallazo en su lugar.',

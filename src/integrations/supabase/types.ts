@@ -14,7 +14,170 @@ export type Database = {
   }
   public: {
     Tables: {
-      [_ in never]: never
+      investments: {
+        Row: {
+          amount: number
+          created_at: string
+          custom_platform_name: string | null
+          expected_end_date: string | null
+          expected_return: number
+          id: string
+          investment_date: string
+          notes: string | null
+          platform: string
+          project_name: string
+          status: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          amount: number
+          created_at?: string
+          custom_platform_name?: string | null
+          expected_end_date?: string | null
+          expected_return: number
+          id?: string
+          investment_date: string
+          notes?: string | null
+          platform: string
+          project_name: string
+          status?: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          amount?: number
+          created_at?: string
+          custom_platform_name?: string | null
+          expected_end_date?: string | null
+          expected_return?: number
+          id?: string
+          investment_date?: string
+          notes?: string | null
+          platform?: string
+          project_name?: string
+          status?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      opportunities: {
+        Row: {
+          created_at: string
+          current_amount: number
+          description: string | null
+          expected_return: number
+          funding_progress: number
+          id: string
+          image_url: string | null
+          is_favorite: boolean
+          location: string
+          min_investment: number
+          notes: string | null
+          platform: string
+          project_name: string
+          project_type: string
+          risk_level: string
+          scraped_at: string | null
+          source: string
+          status: string
+          target_amount: number
+          term: number
+          updated_at: string
+          url: string | null
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          current_amount?: number
+          description?: string | null
+          expected_return: number
+          funding_progress?: number
+          id?: string
+          image_url?: string | null
+          is_favorite?: boolean
+          location?: string
+          min_investment?: number
+          notes?: string | null
+          platform: string
+          project_name: string
+          project_type?: string
+          risk_level?: string
+          scraped_at?: string | null
+          source?: string
+          status?: string
+          target_amount?: number
+          term: number
+          updated_at?: string
+          url?: string | null
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          current_amount?: number
+          description?: string | null
+          expected_return?: number
+          funding_progress?: number
+          id?: string
+          image_url?: string | null
+          is_favorite?: boolean
+          location?: string
+          min_investment?: number
+          notes?: string | null
+          platform?: string
+          project_name?: string
+          project_type?: string
+          risk_level?: string
+          scraped_at?: string | null
+          source?: string
+          status?: string
+          target_amount?: number
+          term?: number
+          updated_at?: string
+          url?: string | null
+          user_id?: string
+        }
+        Relationships: []
+      }
+      payments: {
+        Row: {
+          amount: number
+          created_at: string
+          date: string
+          id: string
+          investment_id: string
+          notes: string | null
+          type: string
+        }
+        Insert: {
+          amount: number
+          created_at?: string
+          date: string
+          id?: string
+          investment_id: string
+          notes?: string | null
+          type: string
+        }
+        Update: {
+          amount?: number
+          created_at?: string
+          date?: string
+          id?: string
+          investment_id?: string
+          notes?: string | null
+          type?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "payments_investment_id_fkey"
+            columns: ["investment_id"]
+            isOneToOne: false
+            referencedRelation: "investments"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
     }
     Views: {
       [_ in never]: never

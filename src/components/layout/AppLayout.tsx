@@ -6,13 +6,15 @@ import {
   Moon,
   Sun,
   Building2,
-  Search
+  Search,
+  LogOut
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
 import { AlertsPanel } from '@/components/dashboard/AlertsPanel';
 import { Alert } from '@/hooks/useAlerts';
 import { View } from '@/types/investment';
+import { useAuth } from '@/contexts/AuthContext';
 
 interface AppLayoutProps {
   children: React.ReactNode;
@@ -33,10 +35,15 @@ export function AppLayout({
 }: AppLayoutProps) {
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [darkMode, setDarkMode] = useState(false);
+  const { user, signOut } = useAuth();
 
   const toggleDarkMode = () => {
     setDarkMode(!darkMode);
     document.documentElement.classList.toggle('dark');
+  };
+
+  const handleSignOut = async () => {
+    await signOut();
   };
 
   const navItems = [
@@ -64,6 +71,9 @@ export function AppLayout({
           />
           <Button variant="ghost" size="icon" onClick={toggleDarkMode}>
             {darkMode ? <Sun className="h-5 w-5" /> : <Moon className="h-5 w-5" />}
+          </Button>
+          <Button variant="ghost" size="icon" onClick={handleSignOut} title="Cerrar sesión">
+            <LogOut className="h-5 w-5" />
           </Button>
         </div>
       </header>
@@ -100,16 +110,24 @@ export function AppLayout({
             ))}
           </nav>
 
-          <div className="absolute bottom-4 left-4 right-4 hidden space-y-2 lg:block">
-            <AlertsPanel 
-              alerts={alerts} 
-              alertCount={alertCount} 
-              hasUrgentAlerts={hasUrgentAlerts}
-              variant="full"
-            />
+          {/* User info and logout */}
+          <div className="absolute bottom-4 left-4 right-4 space-y-2">
+            {user && (
+              <div className="rounded-lg bg-muted/50 p-3 text-sm">
+                <p className="truncate text-muted-foreground">{user.email}</p>
+              </div>
+            )}
+            <div className="hidden lg:block">
+              <AlertsPanel 
+                alerts={alerts} 
+                alertCount={alertCount} 
+                hasUrgentAlerts={hasUrgentAlerts}
+                variant="full"
+              />
+            </div>
             <Button
               variant="outline"
-              className="w-full justify-start"
+              className="hidden w-full justify-start lg:flex"
               onClick={toggleDarkMode}
             >
               {darkMode ? (
@@ -123,6 +141,14 @@ export function AppLayout({
                   Modo Oscuro
                 </>
               )}
+            </Button>
+            <Button
+              variant="outline"
+              className="hidden w-full justify-start lg:flex"
+              onClick={handleSignOut}
+            >
+              <LogOut className="mr-2 h-4 w-4" />
+              Cerrar Sesión
             </Button>
           </div>
         </aside>

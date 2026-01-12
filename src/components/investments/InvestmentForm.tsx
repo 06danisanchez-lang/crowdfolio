@@ -3,7 +3,7 @@ import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import { format } from 'date-fns';
-import { CalendarIcon, Plus, Image, PenLine, Sparkles } from 'lucide-react';
+import { CalendarIcon, Plus, FileUp, PenLine, Sparkles } from 'lucide-react';
 import { Investment, Platform, InvestmentStatus, PLATFORMS, STATUS_OPTIONS } from '@/types/investment';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -38,7 +38,7 @@ import {
 } from '@/components/ui/popover';
 import { cn } from '@/lib/utils';
 import { ImageUploader } from './ImageUploader';
-import { useInvestmentExtraction, ExtractedInvestmentData } from '@/hooks/useInvestmentExtraction';
+import { useInvestmentExtraction, ExtractedInvestmentData, FileType } from '@/hooks/useInvestmentExtraction';
 import { Badge } from '@/components/ui/badge';
 
 const investmentSchema = z.object({
@@ -68,7 +68,7 @@ export function InvestmentForm({ onSubmit, initialData, trigger }: InvestmentFor
   const [entryMode, setEntryMode] = useState<EntryMode>(initialData ? 'manual' : 'select');
   const [extractedFields, setExtractedFields] = useState<Set<string>>(new Set());
   
-  const { isExtracting, extractFromImage, clearExtractedData } = useInvestmentExtraction();
+  const { isExtracting, extractFromFile, clearExtractedData } = useInvestmentExtraction();
 
   const form = useForm<InvestmentFormData>({
     resolver: zodResolver(investmentSchema),
@@ -111,8 +111,8 @@ export function InvestmentForm({ onSubmit, initialData, trigger }: InvestmentFor
     }
   }, [open, initialData, form, clearExtractedData]);
 
-  const handleImageSelect = async (imageBase64: string) => {
-    const result = await extractFromImage(imageBase64);
+  const handleFileSelect = async (base64: string, fileType: FileType) => {
+    const result = await extractFromFile(base64, fileType);
     
     if (result.success && result.data) {
       applyExtractedData(result.data);
@@ -193,9 +193,9 @@ export function InvestmentForm({ onSubmit, initialData, trigger }: InvestmentFor
           className="h-auto py-6 flex-col gap-2"
           onClick={() => setEntryMode('image')}
         >
-          <Image className="h-8 w-8 text-primary" />
-          <span className="font-medium">Subir pantallazo</span>
-          <span className="text-xs text-muted-foreground">La IA extraerá los datos</span>
+          <FileUp className="h-8 w-8 text-primary" />
+          <span className="font-medium">Subir archivo</span>
+          <span className="text-xs text-muted-foreground">Pantallazo o PDF</span>
         </Button>
         <Button
           type="button"
@@ -215,10 +215,10 @@ export function InvestmentForm({ onSubmit, initialData, trigger }: InvestmentFor
     <div className="space-y-4">
       <div className="flex items-center gap-2 text-sm text-muted-foreground">
         <Sparkles className="h-4 w-4 text-primary" />
-        <span>Sube un pantallazo de tu inversión y la IA extraerá los datos automáticamente</span>
+        <span>Sube un pantallazo o PDF de tu inversión y la IA extraerá los datos automáticamente</span>
       </div>
       <ImageUploader 
-        onImageSelect={handleImageSelect}
+        onFileSelect={handleFileSelect}
         isProcessing={isExtracting}
       />
       <Button

@@ -3,6 +3,11 @@ import { format, parseISO } from 'date-fns';
 import { es } from 'date-fns/locale';
 import { Plus, Trash2, CalendarIcon } from 'lucide-react';
 import { Investment, Payment, PLATFORMS, STATUS_OPTIONS } from '@/types/investment';
+import { 
+  getInvestmentDurationYears, 
+  calculateInvestmentTotalReturn,
+  calculateInvestmentTotalReturnPercent 
+} from '@/lib/investment/calculations';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
@@ -77,7 +82,10 @@ export function InvestmentDetail({ investment, onClose, onAddPayment, onDeletePa
   if (!investment) return null;
 
   const totalPayments = investment.payments.reduce((sum, p) => sum + p.amount, 0);
-  const expectedTotal = investment.amount * (1 + investment.expectedReturn / 100);
+  const durationYears = getInvestmentDurationYears(investment.investmentDate, investment.expectedEndDate);
+  const totalReturnAmount = calculateInvestmentTotalReturn(investment);
+  const totalReturnPercent = calculateInvestmentTotalReturnPercent(investment);
+  const expectedTotal = investment.amount + totalReturnAmount;
   const actualReturn = investment.amount > 0 ? ((totalPayments / investment.amount) * 100) : 0;
 
   return (
@@ -110,8 +118,16 @@ export function InvestmentDetail({ investment, onClose, onAddPayment, onDeletePa
               <p className="font-medium">{formatCurrency(investment.amount)}</p>
             </div>
             <div className="space-y-1">
-              <p className="text-sm text-muted-foreground">Rendimiento Esperado</p>
+              <p className="text-sm text-muted-foreground">Rentabilidad Anual</p>
               <p className="font-medium">{investment.expectedReturn.toFixed(1)}%</p>
+            </div>
+            <div className="space-y-1">
+              <p className="text-sm text-muted-foreground">Duración Estimada</p>
+              <p className="font-medium">{durationYears.toFixed(1)} años</p>
+            </div>
+            <div className="space-y-1">
+              <p className="text-sm text-muted-foreground">Rentabilidad Total</p>
+              <p className="font-medium">{totalReturnPercent.toFixed(1)}%</p>
             </div>
             <div className="space-y-1">
               <p className="text-sm text-muted-foreground">Fecha de Inversión</p>

@@ -2,6 +2,7 @@ import { useState, useEffect, useCallback, useMemo } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { Investment, InvestmentSummary, Platform, InvestmentStatus, Payment } from '@/types/investment';
+import { calculateInvestmentTotalReturn } from '@/lib/investment/calculations';
 
 export function useInvestments() {
   const { user } = useAuth();
@@ -318,7 +319,7 @@ export function useInvestments() {
       sum + inv.payments.reduce((pSum, p) => pSum + p.amount, 0), 0
     ),
     expectedReturns: investments.reduce((sum, inv) => 
-      sum + (inv.amount * inv.expectedReturn / 100), 0
+      sum + calculateInvestmentTotalReturn(inv), 0
     ),
     activeInvestments: investments.filter(inv => inv.status === 'active').length,
     completedInvestments: investments.filter(inv => inv.status === 'completed').length,

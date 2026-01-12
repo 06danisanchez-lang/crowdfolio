@@ -199,7 +199,7 @@ export function InvestmentForm({ onSubmit, initialData, trigger }: InvestmentFor
                 name="expectedReturn"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>Rendimiento Esperado (%)</FormLabel>
+                    <FormLabel>Rentabilidad Anual (%)</FormLabel>
                     <FormControl>
                       <Input
                         type="number"

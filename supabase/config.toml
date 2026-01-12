@@ -5,3 +5,6 @@ verify_jwt = false
 
 [functions.extract-investment-from-image]
 verify_jwt = false
+
+[functions.extract-investment-from-pdf]
+verify_jwt = false

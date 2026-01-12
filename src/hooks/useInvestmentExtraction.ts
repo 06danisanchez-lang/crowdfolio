@@ -21,6 +21,8 @@ interface ExtractionResult {
   error?: string;
 }
 
+export type FileType = 'image' | 'pdf';
+
 export function useInvestmentExtraction() {
   const [isExtracting, setIsExtracting] = useState(false);
   const [extractedData, setExtractedData] = useState<ExtractedInvestmentData | null>(null);
@@ -46,7 +48,6 @@ export function useInvestmentExtraction() {
         return { success: false, error: errorMsg };
       }
 
-      // Validate and normalize the extracted data
       const normalized = normalizeExtractedData(data.data);
       setExtractedData(normalized);
       
@@ -65,6 +66,56 @@ export function useInvestmentExtraction() {
     }
   }, []);
 
+  const extractFromPdf = useCallback(async (pdfBase64: string): Promise<ExtractionResult> => {
+    setIsExtracting(true);
+    setExtractedData(null);
+
+    try {
+      const { data, error } = await supabase.functions.invoke('extract-investment-from-pdf', {
+        body: { pdfBase64 }
+      });
+
+      if (error) {
+        console.error('PDF extraction error:', error);
+        toast.error('Error al procesar el PDF');
+        return { success: false, error: error.message };
+      }
+
+      if (!data.success) {
+        const errorMsg = data.error || 'No se pudo extraer información del PDF';
+        if (data.isScannedDocument) {
+          toast.error('El PDF parece ser un documento escaneado. Prueba con un pantallazo.');
+        } else {
+          toast.error(errorMsg);
+        }
+        return { success: false, error: errorMsg };
+      }
+
+      const normalized = normalizeExtractedData(data.data);
+      setExtractedData(normalized);
+      
+      const fieldsExtracted = Object.values(normalized).filter(v => v !== undefined && v !== null).length;
+      toast.success(`Se extrajeron ${fieldsExtracted} campos del PDF`);
+      
+      return { success: true, data: normalized };
+
+    } catch (err) {
+      console.error('PDF extraction failed:', err);
+      const errorMsg = err instanceof Error ? err.message : 'Error desconocido';
+      toast.error('Error al analizar el PDF');
+      return { success: false, error: errorMsg };
+    } finally {
+      setIsExtracting(false);
+    }
+  }, []);
+
+  const extractFromFile = useCallback(async (base64: string, fileType: FileType): Promise<ExtractionResult> => {
+    if (fileType === 'pdf') {
+      return extractFromPdf(base64);
+    }
+    return extractFromImage(base64);
+  }, [extractFromImage, extractFromPdf]);
+
   const clearExtractedData = useCallback(() => {
     setExtractedData(null);
   }, []);
@@ -73,6 +124,8 @@ export function useInvestmentExtraction() {
     isExtracting,
     extractedData,
     extractFromImage,
+    extractFromPdf,
+    extractFromFile,
     clearExtractedData,
   };
 }

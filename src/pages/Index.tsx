@@ -17,6 +17,7 @@ import { OpportunityFilters } from '@/components/opportunities/OpportunityFilter
 import { OpportunityForm } from '@/components/opportunities/OpportunityForm';
 import { OpportunityDetail } from '@/components/opportunities/OpportunityDetail';
 import { ScrapeButton } from '@/components/opportunities/ScrapeButton';
+import { TaxDashboard } from '@/components/tax/TaxDashboard';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { toast } from 'sonner';
 import { View } from '@/types/investment';
@@ -280,6 +281,16 @@ const Index = () => {
             onDelete={deleteOpportunity}
             onUpdate={updateOpportunity}
           />
+        </div>
+      )}
+
+      {currentView === 'tax' && (
+        <div className="p-6 lg:p-8">
+          <div className="mb-8">
+            <h1 className="text-3xl font-bold">Fiscalidad</h1>
+            <p className="text-muted-foreground">Gestión fiscal de tus inversiones (España)</p>
+          </div>
+          <TaxDashboard />
         </div>
       )}
     </AppLayout>

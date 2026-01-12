@@ -7,7 +7,8 @@ import {
   Sun,
   Building2,
   Search,
-  LogOut
+  LogOut,
+  Receipt
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
@@ -50,6 +51,7 @@ export function AppLayout({
     { id: 'dashboard' as View, label: 'Dashboard', icon: LayoutDashboard },
     { id: 'investments' as View, label: 'Inversiones', icon: Wallet },
     { id: 'opportunities' as View, label: 'Oportunidades', icon: Search },
+    { id: 'tax' as View, label: 'Fiscalidad', icon: Receipt },
   ];
 
   return (

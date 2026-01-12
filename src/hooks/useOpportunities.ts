@@ -1,9 +1,9 @@
 import { useState, useEffect, useCallback, useMemo } from 'react';
+import { supabase } from '@/integrations/supabase/client';
+import { useAuth } from '@/contexts/AuthContext';
 import { Opportunity, OpportunityStatus, RiskLevel, ProjectType } from '@/types/opportunity';
 import { Platform } from '@/types/investment';
 import { scrapeOpportunities, scrapeAllPlatforms, ScrapedOpportunity } from '@/lib/api/opportunities';
-
-const STORAGE_KEY = 'crowdinvest-opportunities';
 
 export interface OpportunityFilters {
   platform?: Platform;
@@ -22,6 +22,7 @@ export interface OpportunitySortConfig {
 }
 
 export function useOpportunities() {
+  const { user } = useAuth();
   const [opportunities, setOpportunities] = useState<Opportunity[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isScraping, setIsScraping] = useState(false);
@@ -34,32 +35,73 @@ export function useOpportunities() {
     direction: 'desc' 
   });
 
-  // Load from localStorage
-  useEffect(() => {
-    const stored = localStorage.getItem(STORAGE_KEY);
-    if (stored) {
-      try {
-        const data = JSON.parse(stored);
-        setOpportunities(data.opportunities || []);
-        setLastScrapedAt(data.lastScrapedAt || null);
-      } catch (error) {
-        console.error('Failed to parse stored opportunities:', error);
-      }
+  // Fetch opportunities from database
+  const fetchOpportunities = useCallback(async () => {
+    if (!user) {
+      setOpportunities([]);
+      setIsLoading(false);
+      return;
     }
-    setIsLoading(false);
-  }, []);
 
-  // Save to localStorage
-  useEffect(() => {
-    if (!isLoading) {
-      localStorage.setItem(STORAGE_KEY, JSON.stringify({
-        opportunities,
-        lastScrapedAt,
+    try {
+      setIsLoading(true);
+      
+      const { data, error } = await supabase
+        .from('opportunities')
+        .select('*')
+        .order('created_at', { ascending: false });
+
+      if (error) throw error;
+
+      const mappedOpportunities: Opportunity[] = (data || []).map(opp => ({
+        id: opp.id,
+        platform: opp.platform as Platform,
+        projectName: opp.project_name,
+        projectType: opp.project_type as ProjectType,
+        location: opp.location,
+        expectedReturn: Number(opp.expected_return),
+        term: opp.term,
+        minInvestment: Number(opp.min_investment),
+        targetAmount: Number(opp.target_amount),
+        currentAmount: Number(opp.current_amount),
+        fundingProgress: Number(opp.funding_progress),
+        status: opp.status as OpportunityStatus,
+        description: opp.description || undefined,
+        url: opp.url || undefined,
+        riskLevel: opp.risk_level as RiskLevel,
+        imageUrl: opp.image_url || undefined,
+        source: opp.source as 'scraped' | 'manual',
+        scrapedAt: opp.scraped_at || undefined,
+        isFavorite: opp.is_favorite,
+        notes: opp.notes || undefined,
+        createdAt: opp.created_at,
+        updatedAt: opp.updated_at,
       }));
+
+      setOpportunities(mappedOpportunities);
+      
+      // Find last scraped
+      const scraped = mappedOpportunities.filter(o => o.scrapedAt);
+      if (scraped.length > 0) {
+        const latest = scraped.reduce((a, b) => 
+          new Date(a.scrapedAt!) > new Date(b.scrapedAt!) ? a : b
+        );
+        setLastScrapedAt(latest.scrapedAt!);
+      }
+    } catch (error) {
+      console.error('Error fetching opportunities:', error);
+    } finally {
+      setIsLoading(false);
     }
-  }, [opportunities, lastScrapedAt, isLoading]);
+  }, [user]);
+
+  useEffect(() => {
+    fetchOpportunities();
+  }, [fetchOpportunities]);
 
   const scrape = useCallback(async (platform?: Platform) => {
+    if (!user) return;
+    
     setIsScraping(true);
     setScrapeError(null);
     setRequiresFirecrawlSetup(false);
@@ -99,35 +141,61 @@ export function useOpportunities() {
       }
 
       if (newOpportunities.length > 0) {
-        setOpportunities(prev => {
-          // Merge new opportunities with existing ones, avoiding duplicates
-          const existingUrls = new Set(prev.map(o => o.url));
-          const existingNames = new Set(prev.map(o => `${o.platform}-${o.projectName}`));
-          
-          const merged = [...prev];
-          for (const opp of newOpportunities) {
-            const key = `${opp.platform}-${opp.projectName}`;
-            if (!existingUrls.has(opp.url) && !existingNames.has(key)) {
-              merged.push(opp);
-            } else {
-              // Update existing opportunity
-              const index = merged.findIndex(o => 
-                o.url === opp.url || `${o.platform}-${o.projectName}` === key
-              );
-              if (index !== -1) {
-                merged[index] = { 
-                  ...merged[index], 
-                  ...opp, 
-                  id: merged[index].id,
-                  isFavorite: merged[index].isFavorite,
-                  notes: merged[index].notes,
-                };
-              }
-            }
+        const scrapedAt = new Date().toISOString();
+        
+        for (const opp of newOpportunities) {
+          // Check if exists
+          const existingIndex = opportunities.findIndex(o => 
+            o.url === opp.url || `${o.platform}-${o.projectName}` === `${opp.platform}-${opp.projectName}`
+          );
+
+          if (existingIndex === -1) {
+            // Insert new
+            const { error } = await supabase
+              .from('opportunities')
+              .insert({
+                user_id: user.id,
+                platform: opp.platform,
+                project_name: opp.projectName,
+                project_type: opp.projectType,
+                location: opp.location,
+                expected_return: opp.expectedReturn,
+                term: opp.term,
+                min_investment: opp.minInvestment,
+                target_amount: opp.targetAmount,
+                current_amount: opp.currentAmount,
+                funding_progress: opp.fundingProgress,
+                status: opp.status,
+                description: opp.description || null,
+                url: opp.url || null,
+                risk_level: opp.riskLevel,
+                image_url: opp.imageUrl || null,
+                source: 'scraped',
+                scraped_at: scrapedAt,
+                is_favorite: false,
+              });
+
+            if (error) console.error('Error inserting opportunity:', error);
+          } else {
+            // Update existing
+            const existing = opportunities[existingIndex];
+            const { error } = await supabase
+              .from('opportunities')
+              .update({
+                expected_return: opp.expectedReturn,
+                current_amount: opp.currentAmount,
+                funding_progress: opp.fundingProgress,
+                status: opp.status,
+                scraped_at: scrapedAt,
+              })
+              .eq('id', existing.id);
+
+            if (error) console.error('Error updating opportunity:', error);
           }
-          return merged;
-        });
-        setLastScrapedAt(new Date().toISOString());
+        }
+
+        setLastScrapedAt(scrapedAt);
+        fetchOpportunities();
       }
 
       if (hasError && newOpportunities.length === 0) {
@@ -139,23 +207,100 @@ export function useOpportunities() {
     } finally {
       setIsScraping(false);
     }
-  }, []);
+  }, [user, opportunities, fetchOpportunities]);
 
-  const addOpportunity = useCallback((data: Omit<Opportunity, 'id' | 'createdAt' | 'updatedAt' | 'source' | 'isFavorite'>) => {
-    const now = new Date().toISOString();
+  const addOpportunity = useCallback(async (data: Omit<Opportunity, 'id' | 'createdAt' | 'updatedAt' | 'source' | 'isFavorite'>) => {
+    if (!user) return null;
+
+    const { data: inserted, error } = await supabase
+      .from('opportunities')
+      .insert({
+        user_id: user.id,
+        platform: data.platform,
+        project_name: data.projectName,
+        project_type: data.projectType,
+        location: data.location,
+        expected_return: data.expectedReturn,
+        term: data.term,
+        min_investment: data.minInvestment,
+        target_amount: data.targetAmount,
+        current_amount: data.currentAmount,
+        funding_progress: data.fundingProgress,
+        status: data.status,
+        description: data.description || null,
+        url: data.url || null,
+        risk_level: data.riskLevel,
+        image_url: data.imageUrl || null,
+        source: 'manual',
+        is_favorite: false,
+        notes: data.notes || null,
+      })
+      .select()
+      .single();
+
+    if (error) {
+      console.error('Error adding opportunity:', error);
+      return null;
+    }
+
     const newOpportunity: Opportunity = {
-      ...data,
-      id: crypto.randomUUID(),
+      id: inserted.id,
+      platform: inserted.platform as Platform,
+      projectName: inserted.project_name,
+      projectType: inserted.project_type as ProjectType,
+      location: inserted.location,
+      expectedReturn: Number(inserted.expected_return),
+      term: inserted.term,
+      minInvestment: Number(inserted.min_investment),
+      targetAmount: Number(inserted.target_amount),
+      currentAmount: Number(inserted.current_amount),
+      fundingProgress: Number(inserted.funding_progress),
+      status: inserted.status as OpportunityStatus,
+      description: inserted.description || undefined,
+      url: inserted.url || undefined,
+      riskLevel: inserted.risk_level as RiskLevel,
+      imageUrl: inserted.image_url || undefined,
       source: 'manual',
       isFavorite: false,
-      createdAt: now,
-      updatedAt: now,
+      notes: inserted.notes || undefined,
+      createdAt: inserted.created_at,
+      updatedAt: inserted.updated_at,
     };
-    setOpportunities(prev => [...prev, newOpportunity]);
-    return newOpportunity;
-  }, []);
 
-  const updateOpportunity = useCallback((id: string, updates: Partial<Opportunity>) => {
+    setOpportunities(prev => [newOpportunity, ...prev]);
+    return newOpportunity;
+  }, [user]);
+
+  const updateOpportunity = useCallback(async (id: string, updates: Partial<Opportunity>) => {
+    const dbUpdates: any = {};
+    if (updates.platform !== undefined) dbUpdates.platform = updates.platform;
+    if (updates.projectName !== undefined) dbUpdates.project_name = updates.projectName;
+    if (updates.projectType !== undefined) dbUpdates.project_type = updates.projectType;
+    if (updates.location !== undefined) dbUpdates.location = updates.location;
+    if (updates.expectedReturn !== undefined) dbUpdates.expected_return = updates.expectedReturn;
+    if (updates.term !== undefined) dbUpdates.term = updates.term;
+    if (updates.minInvestment !== undefined) dbUpdates.min_investment = updates.minInvestment;
+    if (updates.targetAmount !== undefined) dbUpdates.target_amount = updates.targetAmount;
+    if (updates.currentAmount !== undefined) dbUpdates.current_amount = updates.currentAmount;
+    if (updates.fundingProgress !== undefined) dbUpdates.funding_progress = updates.fundingProgress;
+    if (updates.status !== undefined) dbUpdates.status = updates.status;
+    if (updates.description !== undefined) dbUpdates.description = updates.description;
+    if (updates.url !== undefined) dbUpdates.url = updates.url;
+    if (updates.riskLevel !== undefined) dbUpdates.risk_level = updates.riskLevel;
+    if (updates.imageUrl !== undefined) dbUpdates.image_url = updates.imageUrl;
+    if (updates.isFavorite !== undefined) dbUpdates.is_favorite = updates.isFavorite;
+    if (updates.notes !== undefined) dbUpdates.notes = updates.notes;
+
+    const { error } = await supabase
+      .from('opportunities')
+      .update(dbUpdates)
+      .eq('id', id);
+
+    if (error) {
+      console.error('Error updating opportunity:', error);
+      return;
+    }
+
     setOpportunities(prev => prev.map(opp => 
       opp.id === id 
         ? { ...opp, ...updates, updatedAt: new Date().toISOString() }
@@ -163,28 +308,62 @@ export function useOpportunities() {
     ));
   }, []);
 
-  const deleteOpportunity = useCallback((id: string) => {
+  const deleteOpportunity = useCallback(async (id: string) => {
+    const { error } = await supabase
+      .from('opportunities')
+      .delete()
+      .eq('id', id);
+
+    if (error) {
+      console.error('Error deleting opportunity:', error);
+      return;
+    }
+
     setOpportunities(prev => prev.filter(opp => opp.id !== id));
   }, []);
 
-  const toggleFavorite = useCallback((id: string) => {
+  const toggleFavorite = useCallback(async (id: string) => {
+    const opportunity = opportunities.find(o => o.id === id);
+    if (!opportunity) return;
+
+    const { error } = await supabase
+      .from('opportunities')
+      .update({ is_favorite: !opportunity.isFavorite })
+      .eq('id', id);
+
+    if (error) {
+      console.error('Error toggling favorite:', error);
+      return;
+    }
+
     setOpportunities(prev => prev.map(opp => 
       opp.id === id 
         ? { ...opp, isFavorite: !opp.isFavorite, updatedAt: new Date().toISOString() }
         : opp
     ));
-  }, []);
+  }, [opportunities]);
 
-  const clearAllOpportunities = useCallback(() => {
+  const clearAllOpportunities = useCallback(async () => {
+    if (!user) return;
+
+    const { error } = await supabase
+      .from('opportunities')
+      .delete()
+      .eq('user_id', user.id);
+
+    if (error) {
+      console.error('Error clearing opportunities:', error);
+      return;
+    }
+
     setOpportunities([]);
     setLastScrapedAt(null);
-  }, []);
+  }, [user]);
 
   // Filtered and sorted opportunities
   const filteredOpportunities = useMemo(() => {
     let result = [...opportunities];
 
-    // Apply filters
     if (filters.platform) {
       result = result.filter(o => o.platform === filters.platform);
     }
@@ -215,7 +394,6 @@ export function useOpportunities() {
       );
     }
 
-    // Apply sorting
     result.sort((a, b) => {
       const aValue = a[sortConfig.field];
       const bValue = b[sortConfig.field];
@@ -274,6 +452,7 @@ export function useOpportunities() {
     deleteOpportunity,
     toggleFavorite,
     clearAllOpportunities,
+    refetch: fetchOpportunities,
   };
 }
 

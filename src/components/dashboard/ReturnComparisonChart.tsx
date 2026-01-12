@@ -90,11 +90,13 @@ export function ReturnComparisonChart({ investments }: ReturnComparisonChartProp
           dataKey="Rendimiento Real" 
           fill="hsl(142, 76%, 36%)" 
           radius={[0, 4, 4, 0]}
+          name="Rendimiento Real (%)"
         />
         <Bar 
           dataKey="Rendimiento Esperado" 
           fill="hsl(217, 91%, 60%)" 
           radius={[0, 4, 4, 0]}
+          name="Rentabilidad Anual Esperada (%)"
         />
       </BarChart>
     </ResponsiveContainer>

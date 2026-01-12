@@ -132,7 +132,7 @@ const Index = () => {
               icon={Target}
             />
             <KPICard
-              title="Rendimiento Promedio"
+              title="Rentabilidad Media Anual"
               value={`${summary.averageReturn.toFixed(1)}%`}
               subtitle={`${summary.activeInvestments} inversiones activas`}
               icon={PiggyBank}

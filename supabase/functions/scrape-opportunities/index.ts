@@ -75,10 +75,9 @@ Deno.serve(async (req) => {
       },
       body: JSON.stringify({
         url,
-        formats: [
-          {
-            type: 'json',
-            prompt: `Extract all crowdfunding investment opportunities from this page. For each project, extract:
+        formats: ['extract'],
+        extract: {
+          prompt: `Extract all crowdfunding investment opportunities from this page. For each project, extract:
 - projectName: the name of the project
 - projectType: type of project (residential, commercial, logistics, hotel, mixed, land, or other)
 - location: city and/or country
@@ -95,30 +94,35 @@ Deno.serve(async (req) => {
 - imageUrl: project image URL if available
 
 Return an array of objects with these fields. If a value is not available, use reasonable defaults (0 for numbers, empty string for text, "medium" for riskLevel).`,
-            schema: {
-              type: 'array',
-              items: {
-                type: 'object',
-                properties: {
-                  projectName: { type: 'string' },
-                  projectType: { type: 'string' },
-                  location: { type: 'string' },
-                  expectedReturn: { type: 'number' },
-                  term: { type: 'number' },
-                  minInvestment: { type: 'number' },
-                  targetAmount: { type: 'number' },
-                  currentAmount: { type: 'number' },
-                  fundingProgress: { type: 'number' },
-                  status: { type: 'string' },
-                  description: { type: 'string' },
-                  url: { type: 'string' },
-                  riskLevel: { type: 'string' },
-                  imageUrl: { type: 'string' },
+          schema: {
+            type: 'object',
+            properties: {
+              opportunities: {
+                type: 'array',
+                items: {
+                  type: 'object',
+                  properties: {
+                    projectName: { type: 'string' },
+                    projectType: { type: 'string' },
+                    location: { type: 'string' },
+                    expectedReturn: { type: 'number' },
+                    term: { type: 'number' },
+                    minInvestment: { type: 'number' },
+                    targetAmount: { type: 'number' },
+                    currentAmount: { type: 'number' },
+                    fundingProgress: { type: 'number' },
+                    status: { type: 'string' },
+                    description: { type: 'string' },
+                    url: { type: 'string' },
+                    riskLevel: { type: 'string' },
+                    imageUrl: { type: 'string' },
+                  },
                 },
               },
             },
+            required: ['opportunities'],
           },
-        ],
+        },
         onlyMainContent: true,
         waitFor: 3000,
       }),
@@ -137,8 +141,9 @@ Return an array of objects with these fields. If a value is not available, use r
       );
     }
 
-    // Extract opportunities from response
-    const opportunities: ScrapedOpportunity[] = scrapeData.data?.json || scrapeData.json || [];
+    // Extract opportunities from response - Firecrawl v1 returns extract data in data.extract
+    const extractedData = scrapeData.data?.extract || scrapeData.extract || {};
+    const opportunities: ScrapedOpportunity[] = extractedData.opportunities || [];
     
     console.log(`Successfully scraped ${opportunities.length} opportunities from ${platform}`);
 

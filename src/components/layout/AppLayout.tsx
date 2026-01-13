@@ -14,6 +14,7 @@ import {
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
 import { AlertsPanel } from '@/components/dashboard/AlertsPanel';
+import { NotificationBell } from '@/components/layout/NotificationBell';
 import { Alert } from '@/hooks/useAlerts';
 import { View } from '@/types/investment';
 import { useAuth } from '@/contexts/AuthContext';
@@ -68,6 +69,7 @@ export function AppLayout({
           <span className="font-semibold">CrowdInvest</span>
         </div>
         <div className="flex items-center gap-1">
+          <NotificationBell onOpportunitiesClick={() => onViewChange('opportunities')} />
           <AlertsPanel 
             alerts={alerts} 
             alertCount={alertCount} 
@@ -121,7 +123,8 @@ export function AppLayout({
                 <p className="truncate text-muted-foreground">{user.email}</p>
               </div>
             )}
-            <div className="hidden lg:block">
+            <div className="hidden lg:flex items-center gap-2">
+              <NotificationBell onOpportunitiesClick={() => onViewChange('opportunities')} />
               <AlertsPanel 
                 alerts={alerts} 
                 alertCount={alertCount} 

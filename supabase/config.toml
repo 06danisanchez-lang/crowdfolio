@@ -17,3 +17,6 @@ verify_jwt = false
 
 [functions.customer-portal]
 verify_jwt = false
+
+[functions.calculate-tax]
+verify_jwt = false

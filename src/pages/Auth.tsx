@@ -1,11 +1,12 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
+import { supabase } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Building2, Loader2, Mail, Lock, AlertCircle } from 'lucide-react';
+import { Building2, Loader2, Mail, Lock, AlertCircle, RefreshCw } from 'lucide-react';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { z } from 'zod';
 
@@ -20,15 +21,46 @@ export default function Auth() {
   const [password, setPassword] = useState('');
   const [error, setError] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isResending, setIsResending] = useState(false);
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
+  const [showResendOption, setShowResendOption] = useState(false);
   
   const { signIn, signUp } = useAuth();
   const navigate = useNavigate();
+
+  const handleResendVerification = async () => {
+    if (!email) {
+      setError('Introduce tu email para reenviar la verificación');
+      return;
+    }
+
+    setIsResending(true);
+    setError(null);
+
+    try {
+      const { error } = await supabase.auth.resend({
+        type: 'signup',
+        email,
+      });
+
+      if (error) {
+        setError(error.message);
+      } else {
+        setSuccessMessage('Email de verificación reenviado. Revisa tu bandeja de entrada.');
+        setShowResendOption(false);
+      }
+    } catch {
+      setError('Error al reenviar el email de verificación');
+    } finally {
+      setIsResending(false);
+    }
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError(null);
     setSuccessMessage(null);
+    setShowResendOption(false);
 
     // Validate input
     const validation = authSchema.safeParse({ email, password });
@@ -45,6 +77,9 @@ export default function Auth() {
         if (error) {
           if (error.message.includes('Invalid login credentials')) {
             setError('Email o contraseña incorrectos');
+          } else if (error.message.includes('Email not confirmed')) {
+            setError('Debes verificar tu email antes de iniciar sesión. Revisa tu bandeja de entrada.');
+            setShowResendOption(true);
           } else {
             setError(error.message);
           }
@@ -60,11 +95,10 @@ export default function Auth() {
             setError(error.message);
           }
         } else {
-          setSuccessMessage('¡Cuenta creada! Ya puedes iniciar sesión.');
-          setIsLogin(true);
+          setSuccessMessage('¡Cuenta creada! Revisa tu correo para verificar tu cuenta antes de iniciar sesión.');
         }
       }
-    } catch (err) {
+    } catch {
       setError('Ha ocurrido un error. Inténtalo de nuevo.');
     } finally {
       setIsSubmitting(false);
@@ -96,8 +130,31 @@ export default function Auth() {
             
             {successMessage && (
               <Alert className="border-green-500 bg-green-50 text-green-700 dark:bg-green-950 dark:text-green-300">
+                <Mail className="h-4 w-4" />
                 <AlertDescription>{successMessage}</AlertDescription>
               </Alert>
+            )}
+
+            {showResendOption && (
+              <Button
+                type="button"
+                variant="outline"
+                className="w-full"
+                onClick={handleResendVerification}
+                disabled={isResending}
+              >
+                {isResending ? (
+                  <>
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                    Reenviando...
+                  </>
+                ) : (
+                  <>
+                    <RefreshCw className="mr-2 h-4 w-4" />
+                    Reenviar email de verificación
+                  </>
+                )}
+              </Button>
             )}
 
             <div className="space-y-2">
@@ -158,6 +215,7 @@ export default function Auth() {
                 setIsLogin(!isLogin);
                 setError(null);
                 setSuccessMessage(null);
+                setShowResendOption(false);
               }}
             >
               {isLogin ? 'Regístrate' : 'Inicia sesión'}

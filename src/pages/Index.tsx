@@ -109,7 +109,6 @@ const Index = () => {
       alerts={alerts}
       alertCount={alertCount}
       hasUrgentAlerts={hasUrgentAlerts}
-      isPro={isPro}
     >
       {currentView === 'dashboard' && (
         <div className="p-6 lg:p-8">
@@ -319,10 +318,7 @@ const Index = () => {
             <h1 className="text-3xl font-bold">Fiscalidad</h1>
             <p className="text-muted-foreground">Gestión fiscal de tus inversiones (España)</p>
           </div>
-          <TaxDashboard 
-            isPro={isPro} 
-            onProRequired={() => openUpgradeModal('export_irpf')} 
-          />
+          <TaxDashboard />
         </div>
       )}
 

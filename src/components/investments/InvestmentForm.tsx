@@ -78,6 +78,8 @@ export function InvestmentForm({
   const [entryMode, setEntryMode] = useState<EntryMode>(initialData ? 'manual' : 'select');
   const [extractedFields, setExtractedFields] = useState<Set<string>>(new Set());
   const [highAmountWarning, setHighAmountWarning] = useState<number | null>(null);
+  
+  const { isExtracting, extractFromFile, clearExtractedData } = useInvestmentExtraction();
 
   const canAddInvestment = isPro || investmentCount < 3 || !!initialData;
 
@@ -88,10 +90,6 @@ export function InvestmentForm({
     }
     setOpen(newOpen);
   };
-  const [extractedFields, setExtractedFields] = useState<Set<string>>(new Set());
-  const [highAmountWarning, setHighAmountWarning] = useState<number | null>(null);
-  
-  const { isExtracting, extractFromFile, clearExtractedData } = useInvestmentExtraction();
 
   const form = useForm<InvestmentFormData>({
     resolver: zodResolver(investmentSchema),

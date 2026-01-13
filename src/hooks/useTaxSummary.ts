@@ -2,7 +2,9 @@ import { useState, useEffect, useMemo } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { TaxSummary } from '@/types/tax';
+import { Investment } from '@/types/investment';
 import { calculateProgressiveTax, calculateEffectiveRate } from '@/lib/tax/calculations';
+import { calculateYearlyProjection, TaxProjection } from '@/lib/tax/projections';
 import { useTaxExpenses } from './useTaxExpenses';
 
 interface PaymentWithInvestment {
@@ -14,30 +16,65 @@ interface PaymentWithInvestment {
   investment_id: string;
 }
 
+interface InvestmentRow {
+  id: string;
+  platform: string;
+  custom_platform_name: string | null;
+  project_name: string;
+  amount: number;
+  investment_date: string;
+  expected_end_date: string | null;
+  expected_return: number;
+  status: string;
+  notes: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
 export function useTaxSummary(year: number) {
   const { user } = useAuth();
   const [payments, setPayments] = useState<PaymentWithInvestment[]>([]);
+  const [investments, setInvestments] = useState<Investment[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const { expenses, totalExpenses, isLoading: expensesLoading } = useTaxExpenses(year);
 
   useEffect(() => {
-    async function fetchPayments() {
+    async function fetchData() {
       if (!user) {
         setPayments([]);
+        setInvestments([]);
         setIsLoading(false);
         return;
       }
 
       try {
-        // First get user's investment IDs
-        const { data: investments, error: investmentsError } = await supabase
+        // Fetch user's investments
+        const { data: investmentsData, error: investmentsError } = await supabase
           .from('investments')
-          .select('id')
+          .select('*')
           .eq('user_id', user.id);
 
         if (investmentsError) throw investmentsError;
 
-        const investmentIds = investments?.map((i) => i.id) || [];
+        const mappedInvestments: Investment[] = (investmentsData as InvestmentRow[] || []).map((inv) => ({
+          id: inv.id,
+          platform: inv.platform as Investment['platform'],
+          customPlatformName: inv.custom_platform_name || undefined,
+          projectName: inv.project_name,
+          amount: Number(inv.amount),
+          investmentDate: inv.investment_date,
+          expectedEndDate: inv.expected_end_date || undefined,
+          expectedReturn: Number(inv.expected_return),
+          status: inv.status as Investment['status'],
+          notes: inv.notes || undefined,
+          payments: [],
+          createdAt: inv.created_at,
+          updatedAt: inv.updated_at,
+        }));
+
+        setInvestments(mappedInvestments);
+
+        const investmentIds = mappedInvestments.map((i) => i.id);
 
         if (investmentIds.length === 0) {
           setPayments([]);
@@ -67,13 +104,13 @@ export function useTaxSummary(year: number) {
           }))
         );
       } catch (error) {
-        console.error('Error fetching payments for tax summary:', error);
+        console.error('Error fetching data for tax summary:', error);
       } finally {
         setIsLoading(false);
       }
     }
 
-    fetchPayments();
+    fetchData();
   }, [user, year]);
 
   const summary: TaxSummary = useMemo(() => {
@@ -122,6 +159,27 @@ export function useTaxSummary(year: number) {
     };
   }, [payments, totalExpenses, year]);
 
+  // Calculate projection
+  const projection: TaxProjection = useMemo(() => {
+    // Build map of payments by investment (only interest + dividend)
+    const paymentsByInvestment = new Map<string, number>();
+    payments
+      .filter((p) => p.type === 'interest' || p.type === 'dividend')
+      .forEach((p) => {
+        const current = paymentsByInvestment.get(p.investment_id) || 0;
+        paymentsByInvestment.set(p.investment_id, current + p.amount);
+      });
+
+    return calculateYearlyProjection(
+      investments,
+      paymentsByInvestment,
+      summary.grossIncome,
+      summary.withholdingsApplied,
+      totalExpenses,
+      year
+    );
+  }, [investments, payments, summary, totalExpenses, year]);
+
   // Get available years from payments
   const [availableYears, setAvailableYears] = useState<number[]>([]);
 
@@ -167,6 +225,7 @@ export function useTaxSummary(year: number) {
 
   return {
     summary,
+    projection,
     payments,
     expenses,
     isLoading: isLoading || expensesLoading,

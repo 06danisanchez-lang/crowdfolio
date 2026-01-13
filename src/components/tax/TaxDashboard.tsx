@@ -1,9 +1,10 @@
 import { useState } from 'react';
-import { Receipt, Calculator, FileText } from 'lucide-react';
+import { Receipt, Calculator, FileText, TrendingUp } from 'lucide-react';
 import { useTaxSummary } from '@/hooks/useTaxSummary';
 import { useTaxExpenses } from '@/hooks/useTaxExpenses';
 import { TaxSummaryCards } from './TaxSummaryCards';
 import { TaxBreakdownTable } from './TaxBreakdownTable';
+import { TaxProjectionCard } from './TaxProjectionCard';
 import { TaxExpensesList } from './TaxExpensesList';
 import { TaxExpenseForm } from './TaxExpenseForm';
 import { TaxYearSelector } from './TaxYearSelector';
@@ -15,7 +16,7 @@ export function TaxDashboard() {
   const currentYear = new Date().getFullYear();
   const [selectedYear, setSelectedYear] = useState(currentYear);
   
-  const { summary, isLoading, availableYears } = useTaxSummary(selectedYear);
+  const { summary, projection, isLoading, availableYears } = useTaxSummary(selectedYear);
   const { 
     expenses, 
     addExpense, 
@@ -55,6 +56,9 @@ export function TaxDashboard() {
 
       {/* KPI Summary Cards */}
       <TaxSummaryCards summary={summary} />
+
+      {/* Projection Card for Current Year */}
+      <TaxProjectionCard summary={summary} projection={projection} year={selectedYear} />
 
       {/* Detailed Tabs */}
       <Tabs defaultValue="breakdown" className="space-y-4">

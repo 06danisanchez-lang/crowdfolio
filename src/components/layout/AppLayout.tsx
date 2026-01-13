@@ -8,7 +8,8 @@ import {
   Building2,
   Search,
   LogOut,
-  Receipt
+  Receipt,
+  Shield
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
@@ -36,7 +37,7 @@ export function AppLayout({
 }: AppLayoutProps) {
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [darkMode, setDarkMode] = useState(false);
-  const { user, signOut } = useAuth();
+  const { user, isAdmin, signOut } = useAuth();
 
   const toggleDarkMode = () => {
     setDarkMode(!darkMode);
@@ -52,6 +53,7 @@ export function AppLayout({
     { id: 'investments' as View, label: 'Inversiones', icon: Wallet },
     { id: 'opportunities' as View, label: 'Oportunidades', icon: Search },
     { id: 'tax' as View, label: 'Fiscalidad', icon: Receipt },
+    ...(isAdmin ? [{ id: 'admin' as View, label: 'Administración', icon: Shield }] : []),
   ];
 
   return (

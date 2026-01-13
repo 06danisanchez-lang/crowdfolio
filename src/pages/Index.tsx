@@ -21,6 +21,7 @@ import { ScrapeButton } from '@/components/opportunities/ScrapeButton';
 import { TaxDashboard } from '@/components/tax/TaxDashboard';
 import { BillingSettings } from '@/components/subscription/BillingSettings';
 import { UpgradeModal } from '@/components/subscription/UpgradeModal';
+import { AdminPanel } from '@/components/admin/AdminPanel';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { toast } from 'sonner';
 import { View } from '@/types/investment';
@@ -331,6 +332,16 @@ const Index = () => {
           <div className="max-w-2xl">
             <BillingSettings />
           </div>
+        </div>
+      )}
+
+      {currentView === 'admin' && (
+        <div className="p-6 lg:p-8">
+          <div className="mb-8">
+            <h1 className="text-3xl font-bold">Panel de Administración</h1>
+            <p className="text-muted-foreground">Visualiza las inversiones de todos los usuarios</p>
+          </div>
+          <AdminPanel />
         </div>
       )}
 

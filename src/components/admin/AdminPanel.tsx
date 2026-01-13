@@ -1,10 +1,18 @@
-import { useState } from 'react';
-import { Shield, Users, Wallet, TrendingUp, ChevronDown, ChevronRight } from 'lucide-react';
+import { useState, useMemo } from 'react';
+import { Shield, Users, Wallet, TrendingUp, ChevronDown, ChevronRight, Search, X, Filter } from 'lucide-react';
 import { useAdminInvestments } from '@/hooks/useAdminInvestments';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
+import { Input } from '@/components/ui/input';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
 import {
   Table,
   TableBody,
@@ -23,6 +31,11 @@ import { PLATFORMS, STATUS_OPTIONS } from '@/types/investment';
 export function AdminPanel() {
   const { userInvestments, isLoading, isAdmin, summary } = useAdminInvestments();
   const [expandedUsers, setExpandedUsers] = useState<Set<string>>(new Set());
+  
+  // Filter states
+  const [searchEmail, setSearchEmail] = useState('');
+  const [selectedUserId, setSelectedUserId] = useState<string>('all');
+  const [statusFilter, setStatusFilter] = useState<string>('all');
 
   const formatCurrency = (value: number) => {
     return new Intl.NumberFormat('es-ES', {
@@ -72,6 +85,52 @@ export function AdminPanel() {
     });
   };
 
+  // Filtered user investments
+  const filteredUserInvestments = useMemo(() => {
+    return userInvestments.filter(userInv => {
+      // Filter by email search
+      if (searchEmail && !userInv.email.toLowerCase().includes(searchEmail.toLowerCase())) {
+        return false;
+      }
+      // Filter by specific user
+      if (selectedUserId !== 'all' && userInv.userId !== selectedUserId) {
+        return false;
+      }
+      // Filter by investment status
+      if (statusFilter !== 'all') {
+        const hasStatus = userInv.investments.some(inv => inv.status === statusFilter);
+        if (!hasStatus) return false;
+      }
+      return true;
+    });
+  }, [userInvestments, searchEmail, selectedUserId, statusFilter]);
+
+  // Recalculate summary with filtered data
+  const filteredSummary = useMemo(() => ({
+    totalUsers: filteredUserInvestments.length,
+    totalInvestments: filteredUserInvestments.reduce((sum, u) => sum + u.investmentCount, 0),
+    totalInvested: filteredUserInvestments.reduce((sum, u) => sum + u.totalInvested, 0),
+    totalReturns: filteredUserInvestments.reduce((sum, u) => sum + u.totalReturns, 0),
+  }), [filteredUserInvestments]);
+
+  // Check if any filter is active
+  const hasActiveFilters = searchEmail !== '' || selectedUserId !== 'all' || statusFilter !== 'all';
+
+  // Clear all filters
+  const clearFilters = () => {
+    setSearchEmail('');
+    setSelectedUserId('all');
+    setStatusFilter('all');
+  };
+
+  // Auto-expand when selecting a specific user
+  const handleUserSelect = (userId: string) => {
+    setSelectedUserId(userId);
+    if (userId !== 'all') {
+      setExpandedUsers(new Set([userId]));
+    }
+  };
+
   if (!isAdmin && !isLoading) {
     return (
       <div className="flex flex-col items-center justify-center py-12">
@@ -108,7 +167,7 @@ export function AdminPanel() {
 
   return (
     <div className="space-y-6">
-      {/* Summary Cards */}
+      {/* Summary Cards - Now show filtered data */}
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
         <Card>
           <CardHeader className="flex flex-row items-center justify-between pb-2">
@@ -116,8 +175,10 @@ export function AdminPanel() {
             <Users className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">{summary.totalUsers}</div>
-            <p className="text-xs text-muted-foreground">con inversiones</p>
+            <div className="text-2xl font-bold">{filteredSummary.totalUsers}</div>
+            <p className="text-xs text-muted-foreground">
+              {hasActiveFilters ? `de ${summary.totalUsers} usuarios` : 'con inversiones'}
+            </p>
           </CardContent>
         </Card>
         <Card>
@@ -126,8 +187,10 @@ export function AdminPanel() {
             <Wallet className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">{summary.totalInvestments}</div>
-            <p className="text-xs text-muted-foreground">proyectos registrados</p>
+            <div className="text-2xl font-bold">{filteredSummary.totalInvestments}</div>
+            <p className="text-xs text-muted-foreground">
+              {hasActiveFilters ? `de ${summary.totalInvestments} proyectos` : 'proyectos registrados'}
+            </p>
           </CardContent>
         </Card>
         <Card>
@@ -136,8 +199,10 @@ export function AdminPanel() {
             <Wallet className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">{formatCurrency(summary.totalInvested)}</div>
-            <p className="text-xs text-muted-foreground">invertido en plataforma</p>
+            <div className="text-2xl font-bold">{formatCurrency(filteredSummary.totalInvested)}</div>
+            <p className="text-xs text-muted-foreground">
+              {hasActiveFilters ? 'filtrado' : 'invertido en plataforma'}
+            </p>
           </CardContent>
         </Card>
         <Card>
@@ -146,11 +211,82 @@ export function AdminPanel() {
             <TrendingUp className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">{formatCurrency(summary.totalReturns)}</div>
-            <p className="text-xs text-muted-foreground">cobrados por usuarios</p>
+            <div className="text-2xl font-bold">{formatCurrency(filteredSummary.totalReturns)}</div>
+            <p className="text-xs text-muted-foreground">
+              {hasActiveFilters ? 'filtrado' : 'cobrados por usuarios'}
+            </p>
           </CardContent>
         </Card>
       </div>
+
+      {/* Filters Section */}
+      <Card>
+        <CardHeader className="pb-4">
+          <CardTitle className="flex items-center gap-2 text-base">
+            <Filter className="h-4 w-4" />
+            Filtros
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
+          <div className="flex flex-col sm:flex-row gap-4">
+            {/* Email Search */}
+            <div className="relative flex-1">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+              <Input
+                placeholder="Buscar por email..."
+                value={searchEmail}
+                onChange={(e) => setSearchEmail(e.target.value)}
+                className="pl-9"
+              />
+            </div>
+
+            {/* User Selector */}
+            <Select value={selectedUserId} onValueChange={handleUserSelect}>
+              <SelectTrigger className="w-full sm:w-[220px]">
+                <SelectValue placeholder="Seleccionar usuario" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">Todos los usuarios</SelectItem>
+                {userInvestments.map(userInv => (
+                  <SelectItem key={userInv.userId} value={userInv.userId}>
+                    {userInv.email}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+
+            {/* Status Filter */}
+            <Select value={statusFilter} onValueChange={setStatusFilter}>
+              <SelectTrigger className="w-full sm:w-[180px]">
+                <SelectValue placeholder="Estado" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">Todos los estados</SelectItem>
+                {STATUS_OPTIONS.map(status => (
+                  <SelectItem key={status.value} value={status.value}>
+                    {status.label}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+
+            {/* Clear Filters */}
+            {hasActiveFilters && (
+              <Button variant="outline" onClick={clearFilters} className="gap-2">
+                <X className="h-4 w-4" />
+                Limpiar
+              </Button>
+            )}
+          </div>
+
+          {/* Results indicator */}
+          {hasActiveFilters && (
+            <p className="text-sm text-muted-foreground mt-4">
+              Mostrando {filteredUserInvestments.length} de {userInvestments.length} usuarios
+            </p>
+          )}
+        </CardContent>
+      </Card>
 
       {/* Users Table */}
       <Card>
@@ -161,13 +297,13 @@ export function AdminPanel() {
           </CardTitle>
         </CardHeader>
         <CardContent>
-          {userInvestments.length === 0 ? (
+          {filteredUserInvestments.length === 0 ? (
             <div className="text-center py-8 text-muted-foreground">
-              No hay inversiones registradas
+              {hasActiveFilters ? 'No hay usuarios que coincidan con los filtros' : 'No hay inversiones registradas'}
             </div>
           ) : (
             <div className="space-y-2">
-              {userInvestments.map(userInv => (
+              {filteredUserInvestments.map(userInv => (
                 <Collapsible
                   key={userInv.userId}
                   open={expandedUsers.has(userInv.userId)}

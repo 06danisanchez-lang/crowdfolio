@@ -152,19 +152,45 @@ export function TaxBucketsCard({ taxResult }: TaxBucketsCardProps) {
           </div>
         </div>
 
-        {/* Compensation Summary */}
+        {/* Compensation Summary with 25% Progress */}
         {compensation.crossBucketAmount > 0 && (
-          <div className="rounded-lg border border-dashed p-4">
-            <h5 className="font-medium mb-2">Compensación Aplicada</h5>
+          <div className="rounded-lg border border-dashed border-amber-300 dark:border-amber-800 bg-amber-50/50 dark:bg-amber-950/20 p-4 space-y-3">
+            <div className="flex items-center justify-between">
+              <h5 className="font-medium flex items-center gap-2">
+                <ArrowLeftRight className="h-4 w-4 text-amber-600" />
+                Compensación Cruzada Aplicada
+              </h5>
+              <Badge variant="outline" className="text-amber-700 dark:text-amber-300 border-amber-300 dark:border-amber-700">
+                Límite 25%
+              </Badge>
+            </div>
+            
             <p className="text-sm text-muted-foreground">
               {compensation.crossBucketDirection === 'RCM_TO_GPP' 
-                ? `Las pérdidas de RCM compensan ${formatCurrency(compensation.crossBucketAmount)} de GPP`
-                : `Las pérdidas de GPP compensan ${formatCurrency(compensation.crossBucketAmount)} de RCM`
+                ? `Las pérdidas de RCM compensan ${formatCurrency(compensation.crossBucketAmount)} de los beneficios de GPP`
+                : `Las pérdidas de GPP compensan ${formatCurrency(compensation.crossBucketAmount)} de los beneficios de RCM`
               }
             </p>
-            <p className="text-xs text-muted-foreground mt-1">
-              Límite máximo (25%): {formatCurrency(compensation.maxCrossBucket)}
-            </p>
+
+            {/* Progress bar showing 25% limit usage */}
+            <div className="space-y-1">
+              <div className="flex justify-between text-xs text-muted-foreground">
+                <span>Compensación usada</span>
+                <span>{((compensation.crossBucketAmount / compensation.maxCrossBucket) * 100).toFixed(0)}% del límite</span>
+              </div>
+              <Progress 
+                value={(compensation.crossBucketAmount / compensation.maxCrossBucket) * 100} 
+                className="h-2"
+              />
+              <div className="flex justify-between text-xs">
+                <span className="text-green-600 dark:text-green-400 font-medium">
+                  {formatCurrency(compensation.crossBucketAmount)} compensado
+                </span>
+                <span className="text-muted-foreground">
+                  Máximo: {formatCurrency(compensation.maxCrossBucket)}
+                </span>
+              </div>
+            </div>
           </div>
         )}
 

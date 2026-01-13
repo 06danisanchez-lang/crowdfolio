@@ -32,6 +32,7 @@ import {
 } from '@/components/ui/select';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Calendar } from '@/components/ui/calendar';
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { cn } from '@/lib/utils';
 import { format } from 'date-fns';
 import { es } from 'date-fns/locale';
@@ -211,13 +212,41 @@ export function TransactionForm({
               )}
             />
 
+            {/* Devengo Explanation Alert */}
+            <Alert className="border-blue-200 bg-blue-50 dark:border-blue-900 dark:bg-blue-950/30">
+              <Info className="h-4 w-4 text-blue-600" />
+              <AlertDescription className="text-sm">
+                <strong>¿Devengo o Cobro?</strong>
+                <ul className="mt-1 space-y-0.5 text-xs text-muted-foreground">
+                  <li>• <strong>Devengo:</strong> Cuando el dinero está disponible en la plataforma</li>
+                  <li>• <strong>Cobro:</strong> Cuando lo retiras a tu banco (no relevante fiscalmente)</li>
+                </ul>
+                <p className="mt-1 text-xs">Tributas cuando se devenga, aunque no retires el dinero.</p>
+              </AlertDescription>
+            </Alert>
+
             {/* Date */}
             <FormField
               control={form.control}
               name="date"
               render={({ field }) => (
                 <FormItem className="flex flex-col">
-                  <FormLabel>Fecha de Devengo</FormLabel>
+                  <FormLabel className="flex items-center gap-2">
+                    Fecha de Devengo
+                    <TooltipProvider>
+                      <Tooltip>
+                        <TooltipTrigger asChild>
+                          <Info className="h-3.5 w-3.5 text-muted-foreground cursor-help" />
+                        </TooltipTrigger>
+                        <TooltipContent className="max-w-xs">
+                          <p className="text-xs">
+                            Fecha en que el rendimiento estuvo disponible para ti en la plataforma, 
+                            no cuando lo transferiste a tu banco.
+                          </p>
+                        </TooltipContent>
+                      </Tooltip>
+                    </TooltipProvider>
+                  </FormLabel>
                   <Popover>
                     <PopoverTrigger asChild>
                       <FormControl>
@@ -248,9 +277,6 @@ export function TransactionForm({
                       />
                     </PopoverContent>
                   </Popover>
-                  <FormDescription>
-                    Fecha en que se devengó el cobro (exigibilidad)
-                  </FormDescription>
                   <FormMessage />
                 </FormItem>
               )}

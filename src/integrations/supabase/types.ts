@@ -14,6 +14,57 @@ export type Database = {
   }
   public: {
     Tables: {
+      assets: {
+        Row: {
+          acquisition_cost: number
+          asset_type: Database["public"]["Enums"]["asset_type"]
+          country_code: string
+          created_at: string
+          expected_end_date: string | null
+          expected_return: number | null
+          id: string
+          investment_date: string
+          notes: string | null
+          platform_name: string
+          project_name: string
+          status: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          acquisition_cost: number
+          asset_type: Database["public"]["Enums"]["asset_type"]
+          country_code?: string
+          created_at?: string
+          expected_end_date?: string | null
+          expected_return?: number | null
+          id?: string
+          investment_date: string
+          notes?: string | null
+          platform_name: string
+          project_name: string
+          status?: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          acquisition_cost?: number
+          asset_type?: Database["public"]["Enums"]["asset_type"]
+          country_code?: string
+          created_at?: string
+          expected_end_date?: string | null
+          expected_return?: number | null
+          id?: string
+          investment_date?: string
+          notes?: string | null
+          platform_name?: string
+          project_name?: string
+          status?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       investments: {
         Row: {
           amount: number
@@ -276,6 +327,80 @@ export type Database = {
           },
         ]
       }
+      tax_years: {
+        Row: {
+          created_at: string
+          gpp_losses_carried: number | null
+          id: string
+          rcm_losses_carried: number | null
+          updated_at: string
+          user_id: string
+          year: number
+        }
+        Insert: {
+          created_at?: string
+          gpp_losses_carried?: number | null
+          id?: string
+          rcm_losses_carried?: number | null
+          updated_at?: string
+          user_id: string
+          year: number
+        }
+        Update: {
+          created_at?: string
+          gpp_losses_carried?: number | null
+          id?: string
+          rcm_losses_carried?: number | null
+          updated_at?: string
+          user_id?: string
+          year?: number
+        }
+        Relationships: []
+      }
+      transactions: {
+        Row: {
+          asset_id: string
+          created_at: string
+          currency: string | null
+          date: string
+          gross_amount: number
+          id: string
+          notes: string | null
+          type: Database["public"]["Enums"]["transaction_type"]
+          withholding_amount: number | null
+        }
+        Insert: {
+          asset_id: string
+          created_at?: string
+          currency?: string | null
+          date: string
+          gross_amount: number
+          id?: string
+          notes?: string | null
+          type: Database["public"]["Enums"]["transaction_type"]
+          withholding_amount?: number | null
+        }
+        Update: {
+          asset_id?: string
+          created_at?: string
+          currency?: string | null
+          date?: string
+          gross_amount?: number
+          id?: string
+          notes?: string | null
+          type?: Database["public"]["Enums"]["transaction_type"]
+          withholding_amount?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "transactions_asset_id_fkey"
+            columns: ["asset_id"]
+            isOneToOne: false
+            referencedRelation: "assets"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       user_roles: {
         Row: {
           created_at: string
@@ -314,6 +439,7 @@ export type Database = {
     }
     Enums: {
       app_role: "admin" | "user"
+      asset_type: "LENDING" | "EQUITY"
       subscription_plan: "free" | "monthly" | "yearly"
       subscription_status: "free" | "active" | "past_due" | "canceled"
       tax_expense_category:
@@ -322,6 +448,7 @@ export type Database = {
         | "management"
         | "travel"
         | "other"
+      transaction_type: "INTEREST" | "DIVIDEND" | "SALE" | "LOSS"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -450,6 +577,7 @@ export const Constants = {
   public: {
     Enums: {
       app_role: ["admin", "user"],
+      asset_type: ["LENDING", "EQUITY"],
       subscription_plan: ["free", "monthly", "yearly"],
       subscription_status: ["free", "active", "past_due", "canceled"],
       tax_expense_category: [
@@ -459,6 +587,7 @@ export const Constants = {
         "travel",
         "other",
       ],
+      transaction_type: ["INTEREST", "DIVIDEND", "SALE", "LOSS"],
     },
   },
 } as const

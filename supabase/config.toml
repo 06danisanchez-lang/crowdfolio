@@ -3,6 +3,9 @@ project_id = "vqazrgwjcglnqrmdcjdm"
 [functions.scrape-opportunities]
 verify_jwt = false
 
+[functions.scheduled-scraper]
+verify_jwt = false
+
 [functions.extract-investment-from-image]
 verify_jwt = false
 

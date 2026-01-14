@@ -1,6 +1,7 @@
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
-import { FileText, Info, AlertCircle, Calculator, ArrowLeftRight, Clock } from 'lucide-react';
+import { FileText, Info, AlertCircle, Calculator, ArrowLeftRight, Clock, Receipt } from 'lucide-react';
+import { DEDUCTIBLE_INFO } from '@/lib/tax/suggestedExpenses';
 
 export function TaxInfoCard() {
   return (
@@ -138,6 +139,41 @@ export function TaxInfoCard() {
                     <strong>Importante:</strong> Si no declaras las pérdidas en el año que se producen, 
                     pierdes el derecho a compensarlas en ejercicios futuros.
                   </p>
+                </div>
+              </div>
+            </AccordionContent>
+          </AccordionItem>
+
+          {/* Deductible Expenses Info */}
+          <AccordionItem value="expenses">
+            <AccordionTrigger className="text-sm">
+              <span className="flex items-center gap-2">
+                <Receipt className="h-4 w-4" />
+                Gastos Deducibles
+              </span>
+            </AccordionTrigger>
+            <AccordionContent>
+              <div className="space-y-4 text-sm">
+                <div className="rounded-lg border border-green-200 dark:border-green-900 bg-green-50 dark:bg-green-950/30 p-3">
+                  <h4 className="font-medium text-green-800 dark:text-green-200 mb-2">
+                    ✓ Gastos que puedes deducir:
+                  </h4>
+                  <ul className="text-green-700 dark:text-green-300 text-xs space-y-1">
+                    {DEDUCTIBLE_INFO.allowed.map((item, i) => (
+                      <li key={i}>• {item}</li>
+                    ))}
+                  </ul>
+                </div>
+                
+                <div className="rounded-lg border border-red-200 dark:border-red-900 bg-red-50 dark:bg-red-950/30 p-3">
+                  <h4 className="font-medium text-red-800 dark:text-red-200 mb-2">
+                    ✗ No son deducibles:
+                  </h4>
+                  <ul className="text-red-700 dark:text-red-300 text-xs space-y-1">
+                    {DEDUCTIBLE_INFO.notAllowed.map((item, i) => (
+                      <li key={i}>• {item}</li>
+                    ))}
+                  </ul>
                 </div>
               </div>
             </AccordionContent>

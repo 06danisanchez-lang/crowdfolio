@@ -1,4 +1,4 @@
-import { TaxExpense, TAX_EXPENSE_CATEGORIES } from '@/types/tax';
+import { TaxExpense, TAX_EXPENSE_CATEGORIES, TaxExpenseCategory } from '@/types/tax';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -21,17 +21,19 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from '@/components/ui/alert-dialog';
-import { Trash2, Receipt } from 'lucide-react';
+import { Trash2 } from 'lucide-react';
 import { format } from 'date-fns';
 import { es } from 'date-fns/locale';
+import { SuggestedExpenses } from './SuggestedExpenses';
 
 interface TaxExpensesListProps {
   expenses: TaxExpense[];
   onUpdate: (id: string, updates: Partial<TaxExpense>) => void;
   onDelete: (id: string) => void;
+  onAddSuggested?: (category: TaxExpenseCategory, description: string) => void;
 }
 
-export function TaxExpensesList({ expenses, onUpdate, onDelete }: TaxExpensesListProps) {
+export function TaxExpensesList({ expenses, onUpdate, onDelete, onAddSuggested }: TaxExpensesListProps) {
   const formatCurrency = (value: number) => {
     return new Intl.NumberFormat('es-ES', {
       style: 'currency',
@@ -56,16 +58,25 @@ export function TaxExpensesList({ expenses, onUpdate, onDelete }: TaxExpensesLis
     return colors[category] || colors.other;
   };
 
+  if (expenses.length === 0 && onAddSuggested) {
+    return (
+      <Card>
+        <CardContent className="py-6">
+          <SuggestedExpenses 
+            onAddSuggested={onAddSuggested} 
+            showAsEmptyState 
+          />
+        </CardContent>
+      </Card>
+    );
+  }
+
   if (expenses.length === 0) {
     return (
       <Card>
         <CardContent className="flex flex-col items-center justify-center py-12">
-          <Receipt className="h-12 w-12 text-muted-foreground/50" />
-          <p className="mt-4 text-center text-muted-foreground">
+          <p className="text-center text-muted-foreground">
             No hay gastos deducibles registrados para este año
-          </p>
-          <p className="text-sm text-muted-foreground">
-            Añade gastos para reducir tu base imponible
           </p>
         </CardContent>
       </Card>

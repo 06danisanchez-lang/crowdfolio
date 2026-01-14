@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Receipt, Calculator, FileText, TrendingUp, BarChart3, AlertTriangle, ArrowLeftRight } from 'lucide-react';
+import { Receipt, Calculator, ArrowLeftRight } from 'lucide-react';
 import { useTaxSummary } from '@/hooks/useTaxSummary';
 import { useTaxExpenses } from '@/hooks/useTaxExpenses';
 import { TaxSummaryCards } from './TaxSummaryCards';
@@ -12,12 +12,16 @@ import { TaxExportButton } from './TaxExportButton';
 import { TaxBucketsCard } from './TaxBucketsCard';
 import { CompensationBreakdown } from './CompensationBreakdown';
 import { TaxInfoCard } from './TaxInfoCard';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { SuggestedExpenses } from './SuggestedExpenses';
+import { TaxExpenseCategory } from '@/types/tax';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 
 export function TaxDashboard() {
   const currentYear = new Date().getFullYear();
   const [selectedYear, setSelectedYear] = useState(currentYear);
+  const [expenseFormOpen, setExpenseFormOpen] = useState(false);
+  const [prefillCategory, setPrefillCategory] = useState<TaxExpenseCategory | undefined>();
+  const [prefillDescription, setPrefillDescription] = useState<string | undefined>();
   
   const { summary, projection, isLoading, availableYears } = useTaxSummary(selectedYear);
   const { 
@@ -28,6 +32,12 @@ export function TaxDashboard() {
     totalExpenses,
     isLoading: expensesLoading 
   } = useTaxExpenses(selectedYear);
+
+  const handleAddSuggested = (category: TaxExpenseCategory, description: string) => {
+    setPrefillCategory(category);
+    setPrefillDescription(description);
+    setExpenseFormOpen(true);
+  };
 
   if (isLoading || expensesLoading) {
     return (
@@ -99,18 +109,38 @@ export function TaxDashboard() {
                   Total: {new Intl.NumberFormat('es-ES', { style: 'currency', currency: 'EUR' }).format(totalExpenses)}
                 </p>
               </div>
-              <TaxExpenseForm year={selectedYear} onSubmit={addExpense} />
+              <TaxExpenseForm 
+                year={selectedYear} 
+                onSubmit={addExpense}
+                prefillCategory={prefillCategory}
+                prefillDescription={prefillDescription}
+                open={expenseFormOpen}
+                onOpenChange={(open) => {
+                  setExpenseFormOpen(open);
+                  if (!open) {
+                    setPrefillCategory(undefined);
+                    setPrefillDescription(undefined);
+                  }
+                }}
+              />
             </div>
+            
+            {/* Suggested Expenses - shown when there are already some expenses */}
+            {expenses.length > 0 && (
+              <SuggestedExpenses onAddSuggested={handleAddSuggested} />
+            )}
+            
             <TaxExpensesList
               expenses={expenses}
               onUpdate={updateExpense}
               onDelete={deleteExpense}
+              onAddSuggested={handleAddSuggested}
             />
           </div>
         </TabsContent>
       </Tabs>
 
-      {/* Tax Information Card - Replaces old static info */}
+      {/* Tax Information Card */}
       <TaxInfoCard />
     </div>
   );

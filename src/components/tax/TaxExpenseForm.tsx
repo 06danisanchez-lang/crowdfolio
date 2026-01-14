@@ -43,21 +43,44 @@ type ExpenseFormData = z.infer<typeof expenseSchema>;
 interface TaxExpenseFormProps {
   year: number;
   onSubmit: (expense: Omit<TaxExpense, 'id' | 'userId' | 'createdAt' | 'updatedAt'>) => void;
+  prefillCategory?: TaxExpenseCategory;
+  prefillDescription?: string;
+  open?: boolean;
+  onOpenChange?: (open: boolean) => void;
+  triggerButton?: boolean;
 }
 
-export function TaxExpenseForm({ year, onSubmit }: TaxExpenseFormProps) {
-  const [open, setOpen] = useState(false);
+export function TaxExpenseForm({ 
+  year, 
+  onSubmit, 
+  prefillCategory,
+  prefillDescription,
+  open: controlledOpen,
+  onOpenChange,
+  triggerButton = true,
+}: TaxExpenseFormProps) {
+  const [internalOpen, setInternalOpen] = useState(false);
+  
+  const isControlled = controlledOpen !== undefined;
+  const open = isControlled ? controlledOpen : internalOpen;
+  const setOpen = isControlled ? (onOpenChange || (() => {})) : setInternalOpen;
 
   const form = useForm<ExpenseFormData>({
     resolver: zodResolver(expenseSchema),
     defaultValues: {
-      category: 'platform_fees',
-      description: '',
+      category: prefillCategory || 'platform_fees',
+      description: prefillDescription || '',
       amount: 0,
       date: new Date().toISOString().split('T')[0],
       notes: '',
     },
   });
+
+  // Update form when prefill values change
+  const updateFormWithPrefill = (category?: TaxExpenseCategory, description?: string) => {
+    if (category) form.setValue('category', category);
+    if (description) form.setValue('description', description);
+  };
 
   const handleSubmit = (data: ExpenseFormData) => {
     onSubmit({
@@ -72,14 +95,25 @@ export function TaxExpenseForm({ year, onSubmit }: TaxExpenseFormProps) {
     setOpen(false);
   };
 
+  // Expose method to open with prefill
+  const openWithPrefill = (category: TaxExpenseCategory, description: string) => {
+    updateFormWithPrefill(category, description);
+    setOpen(true);
+  };
+
+  // Export for parent components
+  (TaxExpenseForm as any).openWithPrefill = openWithPrefill;
+
   return (
     <Dialog open={open} onOpenChange={setOpen}>
-      <DialogTrigger asChild>
-        <Button>
-          <Plus className="mr-2 h-4 w-4" />
-          Añadir Gasto
-        </Button>
-      </DialogTrigger>
+      {triggerButton && (
+        <DialogTrigger asChild>
+          <Button>
+            <Plus className="mr-2 h-4 w-4" />
+            Añadir Gasto
+          </Button>
+        </DialogTrigger>
+      )}
       <DialogContent className="sm:max-w-[425px]">
         <DialogHeader>
           <DialogTitle>Nuevo Gasto Deducible</DialogTitle>

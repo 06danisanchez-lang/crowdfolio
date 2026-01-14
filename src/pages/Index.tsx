@@ -23,6 +23,8 @@ import { BillingSettings } from '@/components/subscription/BillingSettings';
 import { UpgradeModal } from '@/components/subscription/UpgradeModal';
 import { AdminPanel } from '@/components/admin/AdminPanel';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { HelpTooltip } from '@/components/ui/help-tooltip';
+import { HELP_CONTENT } from '@/lib/help/tooltipContent';
 import { toast } from 'sonner';
 import { View } from '@/types/investment';
 import { Opportunity } from '@/types/opportunity';
@@ -133,6 +135,7 @@ const Index = () => {
               value={formatCurrency(summary.totalInvested)}
               subtitle={`${investments.length} proyectos`}
               icon={Wallet}
+              helpContent={HELP_CONTENT.dashboard.totalInvested}
             />
             <KPICard
               title="Retornos Recibidos"
@@ -142,18 +145,21 @@ const Index = () => {
                 value: (summary.totalReturns / summary.totalInvested) * 100,
                 isPositive: true
               } : undefined}
+              helpContent="Suma de todos los pagos recibidos: intereses, dividendos y devoluciones de capital."
             />
             <KPICard
               title="Retornos Esperados"
               value={formatCurrency(summary.expectedReturns)}
               subtitle="Basado en rendimientos estimados"
               icon={Target}
+              helpContent={HELP_CONTENT.dashboard.projectedProfit}
             />
             <KPICard
               title="Rentabilidad Media Anual"
               value={`${summary.averageReturn.toFixed(1)}%`}
               subtitle={`${summary.activeInvestments} inversiones activas`}
               icon={PiggyBank}
+              helpContent={HELP_CONTENT.dashboard.expectedReturn}
             />
           </div>
 
@@ -161,7 +167,10 @@ const Index = () => {
           <div className="mb-8 grid gap-6 lg:grid-cols-2">
             <Card>
               <CardHeader>
-                <CardTitle>Distribución por Plataforma</CardTitle>
+                <CardTitle className="flex items-center gap-2">
+                  Distribución por Plataforma
+                  <HelpTooltip content={HELP_CONTENT.dashboard.platformDistribution} />
+                </CardTitle>
               </CardHeader>
               <CardContent>
                 <PlatformDistributionChart investments={investments} />
@@ -191,6 +200,7 @@ const Index = () => {
                 <CardTitle className="flex items-center gap-2">
                   <CalendarClock className="h-5 w-5" />
                   Próximos Vencimientos
+                  <HelpTooltip content={HELP_CONTENT.dashboard.maturityTimeline} />
                 </CardTitle>
               </CardHeader>
               <CardContent>

@@ -1,6 +1,8 @@
 import { TaxSummary } from '@/types/tax';
 import { Card, CardContent } from '@/components/ui/card';
 import { Euro, TrendingUp, TrendingDown, Receipt, Calculator, Percent } from 'lucide-react';
+import { HelpTooltip } from '@/components/ui/help-tooltip';
+import { HELP_CONTENT } from '@/lib/help/tooltipContent';
 
 interface TaxSummaryCardsProps {
   summary: TaxSummary;
@@ -24,6 +26,7 @@ export function TaxSummaryCards({ summary }: TaxSummaryCardsProps) {
       icon: TrendingUp,
       color: 'text-green-600 dark:text-green-400',
       bgColor: 'bg-green-50 dark:bg-green-950/30',
+      help: HELP_CONTENT.tax.rcm,
     },
     {
       title: 'Retenciones Practicadas',
@@ -32,6 +35,7 @@ export function TaxSummaryCards({ summary }: TaxSummaryCardsProps) {
       icon: TrendingDown,
       color: 'text-orange-600 dark:text-orange-400',
       bgColor: 'bg-orange-50 dark:bg-orange-950/30',
+      help: HELP_CONTENT.tax.withholdings,
     },
     {
       title: 'Gastos Deducibles',
@@ -40,6 +44,7 @@ export function TaxSummaryCards({ summary }: TaxSummaryCardsProps) {
       icon: Receipt,
       color: 'text-blue-600 dark:text-blue-400',
       bgColor: 'bg-blue-50 dark:bg-blue-950/30',
+      help: HELP_CONTENT.tax.deductibleExpenses,
     },
     {
       title: 'Base Imponible',
@@ -48,6 +53,7 @@ export function TaxSummaryCards({ summary }: TaxSummaryCardsProps) {
       icon: Euro,
       color: 'text-purple-600 dark:text-purple-400',
       bgColor: 'bg-purple-50 dark:bg-purple-950/30',
+      help: 'Suma total de rendimientos menos gastos deducibles. Sobre esta cantidad se aplican los tramos del ahorro.',
     },
     {
       title: 'Cuota IRPF Estimada',
@@ -56,6 +62,7 @@ export function TaxSummaryCards({ summary }: TaxSummaryCardsProps) {
       icon: Calculator,
       color: 'text-red-600 dark:text-red-400',
       bgColor: 'bg-red-50 dark:bg-red-950/30',
+      help: 'Impuesto calculado aplicando los tramos progresivos del ahorro (19% a 30%) sobre tu base imponible.',
     },
     {
       title: 'Tipo Efectivo',
@@ -64,6 +71,7 @@ export function TaxSummaryCards({ summary }: TaxSummaryCardsProps) {
       icon: Percent,
       color: 'text-slate-600 dark:text-slate-400',
       bgColor: 'bg-slate-50 dark:bg-slate-950/30',
+      help: HELP_CONTENT.tax.effectiveRate,
     },
   ];
 
@@ -74,7 +82,10 @@ export function TaxSummaryCards({ summary }: TaxSummaryCardsProps) {
           <CardContent className="p-4">
             <div className="flex items-start justify-between">
               <div className="space-y-1">
-                <p className="text-xs font-medium text-muted-foreground">{card.title}</p>
+                <div className="flex items-center gap-1">
+                  <p className="text-xs font-medium text-muted-foreground">{card.title}</p>
+                  <HelpTooltip content={card.help} side="top" />
+                </div>
                 <p className="text-xl font-bold">{card.value}</p>
                 <p className="text-xs text-muted-foreground">{card.subtitle}</p>
               </div>

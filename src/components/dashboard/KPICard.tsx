@@ -1,5 +1,7 @@
 import { cn } from '@/lib/utils';
 import { LucideIcon } from 'lucide-react';
+import { HelpTooltip } from '@/components/ui/help-tooltip';
+import { ReactNode } from 'react';
 
 interface KPICardProps {
   title: string;
@@ -11,9 +13,10 @@ interface KPICardProps {
     isPositive: boolean;
   };
   className?: string;
+  helpContent?: ReactNode;
 }
 
-export function KPICard({ title, value, subtitle, icon: Icon, trend, className }: KPICardProps) {
+export function KPICard({ title, value, subtitle, icon: Icon, trend, className, helpContent }: KPICardProps) {
   return (
     <div className={cn(
       "bg-card rounded-lg border p-6 shadow-sm transition-all hover:shadow-md",
@@ -21,7 +24,10 @@ export function KPICard({ title, value, subtitle, icon: Icon, trend, className }
     )}>
       <div className="flex items-start justify-between">
         <div className="space-y-1">
-          <p className="text-sm font-medium text-muted-foreground">{title}</p>
+          <div className="flex items-center gap-1.5">
+            <p className="text-sm font-medium text-muted-foreground">{title}</p>
+            {helpContent && <HelpTooltip content={helpContent} />}
+          </div>
           <p className="text-2xl font-bold tracking-tight">{value}</p>
           {subtitle && (
             <p className="text-xs text-muted-foreground">{subtitle}</p>

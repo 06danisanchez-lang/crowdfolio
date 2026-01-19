@@ -224,6 +224,57 @@ export type Database = {
         }
         Relationships: []
       }
+      opportunity_alerts: {
+        Row: {
+          created_at: string
+          enabled: boolean
+          id: string
+          locations: string[] | null
+          max_min_investment: number | null
+          max_return: number | null
+          max_term: number | null
+          min_return: number | null
+          name: string
+          platforms: string[] | null
+          project_types: string[] | null
+          risk_levels: string[] | null
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          enabled?: boolean
+          id?: string
+          locations?: string[] | null
+          max_min_investment?: number | null
+          max_return?: number | null
+          max_term?: number | null
+          min_return?: number | null
+          name: string
+          platforms?: string[] | null
+          project_types?: string[] | null
+          risk_levels?: string[] | null
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          enabled?: boolean
+          id?: string
+          locations?: string[] | null
+          max_min_investment?: number | null
+          max_return?: number | null
+          max_term?: number | null
+          min_return?: number | null
+          name?: string
+          platforms?: string[] | null
+          project_types?: string[] | null
+          risk_levels?: string[] | null
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       payments: {
         Row: {
           amount: number

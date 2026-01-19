@@ -32,6 +32,21 @@ interface ScrapedOpportunity {
   imageUrl?: string;
 }
 
+interface OpportunityAlert {
+  id: string;
+  user_id: string;
+  name: string;
+  enabled: boolean;
+  min_return: number | null;
+  max_return: number | null;
+  platforms: string[];
+  project_types: string[];
+  risk_levels: string[];
+  max_term: number | null;
+  max_min_investment: number | null;
+  locations: string[];
+}
+
 Deno.serve(async (req) => {
   if (req.method === 'OPTIONS') {
     return new Response(null, { headers: corsHeaders });
@@ -81,6 +96,26 @@ Deno.serve(async (req) => {
       );
     }
 
+    // Get all user alerts
+    const { data: allAlerts, error: alertsError } = await supabase
+      .from('opportunity_alerts')
+      .select('*')
+      .eq('enabled', true)
+      .in('user_id', userIds);
+
+    if (alertsError) {
+      console.error('Error fetching alerts:', alertsError);
+    }
+
+    const alertsByUser = new Map<string, OpportunityAlert[]>();
+    (allAlerts || []).forEach((alert: OpportunityAlert) => {
+      const existing = alertsByUser.get(alert.user_id) || [];
+      existing.push(alert);
+      alertsByUser.set(alert.user_id, existing);
+    });
+
+    console.log(`Found ${allAlerts?.length || 0} active alerts from ${alertsByUser.size} users`);
+
     // Get existing opportunities to compare
     const { data: existingOpportunities } = await supabase
       .from('opportunities')
@@ -128,32 +163,82 @@ Deno.serve(async (req) => {
       );
     }
 
-    // Create notifications for all active users
-    const notifications = userIds.map(userId => ({
-      user_id: userId,
-      type: 'new_opportunity',
-      title: `${newOpportunities.length} nuevas oportunidades`,
-      message: `Hemos encontrado ${newOpportunities.length} nuevos proyectos de inversión en ${[...new Set(newOpportunities.map(o => o.platform))].join(', ')}`,
-      data: { 
-        opportunityCount: newOpportunities.length,
-        platforms: [...new Set(newOpportunities.map(o => o.platform))],
-        projects: newOpportunities.slice(0, 5).map(o => ({
-          name: o.projectName,
-          platform: o.platform,
-          expectedReturn: o.expectedReturn
-        }))
-      },
-      read: false
-    }));
+    // Create personalized notifications based on user alerts
+    const notifications: Array<{
+      user_id: string;
+      type: string;
+      title: string;
+      message: string;
+      data: Record<string, unknown>;
+      read: boolean;
+    }> = [];
 
-    const { error: notifError } = await supabase
-      .from('notifications')
-      .insert(notifications);
+    for (const userId of userIds) {
+      const userAlerts = alertsByUser.get(userId) || [];
+      
+      if (userAlerts.length === 0) {
+        // User has no alerts, send generic notification
+        notifications.push({
+          user_id: userId,
+          type: 'new_opportunity',
+          title: `${newOpportunities.length} nuevas oportunidades`,
+          message: `Hemos encontrado ${newOpportunities.length} nuevos proyectos de inversión en ${[...new Set(newOpportunities.map(o => o.platform))].join(', ')}`,
+          data: { 
+            opportunityCount: newOpportunities.length,
+            platforms: [...new Set(newOpportunities.map(o => o.platform))],
+            projects: newOpportunities.slice(0, 5).map(o => ({
+              name: o.projectName,
+              platform: o.platform,
+              expectedReturn: o.expectedReturn
+            }))
+          },
+          read: false
+        });
+      } else {
+        // Check each alert against new opportunities
+        for (const alert of userAlerts) {
+          const matchingOpportunities = newOpportunities.filter(opp => 
+            matchesAlert(opp, alert)
+          );
 
-    if (notifError) {
-      console.error('Error creating notifications:', notifError);
-    } else {
-      console.log(`Created ${notifications.length} notifications for ${userIds.length} users`);
+          if (matchingOpportunities.length > 0) {
+            notifications.push({
+              user_id: userId,
+              type: 'alert_match',
+              title: `🔔 "${alert.name}": ${matchingOpportunities.length} coincidencia${matchingOpportunities.length > 1 ? 's' : ''}`,
+              message: matchingOpportunities.length === 1 
+                ? `"${matchingOpportunities[0].projectName}" en ${matchingOpportunities[0].platform} - ${matchingOpportunities[0].expectedReturn}% rentabilidad`
+                : `${matchingOpportunities.length} proyectos coinciden con tu alerta`,
+              data: { 
+                alertId: alert.id,
+                alertName: alert.name,
+                opportunityCount: matchingOpportunities.length,
+                projects: matchingOpportunities.slice(0, 5).map(o => ({
+                  name: o.projectName,
+                  platform: o.platform,
+                  expectedReturn: o.expectedReturn,
+                  minInvestment: o.minInvestment,
+                  term: o.term,
+                  riskLevel: o.riskLevel
+                }))
+              },
+              read: false
+            });
+          }
+        }
+      }
+    }
+
+    if (notifications.length > 0) {
+      const { error: notifError } = await supabase
+        .from('notifications')
+        .insert(notifications);
+
+      if (notifError) {
+        console.error('Error creating notifications:', notifError);
+      } else {
+        console.log(`Created ${notifications.length} notifications`);
+      }
     }
 
     return new Response(
@@ -161,7 +246,8 @@ Deno.serve(async (req) => {
         success: true, 
         newOpportunities: newOpportunities.length,
         totalScraped: allScrapedOpportunities.length,
-        notifiedUsers: userIds.length
+        notifiedUsers: userIds.length,
+        notificationsCreated: notifications.length
       }),
       { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     );
@@ -174,6 +260,59 @@ Deno.serve(async (req) => {
     );
   }
 });
+
+function matchesAlert(
+  opportunity: ScrapedOpportunity & { platform: string },
+  alert: OpportunityAlert
+): boolean {
+  // Check minimum return
+  if (alert.min_return !== null && opportunity.expectedReturn < alert.min_return) {
+    return false;
+  }
+
+  // Check maximum return
+  if (alert.max_return !== null && opportunity.expectedReturn > alert.max_return) {
+    return false;
+  }
+
+  // Check platforms (empty array means all platforms)
+  if (alert.platforms.length > 0 && !alert.platforms.includes(opportunity.platform)) {
+    return false;
+  }
+
+  // Check project types (empty array means all types)
+  if (alert.project_types.length > 0 && !alert.project_types.includes(opportunity.projectType)) {
+    return false;
+  }
+
+  // Check risk levels (empty array means all levels)
+  if (alert.risk_levels.length > 0 && !alert.risk_levels.includes(opportunity.riskLevel)) {
+    return false;
+  }
+
+  // Check max term
+  if (alert.max_term !== null && opportunity.term > alert.max_term) {
+    return false;
+  }
+
+  // Check max min investment
+  if (alert.max_min_investment !== null && opportunity.minInvestment > alert.max_min_investment) {
+    return false;
+  }
+
+  // Check locations (empty array means all locations)
+  if (alert.locations.length > 0) {
+    const oppLocation = opportunity.location.toLowerCase();
+    const matchesLocation = alert.locations.some(loc => 
+      oppLocation.includes(loc.toLowerCase())
+    );
+    if (!matchesLocation) {
+      return false;
+    }
+  }
+
+  return true;
+}
 
 async function scrapePlatform(platform: string, apiKey: string): Promise<ScrapedOpportunity[]> {
   const url = PLATFORM_URLS[platform];

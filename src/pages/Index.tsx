@@ -18,6 +18,7 @@ import { OpportunityFilters } from '@/components/opportunities/OpportunityFilter
 import { OpportunityForm } from '@/components/opportunities/OpportunityForm';
 import { OpportunityDetail } from '@/components/opportunities/OpportunityDetail';
 import { ScrapeButton } from '@/components/opportunities/ScrapeButton';
+import { AlertSettings } from '@/components/opportunities/AlertSettings';
 import { TaxDashboard } from '@/components/tax/TaxDashboard';
 import { BillingSettings } from '@/components/subscription/BillingSettings';
 import { UpgradeModal } from '@/components/subscription/UpgradeModal';
@@ -311,6 +312,11 @@ const Index = () => {
             onToggleFavorite={toggleFavorite}
             onSelect={setSelectedOpportunity}
           />
+
+          {/* Alert Settings */}
+          <div className="mt-8">
+            <AlertSettings />
+          </div>
 
           {/* Opportunity Detail Sheet */}
           <OpportunityDetail

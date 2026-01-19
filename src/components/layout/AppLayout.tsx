@@ -67,7 +67,7 @@ export function AppLayout({
           <Menu className="h-5 w-5" />
         </Button>
         <div className="flex items-center gap-2">
-          <img src={crowdfolioLogo} alt="Crowdfolio" className="h-6" />
+          <img src={crowdfolioLogo} alt="Crowdfolio" className="h-8" />
         </div>
         <div className="flex items-center gap-1">
           <NotificationBell onOpportunitiesClick={() => onViewChange('opportunities')} />
@@ -92,7 +92,7 @@ export function AppLayout({
           sidebarOpen ? "translate-x-0" : "-translate-x-full"
         )}>
           <div className="flex h-14 items-center gap-2 border-b px-6">
-            <img src={crowdfolioLogo} alt="Crowdfolio" className="h-7" />
+            <img src={crowdfolioLogo} alt="Crowdfolio" className="h-9" />
           </div>
 
           <nav className="space-y-1 p-4">

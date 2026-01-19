@@ -1,4 +1,4 @@
-// Stripe configuration for CrowdFolio Pro
+// Stripe configuration for Crowdfolio Pro
 export const STRIPE_PRICES = {
   monthly: {
     priceId: 'price_1Sojl3QUWwNtRMNN31qri8TI',

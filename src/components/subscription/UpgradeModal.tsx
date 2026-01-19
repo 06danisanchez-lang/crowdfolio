@@ -24,7 +24,7 @@ const FEATURE_MESSAGES: Record<string, string> = {
   unlimited_investments: 'Registra todas tus inversiones sin límites.',
   unlimited_imports: 'Importa inversiones desde archivos sin restricciones mensuales.',
   alerts: 'Configura alertas personalizadas para tus inversiones.',
-  default: 'Desbloquea todas las funcionalidades premium de CrowdFolio.',
+  default: 'Desbloquea todas las funcionalidades premium de Crowdfolio.',
 };
 
 const PRO_FEATURES = [
@@ -65,7 +65,7 @@ export function UpgradeModal({ open, onOpenChange, feature = 'default' }: Upgrad
         <DialogHeader>
           <div className="flex items-center gap-2">
             <Crown className="h-6 w-6 text-primary" />
-            <DialogTitle>Desbloquea CrowdFolio Pro</DialogTitle>
+            <DialogTitle>Desbloquea Crowdfolio Pro</DialogTitle>
           </div>
           <DialogDescription className="pt-2">
             {featureMessage}

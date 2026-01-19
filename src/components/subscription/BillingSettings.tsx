@@ -92,7 +92,7 @@ export function BillingSettings() {
               <div>
                 <div className="flex items-center gap-2">
                   <h3 className="font-semibold">
-                    {isPro ? 'CrowdFolio Pro' : 'Plan Gratis'}
+                    {isPro ? 'Crowdfolio Pro' : 'Plan Gratis'}
                   </h3>
                   {isPro && (
                     <Badge variant="secondary">

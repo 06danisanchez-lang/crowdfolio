@@ -7,6 +7,8 @@ import { AuthProvider, useAuth } from "@/contexts/AuthContext";
 import { SubscriptionProvider } from "@/contexts/SubscriptionContext";
 import Index from "./pages/Index";
 import Auth from "./pages/Auth";
+import Landing from "./pages/Landing";
+import Pricing from "./pages/Pricing";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -23,13 +25,13 @@ function ProtectedRoute({ children }: { children: React.ReactNode }) {
   }
 
   if (!user) {
-    return <Navigate to="/auth" replace />;
+    return <Navigate to="/landing" replace />;
   }
 
   return <>{children}</>;
 }
 
-function AuthRoute({ children }: { children: React.ReactNode }) {
+function PublicRoute({ children }: { children: React.ReactNode }) {
   const { user, isLoading } = useAuth();
 
   if (isLoading) {
@@ -58,13 +60,22 @@ const AppRoutes = () => (
       } 
     />
     <Route 
-      path="/auth" 
+      path="/landing" 
       element={
-        <AuthRoute>
-          <Auth />
-        </AuthRoute>
+        <PublicRoute>
+          <Landing />
+        </PublicRoute>
       } 
     />
+    <Route 
+      path="/auth" 
+      element={
+        <PublicRoute>
+          <Auth />
+        </PublicRoute>
+      } 
+    />
+    <Route path="/pricing" element={<Pricing onBack={() => window.history.back()} />} />
     <Route path="*" element={<NotFound />} />
   </Routes>
 );

@@ -53,6 +53,7 @@ export function AppLayout({
     { id: 'dashboard' as View, label: 'Dashboard', icon: LayoutDashboard },
     { id: 'investments' as View, label: 'Inversiones', icon: Wallet },
     { id: 'opportunities' as View, label: 'Oportunidades', icon: Search },
+    { id: 'platforms' as View, label: 'Plataformas', icon: Building2 },
     { id: 'tax' as View, label: 'Fiscalidad', icon: Receipt },
     ...(isAdmin ? [{ id: 'admin' as View, label: 'Administración', icon: Shield }] : []),
   ];

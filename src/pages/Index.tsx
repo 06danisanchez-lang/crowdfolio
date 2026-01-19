@@ -19,6 +19,7 @@ import { OpportunityForm } from '@/components/opportunities/OpportunityForm';
 import { OpportunityDetail } from '@/components/opportunities/OpportunityDetail';
 import { ScrapeButton } from '@/components/opportunities/ScrapeButton';
 import { AlertSettings } from '@/components/opportunities/AlertSettings';
+import { PlatformList } from '@/components/platforms/PlatformList';
 import { TaxDashboard } from '@/components/tax/TaxDashboard';
 import { BillingSettings } from '@/components/subscription/BillingSettings';
 import { UpgradeModal } from '@/components/subscription/UpgradeModal';
@@ -326,6 +327,16 @@ const Index = () => {
             onDelete={deleteOpportunity}
             onUpdate={updateOpportunity}
           />
+        </div>
+      )}
+
+      {currentView === 'platforms' && (
+        <div className="p-6 lg:p-8">
+          <div className="mb-8">
+            <h1 className="text-3xl font-bold">Mis Plataformas</h1>
+            <p className="text-muted-foreground">Plataformas de crowdfunding donde estás registrado</p>
+          </div>
+          <PlatformList />
         </div>
       )}
 

@@ -485,6 +485,57 @@ export type Database = {
           },
         ]
       }
+      user_platforms: {
+        Row: {
+          country_code: string
+          created_at: string
+          default_withholding: number | null
+          id: string
+          logo_url: string | null
+          name: string
+          notes: string | null
+          platform_type: Database["public"]["Enums"]["platform_type"]
+          registration_date: string | null
+          status: Database["public"]["Enums"]["platform_status"]
+          updated_at: string
+          user_id: string
+          username: string | null
+          website_url: string | null
+        }
+        Insert: {
+          country_code?: string
+          created_at?: string
+          default_withholding?: number | null
+          id?: string
+          logo_url?: string | null
+          name: string
+          notes?: string | null
+          platform_type?: Database["public"]["Enums"]["platform_type"]
+          registration_date?: string | null
+          status?: Database["public"]["Enums"]["platform_status"]
+          updated_at?: string
+          user_id: string
+          username?: string | null
+          website_url?: string | null
+        }
+        Update: {
+          country_code?: string
+          created_at?: string
+          default_withholding?: number | null
+          id?: string
+          logo_url?: string | null
+          name?: string
+          notes?: string | null
+          platform_type?: Database["public"]["Enums"]["platform_type"]
+          registration_date?: string | null
+          status?: Database["public"]["Enums"]["platform_status"]
+          updated_at?: string
+          user_id?: string
+          username?: string | null
+          website_url?: string | null
+        }
+        Relationships: []
+      }
       user_roles: {
         Row: {
           created_at: string
@@ -524,6 +575,8 @@ export type Database = {
     Enums: {
       app_role: "admin" | "user"
       asset_type: "LENDING" | "EQUITY"
+      platform_status: "active" | "inactive" | "pending_verification"
+      platform_type: "equity" | "lending" | "real_estate" | "mixed"
       subscription_plan: "free" | "monthly" | "yearly"
       subscription_status: "free" | "active" | "past_due" | "canceled"
       tax_expense_category:
@@ -662,6 +715,8 @@ export const Constants = {
     Enums: {
       app_role: ["admin", "user"],
       asset_type: ["LENDING", "EQUITY"],
+      platform_status: ["active", "inactive", "pending_verification"],
+      platform_type: ["equity", "lending", "real_estate", "mixed"],
       subscription_plan: ["free", "monthly", "yearly"],
       subscription_status: ["free", "active", "past_due", "canceled"],
       tax_expense_category: [

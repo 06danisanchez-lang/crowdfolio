@@ -82,7 +82,7 @@ export default function Landing() {
       {/* Header */}
       <header className="sticky top-0 z-50 border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
         <div className="container mx-auto flex h-16 items-center justify-between px-4">
-          <img src={crowdfolioLogo} alt="Crowdfolio" className="h-8" />
+          <img src={crowdfolioLogo} alt="Crowdfolio" className="h-10 md:h-12" />
           <div className="flex items-center gap-4">
             <Button variant="ghost" onClick={() => navigate('/auth')}>
               Iniciar Sesión
@@ -98,6 +98,11 @@ export default function Landing() {
       <section className="relative overflow-hidden py-20 md:py-32">
         <div className="absolute inset-0 -z-10 bg-[radial-gradient(ellipse_at_top,_var(--tw-gradient-stops))] from-primary/20 via-background to-background" />
         <div className="container mx-auto px-4 text-center">
+          <img 
+            src={crowdfolioLogo} 
+            alt="Crowdfolio" 
+            className="mx-auto mb-8 h-24 md:h-32 lg:h-40 drop-shadow-lg" 
+          />
           <Badge variant="secondary" className="mb-6">
             ✨ Gestión inteligente de inversiones
           </Badge>
@@ -270,7 +275,7 @@ export default function Landing() {
       <footer className="border-t py-12">
         <div className="container mx-auto px-4">
           <div className="flex flex-col items-center justify-between gap-6 md:flex-row">
-            <img src={crowdfolioLogo} alt="Crowdfolio" className="h-6" />
+            <img src={crowdfolioLogo} alt="Crowdfolio" className="h-8 md:h-10" />
             <div className="flex gap-6 text-sm text-muted-foreground">
               <a href="mailto:soporte@crowdfolio.es" className="hover:text-foreground">
                 Contacto

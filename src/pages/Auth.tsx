@@ -6,9 +6,10 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Building2, Loader2, Mail, Lock, AlertCircle, RefreshCw } from 'lucide-react';
+import { Loader2, Mail, Lock, AlertCircle, RefreshCw } from 'lucide-react';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { z } from 'zod';
+import crowdfolioLogo from '@/assets/crowdfolio-logo.png';
 
 const authSchema = z.object({
   email: z.string().email('Email inválido'),
@@ -109,10 +110,9 @@ export default function Auth() {
     <div className="min-h-screen flex items-center justify-center bg-background p-4">
       <Card className="w-full max-w-md">
         <CardHeader className="text-center">
-          <div className="mx-auto mb-4 flex h-12 w-12 items-center justify-center rounded-full bg-primary/10">
-            <Building2 className="h-6 w-6 text-primary" />
+          <div className="mx-auto mb-4">
+            <img src={crowdfolioLogo} alt="Crowdfolio" className="h-10" />
           </div>
-          <CardTitle className="text-2xl font-bold">Crowdfolio</CardTitle>
           <CardDescription>
             {isLogin 
               ? 'Inicia sesión en tu cuenta' 

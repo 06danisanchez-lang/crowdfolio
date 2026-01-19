@@ -5,11 +5,11 @@ import {
   Menu,
   Moon,
   Sun,
-  Building2,
   Search,
   LogOut,
   Receipt,
-  Shield
+  Shield,
+  Building2
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
@@ -18,6 +18,7 @@ import { NotificationBell } from '@/components/layout/NotificationBell';
 import { Alert } from '@/hooks/useAlerts';
 import { View } from '@/types/investment';
 import { useAuth } from '@/contexts/AuthContext';
+import crowdfolioLogo from '@/assets/crowdfolio-logo.png';
 
 interface AppLayoutProps {
   children: React.ReactNode;
@@ -66,8 +67,7 @@ export function AppLayout({
           <Menu className="h-5 w-5" />
         </Button>
         <div className="flex items-center gap-2">
-          <Building2 className="h-5 w-5 text-primary" />
-          <span className="font-semibold">Crowdfolio</span>
+          <img src={crowdfolioLogo} alt="Crowdfolio" className="h-6" />
         </div>
         <div className="flex items-center gap-1">
           <NotificationBell onOpportunitiesClick={() => onViewChange('opportunities')} />
@@ -92,8 +92,7 @@ export function AppLayout({
           sidebarOpen ? "translate-x-0" : "-translate-x-full"
         )}>
           <div className="flex h-14 items-center gap-2 border-b px-6">
-            <Building2 className="h-6 w-6 text-primary" />
-            <span className="text-lg font-bold">Crowdfolio</span>
+            <img src={crowdfolioLogo} alt="Crowdfolio" className="h-7" />
           </div>
 
           <nav className="space-y-1 p-4">

@@ -1,6 +1,7 @@
-import { Building2, ArrowLeft } from 'lucide-react';
+import { ArrowLeft } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { PricingTable } from '@/components/subscription/PricingTable';
+import crowdfolioLogo from '@/assets/crowdfolio-logo.png';
 
 interface PricingProps {
   onBack?: () => void;
@@ -19,8 +20,7 @@ export default function Pricing({ onBack }: PricingProps) {
               </Button>
             )}
             <div className="flex items-center gap-2">
-              <Building2 className="h-6 w-6 text-primary" />
-              <span className="text-lg font-bold">Crowdfolio</span>
+              <img src={crowdfolioLogo} alt="Crowdfolio" className="h-7" />
             </div>
           </div>
         </div>

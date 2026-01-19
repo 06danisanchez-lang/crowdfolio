@@ -11,7 +11,7 @@ import {
 import { TaxSummary, TaxExpense, TAX_EXPENSE_CATEGORIES } from '@/types/tax';
 import { getTaxBreakdown, formatCurrency, formatPercentage } from '@/lib/tax/calculations';
 import { toast } from '@/hooks/use-toast';
-import * as XLSX from 'xlsx';
+import ExcelJS from 'exceljs';
 import { jsPDF } from 'jspdf';
 import 'jspdf-autotable';
 
@@ -52,72 +52,104 @@ export function TaxExportButton({ summary, expenses, onProRequired, isPro = true
   const handleExportExcel = async () => {
     setIsExporting(true);
     try {
-      const wb = XLSX.utils.book_new();
+      const workbook = new ExcelJS.Workbook();
+      workbook.creator = 'Crowdfolio';
+      workbook.created = new Date();
 
       // Sheet 1: Resumen General
-      const resumenData = [
-        ['RESUMEN FISCAL IRPF', summary.year],
-        [],
-        ['Concepto', 'Importe (€)'],
-        ['Rendimientos Brutos del Ahorro', summary.grossIncome],
-        ['  - Intereses', summary.interestIncome],
-        ['  - Dividendos', summary.dividendIncome],
-        ['Devoluciones de Principal', summary.principalReturns],
-        [],
-        ['Gastos Deducibles', -summary.deductibleExpenses],
-        [],
-        ['Base Imponible del Ahorro', summary.taxableBase],
-        [],
-        ['Cuota Íntegra Estimada', summary.estimatedTax],
-        ['Retenciones Practicadas', -summary.withholdingsApplied],
-        [],
-        ['Resultado Declaración', summary.estimatedTax - summary.withholdingsApplied],
-        [],
-        ['Tipo Efectivo', `${formatPercentage(summary.effectiveRate)}`],
+      const wsResumen = workbook.addWorksheet('Resumen');
+      wsResumen.columns = [
+        { width: 40 },
+        { width: 20 },
       ];
-      const wsResumen = XLSX.utils.aoa_to_sheet(resumenData);
-      wsResumen['!cols'] = [{ wch: 35 }, { wch: 18 }];
-      XLSX.utils.book_append_sheet(wb, wsResumen, 'Resumen');
+      
+      wsResumen.addRow(['RESUMEN FISCAL IRPF', summary.year]);
+      wsResumen.addRow([]);
+      wsResumen.addRow(['Concepto', 'Importe (€)']);
+      wsResumen.addRow(['Rendimientos Brutos del Ahorro', summary.grossIncome]);
+      wsResumen.addRow(['  - Intereses', summary.interestIncome]);
+      wsResumen.addRow(['  - Dividendos', summary.dividendIncome]);
+      wsResumen.addRow(['Devoluciones de Principal', summary.principalReturns]);
+      wsResumen.addRow([]);
+      wsResumen.addRow(['Gastos Deducibles', -summary.deductibleExpenses]);
+      wsResumen.addRow([]);
+      wsResumen.addRow(['Base Imponible del Ahorro', summary.taxableBase]);
+      wsResumen.addRow([]);
+      wsResumen.addRow(['Cuota Íntegra Estimada', summary.estimatedTax]);
+      wsResumen.addRow(['Retenciones Practicadas', -summary.withholdingsApplied]);
+      wsResumen.addRow([]);
+      wsResumen.addRow(['Resultado Declaración', summary.estimatedTax - summary.withholdingsApplied]);
+      wsResumen.addRow([]);
+      wsResumen.addRow(['Tipo Efectivo', `${formatPercentage(summary.effectiveRate)}`]);
+
+      // Style header row
+      wsResumen.getRow(1).font = { bold: true, size: 14 };
+      wsResumen.getRow(3).font = { bold: true };
 
       // Sheet 2: Desglose por Tramos
+      const wsTramos = workbook.addWorksheet('Tramos IRPF');
+      wsTramos.columns = [
+        { width: 30 },
+        { width: 20 },
+        { width: 15 },
+        { width: 18 },
+      ];
+
       const breakdown = getTaxBreakdown(summary.taxableBase);
-      const tramosData = [
-        ['CÁLCULO POR TRAMOS IRPF', summary.year],
-        [],
-        ['Tramo', 'Base Gravada (€)', 'Tipo (%)', 'Cuota (€)'],
-        ...breakdown.map(item => [
+      wsTramos.addRow(['CÁLCULO POR TRAMOS IRPF', summary.year, '', '']);
+      wsTramos.addRow([]);
+      wsTramos.addRow(['Tramo', 'Base Gravada (€)', 'Tipo (%)', 'Cuota (€)']);
+      breakdown.forEach(item => {
+        wsTramos.addRow([
           `${formatCurrency(item.bracket.min)} - ${item.bracket.max === Infinity ? '∞' : formatCurrency(item.bracket.max)}`,
           item.amount,
           `${(item.bracket.rate * 100).toFixed(0)}%`,
           item.tax,
-        ]),
-        [],
-        ['TOTAL', summary.taxableBase, '', summary.estimatedTax],
-      ];
-      const wsTramos = XLSX.utils.aoa_to_sheet(tramosData);
-      wsTramos['!cols'] = [{ wch: 25 }, { wch: 18 }, { wch: 12 }, { wch: 15 }];
-      XLSX.utils.book_append_sheet(wb, wsTramos, 'Tramos IRPF');
+        ]);
+      });
+      wsTramos.addRow([]);
+      wsTramos.addRow(['TOTAL', summary.taxableBase, '', summary.estimatedTax]);
+
+      wsTramos.getRow(1).font = { bold: true, size: 14 };
+      wsTramos.getRow(3).font = { bold: true };
 
       // Sheet 3: Gastos Deducibles
-      const gastosData = [
-        ['GASTOS DEDUCIBLES', summary.year],
-        [],
-        ['Fecha', 'Categoría', 'Descripción', 'Importe (€)'],
-        ...expenses.map(exp => [
+      const wsGastos = workbook.addWorksheet('Gastos Deducibles');
+      wsGastos.columns = [
+        { width: 15 },
+        { width: 28 },
+        { width: 45 },
+        { width: 18 },
+      ];
+
+      wsGastos.addRow(['GASTOS DEDUCIBLES', summary.year, '', '']);
+      wsGastos.addRow([]);
+      wsGastos.addRow(['Fecha', 'Categoría', 'Descripción', 'Importe (€)']);
+      expenses.forEach(exp => {
+        wsGastos.addRow([
           new Date(exp.date).toLocaleDateString('es-ES'),
           getCategoryLabel(exp.category),
           exp.description,
           exp.amount,
-        ]),
-        [],
-        ['TOTAL', '', '', summary.deductibleExpenses],
-      ];
-      const wsGastos = XLSX.utils.aoa_to_sheet(gastosData);
-      wsGastos['!cols'] = [{ wch: 12 }, { wch: 25 }, { wch: 40 }, { wch: 15 }];
-      XLSX.utils.book_append_sheet(wb, wsGastos, 'Gastos Deducibles');
+        ]);
+      });
+      wsGastos.addRow([]);
+      wsGastos.addRow(['TOTAL', '', '', summary.deductibleExpenses]);
+
+      wsGastos.getRow(1).font = { bold: true, size: 14 };
+      wsGastos.getRow(3).font = { bold: true };
 
       // Generate and download
-      XLSX.writeFile(wb, `Resumen_IRPF_${summary.year}.xlsx`);
+      const buffer = await workbook.xlsx.writeBuffer();
+      const blob = new Blob([buffer], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `Resumen_IRPF_${summary.year}.xlsx`;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
 
       toast({
         title: 'Excel generado',

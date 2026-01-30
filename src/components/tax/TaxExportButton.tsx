@@ -13,15 +13,7 @@ import { getTaxBreakdown, formatCurrency, formatPercentage } from '@/lib/tax/cal
 import { toast } from '@/hooks/use-toast';
 import ExcelJS from 'exceljs';
 import { jsPDF } from 'jspdf';
-import 'jspdf-autotable';
-
-// Extend jsPDF type for autotable
-declare module 'jspdf' {
-  interface jsPDF {
-    autoTable: (options: unknown) => jsPDF;
-    lastAutoTable: { finalY: number };
-  }
-}
+import autoTable from 'jspdf-autotable';
 
 interface TaxExportButtonProps {
   summary: TaxSummary;
@@ -197,7 +189,7 @@ export function TaxExportButton({ summary, expenses, onProRequired, isPro = true
 
       const resultadoDeclaracion = summary.estimatedTax - summary.withholdingsApplied;
       
-      doc.autoTable({
+      autoTable(doc, {
         startY: yPos,
         head: [['Concepto', 'Importe']],
         body: [
@@ -217,11 +209,12 @@ export function TaxExportButton({ summary, expenses, onProRequired, isPro = true
         styles: { fontSize: 10 },
         columnStyles: {
           0: { cellWidth: 100 },
-          1: { cellWidth: 50, halign: 'right' },
+          1: { cellWidth: 50, halign: 'right' as const },
         },
       });
 
-      yPos = doc.lastAutoTable.finalY + 15;
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      yPos = (doc as any).lastAutoTable.finalY + 15;
 
       // Breakdown by brackets
       const breakdown = getTaxBreakdown(summary.taxableBase);
@@ -231,7 +224,7 @@ export function TaxExportButton({ summary, expenses, onProRequired, isPro = true
         doc.text('Cálculo por Tramos', 14, yPos);
         yPos += 5;
 
-        doc.autoTable({
+        autoTable(doc, {
           startY: yPos,
           head: [['Tramo', 'Base Gravada', 'Tipo', 'Cuota']],
           body: [
@@ -248,7 +241,8 @@ export function TaxExportButton({ summary, expenses, onProRequired, isPro = true
           styles: { fontSize: 10 },
         });
 
-        yPos = doc.lastAutoTable.finalY + 15;
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        yPos = (doc as any).lastAutoTable.finalY + 15;
       }
 
       // Expenses table
@@ -264,7 +258,7 @@ export function TaxExportButton({ summary, expenses, onProRequired, isPro = true
         doc.text('Gastos Deducibles', 14, yPos);
         yPos += 5;
 
-        doc.autoTable({
+        autoTable(doc, {
           startY: yPos,
           head: [['Fecha', 'Categoría', 'Descripción', 'Importe']],
           body: [
@@ -283,11 +277,9 @@ export function TaxExportButton({ summary, expenses, onProRequired, isPro = true
             0: { cellWidth: 25 },
             1: { cellWidth: 40 },
             2: { cellWidth: 80 },
-            3: { cellWidth: 30, halign: 'right' },
+            3: { cellWidth: 30, halign: 'right' as const },
           },
         });
-
-        yPos = doc.lastAutoTable.finalY + 15;
       }
 
       // Footer disclaimer

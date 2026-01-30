@@ -20,13 +20,18 @@ export default function Landing() {
 
   const features = [
     {
+      icon: FileText,
+      title: 'Módulo Fiscal España',
+      description: 'Exporta tus retenciones e ingresos listos para el IRPF. Clasificamos automáticamente entre capital mobiliario y ganancias patrimoniales.',
+    },
+    {
       icon: Wallet,
-      title: 'Gestión Centralizada',
-      description: 'Controla todas tus inversiones en crowdfunding desde un único lugar, independientemente de la plataforma.',
+      title: 'Importación Inteligente',
+      description: 'Copia y pega directamente desde la web de tu plataforma o arrastra tus PDFs. Nuestra tecnología extrae los datos por ti sin errores manuales.',
     },
     {
       icon: BarChart3,
-      title: 'Dashboard Inteligente',
+      title: 'Dashboard Profesional',
       description: 'Visualiza rendimientos, distribución de cartera y evolución temporal con gráficos interactivos.',
     },
     {
@@ -36,13 +41,8 @@ export default function Landing() {
     },
     {
       icon: Bell,
-      title: 'Alertas Personalizadas',
+      title: 'Alertas de Vencimientos',
       description: 'Recibe notificaciones sobre vencimientos, nuevas oportunidades y cambios en tus inversiones.',
-    },
-    {
-      icon: FileText,
-      title: 'Fiscalidad Simplificada',
-      description: 'Genera informes IRPF automáticamente y controla retenciones y gastos deducibles.',
     },
     {
       icon: Shield,
@@ -107,19 +107,18 @@ export default function Landing() {
             ✨ Gestión inteligente de inversiones
           </Badge>
           <h1 className="mx-auto max-w-4xl text-4xl font-bold tracking-tight md:text-6xl lg:text-7xl">
-            Tu cartera de{' '}
+            Toda tu cartera de{' '}
             <span className="bg-gradient-to-r from-primary to-blue-400 bg-clip-text text-transparent">
-              crowdfunding
+              Crowdfunding
             </span>
-            {' '}bajo control
+            {' '}bajo control y lista para la Renta
           </h1>
           <p className="mx-auto mt-6 max-w-2xl text-lg text-muted-foreground md:text-xl">
-            Centraliza, analiza y optimiza todas tus inversiones en crowdfunding inmobiliario. 
-            Olvídate de las hojas de cálculo.
+            Deja atrás el caos de los Excels. Centraliza tus inversiones de Urbanitae, Wecity, Brickstarter y más en un solo cuadro de mando profesional.
           </p>
           <div className="mt-10 flex flex-col items-center justify-center gap-4 sm:flex-row">
             <Button size="lg" className="gap-2 text-lg" onClick={() => navigate('/auth')}>
-              Crear cuenta gratis
+              Empezar a organizar mi cartera
               <ArrowRight className="h-5 w-5" />
             </Button>
             <Button size="lg" variant="outline" className="text-lg" onClick={() => navigate('/pricing')}>
@@ -142,7 +141,7 @@ export default function Landing() {
             {platforms.map((platform) => (
               <span 
                 key={platform} 
-                className="rounded-full bg-background px-4 py-2 text-sm font-medium text-muted-foreground shadow-sm"
+                className="rounded-full bg-background px-4 py-2 text-sm font-medium shadow-sm grayscale transition-all duration-300 hover:grayscale-0 hover:text-primary hover:shadow-md cursor-default text-muted-foreground"
               >
                 {platform}
               </span>
@@ -250,7 +249,7 @@ export default function Landing() {
           </p>
           <div className="mt-8 flex flex-col items-center gap-4">
             <Button size="lg" className="gap-2 text-lg" onClick={() => navigate('/auth')}>
-              Empezar gratis ahora
+              Empezar a organizar mi cartera
               <ArrowRight className="h-5 w-5" />
             </Button>
             <div className="flex flex-wrap items-center justify-center gap-6 text-sm text-muted-foreground">

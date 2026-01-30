@@ -14,6 +14,7 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import crowdfolioLogo from '@/assets/crowdfolio-logo.png';
+import ProductShowcase from '@/components/landing/ProductShowcase';
 
 export default function Landing() {
   const navigate = useNavigate();
@@ -130,6 +131,9 @@ export default function Landing() {
           </p>
         </div>
       </section>
+
+      {/* Product Showcase */}
+      <ProductShowcase />
 
       {/* Platforms Marquee */}
       <section className="border-y bg-muted/30 py-8">

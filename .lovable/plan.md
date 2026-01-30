@@ -1,76 +1,77 @@
 
-## Plan: Añadir Funcionalidad "Olvidé mi Contraseña"
+## Plan: Añadir Galería de Capturas a la Landing Page
 
 ### Resumen
-Implementar un flujo completo de recuperación de contraseña que permita a los usuarios restablecer su contraseña mediante un enlace enviado a su email.
+Crear una nueva sección "Descubre la Plataforma" con un carrusel interactivo que muestre las 4 capturas del producto, ubicada justo después del Hero y antes de la sección de plataformas compatibles.
 
-### Cambios a Realizar
-
-#### 1. Modificar la página de autenticación (`src/pages/Auth.tsx`)
-- Añadir un nuevo estado `view` que alterne entre: `login`, `signup`, `forgot-password`
-- Añadir enlace **"¿Olvidaste tu contraseña?"** debajo del campo de contraseña (solo visible en modo login)
-- Crear vista de recuperación con:
-  - Campo de email
-  - Botón "Enviar enlace de recuperación"
-  - Mensaje de confirmación cuando se envía el email
-  - Enlace para volver al login
-
-#### 2. Crear página de restablecimiento (`src/pages/ResetPassword.tsx`)
-- Nueva página para cuando el usuario hace clic en el enlace del email
-- Formulario con:
-  - Campo "Nueva contraseña"
-  - Campo "Confirmar contraseña"
-  - Validación de que coincidan
-  - Botón "Restablecer contraseña"
-- Redirigir al dashboard tras éxito
-
-#### 3. Actualizar rutas (`src/App.tsx`)
-- Añadir ruta `/reset-password` para la página de nueva contraseña
-- Esta ruta debe ser accesible sin autenticación (el token viene en la URL)
-
-#### 4. Actualizar contexto de autenticación (`src/contexts/AuthContext.tsx`)
-- Añadir función `resetPassword(email)` que llama a `supabase.auth.resetPasswordForEmail()`
-- Añadir función `updatePassword(newPassword)` que llama a `supabase.auth.updateUser()`
-
-### Flujo del Usuario
+### Ubicación en la página
 
 ```text
-┌─────────────────────────────────────────────────────────────────┐
-│  1. Usuario en Login                                            │
-│     └── Clic en "¿Olvidaste tu contraseña?"                    │
-│                                                                  │
-│  2. Vista de Recuperación                                        │
-│     └── Introduce email → Clic "Enviar enlace"                  │
-│                                                                  │
-│  3. Usuario recibe email                                         │
-│     └── Clic en enlace de recuperación                          │
-│                                                                  │
-│  4. Página /reset-password                                       │
-│     └── Introduce nueva contraseña → Clic "Restablecer"         │
-│                                                                  │
-│  5. Redirigido al Dashboard (logueado automáticamente)          │
-└─────────────────────────────────────────────────────────────────┘
+┌─────────────────────────────────────────┐
+│           Header                        │
+├─────────────────────────────────────────┤
+│           Hero Section                  │
+│    (Logo, título, CTAs)                │
+├─────────────────────────────────────────┤
+│   ★ NUEVA SECCIÓN: Galería ★           │  ← Aquí
+│   Carrusel con las 4 capturas          │
+├─────────────────────────────────────────┤
+│     Plataformas compatibles            │
+├─────────────────────────────────────────┤
+│          Features                       │
+├─────────────────────────────────────────┤
+│        Cómo funciona                    │
+├─────────────────────────────────────────┤
+│         Testimonios                     │
+├─────────────────────────────────────────┤
+│            CTA Final                    │
+├─────────────────────────────────────────┤
+│           Footer                        │
+└─────────────────────────────────────────┘
 ```
 
-### Archivos Afectados
+### Diseño de la sección
+
+La sección incluirá:
+- Título: "Descubre la plataforma"
+- Subtítulo: "Todo lo que necesitas en un solo lugar"
+- Carrusel con las 4 imágenes usando Embla Carousel
+- Botones de navegación para cambiar entre capturas
+- Indicadores de puntos para mostrar posición actual
+- Etiquetas descriptivas bajo cada imagen (Dashboard, Inversiones, Oportunidades, Fiscalidad)
+
+### Archivos a modificar
 
 | Archivo | Acción |
 |---------|--------|
-| `src/pages/Auth.tsx` | Modificar - añadir vista de recuperación |
-| `src/pages/ResetPassword.tsx` | Crear - página para nueva contraseña |
-| `src/App.tsx` | Modificar - añadir ruta `/reset-password` |
-| `src/contexts/AuthContext.tsx` | Modificar - añadir funciones de reset |
+| `src/assets/screenshots/` | Crear directorio y copiar las 4 imágenes |
+| `src/pages/Landing.tsx` | Añadir nueva sección con carrusel |
 
-### Detalles Técnicos
+### Estructura del carrusel
 
-**Llamadas a la API de autenticación:**
-- `supabase.auth.resetPasswordForEmail(email, { redirectTo })` - Envía email con enlace
-- `supabase.auth.updateUser({ password })` - Actualiza la contraseña del usuario logueado
+```text
+┌─────────────────────────────────────────────────────────────┐
+│                                                              │
+│   ←  [Screenshot actual con sombra y borde redondeado]  →  │
+│                                                              │
+│                     ● ○ ○ ○                                 │
+│                                                              │
+│              "Dashboard principal"                          │
+└─────────────────────────────────────────────────────────────┘
+```
 
-**URL de redirección del email:**
-El enlace en el email redirigirá a `https://crowdfolio.lovable.app/reset-password` con un token especial que el sistema de autenticación procesa automáticamente para crear una sesión temporal.
+### Imágenes a incluir (en orden)
 
-**Validaciones:**
-- Email válido antes de enviar
-- Contraseña mínimo 6 caracteres
-- Las contraseñas deben coincidir
+1. **Dashboard** (Captura.JPG) - Vista principal con KPIs y gráficos
+2. **Inversiones** (Captura2.JPG) - Lista de proyectos en tabla
+3. **Oportunidades** (Captura3.JPG) - Cards de oportunidades de inversión
+4. **Fiscalidad** (Captura4.JPG) - Resumen fiscal y proyecciones IRPF
+
+### Detalles técnicos
+
+- Usar componente `Carousel` de shadcn/ui (ya instalado: embla-carousel-react)
+- Imágenes con `rounded-xl shadow-2xl border` para look premium
+- Transiciones suaves entre slides
+- Responsive: en móvil las imágenes ocupan el 100% del ancho
+- Autoplay opcional con pausa al hover
+- Lazy loading de imágenes para performance

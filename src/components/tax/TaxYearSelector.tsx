@@ -18,11 +18,11 @@ export function TaxYearSelector({
   onYearChange,
   availableYears,
 }: TaxYearSelectorProps) {
-  // Ensure we have at least current and previous years
-  const currentYear = new Date().getFullYear();
-  const years = availableYears.length > 0 
-    ? availableYears 
-    : [currentYear, currentYear - 1, currentYear - 2];
+  // Base years guaranteed (2024, 2025, 2026)
+  const baseYears = [2026, 2025, 2024];
+  
+  // Combine with available years from payments data
+  const years = [...new Set([...baseYears, ...availableYears])].sort((a, b) => b - a);
 
   return (
     <div className="flex items-center gap-2">

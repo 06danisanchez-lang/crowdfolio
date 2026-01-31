@@ -1,77 +1,63 @@
 
-## Plan: Añadir Galería de Capturas a la Landing Page
+
+## Plan: Configurar Módulo Fiscal con Año 2025 por Defecto
 
 ### Resumen
-Crear una nueva sección "Descubre la Plataforma" con un carrusel interactivo que muestre las 4 capturas del producto, ubicada justo después del Hero y antes de la sección de plataformas compatibles.
+Modificar el módulo fiscal para que muestre el ejercicio 2025 por defecto y asegurar que el selector de años siempre incluya 2024, 2025 y 2026, independientemente de si hay datos en esos años.
 
-### Ubicación en la página
+### Cambios a Realizar
+
+#### 1. Modificar `TaxDashboard.tsx`
+- Cambiar el estado inicial de `selectedYear` de `new Date().getFullYear()` a `2025`
+- Esto hará que al entrar en el módulo fiscal, siempre se muestre 2025 por defecto
+
+```typescript
+// Antes
+const currentYear = new Date().getFullYear();
+const [selectedYear, setSelectedYear] = useState(currentYear);
+
+// Después
+const [selectedYear, setSelectedYear] = useState(2025);
+```
+
+#### 2. Modificar `TaxYearSelector.tsx`
+- Establecer los años fijos: 2024, 2025, 2026
+- Combinar con los años disponibles del hook para no perder datos de otros años si existen
+
+```typescript
+// Años base garantizados
+const baseYears = [2026, 2025, 2024];
+
+// Combinar con años de pagos existentes
+const years = [...new Set([...baseYears, ...availableYears])].sort((a, b) => b - a);
+```
+
+### Archivos a Modificar
+
+| Archivo | Cambio |
+|---------|--------|
+| `src/components/tax/TaxDashboard.tsx` | Cambiar año inicial a 2025 |
+| `src/components/tax/TaxYearSelector.tsx` | Garantizar años 2024, 2025, 2026 |
+
+### Comportamiento Final
 
 ```text
 ┌─────────────────────────────────────────┐
-│           Header                        │
-├─────────────────────────────────────────┤
-│           Hero Section                  │
-│    (Logo, título, CTAs)                │
-├─────────────────────────────────────────┤
-│   ★ NUEVA SECCIÓN: Galería ★           │  ← Aquí
-│   Carrusel con las 4 capturas          │
-├─────────────────────────────────────────┤
-│     Plataformas compatibles            │
-├─────────────────────────────────────────┤
-│          Features                       │
-├─────────────────────────────────────────┤
-│        Cómo funciona                    │
-├─────────────────────────────────────────┤
-│         Testimonios                     │
-├─────────────────────────────────────────┤
-│            CTA Final                    │
-├─────────────────────────────────────────┤
-│           Footer                        │
+│  Resumen Fiscal                         │
+│                                         │
+│                   [Ejercicio 2025 ▼]    │
+│                                         │
+│  Opciones del selector:                 │
+│  ├── Ejercicio 2026                     │
+│  ├── Ejercicio 2025  ← Seleccionado     │
+│  └── Ejercicio 2024                     │
 └─────────────────────────────────────────┘
 ```
 
-### Diseño de la sección
+### Detalles Técnicos
 
-La sección incluirá:
-- Título: "Descubre la plataforma"
-- Subtítulo: "Todo lo que necesitas en un solo lugar"
-- Carrusel con las 4 imágenes usando Embla Carousel
-- Botones de navegación para cambiar entre capturas
-- Indicadores de puntos para mostrar posición actual
-- Etiquetas descriptivas bajo cada imagen (Dashboard, Inversiones, Oportunidades, Fiscalidad)
+- El selector combina los años base (2024-2026) con cualquier año adicional que tenga datos
+- Si el usuario tiene pagos de 2023, ese año también aparecerá en el selector
+- Los años se ordenan de más reciente a más antiguo
+- Al cargar la página, siempre se muestra 2025 como ejercicio fiscal activo
 
-### Archivos a modificar
-
-| Archivo | Acción |
-|---------|--------|
-| `src/assets/screenshots/` | Crear directorio y copiar las 4 imágenes |
-| `src/pages/Landing.tsx` | Añadir nueva sección con carrusel |
-
-### Estructura del carrusel
-
-```text
-┌─────────────────────────────────────────────────────────────┐
-│                                                              │
-│   ←  [Screenshot actual con sombra y borde redondeado]  →  │
-│                                                              │
-│                     ● ○ ○ ○                                 │
-│                                                              │
-│              "Dashboard principal"                          │
-└─────────────────────────────────────────────────────────────┘
-```
-
-### Imágenes a incluir (en orden)
-
-1. **Dashboard** (Captura.JPG) - Vista principal con KPIs y gráficos
-2. **Inversiones** (Captura2.JPG) - Lista de proyectos en tabla
-3. **Oportunidades** (Captura3.JPG) - Cards de oportunidades de inversión
-4. **Fiscalidad** (Captura4.JPG) - Resumen fiscal y proyecciones IRPF
-
-### Detalles técnicos
-
-- Usar componente `Carousel` de shadcn/ui (ya instalado: embla-carousel-react)
-- Imágenes con `rounded-xl shadow-2xl border` para look premium
-- Transiciones suaves entre slides
-- Responsive: en móvil las imágenes ocupan el 100% del ancho
-- Autoplay opcional con pausa al hover
-- Lazy loading de imágenes para performance

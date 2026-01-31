@@ -13,6 +13,7 @@ import { TaxBucketsCard } from './TaxBucketsCard';
 import { CompensationBreakdown } from './CompensationBreakdown';
 import { TaxInfoCard } from './TaxInfoCard';
 import { SuggestedExpenses } from './SuggestedExpenses';
+import { TaxEmptyState } from './TaxEmptyState';
 import { TaxExpenseCategory } from '@/types/tax';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 
@@ -42,6 +43,35 @@ export function TaxDashboard() {
     return (
       <div className="flex items-center justify-center p-12">
         <div className="animate-pulse text-muted-foreground">Cargando datos fiscales...</div>
+      </div>
+    );
+  }
+
+  // Detectar si el ejercicio no tiene datos
+  const hasNoData = summary.grossIncome === 0 && 
+                    summary.withholdingsApplied === 0 && 
+                    summary.deductibleExpenses === 0;
+
+  if (hasNoData) {
+    return (
+      <div className="space-y-6">
+        {/* Header with Year Selector - siempre visible */}
+        <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+          <div>
+            <h2 className="text-2xl font-bold">Resumen Fiscal</h2>
+            <p className="text-muted-foreground">
+              Visualiza tus rendimientos y obligaciones fiscales
+            </p>
+          </div>
+          <TaxYearSelector
+            selectedYear={selectedYear}
+            onYearChange={setSelectedYear}
+            availableYears={availableYears}
+          />
+        </div>
+
+        {/* Empty State */}
+        <TaxEmptyState year={selectedYear} />
       </div>
     );
   }

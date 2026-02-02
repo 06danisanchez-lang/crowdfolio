@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Loader2 } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
+import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 
 const GoogleIcon = () => (
@@ -32,10 +33,37 @@ export function GoogleButton() {
   const handleGoogleSignIn = async () => {
     setIsLoading(true);
     try {
-      const { error } = await signInWithGoogle();
-      if (error) {
-        toast.error('Error al iniciar sesión con Google');
-        console.error('Google sign in error:', error);
+      // Detectar si estamos en un dominio personalizado
+      const isCustomDomain = 
+        !window.location.hostname.includes('lovable.app') &&
+        !window.location.hostname.includes('lovableproject.com');
+
+      if (isCustomDomain) {
+        // Para dominios personalizados, usar supabase directamente
+        // con skipBrowserRedirect para evitar el auth-bridge
+        const { data, error } = await supabase.auth.signInWithOAuth({
+          provider: 'google',
+          options: {
+            redirectTo: `${window.location.origin}/`,
+            skipBrowserRedirect: true,
+          },
+        });
+
+        if (error) throw error;
+
+        // Validar URL OAuth antes de redirigir (seguridad)
+        if (data?.url) {
+          const oauthUrl = new URL(data.url);
+          const allowedHosts = ['accounts.google.com'];
+          if (!allowedHosts.some(host => oauthUrl.hostname.includes(host))) {
+            throw new Error('Invalid OAuth redirect URL');
+          }
+          window.location.href = data.url;
+        }
+      } else {
+        // Para dominios Lovable, usar el flujo normal con lovable auth
+        const { error } = await signInWithGoogle();
+        if (error) throw error;
       }
     } catch (err) {
       toast.error('Error al iniciar sesión con Google');

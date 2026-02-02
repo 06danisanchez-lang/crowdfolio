@@ -1,40 +1,61 @@
 
 
-## Plan: Corregir Autenticación OAuth para Dominio Personalizado
+## Plan: Corregir Error de Google OAuth
 
-### Problema Identificado
-La autenticación con Google OAuth falla en el dominio personalizado `https://crowdfolio.es` porque el `auth-bridge` de Lovable interfiere con las redirecciones OAuth, enviando a los usuarios a URLs de preview incorrectas en lugar de al dominio personalizado.
+### Problema Detectado
+Al hacer clic en "Continuar con Google" aparece el error "Error al iniciar sesión con Google" sin más detalles. Esto puede deberse a varios factores:
 
-### Solución
-Implementar detección de dominio personalizado y usar `skipBrowserRedirect: true` para controlar manualmente la redirección OAuth, evitando el `auth-bridge`.
+1. **Configuración de OAuth en Lovable Cloud**: Es posible que Google OAuth no esté configurado correctamente
+2. **Manejo de errores incompleto**: El código actual no muestra el mensaje de error específico
+3. **Flujo de redirección**: El flujo de `lovable.auth.signInWithOAuth` podría estar fallando
 
-### Cambios a Realizar
+### Solución Propuesta
 
-#### 1. Configuración en Lovable Cloud (Manual)
-Antes de implementar los cambios de código, debes verificar la configuración en el panel de Lovable Cloud:
+#### 1. Mejorar el manejo de errores para ver el error real
+Modificar el `GoogleButton.tsx` para mostrar el mensaje de error específico en lugar de uno genérico:
 
-| Configuración | Valor |
-|---------------|-------|
-| Site URL | `https://crowdfolio.es` |
-| Redirect URLs | `https://crowdfolio.es/**` |
+```typescript
+} catch (err) {
+  const errorMessage = err instanceof Error ? err.message : 'Error desconocido';
+  toast.error(`Error al iniciar sesión con Google: ${errorMessage}`);
+  console.error('Google sign in error:', err);
+}
+```
 
-Para acceder a estos ajustes, ve a la sección de autenticación de Lovable Cloud.
+#### 2. Verificar que el resultado del flujo Lovable se maneje correctamente
+El problema podría estar en que `signInWithGoogle()` retorna un objeto con `error`, pero si `error` es `undefined` o `null`, no se lanza ninguna excepción. Necesitamos verificar el resultado correctamente:
 
-#### 2. Modificar `GoogleButton.tsx`
-Implementar lógica para detectar dominio personalizado y manejar la redirección manualmente:
+```typescript
+// Para dominios Lovable, usar el flujo normal con lovable auth
+const result = await signInWithGoogle();
+if (result.error) {
+  throw result.error;
+}
+```
+
+### Archivo a Modificar
+
+| Archivo | Cambio |
+|---------|--------|
+| `src/components/auth/GoogleButton.tsx` | Mejorar manejo de errores y mostrar mensaje detallado |
+
+### Posibles Causas del Error
+
+1. **Google OAuth no configurado**: Verificar en Lovable Cloud que Google Auth esté habilitado
+2. **Redirect URLs incorrectas**: Asegurar que las URLs de redirección incluyan el dominio actual
+3. **Error de red o timeout**: Problema temporal de conexión
+
+### Código Corregido para `GoogleButton.tsx`
 
 ```typescript
 const handleGoogleSignIn = async () => {
   setIsLoading(true);
   try {
-    // Detectar si estamos en un dominio personalizado
     const isCustomDomain = 
       !window.location.hostname.includes('lovable.app') &&
       !window.location.hostname.includes('lovableproject.com');
 
     if (isCustomDomain) {
-      // Para dominios personalizados, usar supabase directamente
-      // con skipBrowserRedirect para evitar el auth-bridge
       const { data, error } = await supabase.auth.signInWithOAuth({
         provider: 'google',
         options: {
@@ -45,89 +66,41 @@ const handleGoogleSignIn = async () => {
 
       if (error) throw error;
 
-      // Validar URL OAuth antes de redirigir (seguridad)
       if (data?.url) {
         const oauthUrl = new URL(data.url);
         const allowedHosts = ['accounts.google.com'];
         if (!allowedHosts.some(host => oauthUrl.hostname.includes(host))) {
-          throw new Error('Invalid OAuth redirect URL');
+          throw new Error('URL de OAuth inválida');
         }
         window.location.href = data.url;
+      } else {
+        throw new Error('No se recibió URL de OAuth');
       }
     } else {
-      // Para dominios Lovable, usar el flujo normal
-      const { error } = await signInWithGoogle();
-      if (error) throw error;
+      const result = await signInWithGoogle();
+      if (result.error) {
+        throw result.error;
+      }
     }
   } catch (err) {
-    toast.error('Error al iniciar sesión con Google');
-    console.error('Google sign in error:', err);
+    // Mostrar mensaje de error más detallado
+    const errorMessage = err instanceof Error ? err.message : 'Error desconocido';
+    toast.error(`Error: ${errorMessage}`);
+    console.error('Google sign in error details:', err);
   } finally {
     setIsLoading(false);
   }
 };
 ```
 
-### Archivos a Modificar
+### Pasos de Verificación
 
-| Archivo | Cambio |
-|---------|--------|
-| `src/components/auth/GoogleButton.tsx` | Añadir detección de dominio y redirección manual |
+1. Aplicar los cambios de código
+2. Probar nuevamente el login con Google
+3. Si el error persiste, revisar el mensaje específico en la consola del navegador
+4. Verificar la configuración de Google OAuth en Lovable Cloud
 
-### Flujo de Autenticación Corregido
+### Acción Recomendada
 
-```text
-┌─────────────────────────────────────────────────────────────┐
-│                    Usuario en crowdfolio.es                 │
-└───────────────────────────┬─────────────────────────────────┘
-                            │
-                            ▼
-┌─────────────────────────────────────────────────────────────┐
-│  ¿Es dominio personalizado?                                 │
-│  hostname.includes('lovable.app')? → NO                     │
-└───────────────────────────┬─────────────────────────────────┘
-                            │ SÍ (es personalizado)
-                            ▼
-┌─────────────────────────────────────────────────────────────┐
-│  Usar supabase.auth.signInWithOAuth directamente            │
-│  con skipBrowserRedirect: true                              │
-│  Esto evita el auth-bridge de Lovable                       │
-└───────────────────────────┬─────────────────────────────────┘
-                            │
-                            ▼
-┌─────────────────────────────────────────────────────────────┐
-│  Validar URL OAuth (solo accounts.google.com)               │
-│  Redirigir manualmente con window.location.href             │
-└───────────────────────────┬─────────────────────────────────┘
-                            │
-                            ▼
-┌─────────────────────────────────────────────────────────────┐
-│  Usuario autoriza en Google                                 │
-│  → Callback a https://crowdfolio.es/                        │
-│  → Sesión establecida correctamente                         │
-└─────────────────────────────────────────────────────────────┘
-```
-
-### Pasos de Configuración Manual
-
-Antes de probar, verifica estos ajustes en **Lovable Cloud**:
-
-1. Ve a la configuración de autenticación de tu proyecto
-2. En **Site URL**, configura: `https://crowdfolio.es`
-3. En **Redirect URLs**, añade: `https://crowdfolio.es/**`
-4. Guarda los cambios
-
-### Seguridad
-
-La implementación incluye validación de la URL OAuth para prevenir ataques de redirección abierta:
-- Solo permite redirecciones a `accounts.google.com`
-- Cualquier otra URL lanzará un error
-
-### Resultado Esperado
-
-Después de implementar estos cambios:
-- ✅ Login con Google funcionará en `https://crowdfolio.es`
-- ✅ Login con Google seguirá funcionando en dominios Lovable (preview y published)
-- ✅ El usuario será redirigido al Dashboard tras autenticarse
-- ✅ El perfil se creará automáticamente con datos de Google
+Antes de aplicar cambios, verifica que Google OAuth esté configurado en Lovable Cloud:
 

@@ -1,89 +1,129 @@
 
+## Plan: Simplificar GoogleButton.tsx usando el flujo oficial de Lovable
 
-## Plan: Configurar Google OAuth en Lovable Cloud
+### Situación Actual
 
-### Problema Identificado
+El componente `GoogleButton.tsx` tiene una lógica compleja con:
+- Detección manual de dominios personalizados
+- Llamadas directas a `supabase.auth.signInWithOAuth()` con `skipBrowserRedirect`
+- Validaciones de seguridad manuales (array `allowedHosts`)
+- Dos flujos diferentes según el dominio
 
-Los logs de autenticación del backend muestran este error:
+Esta complejidad ya no es necesaria porque **has configurado Google OAuth en Lovable Cloud**, que gestiona todo de forma segura y automática.
+
+### Solución
+
+Simplificar el componente para usar únicamente `signInWithGoogle()` del `AuthContext`, que internamente usa `lovable.auth.signInWithOAuth()` - el flujo oficial y seguro.
+
+### Cambios a Realizar
+
+**Archivo:** `src/components/auth/GoogleButton.tsx`
+
+#### Código Simplificado:
+
+```typescript
+import { useState } from 'react';
+import { Button } from '@/components/ui/button';
+import { Loader2 } from 'lucide-react';
+import { useAuth } from '@/contexts/AuthContext';
+import { toast } from 'sonner';
+
+const GoogleIcon = () => (
+  <svg viewBox="0 0 24 24" className="h-5 w-5 mr-2" aria-hidden="true">
+    {/* ... SVG paths sin cambios ... */}
+  </svg>
+);
+
+export function GoogleButton() {
+  const { signInWithGoogle } = useAuth();
+  const [isLoading, setIsLoading] = useState(false);
+
+  const handleGoogleSignIn = async () => {
+    setIsLoading(true);
+    try {
+      const result = await signInWithGoogle();
+      if (result.error) {
+        throw result.error;
+      }
+    } catch (err) {
+      const errorMessage = err instanceof Error ? err.message : 'Error desconocido';
+      toast.error(`Error al iniciar sesión: ${errorMessage}`);
+      console.error('Google sign in error:', err);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  return (
+    <Button
+      type="button"
+      variant="outline"
+      className="w-full bg-white hover:bg-gray-50 text-gray-700 border-gray-300"
+      onClick={handleGoogleSignIn}
+      disabled={isLoading}
+    >
+      {isLoading ? (
+        <>
+          <Loader2 className="mr-2 h-5 w-5 animate-spin" />
+          Conectando...
+        </>
+      ) : (
+        <>
+          <GoogleIcon />
+          Continuar con Google
+        </>
+      )}
+    </Button>
+  );
+}
 ```
-"error": "missing OAuth secret"
-"msg": "400: Unsupported provider: missing OAuth secret"
-```
 
-Esto indica que **Google OAuth no tiene configuradas las credenciales necesarias** (Client ID y Client Secret) en Lovable Cloud.
+### Elementos Eliminados
 
-### Causa Raíz
+| Elemento | Razón de eliminación |
+|----------|---------------------|
+| Import de `supabase` | Ya no se usa directamente |
+| Detección de `isCustomDomain` | Lovable Cloud maneja todos los dominios |
+| `supabase.auth.signInWithOAuth()` directo | Reemplazado por flujo oficial |
+| `skipBrowserRedirect: true` | No necesario con Lovable auth |
+| Array `allowedHosts` | Lovable Cloud valida URLs internamente |
+| Validación manual de URL OAuth | Seguridad gestionada por el backend |
+| Bifurcación de flujos | Un solo flujo unificado |
 
-El código del `GoogleButton.tsx` funciona correctamente - el problema está en la configuración del backend:
-
-| Componente | Estado |
-|------------|--------|
-| Código frontend | ✅ Correcto |
-| Flujo de redirección | ✅ Correcto (pasa por supabase.co y vuelve con ?code=) |
-| Credenciales OAuth | ❌ **No configuradas en Lovable Cloud** |
-
-### Solución: Configurar Google OAuth en Lovable Cloud
-
-Necesitas acceder al panel de Lovable Cloud y configurar Google OAuth. Hay dos opciones:
-
-#### Opción A: Usar credenciales administradas por Lovable (Recomendado)
-Lovable puede gestionar automáticamente las credenciales de Google OAuth. Solo necesitas habilitarlo en la configuración de autenticación.
-
-#### Opción B: Usar tus propias credenciales de Google (BYOK)
-Si prefieres usar tus propias credenciales:
-
-1. **Crear credenciales en Google Cloud Console:**
-   - Ve a https://console.cloud.google.com/apis/credentials
-   - Crea un nuevo "OAuth 2.0 Client ID" de tipo "Web application"
-   - En "Authorized redirect URIs", añade la URL de callback de Supabase:
-     `https://vqazrgwjcglnqrmdcjdm.supabase.co/auth/v1/callback`
-
-2. **Configurar en Lovable Cloud:**
-   - Ve a la sección de autenticación
-   - Activa Google como proveedor
-   - Introduce el Client ID y Client Secret de Google
-
-3. **Configurar Site URL y Redirect URLs:**
-   - Site URL: `https://crowdfolio.es`
-   - Redirect URLs: `https://crowdfolio.es/**`
-
-### Pasos a Seguir
-
-1. **Acceder a Lovable Cloud** usando el botón de abajo
-2. **Navegar a la configuración de autenticación** (Users → Authentication Settings → Sign In Methods)
-3. **Habilitar Google** como método de autenticación
-4. **Configurar las URLs de redirección** para el dominio personalizado
-
-### Flujo Correcto Después de la Configuración
+### Flujo Resultante
 
 ```text
 Usuario pulsa "Continuar con Google"
          │
          ▼
 ┌─────────────────────────────────────────┐
-│ Supabase redirige a Google con          │
-│ las credenciales OAuth configuradas     │
-│ (actualmente falla aquí por             │
-│ "missing OAuth secret")                 │
+│ signInWithGoogle() → AuthContext        │
 └────────────────────┬────────────────────┘
                      │
                      ▼
-         Usuario autoriza en Google
+┌─────────────────────────────────────────┐
+│ lovable.auth.signInWithOAuth("google")  │
+│ → Gestión segura por Lovable Cloud      │
+└────────────────────┬────────────────────┘
                      │
                      ▼
-   Google devuelve ?code= a Supabase
-                     │
-                     ▼
-   Supabase intercambia el código por tokens
-                     │
-                     ▼
-   Usuario redirigido a crowdfolio.es con sesión activa
+┌─────────────────────────────────────────┐
+│ Redirección a Google → Autorización     │
+│ → Callback a crowdfolio.es              │
+│ → Sesión establecida automáticamente    │
+└─────────────────────────────────────────┘
 ```
+
+### Beneficios
+
+- ✅ **Código más limpio**: ~40 líneas menos
+- ✅ **Mantenibilidad**: Un solo flujo fácil de entender
+- ✅ **Seguridad**: Validaciones gestionadas por Lovable Cloud
+- ✅ **Compatibilidad**: Funciona en todos los dominios (preview, lovable.app, crowdfolio.es)
 
 ### Resultado Esperado
 
-Una vez configurado Google OAuth en Lovable Cloud:
-- ✅ El login con Google funcionará tanto en crowdfolio.es como en el preview
-- ✅ Se creará automáticamente un perfil en la tabla `profiles` (trigger existente)
-- ✅ El usuario será redirigido al Dashboard
-
+Tras este cambio, el login con Google funcionará de forma transparente:
+- En `crowdfolio.es` (dominio personalizado)
+- En `crowdfolio.lovable.app` (dominio publicado)
+- En el preview de desarrollo

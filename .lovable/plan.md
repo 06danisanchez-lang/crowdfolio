@@ -1,106 +1,64 @@
 
+## Plan: Permitir URL de Supabase en Validación OAuth
 
-## Plan: Corregir Error de Google OAuth
+### Problema
+La validación de seguridad en `GoogleButton.tsx` solo permite URLs de `accounts.google.com`, pero el flujo OAuth de Supabase primero genera una URL que apunta a `vqazrgwjcglnqrmdcjdm.supabase.co` antes de redirigir a Google.
 
-### Problema Detectado
-Al hacer clic en "Continuar con Google" aparece el error "Error al iniciar sesión con Google" sin más detalles. Esto puede deberse a varios factores:
+### Solución
+Actualizar el array `allowedHosts` para incluir también el dominio de Supabase del proyecto.
 
-1. **Configuración de OAuth en Lovable Cloud**: Es posible que Google OAuth no esté configurado correctamente
-2. **Manejo de errores incompleto**: El código actual no muestra el mensaje de error específico
-3. **Flujo de redirección**: El flujo de `lovable.auth.signInWithOAuth` podría estar fallando
+### Cambio a Realizar
 
-### Solución Propuesta
+**Archivo:** `src/components/auth/GoogleButton.tsx`
 
-#### 1. Mejorar el manejo de errores para ver el error real
-Modificar el `GoogleButton.tsx` para mostrar el mensaje de error específico en lugar de uno genérico:
-
-```typescript
-} catch (err) {
-  const errorMessage = err instanceof Error ? err.message : 'Error desconocido';
-  toast.error(`Error al iniciar sesión con Google: ${errorMessage}`);
-  console.error('Google sign in error:', err);
-}
-```
-
-#### 2. Verificar que el resultado del flujo Lovable se maneje correctamente
-El problema podría estar en que `signInWithGoogle()` retorna un objeto con `error`, pero si `error` es `undefined` o `null`, no se lanza ninguna excepción. Necesitamos verificar el resultado correctamente:
+**Línea 55-57 (aproximadamente):**
 
 ```typescript
-// Para dominios Lovable, usar el flujo normal con lovable auth
-const result = await signInWithGoogle();
-if (result.error) {
-  throw result.error;
-}
+// ANTES:
+const allowedHosts = ['accounts.google.com'];
+
+// DESPUÉS:
+const allowedHosts = [
+  'accounts.google.com',
+  'vqazrgwjcglnqrmdcjdm.supabase.co', // URL del proyecto Supabase
+];
 ```
 
-### Archivo a Modificar
+### Flujo OAuth Corregido
 
-| Archivo | Cambio |
-|---------|--------|
-| `src/components/auth/GoogleButton.tsx` | Mejorar manejo de errores y mostrar mensaje detallado |
-
-### Posibles Causas del Error
-
-1. **Google OAuth no configurado**: Verificar en Lovable Cloud que Google Auth esté habilitado
-2. **Redirect URLs incorrectas**: Asegurar que las URLs de redirección incluyan el dominio actual
-3. **Error de red o timeout**: Problema temporal de conexión
-
-### Código Corregido para `GoogleButton.tsx`
-
-```typescript
-const handleGoogleSignIn = async () => {
-  setIsLoading(true);
-  try {
-    const isCustomDomain = 
-      !window.location.hostname.includes('lovable.app') &&
-      !window.location.hostname.includes('lovableproject.com');
-
-    if (isCustomDomain) {
-      const { data, error } = await supabase.auth.signInWithOAuth({
-        provider: 'google',
-        options: {
-          redirectTo: `${window.location.origin}/`,
-          skipBrowserRedirect: true,
-        },
-      });
-
-      if (error) throw error;
-
-      if (data?.url) {
-        const oauthUrl = new URL(data.url);
-        const allowedHosts = ['accounts.google.com'];
-        if (!allowedHosts.some(host => oauthUrl.hostname.includes(host))) {
-          throw new Error('URL de OAuth inválida');
-        }
-        window.location.href = data.url;
-      } else {
-        throw new Error('No se recibió URL de OAuth');
-      }
-    } else {
-      const result = await signInWithGoogle();
-      if (result.error) {
-        throw result.error;
-      }
-    }
-  } catch (err) {
-    // Mostrar mensaje de error más detallado
-    const errorMessage = err instanceof Error ? err.message : 'Error desconocido';
-    toast.error(`Error: ${errorMessage}`);
-    console.error('Google sign in error details:', err);
-  } finally {
-    setIsLoading(false);
-  }
-};
+```text
+┌─────────────────────────────────────────────────────────────┐
+│  Usuario hace clic en "Continuar con Google"                │
+└───────────────────────────┬─────────────────────────────────┘
+                            │
+                            ▼
+┌─────────────────────────────────────────────────────────────┐
+│  Supabase genera URL OAuth                                  │
+│  → https://vqazrgwjcglnqrmdcjdm.supabase.co/auth/v1/...    │
+│  ✅ Ahora permitida en allowedHosts                         │
+└───────────────────────────┬─────────────────────────────────┘
+                            │
+                            ▼
+┌─────────────────────────────────────────────────────────────┐
+│  Supabase redirige internamente a Google                    │
+│  → https://accounts.google.com/o/oauth2/v2/auth/...        │
+└───────────────────────────┬─────────────────────────────────┘
+                            │
+                            ▼
+┌─────────────────────────────────────────────────────────────┐
+│  Usuario autoriza en Google                                 │
+│  → Callback a https://crowdfolio.es/                        │
+└─────────────────────────────────────────────────────────────┘
 ```
 
-### Pasos de Verificación
+### Seguridad
+La validación sigue siendo segura porque solo permite:
+1. `accounts.google.com` - Servidor OAuth de Google
+2. `vqazrgwjcglnqrmdcjdm.supabase.co` - Tu proyecto específico de backend
 
-1. Aplicar los cambios de código
-2. Probar nuevamente el login con Google
-3. Si el error persiste, revisar el mensaje específico en la consola del navegador
-4. Verificar la configuración de Google OAuth en Lovable Cloud
+Cualquier otra URL seguirá siendo rechazada.
 
-### Acción Recomendada
-
-Antes de aplicar cambios, verifica que Google OAuth esté configurado en Lovable Cloud:
-
+### Resultado Esperado
+- ✅ El flujo OAuth funcionará correctamente en `https://crowdfolio.es`
+- ✅ El usuario será redirigido a Google para autenticarse
+- ✅ Tras autorizar, volverá a crowdfolio.es con la sesión activa

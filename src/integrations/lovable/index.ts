@@ -2,7 +2,9 @@
 
 import { createLovableAuth } from "@lovable.dev/cloud-auth-js";
 import { supabase } from "../supabase/client";
-const lovableAuth = createLovableAuth({});
+const lovableAuth = createLovableAuth({
+  oauthBrokerUrl: "https://oauth.lovable.app/initiate",
+});
 
 export const lovable = {
   auth: {

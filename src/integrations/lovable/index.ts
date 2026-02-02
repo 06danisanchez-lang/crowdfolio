@@ -11,6 +11,9 @@ export const lovable = {
     signInWithOAuth: async (provider: "google" | "apple", opts?: { redirect_uri?: string }) => {
       const result = await lovableAuth.signInWithOAuth(provider, {
         ...opts,
+        extraParams: {
+          project_id: "1e6f22d2-2f51-41b3-a894-0556936cf4e3",
+        },
       });
 
       if (result.redirected) {

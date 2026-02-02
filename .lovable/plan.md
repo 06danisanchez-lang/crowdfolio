@@ -1,84 +1,112 @@
 
 
-## Plan: Mensaje Amigable para Ejercicios Sin Datos
+## Plan: Añadir Login con Google
 
 ### Resumen
-Añadir un estado vacío amigable en el módulo fiscal cuando un ejercicio no tiene liquidaciones registradas, mostrando un mensaje motivador en lugar de tarjetas con valores en 0€.
-
-### Lógica de Detección
-
-Un ejercicio se considera "sin datos" cuando:
-- `grossIncome === 0` (sin rendimientos)
-- `withholdingsApplied === 0` (sin retenciones)
-- `deductibleExpenses === 0` (sin gastos)
-
-### Diseño Visual
-
-```text
-┌─────────────────────────────────────────────────────────────┐
-│                                                             │
-│        📊                                                   │
-│                                                             │
-│   Aún no tienes liquidaciones registradas en 2026          │
-│                                                             │
-│   ¡Es un buen momento para planificar tus próximas         │
-│   inversiones!                                              │
-│                                                             │
-│   [ Ver Oportunidades ]                                     │
-│                                                             │
-└─────────────────────────────────────────────────────────────┘
-```
+Configurar el login con Google OAuth añadiendo el botón "Continuar con Google" de forma prominente en las páginas de Login y Registro, con creación automática de perfil para usuarios nuevos.
 
 ### Cambios a Realizar
 
-#### 1. Modificar `TaxDashboard.tsx`
-- Añadir lógica para detectar si el año está vacío
-- Mostrar componente de estado vacío en lugar del contenido normal
-- El mensaje incluirá el año dinámicamente
+#### 1. Configurar Google OAuth en Lovable Cloud
+Usar la herramienta de configuración de autenticación social para generar el módulo de Lovable Cloud que gestiona Google OAuth.
 
-```typescript
-const hasNoData = summary.grossIncome === 0 && 
-                  summary.withholdingsApplied === 0 && 
-                  summary.deductibleExpenses === 0;
+#### 2. Crear tabla `profiles` en la base de datos
+Crear una tabla para almacenar información adicional de usuarios con creación automática mediante trigger.
 
-if (hasNoData) {
-  return (
-    // Empty state con mensaje amigable
+```sql
+CREATE TABLE public.profiles (
+  id UUID PRIMARY KEY REFERENCES auth.users(id) ON DELETE CASCADE,
+  email TEXT,
+  full_name TEXT,
+  avatar_url TEXT,
+  created_at TIMESTAMPTZ DEFAULT now(),
+  updated_at TIMESTAMPTZ DEFAULT now()
+);
+
+-- Trigger para crear perfil automáticamente
+CREATE OR REPLACE FUNCTION public.handle_new_user()
+RETURNS TRIGGER AS $$
+BEGIN
+  INSERT INTO public.profiles (id, email, full_name, avatar_url)
+  VALUES (
+    NEW.id,
+    NEW.email,
+    COALESCE(NEW.raw_user_meta_data->>'full_name', NEW.raw_user_meta_data->>'name'),
+    NEW.raw_user_meta_data->>'avatar_url'
   );
-}
+  RETURN NEW;
+END;
+$$ LANGUAGE plpgsql SECURITY DEFINER;
+
+CREATE TRIGGER on_auth_user_created
+  AFTER INSERT ON auth.users
+  FOR EACH ROW EXECUTE FUNCTION public.handle_new_user();
 ```
 
-#### 2. Crear componente `TaxEmptyState.tsx`
-- Componente dedicado para el estado vacío
-- Props: `year: number`
-- Incluye icono, mensaje personalizado y botón opcional
+#### 3. Modificar `Auth.tsx` - Añadir botón de Google
+Añadir el botón "Continuar con Google" encima del formulario de email/contraseña.
 
-### Archivos a Modificar/Crear
+```text
+┌─────────────────────────────────────────┐
+│           [Logo Crowdfolio]             │
+│                                         │
+│   Inicia sesión en tu cuenta            │
+│                                         │
+│   [🔵 Continuar con Google]             │ ← Nuevo
+│                                         │
+│   ──────── o ────────                   │ ← Separador
+│                                         │
+│   Email: [________________]             │
+│   Contraseña: [____________]            │
+│                                         │
+│   [Iniciar Sesión]                      │
+│                                         │
+│   ¿No tienes cuenta? Regístrate         │
+└─────────────────────────────────────────┘
+```
+
+#### 4. Añadir función `signInWithGoogle` al AuthContext
+Exponer la función de login con Google a través del contexto de autenticación.
+
+### Archivos a Crear/Modificar
 
 | Archivo | Acción |
 |---------|--------|
-| `src/components/tax/TaxEmptyState.tsx` | Crear - componente de estado vacío |
-| `src/components/tax/TaxDashboard.tsx` | Modificar - integrar estado vacío |
+| Base de datos | Crear tabla `profiles` + trigger |
+| `src/integrations/lovable/` | Generar automáticamente (herramienta) |
+| `src/contexts/AuthContext.tsx` | Añadir `signInWithGoogle` |
+| `src/pages/Auth.tsx` | Añadir botón Google + separador |
 
-### Comportamiento
+### Diseño del Botón de Google
 
-| Escenario | Resultado |
-|-----------|-----------|
-| Año 2025 con datos | Se muestran las tarjetas y tabs normales |
-| Año 2026 sin datos | Se muestra mensaje amigable + selector de año |
-| Año 2024 sin datos | Se muestra mensaje amigable (ajustado al pasado) |
+El botón seguirá el estilo oficial de Google:
+- Fondo blanco con borde
+- Icono de Google (SVG)
+- Texto: "Continuar con Google"
+- Ancho completo como el resto del formulario
 
-### Mensajes según el año
+### Flujo de Usuario
 
-- **Año futuro (ej: 2026)**: "Aún no tienes liquidaciones registradas en 2026. ¡Es un buen momento para planificar tus próximas inversiones!"
-- **Año pasado (ej: 2024)**: "No tienes liquidaciones registradas en 2024. Puedes añadir gastos deducibles si procede."
+```text
+Usuario hace clic en "Continuar con Google"
+              ↓
+    Redirección a Google OAuth
+              ↓
+    Usuario autoriza la aplicación
+              ↓
+    Callback a la aplicación
+              ↓
+    Trigger crea perfil automáticamente
+              ↓
+    AuthContext detecta sesión activa
+              ↓
+    Redirección al Dashboard (/)
+```
 
 ### Detalles Técnicos
 
-El componente `TaxEmptyState` incluirá:
-- Icono de gráfico vacío (BarChart3 o similar)
-- Título con el año dinámico
-- Subtítulo motivador
-- Botón opcional "Ver Oportunidades" para años futuros
-- Mantiene visible el selector de año para cambiar a otro ejercicio
+- Se usará `lovable.auth.signInWithOAuth("google")` del módulo de Lovable Cloud
+- La redirección post-login se maneja mediante `redirect_uri: window.location.origin`
+- El perfil se crea automáticamente con los datos de Google (nombre, avatar, email)
+- RLS policies permitirán que cada usuario solo vea/edite su propio perfil
 

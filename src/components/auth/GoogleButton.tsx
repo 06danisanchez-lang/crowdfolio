@@ -2,7 +2,6 @@ import { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Loader2 } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
-import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 
 const GoogleIcon = () => (
@@ -33,50 +32,14 @@ export function GoogleButton() {
   const handleGoogleSignIn = async () => {
     setIsLoading(true);
     try {
-      // Detectar si estamos en un dominio personalizado
-      const isCustomDomain = 
-        !window.location.hostname.includes('lovable.app') &&
-        !window.location.hostname.includes('lovableproject.com');
-
-      if (isCustomDomain) {
-        // Para dominios personalizados, usar supabase directamente
-        // con skipBrowserRedirect para evitar el auth-bridge
-        const { data, error } = await supabase.auth.signInWithOAuth({
-          provider: 'google',
-          options: {
-            redirectTo: `${window.location.origin}/`,
-            skipBrowserRedirect: true,
-          },
-        });
-
-        if (error) throw error;
-
-        // Validar URL OAuth antes de redirigir (seguridad)
-        if (data?.url) {
-          const oauthUrl = new URL(data.url);
-          const allowedHosts = [
-            'accounts.google.com',
-            'vqazrgwjcglnqrmdcjdm.supabase.co',
-          ];
-          if (!allowedHosts.some(host => oauthUrl.hostname.includes(host))) {
-            throw new Error('URL de OAuth inválida');
-          }
-          window.location.href = data.url;
-        } else {
-          throw new Error('No se recibió URL de OAuth');
-        }
-      } else {
-        // Para dominios Lovable, usar el flujo normal con lovable auth
-        const result = await signInWithGoogle();
-        if (result.error) {
-          throw result.error;
-        }
+      const result = await signInWithGoogle();
+      if (result.error) {
+        throw result.error;
       }
     } catch (err) {
-      // Mostrar mensaje de error más detallado
       const errorMessage = err instanceof Error ? err.message : 'Error desconocido';
-      toast.error(`Error: ${errorMessage}`);
-      console.error('Google sign in error details:', err);
+      toast.error(`Error al iniciar sesión: ${errorMessage}`);
+      console.error('Google sign in error:', err);
     } finally {
       setIsLoading(false);
     }

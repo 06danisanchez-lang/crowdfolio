@@ -10,6 +10,8 @@ import { Loader2, Mail, Lock, AlertCircle, RefreshCw, ArrowLeft } from 'lucide-r
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { z } from 'zod';
 import crowdfolioLogo from '@/assets/crowdfolio-logo.png';
+import { GoogleButton } from '@/components/auth/GoogleButton';
+import { AuthDivider } from '@/components/auth/AuthDivider';
 
 const authSchema = z.object({
   email: z.string().email('Email inválido'),
@@ -277,6 +279,10 @@ export default function Auth() {
                 )}
               </Button>
             )}
+
+            <GoogleButton />
+            
+            <AuthDivider />
 
             <div className="space-y-2">
               <Label htmlFor="email">Email</Label>

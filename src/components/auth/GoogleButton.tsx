@@ -56,18 +56,24 @@ export function GoogleButton() {
           const oauthUrl = new URL(data.url);
           const allowedHosts = ['accounts.google.com'];
           if (!allowedHosts.some(host => oauthUrl.hostname.includes(host))) {
-            throw new Error('Invalid OAuth redirect URL');
+            throw new Error('URL de OAuth inválida');
           }
           window.location.href = data.url;
+        } else {
+          throw new Error('No se recibió URL de OAuth');
         }
       } else {
         // Para dominios Lovable, usar el flujo normal con lovable auth
-        const { error } = await signInWithGoogle();
-        if (error) throw error;
+        const result = await signInWithGoogle();
+        if (result.error) {
+          throw result.error;
+        }
       }
     } catch (err) {
-      toast.error('Error al iniciar sesión con Google');
-      console.error('Google sign in error:', err);
+      // Mostrar mensaje de error más detallado
+      const errorMessage = err instanceof Error ? err.message : 'Error desconocido';
+      toast.error(`Error: ${errorMessage}`);
+      console.error('Google sign in error details:', err);
     } finally {
       setIsLoading(false);
     }

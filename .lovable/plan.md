@@ -1,64 +1,89 @@
 
-## Plan: Permitir URL de Supabase en Validación OAuth
 
-### Problema
-La validación de seguridad en `GoogleButton.tsx` solo permite URLs de `accounts.google.com`, pero el flujo OAuth de Supabase primero genera una URL que apunta a `vqazrgwjcglnqrmdcjdm.supabase.co` antes de redirigir a Google.
+## Plan: Configurar Google OAuth en Lovable Cloud
 
-### Solución
-Actualizar el array `allowedHosts` para incluir también el dominio de Supabase del proyecto.
+### Problema Identificado
 
-### Cambio a Realizar
-
-**Archivo:** `src/components/auth/GoogleButton.tsx`
-
-**Línea 55-57 (aproximadamente):**
-
-```typescript
-// ANTES:
-const allowedHosts = ['accounts.google.com'];
-
-// DESPUÉS:
-const allowedHosts = [
-  'accounts.google.com',
-  'vqazrgwjcglnqrmdcjdm.supabase.co', // URL del proyecto Supabase
-];
+Los logs de autenticación del backend muestran este error:
+```
+"error": "missing OAuth secret"
+"msg": "400: Unsupported provider: missing OAuth secret"
 ```
 
-### Flujo OAuth Corregido
+Esto indica que **Google OAuth no tiene configuradas las credenciales necesarias** (Client ID y Client Secret) en Lovable Cloud.
+
+### Causa Raíz
+
+El código del `GoogleButton.tsx` funciona correctamente - el problema está en la configuración del backend:
+
+| Componente | Estado |
+|------------|--------|
+| Código frontend | ✅ Correcto |
+| Flujo de redirección | ✅ Correcto (pasa por supabase.co y vuelve con ?code=) |
+| Credenciales OAuth | ❌ **No configuradas en Lovable Cloud** |
+
+### Solución: Configurar Google OAuth en Lovable Cloud
+
+Necesitas acceder al panel de Lovable Cloud y configurar Google OAuth. Hay dos opciones:
+
+#### Opción A: Usar credenciales administradas por Lovable (Recomendado)
+Lovable puede gestionar automáticamente las credenciales de Google OAuth. Solo necesitas habilitarlo en la configuración de autenticación.
+
+#### Opción B: Usar tus propias credenciales de Google (BYOK)
+Si prefieres usar tus propias credenciales:
+
+1. **Crear credenciales en Google Cloud Console:**
+   - Ve a https://console.cloud.google.com/apis/credentials
+   - Crea un nuevo "OAuth 2.0 Client ID" de tipo "Web application"
+   - En "Authorized redirect URIs", añade la URL de callback de Supabase:
+     `https://vqazrgwjcglnqrmdcjdm.supabase.co/auth/v1/callback`
+
+2. **Configurar en Lovable Cloud:**
+   - Ve a la sección de autenticación
+   - Activa Google como proveedor
+   - Introduce el Client ID y Client Secret de Google
+
+3. **Configurar Site URL y Redirect URLs:**
+   - Site URL: `https://crowdfolio.es`
+   - Redirect URLs: `https://crowdfolio.es/**`
+
+### Pasos a Seguir
+
+1. **Acceder a Lovable Cloud** usando el botón de abajo
+2. **Navegar a la configuración de autenticación** (Users → Authentication Settings → Sign In Methods)
+3. **Habilitar Google** como método de autenticación
+4. **Configurar las URLs de redirección** para el dominio personalizado
+
+### Flujo Correcto Después de la Configuración
 
 ```text
-┌─────────────────────────────────────────────────────────────┐
-│  Usuario hace clic en "Continuar con Google"                │
-└───────────────────────────┬─────────────────────────────────┘
-                            │
-                            ▼
-┌─────────────────────────────────────────────────────────────┐
-│  Supabase genera URL OAuth                                  │
-│  → https://vqazrgwjcglnqrmdcjdm.supabase.co/auth/v1/...    │
-│  ✅ Ahora permitida en allowedHosts                         │
-└───────────────────────────┬─────────────────────────────────┘
-                            │
-                            ▼
-┌─────────────────────────────────────────────────────────────┐
-│  Supabase redirige internamente a Google                    │
-│  → https://accounts.google.com/o/oauth2/v2/auth/...        │
-└───────────────────────────┬─────────────────────────────────┘
-                            │
-                            ▼
-┌─────────────────────────────────────────────────────────────┐
-│  Usuario autoriza en Google                                 │
-│  → Callback a https://crowdfolio.es/                        │
-└─────────────────────────────────────────────────────────────┘
+Usuario pulsa "Continuar con Google"
+         │
+         ▼
+┌─────────────────────────────────────────┐
+│ Supabase redirige a Google con          │
+│ las credenciales OAuth configuradas     │
+│ (actualmente falla aquí por             │
+│ "missing OAuth secret")                 │
+└────────────────────┬────────────────────┘
+                     │
+                     ▼
+         Usuario autoriza en Google
+                     │
+                     ▼
+   Google devuelve ?code= a Supabase
+                     │
+                     ▼
+   Supabase intercambia el código por tokens
+                     │
+                     ▼
+   Usuario redirigido a crowdfolio.es con sesión activa
 ```
 
-### Seguridad
-La validación sigue siendo segura porque solo permite:
-1. `accounts.google.com` - Servidor OAuth de Google
-2. `vqazrgwjcglnqrmdcjdm.supabase.co` - Tu proyecto específico de backend
-
-Cualquier otra URL seguirá siendo rechazada.
-
 ### Resultado Esperado
-- ✅ El flujo OAuth funcionará correctamente en `https://crowdfolio.es`
-- ✅ El usuario será redirigido a Google para autenticarse
-- ✅ Tras autorizar, volverá a crowdfolio.es con la sesión activa
+
+Una vez configurado Google OAuth en Lovable Cloud:
+- ✅ El login con Google funcionará tanto en crowdfolio.es como en el preview
+- ✅ Se creará automáticamente un perfil en la tabla `profiles` (trigger existente)
+- ✅ El usuario será redirigido al Dashboard
+

@@ -54,7 +54,10 @@ export function GoogleButton() {
         // Validar URL OAuth antes de redirigir (seguridad)
         if (data?.url) {
           const oauthUrl = new URL(data.url);
-          const allowedHosts = ['accounts.google.com'];
+          const allowedHosts = [
+            'accounts.google.com',
+            'vqazrgwjcglnqrmdcjdm.supabase.co',
+          ];
           if (!allowedHosts.some(host => oauthUrl.hostname.includes(host))) {
             throw new Error('URL de OAuth inválida');
           }

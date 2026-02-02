@@ -3,6 +3,23 @@ import { User, Session } from '@supabase/supabase-js';
 import { supabase } from '@/integrations/supabase/client';
 import { lovable } from '@/integrations/lovable';
 
+/**
+ * Devuelve el origen canónico para redirects de autenticación.
+ * En producción siempre devuelve https://crowdfolio.es (sin www).
+ * En otros entornos (preview/staging) usa window.location.origin.
+ */
+function getAuthOrigin(): string {
+  const { hostname, origin } = window.location;
+  
+  // En producción, forzar el dominio canónico sin www
+  if (hostname === 'crowdfolio.es' || hostname === 'www.crowdfolio.es') {
+    return 'https://crowdfolio.es';
+  }
+  
+  // En otros entornos (preview, localhost, etc.), usar el origen actual
+  return origin;
+}
+
 interface AuthContextType {
   user: User | null;
   session: Session | null;
@@ -88,7 +105,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   };
 
   const signUp = async (email: string, password: string) => {
-    const redirectUrl = `${window.location.origin}/`;
+    const redirectUrl = `${getAuthOrigin()}/`;
     
     const { error } = await supabase.auth.signUp({
       email,
@@ -106,19 +123,29 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   };
 
   const signInWithGoogle = async () => {
+    const redirectUri = getAuthOrigin();
+    
     const result = await lovable.auth.signInWithOAuth("google", {
-      redirect_uri: window.location.origin,
+      redirect_uri: redirectUri,
     });
     
     if (result.redirected) {
       return { error: null };
     }
     
-    return { error: result.error };
+    // Añadir información de diagnóstico al error
+    if (result.error) {
+      const enhancedError = new Error(
+        `${result.error.message} (redirect_uri usado: ${redirectUri})`
+      );
+      return { error: enhancedError };
+    }
+    
+    return { error: null };
   };
 
   const resetPassword = async (email: string) => {
-    const redirectUrl = `${window.location.origin}/reset-password`;
+    const redirectUrl = `${getAuthOrigin()}/reset-password`;
     
     const { error } = await supabase.auth.resetPasswordForEmail(email, {
       redirectTo: redirectUrl,

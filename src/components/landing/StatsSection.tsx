@@ -33,7 +33,7 @@ export default function StatsSection() {
   const { ref, isVisible } = useScrollAnimation({ threshold: 0.2 });
 
   return (
-    <section ref={ref} className="py-16 md:py-20">
+    <section ref={ref} className="py-10 md:py-12">
       <div className="container mx-auto px-4">
         <div className="grid grid-cols-2 gap-6 md:grid-cols-4 md:gap-8">
           {stats.map((stat, index) => (

@@ -17,7 +17,7 @@ export default function CTASection() {
   return (
     <section 
       ref={ref} 
-      className="relative overflow-hidden border-t py-20 md:py-32"
+      className="relative overflow-hidden border-t py-12 md:py-16"
     >
       {/* Gradient background */}
       <div className="absolute inset-0 bg-gradient-to-br from-primary/10 via-blue-500/5 to-violet-500/10" />

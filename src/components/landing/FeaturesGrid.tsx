@@ -48,7 +48,7 @@ export default function FeaturesGrid() {
   const { ref, isVisible } = useScrollAnimation({ threshold: 0.1 });
 
   return (
-    <section ref={ref} className="py-20 md:py-32">
+    <section ref={ref} className="py-12 md:py-16">
       <div className="container mx-auto px-4">
         <div 
           className={cn(

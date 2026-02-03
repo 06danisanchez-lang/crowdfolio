@@ -1,118 +1,135 @@
 
-# Plan: Modal de Bienvenida para Héroes Fundadores
+# Plan: Checkout Público y Upgrade Libre para Usuarios Gratuitos
 
 ## Resumen
 
-Crear un modal de bienvenida que aparezca **solo una vez** cuando un usuario Pro accede al Dashboard por primera vez. El modal agradecerá a los usuarios fundadores y proporcionará un canal directo de comunicación para feedback.
+Implementar dos mejoras en el flujo de suscripción:
+1. **Checkout público**: Usuarios no autenticados pueden acceder al checkout desde `/pricing` (serán redirigidos a login/registro y luego al checkout)
+2. **Upgrade libre**: Usuarios con plan gratuito pueden actualizar a Pro en cualquier momento, sin esperar a alcanzar límites
 
-## Diseño del Modal
+## Análisis del Sistema Actual
+
+### Problema 1: PricingTable requiere autenticación
+- `useSubscription().openCheckout()` lanza error si no hay `session.access_token`
+- Usuarios no logueados ven la página pero el botón falla
+
+### Problema 2: Edge Function requiere token
+- `create-checkout` valida obligatoriamente el header `Authorization`
+- No soporta flujo de "guest checkout"
+
+## Solución Propuesta
+
+### Enfoque: Checkout con Redirección a Login
+
+En lugar de implementar un checkout anónimo complejo (que requeriría vincular el pago a una cuenta creada posteriormente), optaremos por un flujo más simple y robusto:
+
+1. Usuario no autenticado hace clic en "Empezar con Pro"
+2. Se guarda la intención de checkout en sessionStorage
+3. Se redirige a `/auth` con parámetro `?checkout=yearly` (o monthly)
+4. Tras login/registro exitoso, el sistema detecta la intención y lanza el checkout automáticamente
 
 ```text
-+------------------------------------------+
-|                    [X]                   |
-|                                          |
-|     🎉 ¡Bienvenido, Héroe Fundador!      |
-|                                          |
-|   Gracias por ayudarnos a construir      |
-|   Crowdfolio. Tu apoyo temprano hace     |
-|   posible este proyecto.                 |
-|                                          |
-|   Si encuentras cualquier error o        |
-|   tienes una sugerencia, escríbeme       |
-|   directamente a:                        |
-|                                          |
-|   📧 soporte@crowdfolio.es               |
-|                                          |
-|          [ ¡Entendido! ]                 |
-+------------------------------------------+
+┌──────────────┐     ┌────────────┐     ┌─────────────┐     ┌──────────────┐
+│   /pricing   │────>│   /auth    │────>│  Dashboard  │────>│   Stripe     │
+│ Click "Pro"  │     │  Login/    │     │  Auto-open  │     │  Checkout    │
+│              │     │  Register  │     │  checkout   │     │              │
+└──────────────┘     └────────────┘     └─────────────┘     └──────────────┘
 ```
 
-## Implementacion Tecnica
+## Implementación Técnica
 
-### 1. Persistencia del Estado "Ya Visto"
+### 1. Modificar PricingTable.tsx
 
-Para asegurar que el modal solo aparezca una vez, usaré **`localStorage`** con una clave específica:
-- Clave: `crowdfolio_founder_welcome_shown`
-- Valor: `true` (una vez el usuario cierra el modal)
-
-**Ventajas de localStorage:**
-- Simple y rápido
-- No requiere cambios en la base de datos
-- Persiste entre sesiones del navegador
-- Si el usuario borra localStorage, verá el modal otra vez (comportamiento aceptable)
-
-### 2. Archivos a Crear/Modificar
-
-| Archivo | Acción | Descripción |
-|---------|--------|-------------|
-| `src/components/subscription/FounderWelcomeModal.tsx` | Crear | Nuevo componente del modal |
-| `src/pages/Index.tsx` | Modificar | Integrar el modal en el Dashboard |
-
-### 3. Componente FounderWelcomeModal
+Cambiar el botón de checkout para manejar usuarios no autenticados:
 
 ```typescript
-// Pseudocódigo del componente
-function FounderWelcomeModal() {
-  const { isPro } = useSubscription();
-  const [open, setOpen] = useState(false);
+const { user } = useAuth();
+const navigate = useNavigate();
+
+const handleCheckout = async (plan: 'monthly' | 'yearly') => {
+  // Si no está autenticado, guardar intención y redirigir a login
+  if (!user) {
+    sessionStorage.setItem('pending_checkout_plan', plan);
+    navigate('/auth?checkout=' + plan);
+    return;
+  }
   
-  useEffect(() => {
-    // Solo mostrar si:
-    // 1. El usuario es Pro
-    // 2. No ha visto el modal antes (localStorage)
-    const hasSeenWelcome = localStorage.getItem('crowdfolio_founder_welcome_shown');
-    
-    if (isPro && !hasSeenWelcome) {
-      setOpen(true);
+  // Si está autenticado, proceder con checkout normal
+  setIsLoading(plan);
+  try {
+    await openCheckout(plan);
+  } catch (error) {
+    // ...
+  }
+};
+```
+
+### 2. Modificar Auth.tsx
+
+Detectar el parámetro `checkout` y mostrar mensaje contextual:
+
+```typescript
+// En useEffect o en la UI
+const params = new URLSearchParams(location.search);
+const checkoutPlan = params.get('checkout');
+
+// Mostrar mensaje: "Inicia sesión para continuar con tu suscripción Pro"
+```
+
+### 3. Modificar SubscriptionContext.tsx
+
+Detectar intención pendiente después del login y ejecutar checkout:
+
+```typescript
+useEffect(() => {
+  if (user && session?.access_token) {
+    const pendingPlan = sessionStorage.getItem('pending_checkout_plan');
+    if (pendingPlan && ['monthly', 'yearly'].includes(pendingPlan)) {
+      sessionStorage.removeItem('pending_checkout_plan');
+      // Pequeño delay para asegurar que el dashboard cargó
+      setTimeout(() => {
+        openCheckout(pendingPlan as 'monthly' | 'yearly').catch(console.error);
+      }, 1000);
     }
-  }, [isPro]);
-  
-  const handleClose = () => {
-    localStorage.setItem('crowdfolio_founder_welcome_shown', 'true');
-    setOpen(false);
-  };
-  
-  return (
-    <Dialog open={open} onOpenChange={handleClose}>
-      {/* Contenido del modal */}
-    </Dialog>
-  );
-}
+  }
+}, [user, session?.access_token]);
 ```
 
-### 4. Elementos Visuales
+### 4. Verificar BillingSettings.tsx (ya implementado)
 
-- **Icono**: Party Popper (🎉) o similar de Lucide (`PartyPopper`)
-- **Título**: "¡Bienvenido, Héroe Fundador!"
-- **Mensaje**: Texto de agradecimiento con el email destacado
-- **Email**: Link `mailto:` clickeable para facilitar el contacto
-- **Botón**: "¡Entendido!" para cerrar el modal
+El componente ya permite upgrade sin restricciones - los usuarios pueden hacer clic en "Actualizar a Pro" independientemente del número de inversiones.
 
-### 5. Integración en Index.tsx
+## Archivos a Modificar
 
-Añadir el componente al final del JSX del Dashboard, junto al `UpgradeModal` existente:
+| Archivo | Cambios |
+|---------|---------|
+| `src/components/subscription/PricingTable.tsx` | Añadir lógica para usuarios no autenticados |
+| `src/pages/Auth.tsx` | Mostrar mensaje contextual para checkout pendiente |
+| `src/contexts/SubscriptionContext.tsx` | Detectar y ejecutar checkout pendiente tras login |
 
-```tsx
-{/* Founder Welcome Modal - solo para usuarios Pro */}
-<FounderWelcomeModal />
+## Flujos de Usuario
 
-{/* Upgrade Modal */}
-<UpgradeModal ... />
-```
+### Flujo 1: Usuario no autenticado desde /pricing
+1. Visita `/pricing`
+2. Hace clic en "Empezar con Pro" (anual)
+3. Se guarda `pending_checkout_plan=yearly` en sessionStorage
+4. Redirigido a `/auth?checkout=yearly`
+5. Ve mensaje: "Inicia sesión para continuar con tu suscripción"
+6. Completa login/registro
+7. Redirigido al dashboard
+8. SubscriptionContext detecta la intención pendiente
+9. Abre automáticamente Stripe Checkout
 
-## Flujo de Usuario
+### Flujo 2: Usuario gratuito ya logueado
+1. Accede a `/pricing` o a Configuración > Facturación
+2. Hace clic en "Empezar con Pro"
+3. Se abre Stripe Checkout directamente
+4. Completa el pago
+5. Vuelve con `?subscription=success`
 
-1. Usuario se suscribe a Pro (vía Stripe checkout)
-2. Usuario vuelve al Dashboard
-3. `SubscriptionContext` detecta `isPro = true`
-4. `FounderWelcomeModal` verifica localStorage
-5. Si no hay marca de "visto" → Muestra el modal
-6. Usuario cierra el modal → Se guarda en localStorage
-7. En futuras visitas → El modal no aparece
+## Ventajas del Enfoque
 
-## Consideraciones
-
-- El modal usará los componentes `Dialog` ya existentes en el proyecto
-- Mantendrá el estilo visual consistente con el resto de la aplicación
-- El email será un enlace `mailto:` para fácil acceso
-- Compatible con modo oscuro gracias a las clases de Tailwind existentes
+- **Simple**: No requiere cambios en la edge function ni lógica de "guest checkout"
+- **Seguro**: El pago siempre está vinculado a una cuenta autenticada
+- **UX fluida**: El checkout se abre automáticamente tras el login
+- **Sin duplicados**: Evita crear clientes Stripe huérfanos

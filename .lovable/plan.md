@@ -1,52 +1,118 @@
 
+# Plan: Modal de Bienvenida para Héroes Fundadores
 
-# Plan: Actualizar el Secret STRIPE_SECRET_KEY
+## Resumen
 
-## Diagnóstico Confirmado
+Crear un modal de bienvenida que aparezca **solo una vez** cuando un usuario Pro accede al Dashboard por primera vez. El modal agradecerá a los usuarios fundadores y proporcionará un canal directo de comunicación para feedback.
 
-Los logs de las Edge Functions muestran claramente que se está usando una clave inválida:
+## Diseño del Modal
 
+```text
++------------------------------------------+
+|                    [X]                   |
+|                                          |
+|     🎉 ¡Bienvenido, Héroe Fundador!      |
+|                                          |
+|   Gracias por ayudarnos a construir      |
+|   Crowdfolio. Tu apoyo temprano hace     |
+|   posible este proyecto.                 |
+|                                          |
+|   Si encuentras cualquier error o        |
+|   tienes una sugerencia, escríbeme       |
+|   directamente a:                        |
+|                                          |
+|   📧 soporte@crowdfolio.es               |
+|                                          |
+|          [ ¡Entendido! ]                 |
++------------------------------------------+
 ```
-Invalid API Key provided: mk_1SojX***************dG6x
+
+## Implementacion Tecnica
+
+### 1. Persistencia del Estado "Ya Visto"
+
+Para asegurar que el modal solo aparezca una vez, usaré **`localStorage`** con una clave específica:
+- Clave: `crowdfolio_founder_welcome_shown`
+- Valor: `true` (una vez el usuario cierra el modal)
+
+**Ventajas de localStorage:**
+- Simple y rápido
+- No requiere cambios en la base de datos
+- Persiste entre sesiones del navegador
+- Si el usuario borra localStorage, verá el modal otra vez (comportamiento aceptable)
+
+### 2. Archivos a Crear/Modificar
+
+| Archivo | Acción | Descripción |
+|---------|--------|-------------|
+| `src/components/subscription/FounderWelcomeModal.tsx` | Crear | Nuevo componente del modal |
+| `src/pages/Index.tsx` | Modificar | Integrar el modal en el Dashboard |
+
+### 3. Componente FounderWelcomeModal
+
+```typescript
+// Pseudocódigo del componente
+function FounderWelcomeModal() {
+  const { isPro } = useSubscription();
+  const [open, setOpen] = useState(false);
+  
+  useEffect(() => {
+    // Solo mostrar si:
+    // 1. El usuario es Pro
+    // 2. No ha visto el modal antes (localStorage)
+    const hasSeenWelcome = localStorage.getItem('crowdfolio_founder_welcome_shown');
+    
+    if (isPro && !hasSeenWelcome) {
+      setOpen(true);
+    }
+  }, [isPro]);
+  
+  const handleClose = () => {
+    localStorage.setItem('crowdfolio_founder_welcome_shown', 'true');
+    setOpen(false);
+  };
+  
+  return (
+    <Dialog open={open} onOpenChange={handleClose}>
+      {/* Contenido del modal */}
+    </Dialog>
+  );
+}
 ```
 
-El prefijo `mk_` no es una clave válida de Stripe. Las claves válidas son:
-- **Test**: `sk_test_...`
-- **Live**: `sk_live_...`
+### 4. Elementos Visuales
 
-## Problema Raíz
+- **Icono**: Party Popper (🎉) o similar de Lucide (`PartyPopper`)
+- **Título**: "¡Bienvenido, Héroe Fundador!"
+- **Mensaje**: Texto de agradecimiento con el email destacado
+- **Email**: Link `mailto:` clickeable para facilitar el contacto
+- **Botón**: "¡Entendido!" para cerrar el modal
 
-El secret `STRIPE_SECRET_KEY` almacenado en Lovable Cloud contiene el valor incorrecto `mk_...`. Los redespliegues de las funciones no resuelven el problema porque estas siguen leyendo el mismo secret con el valor erróneo.
+### 5. Integración en Index.tsx
 
-## Solución
+Añadir el componente al final del JSX del Dashboard, junto al `UpgradeModal` existente:
 
-Necesito que introduzcas la clave secreta correcta de Stripe a través del formulario seguro. Te mostraré un botón para actualizarla.
+```tsx
+{/* Founder Welcome Modal - solo para usuarios Pro */}
+<FounderWelcomeModal />
 
-### Clave que debes introducir
+{/* Upgrade Modal */}
+<UpgradeModal ... />
+```
 
-Dependiendo del entorno que quieras usar:
+## Flujo de Usuario
 
-| Entorno | Formato de la clave |
-|---------|---------------------|
-| Test (pruebas) | `sk_test_51Soj...` |
-| Live (producción) | `sk_live_51Soj...` |
+1. Usuario se suscribe a Pro (vía Stripe checkout)
+2. Usuario vuelve al Dashboard
+3. `SubscriptionContext` detecta `isPro = true`
+4. `FounderWelcomeModal` verifica localStorage
+5. Si no hay marca de "visto" → Muestra el modal
+6. Usuario cierra el modal → Se guarda en localStorage
+7. En futuras visitas → El modal no aparece
 
-### Dónde encontrar tu clave
+## Consideraciones
 
-1. Ve a [Stripe Dashboard](https://dashboard.stripe.com/apikeys)
-2. Copia la **Secret Key** (no la Publishable key)
-3. Asegúrate de que empiece por `sk_test_` o `sk_live_`
-
-## Pasos de Implementación
-
-1. Te muestro el botón para actualizar la clave de Stripe
-2. Introduces la clave correcta (`sk_test_...` o `sk_live_...`)
-3. Redespliego las Edge Functions automáticamente
-4. Verificamos que el checkout funciona
-
-## Verificación
-
-Después de actualizar la clave, los logs deberían mostrar:
-- `Found Stripe customer` en lugar del error de API Key
-- El checkout debería abrir correctamente la página de pago de Stripe
-
+- El modal usará los componentes `Dialog` ya existentes en el proyecto
+- Mantendrá el estilo visual consistente con el resto de la aplicación
+- El email será un enlace `mailto:` para fácil acceso
+- Compatible con modo oscuro gracias a las clases de Tailwind existentes

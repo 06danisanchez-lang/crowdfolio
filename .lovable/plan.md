@@ -1,51 +1,27 @@
 
+# Plan: Redesplegar Edge Functions con Nuevos Secrets
 
-# Plan: Habilitar Códigos Promocionales en Stripe Checkout
+## Diagnóstico
+Los logs confirman que las funciones siguen usando la clave inválida `mk_1SojX...` en lugar de la nueva `sk_test_...` que configuraste. Esto ocurre porque las Edge Functions cachean los secrets hasta que se redesplegan.
 
-## Estado Actual
-- El Price ID `price_1SojlIQUWwNtRMNNdCIqvHwD` (plan anual) ya está configurado correctamente
-- Las claves `sk_test` y `pk_test` ya están en los Secrets de Supabase
-- Falta habilitar `allow_promotion_codes` en la sesión de checkout
+## Estado Actual del Código
+- **Price ID**: `price_1SojlIQUWwNtRMNNdCIqvHwD` ✅ Ya configurado en `create-checkout`
+- **allow_promotion_codes**: `true` ✅ Ya habilitado
+- **Variables de entorno**: Usan `STRIPE_SECRET_KEY` correctamente ✅
 
-## Cambio Requerido
+## Acciones a Realizar
 
-### Modificar create-checkout Edge Function
-Añadir la opción `allow_promotion_codes: true` a la creación de la sesión de Stripe:
-
-```typescript
-const session = await stripe.checkout.sessions.create({
-  customer: customerId,
-  customer_email: customerId ? undefined : user.email,
-  line_items: [
-    {
-      price: priceId,
-      quantity: 1,
-    },
-  ],
-  mode: "subscription",
-  allow_promotion_codes: true,  // <-- AÑADIR ESTA LÍNEA
-  success_url: `${origin}/?subscription=success`,
-  cancel_url: `${origin}/?subscription=cancelled`,
-  metadata: {
-    user_id: user.id,
-  },
-});
-```
-
-## Pasos de Implementación
-
-1. Editar `supabase/functions/create-checkout/index.ts`
-2. Añadir `allow_promotion_codes: true` en la configuración de la sesión (línea 82)
-3. Redesplegar la función `create-checkout`
+### 1. Redesplegar todas las Edge Functions de Stripe
+Forzar un redespliegue de las tres funciones para que carguen los nuevos secrets:
+- `check-subscription`
+- `create-checkout`  
+- `customer-portal`
 
 ## Resultado Esperado
-- Al hacer checkout, aparecerá un campo para introducir código promocional
-- El cupón "FOUNDER" (creado en Stripe Dashboard) podrá aplicarse durante el pago
-- Los nuevos secrets `sk_test`/`pk_test` se usarán automáticamente
+Después del redespliegue:
+1. Las funciones usarán `sk_test_...` en lugar de `mk_...`
+2. El checkout mostrará campo para código promocional
+3. Podrás usar el cupón CROWDFOUNDER durante el pago
 
-## Archivos a Modificar
-
-| Archivo | Cambio |
-|---------|--------|
-| `supabase/functions/create-checkout/index.ts` | Añadir `allow_promotion_codes: true` |
-
+## Nota Técnica
+El código no requiere cambios - está correctamente configurado para usar las variables de entorno de Supabase. Solo falta forzar el redespliegue para cargar los nuevos valores de los secrets.

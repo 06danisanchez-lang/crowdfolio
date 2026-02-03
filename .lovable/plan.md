@@ -1,96 +1,161 @@
 
-
-# Plan: Reducir Espaciado y Añadir Logo Central
+# Plan: Botón "Compartir mi Éxito"
 
 ## Objetivo
-Ajustar la landing page para que tenga menos espacio vertical entre secciones, especialmente en el hero, y añadir el logo grande de Crowdfolio centrado como se ve en la imagen de referencia.
+Crear un botón que capture la tarjeta de resumen de rentabilidad como imagen y la comparta usando el menú nativo de compartir del móvil con el texto: "Gestiono mi cartera de Urbanitae con https://crowdfolio.es 🚀"
 
-## Cambios a Realizar
+## Dependencias a Instalar
+- `html-to-image` - Para capturar el DOM como imagen PNG/JPEG
 
-### 1. HeroSection.tsx - Reducir padding y añadir logo central
+## Componentes a Crear
 
-**Cambios:**
-- Reducir el padding vertical de `py-20 md:py-32 lg:py-40` a `py-12 md:py-16 lg:py-20`
-- Añadir el logo de Crowdfolio grande y centrado antes del badge
-- Reducir el `mb-8` del badge a `mb-4`
-- Reducir el `mb-6` del título a `mb-4`
-- Reducir el `mb-10` del subtítulo a `mb-6`
-- Reducir el espacio del mockup de `mt-16 md:mt-20` a `mt-10 md:mt-12`
+### 1. ShareSuccessButton.tsx
+**Ubicación:** `src/components/dashboard/ShareSuccessButton.tsx`
 
-### 2. StatsSection.tsx - Reducir padding
+Botón con las siguientes funcionalidades:
+- Icono de compartir (Share2 de lucide-react)
+- Texto "Compartir mi éxito"
+- Al hacer clic:
+  1. Captura la tarjeta de rentabilidad usando `html-to-image`
+  2. Convierte a blob
+  3. Usa `navigator.share()` con la imagen y el texto predefinido
+  4. Fallback para navegadores sin Web Share API (descarga la imagen)
 
-**Cambios:**
-- Reducir el padding de `py-16 md:py-20` a `py-10 md:py-12`
-
-### 3. ProductShowcase.tsx - Reducir padding
-
-**Cambios:**
-- Reducir los paddings verticales para mantener consistencia
-
-### 4. HowItWorks.tsx - Reducir padding
-
-**Cambios:**
-- Reducir de `py-20 md:py-32` a `py-12 md:py-16`
-
-### 5. CTASection.tsx - Reducir padding
-
-**Cambios:**
-- Reducir de `py-20 md:py-32` a `py-12 md:py-16`
-
-### 6. FeaturesGrid.tsx - Verificar y reducir padding si necesario
-
-### 7. TestimonialCarousel.tsx - Verificar y reducir padding si necesario
-
-## Detalle Visual del Nuevo Hero
-
-```text
-┌─────────────────────────────────────────┐
-│  [Header con logo pequeño]              │
-├─────────────────────────────────────────┤
-│                                         │
-│  ┌─────────────────────────────────┐    │
-│  │  [Logo CROWDFOLIO grande]       │    │  ← NUEVO
-│  │     centrado                    │    │
-│  └─────────────────────────────────┘    │
-│                                         │  ← Menos espacio
-│  ✨ Gestión inteligente de inversiones  │
-│                                         │  ← Menos espacio
-│  Toda tu cartera de Crowdfunding        │
-│  bajo control y lista para la Renta     │
-│                                         │  ← Menos espacio
-│  [Subtítulo]                            │
-│                                         │  ← Menos espacio
-│  [CTA Botones]                          │
-│                                         │
-│  Sin tarjeta de crédito · ...           │
-│                                         │
-│  [Dashboard Mockup]                     │
-│                                         │
-└─────────────────────────────────────────┘
+```typescript
+// Estructura del componente
+interface ShareSuccessButtonProps {
+  targetRef: React.RefObject<HTMLDivElement>;
+  summary: {
+    totalInvested: number;
+    totalReturns: number;
+    averageReturn: number;
+  };
+}
 ```
 
 ## Archivos a Modificar
 
-| Archivo | Cambio Principal |
-|---------|------------------|
-| `src/components/landing/HeroSection.tsx` | Añadir logo central, reducir todos los margins/paddings |
-| `src/components/landing/StatsSection.tsx` | Reducir py de 16/20 a 10/12 |
-| `src/components/landing/ProductShowcase.tsx` | Reducir paddings verticales |
-| `src/components/landing/HowItWorks.tsx` | Reducir py de 20/32 a 12/16 |
-| `src/components/landing/CTASection.tsx` | Reducir py de 20/32 a 12/16 |
-| `src/components/landing/FeaturesGrid.tsx` | Revisar y reducir si necesario |
-| `src/components/landing/TestimonialCarousel.tsx` | Revisar y reducir si necesario |
+### 1. src/pages/Index.tsx
+**Cambios:**
+- Añadir un `useRef` para referenciar la tarjeta a capturar
+- Crear una tarjeta especial "shareable" que contenga los KPIs de rentabilidad
+- Añadir el `ShareSuccessButton` en la cabecera del dashboard junto al botón de añadir inversión
 
-## Resumen de Reducciones de Espaciado
+### 2. Crear componente ShareableCard.tsx (opcional)
+**Ubicación:** `src/components/dashboard/ShareableCard.tsx`
 
-| Sección | Antes | Después |
-|---------|-------|---------|
-| Hero section | `py-20 md:py-32 lg:py-40` | `py-12 md:py-16 lg:py-20` |
-| Badge margin | `mb-8` | `mb-4` |
-| Título margin | `mb-6` | `mb-4` |
-| Subtítulo margin | `mb-10` | `mb-6` |
-| Mockup margin | `mt-16 md:mt-20` | `mt-10 md:mt-12` |
-| Stats | `py-16 md:py-20` | `py-10 md:py-12` |
-| How it works | `py-20 md:py-32` | `py-12 md:py-16` |
-| CTA | `py-20 md:py-32` | `py-12 md:py-16` |
+Una tarjeta diseñada específicamente para ser capturada:
+- Fondo con gradiente atractivo
+- Logo de Crowdfolio
+- Métricas principales (capital invertido, retornos, rentabilidad)
+- Diseño optimizado para compartir en redes sociales
 
+## Flujo de Usuario
+
+```text
+Usuario en Dashboard
+        │
+        ▼
+Clic en "Compartir mi éxito"
+        │
+        ▼
+┌─────────────────────────────┐
+│  html-to-image captura      │
+│  la tarjeta de resumen      │
+└──────────────┬──────────────┘
+               │
+               ▼
+┌─────────────────────────────┐
+│  navigator.share() abre     │
+│  menú nativo de compartir   │
+│  - WhatsApp                 │
+│  - Twitter                  │
+│  - Instagram Stories        │
+│  - etc.                     │
+└─────────────────────────────┘
+```
+
+## Detalles Técnicos
+
+### Captura con html-to-image
+```typescript
+import { toPng } from 'html-to-image';
+
+const captureAndShare = async () => {
+  const node = targetRef.current;
+  if (!node) return;
+  
+  // Capturar como PNG
+  const dataUrl = await toPng(node, { quality: 0.95 });
+  
+  // Convertir a blob para compartir
+  const response = await fetch(dataUrl);
+  const blob = await response.blob();
+  const file = new File([blob], 'mi-exito-crowdfolio.png', { type: 'image/png' });
+  
+  // Usar Web Share API
+  if (navigator.share && navigator.canShare({ files: [file] })) {
+    await navigator.share({
+      title: 'Mi éxito en Crowdfolio',
+      text: 'Gestiono mi cartera de Urbanitae con https://crowdfolio.es 🚀',
+      files: [file]
+    });
+  } else {
+    // Fallback: descargar imagen
+    downloadImage(dataUrl);
+  }
+};
+```
+
+### Web Share API
+- Disponible en móviles (iOS Safari, Android Chrome)
+- Requiere contexto seguro (HTTPS)
+- Fallback para desktop: descarga directa de la imagen
+
+## Diseño de la Tarjeta para Compartir
+
+```text
+┌────────────────────────────────┐
+│  ┌──────┐                      │
+│  │ LOGO │  CROWDFOLIO          │
+│  └──────┘                      │
+├────────────────────────────────┤
+│                                │
+│   💰 Capital Invertido         │
+│      €25,000                   │
+│                                │
+│   📈 Retornos Recibidos        │
+│      €3,250 (+13%)             │
+│                                │
+│   ⭐ Rentabilidad Media        │
+│      8.5% anual                │
+│                                │
+├────────────────────────────────┤
+│  🚀 crowdfolio.es              │
+└────────────────────────────────┘
+```
+
+## Archivos Finales
+
+| Archivo | Acción | Descripción |
+|---------|--------|-------------|
+| `package.json` | Modificar | Añadir `html-to-image` |
+| `src/components/dashboard/ShareSuccessButton.tsx` | Crear | Botón de compartir |
+| `src/components/dashboard/ShareableCard.tsx` | Crear | Tarjeta optimizada para captura |
+| `src/pages/Index.tsx` | Modificar | Integrar botón y refs |
+
+## Consideraciones
+
+### Compatibilidad
+- Web Share API: iOS 12.2+, Android Chrome 61+
+- Desktop: Fallback a descarga directa
+- Mostrar toast de éxito/error según resultado
+
+### UX
+- Loading state mientras se genera la imagen
+- Toast de confirmación al compartir
+- Ocultar botón si no hay inversiones (nada que compartir)
+
+### Privacidad
+- El usuario decide qué compartir
+- No se comparten datos sensibles automáticamente

@@ -12,9 +12,10 @@ const logStep = (step: string, details?: unknown) => {
   console.log(`[CREATE-CHECKOUT] ${step}${detailsStr}`);
 };
 
+// Production Price IDs
 const STRIPE_PRICES = {
-  monthly: 'price_1Sojl3QUWwNtRMNN31qri8TI',
-  yearly: 'price_1SojlIQUWwNtRMNNdCIqvHwD',
+  monthly: 'price_1SwtR9QaxtKtYFASkIW4VGNl',
+  yearly: 'price_1SwsPQQaxtKtYFASptg5zqXs',
 };
 
 serve(async (req) => {
@@ -32,7 +33,7 @@ serve(async (req) => {
 
     const stripeKey = Deno.env.get("STRIPE_SECRET_KEY");
     if (!stripeKey) throw new Error("STRIPE_SECRET_KEY is not set");
-    logStep("Stripe key verified");
+    logStep("Stripe key verified", { keyPrefix: stripeKey.substring(0, 7) });
 
     const authHeader = req.headers.get("Authorization");
     if (!authHeader) throw new Error("No authorization header provided");

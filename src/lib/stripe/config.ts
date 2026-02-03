@@ -1,8 +1,9 @@
 // Stripe configuration for Crowdfolio Pro
+// Production Price IDs
 export const STRIPE_PRICES = {
   monthly: {
-    priceId: 'price_1Sojl3QUWwNtRMNN31qri8TI',
-    productId: 'prod_TmILDXzjeP7RY2',
+    priceId: 'price_1SwtR9QaxtKtYFASkIW4VGNl',
+    productId: 'prod_TnQ71KYMnm4v1a',
     amount: 599, // cents
     currency: 'eur',
     interval: 'month' as const,
@@ -10,8 +11,8 @@ export const STRIPE_PRICES = {
     savings: null,
   },
   yearly: {
-    priceId: 'price_1SojlIQUWwNtRMNNdCIqvHwD',
-    productId: 'prod_TmILACrcuLThuR',
+    priceId: 'price_1SwsPQQaxtKtYFASptg5zqXs',
+    productId: 'prod_TnPWRPKu6evzqz',
     amount: 5900, // cents
     currency: 'eur',
     interval: 'year' as const,

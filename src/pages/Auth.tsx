@@ -1,12 +1,12 @@
 import { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardDescription, CardHeader } from '@/components/ui/card';
-import { Loader2, Mail, Lock, AlertCircle, RefreshCw, ArrowLeft } from 'lucide-react';
+import { Loader2, Mail, Lock, AlertCircle, RefreshCw, ArrowLeft, Crown } from 'lucide-react';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { z } from 'zod';
 import crowdfolioLogo from '@/assets/crowdfolio-logo.png';
@@ -36,6 +36,11 @@ export default function Auth() {
   
   const { signIn, signUp, resetPassword } = useAuth();
   const navigate = useNavigate();
+  const location = useLocation();
+
+  // Detectar checkout pendiente desde URL
+  const params = new URLSearchParams(location.search);
+  const checkoutPlan = params.get('checkout');
 
   const handleResendVerification = async () => {
     if (!email) {
@@ -236,11 +241,22 @@ export default function Auth() {
           <div className="mx-auto mb-4">
             <img src={crowdfolioLogo} alt="Crowdfolio" className="h-10" />
           </div>
-          <CardDescription>
-            {view === 'login' 
-              ? 'Inicia sesión en tu cuenta' 
-              : 'Crea una nueva cuenta'}
-          </CardDescription>
+          {checkoutPlan ? (
+            <div className="space-y-2">
+              <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-full bg-primary/10">
+                <Crown className="h-6 w-6 text-primary" />
+              </div>
+              <CardDescription className="text-base">
+                Inicia sesión para continuar con tu suscripción Pro
+              </CardDescription>
+            </div>
+          ) : (
+            <CardDescription>
+              {view === 'login' 
+                ? 'Inicia sesión en tu cuenta' 
+                : 'Crea una nueva cuenta'}
+            </CardDescription>
+          )}
         </CardHeader>
         <CardContent>
           <form onSubmit={handleSubmit} className="space-y-4">

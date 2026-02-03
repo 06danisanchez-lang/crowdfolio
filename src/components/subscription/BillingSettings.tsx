@@ -6,6 +6,7 @@ import { Badge } from '@/components/ui/badge';
 import { useSubscription } from '@/contexts/SubscriptionContext';
 import { STRIPE_PRICES, formatPrice } from '@/lib/stripe/config';
 import { toast } from '@/hooks/use-toast';
+import { PromoCodeInput } from './PromoCodeInput';
 
 export function BillingSettings() {
   const { subscription, isPro, openCheckout, openCustomerPortal, refreshSubscription, isLoading } = useSubscription();
@@ -212,6 +213,15 @@ export function BillingSettings() {
                 <ArrowRight className="ml-2 h-4 w-4" />
               </Button>
             </div>
+          </CardContent>
+        </Card>
+      )}
+
+      {/* Promo Code Section (only for free users) */}
+      {!isPro && (
+        <Card>
+          <CardContent className="pt-6">
+            <PromoCodeInput />
           </CardContent>
         </Card>
       )}

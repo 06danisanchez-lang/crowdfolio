@@ -1,97 +1,166 @@
 
-Contexto (lo que ya sabemos)
-- El “parpadeo” que describes es un bucle de redirecciones: la URL cambia rápidamente entre rutas.
-- Ocurre en https://crowdfolio.es (sin www) y también en incógnito, así que no parece un problema de caché/localStorage.
-- En este proyecto, el bucle solo puede ocurrir si el estado de autenticación (`user`) está alternando entre “hay sesión” y “no hay sesión”, porque:
-  - `PublicRoute` redirige a `/` cuando `user` existe
-  - `ProtectedRoute` redirige a `/landing` cuando `user` NO existe
-  - Si `user` oscila, la app entra en `/` ⇄ `/landing` (o `/auth`) continuamente.
 
-Hipótesis más probable (a partir del código actual)
-- En `AuthContext.tsx` estamos actualizando `user/session` desde dos vías:
-  1) `supabase.auth.onAuthStateChange(...)` (listener)
-  2) `supabase.auth.getSession()` (carga inicial)
-- En algunos escenarios (especialmente con refresh de token/estado inicial), `onAuthStateChange` puede emitir eventos iniciales/transitorios (p. ej. `INITIAL_SESSION`) y/o cambios de sesión que pisan momentáneamente el estado mientras `getSession()` resuelve. Esto puede provocar alternancia rápida `user=null` ↔ `user!=null`.
-- Dado que el bucle ocurre incluso en incógnito, el síntoma encaja con una inicialización “inestable” del estado auth más que con datos persistidos.
+## Plan: Solución Definitiva del Parpadeo (Enfoque Más Agresivo)
 
-Objetivo
-- Hacer que el estado de autenticación pase de “cargando” a “resuelto” de forma estable (una sola vez), evitando que el listener inicial provoque transiciones transitorias que disparen redirecciones.
-- Añadir un “cortafuegos” contra bucles de redirección para que, si por cualquier razón vuelve a ocurrir, el usuario no quede bloqueado.
+### Diagnóstico Actualizado
 
-Cambios propuestos (implementación)
+Después de una investigación exhaustiva:
+- El código actual tiene los cambios correctos implementados
+- Las pruebas en el navegador controlado funcionan correctamente
+- Sin embargo, el problema persiste en tu entorno
 
-1) Endurecer la inicialización de AuthContext para evitar oscilaciones
-Archivo: `src/contexts/AuthContext.tsx`
+Esto sugiere que hay **condiciones de carrera más sutiles** que solo se manifiestan en ciertos escenarios (como recargas rápidas del HMR, caché parcial, o timing específico del navegador).
 
-1.1. Ignorar el evento `INITIAL_SESSION` del listener (o no permitir que afecte al estado durante bootstrap)
-- Añadir un `useRef` tipo `hasBootstrappedRef` / `initializingRef`.
-- Comportamiento:
-  - El listener `onAuthStateChange` NO debe aplicar `setSession/setUser` cuando `event === "INITIAL_SESSION"` (porque ya resolvemos el estado inicial con `getSession()`).
-  - El listener sí debe seguir procesando eventos reales posteriores: `SIGNED_IN`, `SIGNED_OUT`, `TOKEN_REFRESHED`, etc.
+### Solución Propuesta
 
-1.2. Evitar “setState” redundantes y asegurar orden de bootstrap
-- En `initializeAuth`:
-  - Obtener sesión con `getSession()`
-  - Setear `session/user`
-  - (Opcional) Lanzar `checkAdminRole` sin bloquear la UI (ver punto 1.3)
-  - Marcar `hasBootstrappedRef.current = true`
-  - Finalmente `setIsLoading(false)`
+Implementar un enfoque más robusto con las siguientes mejoras:
 
-1.3. (Recomendado) No bloquear `isLoading` esperando `checkAdminRole`
-- Ahora mismo hacemos `await checkAdminRole()` antes de `setIsLoading(false)`.
-- Para evitar que cualquier lentitud/error de consulta de roles afecte a la estabilidad del arranque:
-  - Mover el `checkAdminRole` a “fire-and-forget” tras setear `session/user` (pero asegurando que si no hay user, isAdmin=false).
-  - Esto reduce la ventana temporal donde pueden darse re-renders/reconciliaciones sensibles.
+#### 1. Bloquear renderizado hasta que `hasBootstrapped` sea true (más estricto)
 
-2) Añadir “cortafuegos” para bucles de redirección en los Route Guards
-Archivo: `src/App.tsx`
+En lugar de solo mostrar un spinner mientras `isLoading` es true, bloquearemos el renderizado de toda la aplicación hasta que el bootstrap esté completo.
 
-2.1. Detectar bucle `/` ⇄ `/landing` (o similares) y bloquear redirección
-- Implementar un contador de redirecciones en `sessionStorage` con ventana temporal (ejemplo):
-  - Guardar `{ lastRedirectAt, count }`
-  - Si se superan N redirecciones en X segundos (por ejemplo 6 en 3s), detener `Navigate` y renderizar una pantalla de fallback.
-- La pantalla de fallback debe:
-  - Explicar “Se ha detectado un bucle de redirección de sesión”
-  - Ofrecer botones:
-    - “Ir a Iniciar sesión” (`/auth`)
-    - “Ir a Landing” (`/landing`)
-    - “Cerrar sesión” (llamar a `signOut()` por si hay un estado corrupto)
-  - (Opcional) incluir un botón “Recargar” que haga `window.location.reload()`.
+**Archivo:** `src/App.tsx`
 
-2.2. (Opcional) Suavizar PublicRoute
-- Como refuerzo, en `PublicRoute` podemos retrasar el redirect a `/` un tick (microtask) o exigir que el estado auth esté “estable” (por ejemplo, que `hasBootstrappedRef` sea true) antes de redirigir.
-- Esto reduce el riesgo de que un `user` momentáneo dispare un redirect prematuro.
+```typescript
+// Añadir un componente envolvente que bloquea todo hasta bootstrap
+function AuthGate({ children }: { children: React.ReactNode }) {
+  const { hasBootstrapped, isLoading } = useAuth();
+  
+  // Bloquear renderizado hasta que bootstrap esté completo
+  if (!hasBootstrapped || isLoading) {
+    return (
+      <div className="flex min-h-screen items-center justify-center">
+        <div className="h-8 w-8 animate-spin rounded-full border-4 border-primary border-t-transparent" />
+      </div>
+    );
+  }
+  
+  return <>{children}</>;
+}
 
-3) Añadir trazas de diagnóstico (temporalmente) para confirmar el origen exacto
-Archivos: `src/contexts/AuthContext.tsx`, `src/App.tsx`
-- Loggear (con `console.debug`) solo en desarrollo o bajo un flag `?debugAuth=1`:
-  - Eventos `onAuthStateChange`: event name + si session viene null/no-null
-  - Transiciones de `isLoading`, `user?.id`
-  - Decisiones de ProtectedRoute/PublicRoute (cuándo redirige y hacia dónde)
-- Esto nos permitirá confirmar si el bucle viene de:
-  - Alternancia real de sesión (SIGNED_IN/SIGNED_OUT repetidos)
-  - O un `INITIAL_SESSION` transitorio mal manejado
-  - O un “hard reload” encubierto (menos probable por tu descripción)
+// Envolver AppRoutes con AuthGate
+const AppRoutes = () => (
+  <AuthGate>
+    <Routes>
+      {/* ... rutas */}
+    </Routes>
+  </AuthGate>
+);
+```
 
-Plan de verificación (pasos concretos)
-1) En incógnito:
-- Abrir `https://crowdfolio.es/`
-- Debe ir a `/landing` y quedarse estable (sin parpadeo)
-- Navegar a `/auth` y comprobar estabilidad
+#### 2. Usar `console.log` en lugar de `console.debug` para diagnósticos
 
-2) Login:
-- Iniciar sesión (email/password o Google)
-- Debe ir a `/` y quedarse estable
-- Cambiar de secciones dentro del dashboard y confirmar que no vuelve a `/landing` solo
+El `console.debug` puede no aparecer en todos los entornos. Cambiaremos temporalmente a `console.log` para mejor visibilidad.
 
-3) Confirmación anti-bucle:
-- Si por cualquier razón la sesión vuelve a oscilar, debe aparecer la pantalla “bucle detectado” en vez de parpadear indefinidamente (esto elimina el bloqueo total).
+#### 3. Añadir un delay mínimo antes de cualquier redirección
 
-Notas técnicas / riesgos
-- Estos cambios no relajan seguridad: `ProtectedRoute` seguirá protegiendo el dashboard; solo añadimos estabilidad y un fallback si hay bucle.
-- Mantendremos el sistema de roles en `user_roles` (no moveremos roles a perfiles) y no usaremos storage del cliente para privilegios.
+Añadir un pequeño delay (50ms) antes de hacer redirecciones para asegurar que el estado esté completamente estabilizado:
 
-Entregables
-- `src/contexts/AuthContext.tsx`: bootstrap estable + listener sin `INITIAL_SESSION` + (opcional) no bloquear UI por roles.
-- `src/App.tsx`: detector de bucle + fallback UI en guards.
-- Logs de diagnóstico controlados por flag (si se aprueba incluirlos temporalmente).
+```typescript
+// En ProtectedRoute y PublicRoute
+const [canRedirect, setCanRedirect] = useState(false);
+
+useEffect(() => {
+  if (hasBootstrapped && !isLoading) {
+    const timer = setTimeout(() => setCanRedirect(true), 50);
+    return () => clearTimeout(timer);
+  }
+}, [hasBootstrapped, isLoading]);
+
+if (!canRedirect) {
+  return <Spinner />;
+}
+```
+
+#### 4. Simplificar la lógica de ProtectedRoute/PublicRoute
+
+Eliminar los refs y useEffects complejos, reemplazándolos con una lógica más simple y predecible:
+
+```typescript
+function ProtectedRoute({ children }: { children: React.ReactNode }) {
+  const { user, hasBootstrapped, isLoading } = useAuth();
+
+  // Siempre esperar a que bootstrap termine
+  if (!hasBootstrapped || isLoading) {
+    return <Spinner />;
+  }
+
+  // Ahora el estado es estable - decidir
+  if (!user) {
+    return <Navigate to="/landing" replace />;
+  }
+
+  return <>{children}</>;
+}
+```
+
+#### 5. Mantener el detector de bucles como red de seguridad
+
+El `RedirectLoopFallback` se mantiene como última línea de defensa, pero con un umbral más bajo (4 redirecciones en 2 segundos).
+
+### Flujo de Datos Propuesto
+
+```text
+Inicio de App
+     │
+     ▼
+┌─────────────────────────────┐
+│  AuthProvider inicializa    │
+│  hasBootstrapped = false    │
+│  isLoading = true           │
+└──────────────┬──────────────┘
+               │
+               ▼
+┌─────────────────────────────┐
+│  AuthGate bloquea           │
+│  renderizado → Spinner      │
+└──────────────┬──────────────┘
+               │
+               ▼
+┌─────────────────────────────┐
+│  getSession() resuelve      │
+│  setUser(), setSession()    │
+│  hasBootstrapped = true     │
+│  isLoading = false          │
+└──────────────┬──────────────┘
+               │
+               ▼
+┌─────────────────────────────┐
+│  AuthGate permite           │
+│  renderizado de Routes      │
+└──────────────┬──────────────┘
+               │
+               ▼
+┌─────────────────────────────┐
+│  ProtectedRoute/PublicRoute │
+│  evalúa user (estable)      │
+│  → Redirige una sola vez    │
+└─────────────────────────────┘
+```
+
+### Archivos a Modificar
+
+1. **`src/contexts/AuthContext.tsx`**
+   - Cambiar `console.debug` a `console.log` (temporalmente)
+   - Asegurar que `hasBootstrapped` se exponga correctamente
+
+2. **`src/App.tsx`**
+   - Añadir componente `AuthGate`
+   - Simplificar `ProtectedRoute` y `PublicRoute`
+   - Reducir umbral del detector de bucles
+
+### Verificación
+
+Una vez implementados los cambios:
+1. Abre el preview en modo incógnito
+2. Observa que aparece el spinner brevemente
+3. Confirma que la página se estabiliza en `/landing` sin parpadeos
+4. Prueba ir a `/auth` y verifica estabilidad
+5. (Opcional) Inicia sesión y verifica acceso al dashboard
+
+### Sección Técnica
+
+**Patrón clave:** El "AuthGate" actúa como un semáforo que bloquea todo el árbol de componentes hasta que el estado de autenticación está definitivamente resuelto. Esto es más robusto que confiar en que cada Route individual maneje su propio estado de carga.
+
+**Trade-off:** Puede añadir unos milisegundos extra al tiempo de carga inicial, pero elimina completamente la posibilidad de ver estados intermedios o parpadeos.
+

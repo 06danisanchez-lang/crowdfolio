@@ -1,27 +1,52 @@
 
-# Plan: Redesplegar Edge Functions con Nuevos Secrets
 
-## Diagnóstico
-Los logs confirman que las funciones siguen usando la clave inválida `mk_1SojX...` en lugar de la nueva `sk_test_...` que configuraste. Esto ocurre porque las Edge Functions cachean los secrets hasta que se redesplegan.
+# Plan: Actualizar el Secret STRIPE_SECRET_KEY
 
-## Estado Actual del Código
-- **Price ID**: `price_1SojlIQUWwNtRMNNdCIqvHwD` ✅ Ya configurado en `create-checkout`
-- **allow_promotion_codes**: `true` ✅ Ya habilitado
-- **Variables de entorno**: Usan `STRIPE_SECRET_KEY` correctamente ✅
+## Diagnóstico Confirmado
 
-## Acciones a Realizar
+Los logs de las Edge Functions muestran claramente que se está usando una clave inválida:
 
-### 1. Redesplegar todas las Edge Functions de Stripe
-Forzar un redespliegue de las tres funciones para que carguen los nuevos secrets:
-- `check-subscription`
-- `create-checkout`  
-- `customer-portal`
+```
+Invalid API Key provided: mk_1SojX***************dG6x
+```
 
-## Resultado Esperado
-Después del redespliegue:
-1. Las funciones usarán `sk_test_...` en lugar de `mk_...`
-2. El checkout mostrará campo para código promocional
-3. Podrás usar el cupón CROWDFOUNDER durante el pago
+El prefijo `mk_` no es una clave válida de Stripe. Las claves válidas son:
+- **Test**: `sk_test_...`
+- **Live**: `sk_live_...`
 
-## Nota Técnica
-El código no requiere cambios - está correctamente configurado para usar las variables de entorno de Supabase. Solo falta forzar el redespliegue para cargar los nuevos valores de los secrets.
+## Problema Raíz
+
+El secret `STRIPE_SECRET_KEY` almacenado en Lovable Cloud contiene el valor incorrecto `mk_...`. Los redespliegues de las funciones no resuelven el problema porque estas siguen leyendo el mismo secret con el valor erróneo.
+
+## Solución
+
+Necesito que introduzcas la clave secreta correcta de Stripe a través del formulario seguro. Te mostraré un botón para actualizarla.
+
+### Clave que debes introducir
+
+Dependiendo del entorno que quieras usar:
+
+| Entorno | Formato de la clave |
+|---------|---------------------|
+| Test (pruebas) | `sk_test_51Soj...` |
+| Live (producción) | `sk_live_51Soj...` |
+
+### Dónde encontrar tu clave
+
+1. Ve a [Stripe Dashboard](https://dashboard.stripe.com/apikeys)
+2. Copia la **Secret Key** (no la Publishable key)
+3. Asegúrate de que empiece por `sk_test_` o `sk_live_`
+
+## Pasos de Implementación
+
+1. Te muestro el botón para actualizar la clave de Stripe
+2. Introduces la clave correcta (`sk_test_...` o `sk_live_...`)
+3. Redespliego las Edge Functions automáticamente
+4. Verificamos que el checkout funciona
+
+## Verificación
+
+Después de actualizar la clave, los logs deberían mostrar:
+- `Found Stripe customer` en lugar del error de API Key
+- El checkout debería abrir correctamente la página de pago de Stripe
+

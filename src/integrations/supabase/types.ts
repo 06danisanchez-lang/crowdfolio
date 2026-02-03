@@ -512,6 +512,30 @@ export type Database = {
           },
         ]
       }
+      used_promo_codes: {
+        Row: {
+          applied_at: string
+          expires_at: string
+          id: string
+          promo_code: string
+          user_id: string
+        }
+        Insert: {
+          applied_at?: string
+          expires_at: string
+          id?: string
+          promo_code: string
+          user_id: string
+        }
+        Update: {
+          applied_at?: string
+          expires_at?: string
+          id?: string
+          promo_code?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       user_platforms: {
         Row: {
           country_code: string

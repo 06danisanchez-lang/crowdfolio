@@ -4,23 +4,34 @@ import { Button } from '@/components/ui/button';
 import AnimatedBackground from './AnimatedBackground';
 import dashboardImg from '@/assets/screenshots/dashboard.jpg';
 
+import crowdfolioLogo from '@/assets/crowdfolio-logo.png';
+
 export default function HeroSection() {
   const navigate = useNavigate();
 
   return (
-    <section className="relative overflow-hidden py-20 md:py-32 lg:py-40">
+    <section className="relative overflow-hidden py-12 md:py-16 lg:py-20">
       <AnimatedBackground />
       
       <div className="container relative mx-auto px-4">
         <div className="mx-auto max-w-4xl text-center">
+          {/* Central Logo */}
+          <div className="mb-6">
+            <img 
+              src={crowdfolioLogo} 
+              alt="Crowdfolio" 
+              className="mx-auto h-24 md:h-32 lg:h-40"
+            />
+          </div>
+
           {/* Badge */}
-          <div className="mb-8 inline-flex items-center gap-2 rounded-full border border-primary/20 bg-primary/10 px-4 py-2 text-sm font-medium text-primary backdrop-blur-sm animate-pulse-soft">
+          <div className="mb-4 inline-flex items-center gap-2 rounded-full border border-primary/20 bg-primary/10 px-4 py-2 text-sm font-medium text-primary backdrop-blur-sm animate-pulse-soft">
             <Sparkles className="h-4 w-4" />
             <span>Gestión inteligente de inversiones</span>
           </div>
 
           {/* Main Headline */}
-          <h1 className="mb-6 text-4xl font-bold tracking-tight md:text-5xl lg:text-6xl xl:text-7xl">
+          <h1 className="mb-4 text-4xl font-bold tracking-tight md:text-5xl lg:text-6xl xl:text-7xl">
             Toda tu cartera de{' '}
             <span className="relative">
               <span className="bg-gradient-to-r from-primary via-blue-500 to-violet-500 bg-clip-text text-transparent">
@@ -52,7 +63,7 @@ export default function HeroSection() {
           </h1>
 
           {/* Subheadline */}
-          <p className="mx-auto mb-10 max-w-2xl text-lg text-muted-foreground md:text-xl">
+          <p className="mx-auto mb-6 max-w-2xl text-lg text-muted-foreground md:text-xl">
             Deja atrás el caos de los Excels. Centraliza tus inversiones de Urbanitae, Wecity, Brickstarter y más en un solo cuadro de mando profesional.
           </p>
 
@@ -83,7 +94,7 @@ export default function HeroSection() {
         </div>
 
         {/* Dashboard Mockup */}
-        <div className="relative mx-auto mt-16 max-w-5xl md:mt-20">
+        <div className="relative mx-auto mt-10 max-w-5xl md:mt-12">
           {/* Glow effect behind */}
           <div className="absolute -inset-4 rounded-3xl bg-gradient-to-r from-primary/20 via-blue-500/20 to-violet-500/20 blur-2xl" />
           

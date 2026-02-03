@@ -23,7 +23,7 @@ export default function HowItWorks() {
   const { ref, isVisible } = useScrollAnimation({ threshold: 0.2 });
 
   return (
-    <section ref={ref} className="border-y bg-muted/30 py-20 md:py-32">
+    <section ref={ref} className="border-y bg-muted/30 py-12 md:py-16">
       <div className="container mx-auto px-4">
         <div 
           className={cn(

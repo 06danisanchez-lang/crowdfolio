@@ -58,7 +58,7 @@ export default function ProductShowcase() {
   }, [api, onSelect]);
 
   return (
-    <section ref={ref} className="py-16 md:py-24 bg-muted/30">
+    <section ref={ref} className="py-12 md:py-16 bg-muted/30">
       <div className="container mx-auto px-4">
         <div 
           className={cn(

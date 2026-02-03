@@ -1,188 +1,96 @@
 
 
-# Plan: Rediseño de Landing Page - Crowdfolio
+# Plan: Reducir Espaciado y Añadir Logo Central
 
 ## Objetivo
-Transformar la landing page actual en una experiencia visual más moderna, atractiva y profesional, inspirada en diseños de fintech actuales con elementos visuales impactantes.
+Ajustar la landing page para que tenga menos espacio vertical entre secciones, especialmente en el hero, y añadir el logo grande de Crowdfolio centrado como se ve en la imagen de referencia.
 
-## Cambios Principales
+## Cambios a Realizar
 
-### 1. Hero Section Renovado
-**Archivo:** `src/pages/Landing.tsx`
+### 1. HeroSection.tsx - Reducir padding y añadir logo central
 
-Mejoras visuales:
-- Fondo con gradiente animado más vibrante (azul/violeta/teal)
-- Elementos decorativos flotantes (círculos blur, patrones geométricos)
-- Mockup del dashboard en perspectiva 3D (en lugar del logo gigante)
-- Badge animado con "pulse" effect
-- Tipografía más grande y con mejor contraste
-- Estadísticas destacadas debajo del CTA (ej: "+500 inversores", "€2M+ gestionados")
+**Cambios:**
+- Reducir el padding vertical de `py-20 md:py-32 lg:py-40` a `py-12 md:py-16 lg:py-20`
+- Añadir el logo de Crowdfolio grande y centrado antes del badge
+- Reducir el `mb-8` del badge a `mb-4`
+- Reducir el `mb-6` del título a `mb-4`
+- Reducir el `mb-10` del subtítulo a `mb-6`
+- Reducir el espacio del mockup de `mt-16 md:mt-20` a `mt-10 md:mt-12`
 
-### 2. Sección de Plataformas Mejorada
-**Archivo:** `src/pages/Landing.tsx`
+### 2. StatsSection.tsx - Reducir padding
 
-- Logos animados en marquee infinito (auto-scroll)
-- Efecto de aparición gradual al hacer scroll
-- Mejor espaciado y diseño visual
+**Cambios:**
+- Reducir el padding de `py-16 md:py-20` a `py-10 md:py-12`
 
-### 3. Features con Iconos Animados
-**Archivo:** `src/pages/Landing.tsx`
+### 3. ProductShowcase.tsx - Reducir padding
 
-- Tarjetas con hover más dinámico (elevación + glow)
-- Iconos con animación sutil al aparecer
-- Layout en grid asimétrico (feature principal más grande)
-- Gradientes de fondo sutiles por tarjeta
+**Cambios:**
+- Reducir los paddings verticales para mantener consistencia
 
-### 4. Nuevo Componente: Stats Counter
-**Archivo:** `src/components/landing/StatsSection.tsx` (nuevo)
+### 4. HowItWorks.tsx - Reducir padding
 
-Sección con números animados:
-- "500+" inversores activos
-- "€2M+" en inversiones gestionadas
-- "15+" plataformas soportadas
-- "4.9/5" valoración media
+**Cambios:**
+- Reducir de `py-20 md:py-32` a `py-12 md:py-16`
 
-### 5. Product Showcase Mejorado
-**Archivo:** `src/components/landing/ProductShowcase.tsx`
+### 5. CTASection.tsx - Reducir padding
 
-- Screenshots con efecto de mockup (marco de dispositivo)
-- Animación de autoplay opcional
-- Transiciones más suaves
-- Thumbnails clickables debajo del carrusel
+**Cambios:**
+- Reducir de `py-20 md:py-32` a `py-12 md:py-16`
 
-### 6. Testimonios Rediseñados
-**Archivo:** `src/pages/Landing.tsx`
+### 6. FeaturesGrid.tsx - Verificar y reducir padding si necesario
 
-- Cards con foto de avatar (placeholder)
-- Diseño en carrusel para móvil
-- Citas con tipografía más grande
-- Efecto de glassmorphism sutil
+### 7. TestimonialCarousel.tsx - Verificar y reducir padding si necesario
 
-### 7. CTA Final con Más Impacto
-**Archivo:** `src/pages/Landing.tsx`
+## Detalle Visual del Nuevo Hero
 
-- Fondo con gradiente vibrante (no sutil)
-- Botón más grande con animación de hover
-- Countdown o urgencia ("Únete a los primeros 500")
-- Iconos de beneficios más visibles
-
-### 8. Footer Ampliado
-**Archivo:** `src/pages/Landing.tsx`
-
-- Links organizados en columnas
-- Iconos de redes sociales
-- Newsletter signup (opcional)
-- Badges de seguridad/confianza
-
-### 9. Animaciones de Scroll
-**Archivo:** `src/pages/Landing.tsx`
-
-- Fade-in al hacer scroll (usando IntersectionObserver)
-- Parallax sutil en el hero
-- Elementos que aparecen escalonados
-
-## Nuevos Componentes a Crear
-
-| Componente | Descripción |
-|------------|-------------|
-| `StatsSection.tsx` | Contadores animados de estadísticas |
-| `AnimatedBackground.tsx` | Fondo con formas geométricas animadas |
-| `FeatureHighlight.tsx` | Feature principal destacada |
-| `TestimonialCarousel.tsx` | Carrusel de testimonios para móvil |
-| `TrustBadges.tsx` | Badges de seguridad y confianza |
-
-## Archivos a Modificar
-
-| Archivo | Cambios |
-|---------|---------|
-| `src/pages/Landing.tsx` | Reestructuración completa del layout y estilos |
-| `src/components/landing/ProductShowcase.tsx` | Mejoras visuales y mockup frame |
-| `src/index.css` | Nuevas animaciones y utilidades CSS |
-| `tailwind.config.ts` | Nuevas animaciones (float, glow, etc.) |
-
-## Paleta de Colores Mejorada
-
-Se mantiene la paleta actual pero se añaden:
-- Gradientes más vibrantes para fondos de sección
-- Efectos de glassmorphism (`backdrop-blur`)
-- Sombras coloreadas (`shadow-primary/20`)
-
-## Diseño Responsive
-
-- Mobile-first con stack vertical
-- Tablet: 2 columnas para features
-- Desktop: Layout completo con animaciones
-
-## Sección Técnica
-
-### Animaciones CSS Nuevas
-```css
-@keyframes float {
-  0%, 100% { transform: translateY(0px); }
-  50% { transform: translateY(-20px); }
-}
-
-@keyframes glow {
-  0%, 100% { box-shadow: 0 0 20px rgba(59, 130, 246, 0.3); }
-  50% { box-shadow: 0 0 40px rgba(59, 130, 246, 0.6); }
-}
-```
-
-### Intersection Observer para Scroll Animations
-```typescript
-// Hook personalizado para animaciones al scroll
-const useScrollAnimation = () => {
-  const ref = useRef(null);
-  const [isVisible, setIsVisible] = useState(false);
-  
-  useEffect(() => {
-    const observer = new IntersectionObserver(
-      ([entry]) => setIsVisible(entry.isIntersecting),
-      { threshold: 0.1 }
-    );
-    if (ref.current) observer.observe(ref.current);
-    return () => observer.disconnect();
-  }, []);
-  
-  return { ref, isVisible };
-};
-```
-
-### Estructura del Hero Renovado
 ```text
 ┌─────────────────────────────────────────┐
-│  [Fondo gradiente animado]              │
+│  [Header con logo pequeño]              │
+├─────────────────────────────────────────┤
 │                                         │
 │  ┌─────────────────────────────────┐    │
-│  │  Badge: "Gestión inteligente"   │    │
+│  │  [Logo CROWDFOLIO grande]       │    │  ← NUEVO
+│  │     centrado                    │    │
 │  └─────────────────────────────────┘    │
+│                                         │  ← Menos espacio
+│  ✨ Gestión inteligente de inversiones  │
+│                                         │  ← Menos espacio
+│  Toda tu cartera de Crowdfunding        │
+│  bajo control y lista para la Renta     │
+│                                         │  ← Menos espacio
+│  [Subtítulo]                            │
+│                                         │  ← Menos espacio
+│  [CTA Botones]                          │
 │                                         │
-│  ┌─────────────────────────────────┐    │
-│  │  H1: Toda tu cartera de         │    │
-│  │  Crowdfunding bajo control      │    │
-│  └─────────────────────────────────┘    │
+│  Sin tarjeta de crédito · ...           │
 │                                         │
-│  ┌──────────────┐ ┌───────────────┐     │
-│  │ CTA Primario │ │ Ver planes    │     │
-│  └──────────────┘ └───────────────┘     │
-│                                         │
-│  ┌─────┐ ┌─────┐ ┌─────┐                │
-│  │500+ │ │ €2M │ │ 15+ │  (Stats)       │
-│  └─────┘ └─────┘ └─────┘                │
-│                                         │
-│  ┌─────────────────────────────────┐    │
-│  │  [Mockup Dashboard 3D]          │    │
-│  └─────────────────────────────────┘    │
+│  [Dashboard Mockup]                     │
 │                                         │
 └─────────────────────────────────────────┘
 ```
 
-## Resultado Esperado
+## Archivos a Modificar
 
-Una landing page que:
-- Transmita profesionalismo y confianza
-- Capture la atención inmediatamente con el hero
-- Guíe al usuario naturalmente hacia el CTA
-- Sea memorable y diferenciadora de competidores
-- Funcione perfectamente en móvil y desktop
+| Archivo | Cambio Principal |
+|---------|------------------|
+| `src/components/landing/HeroSection.tsx` | Añadir logo central, reducir todos los margins/paddings |
+| `src/components/landing/StatsSection.tsx` | Reducir py de 16/20 a 10/12 |
+| `src/components/landing/ProductShowcase.tsx` | Reducir paddings verticales |
+| `src/components/landing/HowItWorks.tsx` | Reducir py de 20/32 a 12/16 |
+| `src/components/landing/CTASection.tsx` | Reducir py de 20/32 a 12/16 |
+| `src/components/landing/FeaturesGrid.tsx` | Revisar y reducir si necesario |
+| `src/components/landing/TestimonialCarousel.tsx` | Revisar y reducir si necesario |
+
+## Resumen de Reducciones de Espaciado
+
+| Sección | Antes | Después |
+|---------|-------|---------|
+| Hero section | `py-20 md:py-32 lg:py-40` | `py-12 md:py-16 lg:py-20` |
+| Badge margin | `mb-8` | `mb-4` |
+| Título margin | `mb-6` | `mb-4` |
+| Subtítulo margin | `mb-10` | `mb-6` |
+| Mockup margin | `mt-16 md:mt-20` | `mt-10 md:mt-12` |
+| Stats | `py-16 md:py-20` | `py-10 md:py-12` |
+| How it works | `py-20 md:py-32` | `py-12 md:py-16` |
+| CTA | `py-20 md:py-32` | `py-12 md:py-16` |
 

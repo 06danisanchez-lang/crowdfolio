@@ -1,9 +1,11 @@
 import { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { Check, X, Crown, Loader2, Sparkles } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { useSubscription } from '@/contexts/SubscriptionContext';
+import { useAuth } from '@/contexts/AuthContext';
 import { STRIPE_PRICES, formatPrice } from '@/lib/stripe/config';
 import { toast } from '@/hooks/use-toast';
 import { cn } from '@/lib/utils';
@@ -20,10 +22,20 @@ const FEATURES = [
 
 export function PricingTable() {
   const { subscription, isPro, openCheckout, openCustomerPortal } = useSubscription();
+  const { user } = useAuth();
+  const navigate = useNavigate();
   const [isLoading, setIsLoading] = useState<'monthly' | 'yearly' | 'portal' | null>(null);
   const [billingPeriod, setBillingPeriod] = useState<'monthly' | 'yearly'>('yearly');
 
   const handleCheckout = async (plan: 'monthly' | 'yearly') => {
+    // Si no está autenticado, guardar intención y redirigir a login
+    if (!user) {
+      sessionStorage.setItem('pending_checkout_plan', plan);
+      navigate(`/auth?checkout=${plan}`);
+      return;
+    }
+
+    // Si está autenticado, proceder con checkout normal
     setIsLoading(plan);
     try {
       await openCheckout(plan);

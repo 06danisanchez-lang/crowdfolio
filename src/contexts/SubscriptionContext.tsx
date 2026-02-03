@@ -100,6 +100,20 @@ export function SubscriptionProvider({ children }: { children: ReactNode }) {
     }
   }, [refreshSubscription]);
 
+  // Handle pending checkout after login
+  useEffect(() => {
+    if (user && session?.access_token) {
+      const pendingPlan = sessionStorage.getItem('pending_checkout_plan');
+      if (pendingPlan && ['monthly', 'yearly'].includes(pendingPlan)) {
+        sessionStorage.removeItem('pending_checkout_plan');
+        // Small delay to ensure dashboard is loaded
+        setTimeout(() => {
+          openCheckout(pendingPlan as 'monthly' | 'yearly').catch(console.error);
+        }, 1500);
+      }
+    }
+  }, [user, session?.access_token]);
+
   const openCheckout = async (plan: 'monthly' | 'yearly') => {
     if (!session?.access_token) {
       throw new Error('User not authenticated');

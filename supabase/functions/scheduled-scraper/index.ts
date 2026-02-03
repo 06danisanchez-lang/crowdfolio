@@ -52,6 +52,19 @@ Deno.serve(async (req) => {
     return new Response(null, { headers: corsHeaders });
   }
 
+  // Verify request is from Supabase cron or has valid service auth
+  const authHeader = req.headers.get('Authorization');
+  const serviceRoleKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY');
+  
+  // Check if Authorization header contains the service role key (used by pg_cron via net.http_post)
+  if (!authHeader || !authHeader.includes(serviceRoleKey || '')) {
+    console.error('Unauthorized access attempt to scheduled-scraper');
+    return new Response(
+      JSON.stringify({ error: 'Unauthorized' }),
+      { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+    );
+  }
+
   try {
     console.log('Starting scheduled opportunity scraper...');
 

@@ -2,7 +2,7 @@ import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { BrowserRouter, Routes, Route, Navigate, useLocation } from "react-router-dom";
+import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import { AuthProvider, useAuth } from "@/contexts/AuthContext";
 import { SubscriptionProvider } from "@/contexts/SubscriptionContext";
 import Index from "./pages/Index";
@@ -11,7 +11,7 @@ import Landing from "./pages/Landing";
 import Pricing from "./pages/Pricing";
 import ResetPassword from "./pages/ResetPassword";
 import NotFound from "./pages/NotFound";
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { AlertTriangle, LogOut, Home, RefreshCw, LogIn } from "lucide-react";
@@ -26,13 +26,13 @@ const isDebugAuth = () => {
 
 const debugLog = (message: string, data?: unknown) => {
   if (isDebugAuth()) {
-    console.debug(`[Router] ${message}`, data ?? '');
+    console.log(`[Router] ${message}`, data ?? '');
   }
 };
 
-// Redirect loop detection constants
-const REDIRECT_LOOP_THRESHOLD = 6; // Max redirects before triggering fallback
-const REDIRECT_LOOP_WINDOW_MS = 3000; // Time window to count redirects
+// Redirect loop detection constants - reduced threshold for faster detection
+const REDIRECT_LOOP_THRESHOLD = 4;
+const REDIRECT_LOOP_WINDOW_MS = 2000;
 
 interface RedirectState {
   count: number;
@@ -55,7 +55,6 @@ function incrementRedirectCount(): boolean {
   const now = Date.now();
   const state = getRedirectState();
   
-  // Reset count if outside the time window
   if (now - state.lastRedirectAt > REDIRECT_LOOP_WINDOW_MS) {
     state.count = 1;
   } else {
@@ -71,7 +70,6 @@ function incrementRedirectCount(): boolean {
   
   debugLog('Redirect count updated', state);
   
-  // Return true if we've exceeded the threshold (loop detected)
   return state.count >= REDIRECT_LOOP_THRESHOLD;
 }
 
@@ -81,6 +79,15 @@ function clearRedirectCount() {
   } catch {
     // Ignore storage errors
   }
+}
+
+// Loading spinner component
+function LoadingSpinner() {
+  return (
+    <div className="flex min-h-screen items-center justify-center">
+      <div className="h-8 w-8 animate-spin rounded-full border-4 border-primary border-t-transparent" />
+    </div>
+  );
 }
 
 // Fallback UI for redirect loop detection
@@ -159,48 +166,61 @@ function RedirectLoopFallback() {
   );
 }
 
+// AuthGate: Blocks ALL rendering until auth is fully bootstrapped
+function AuthGate({ children }: { children: React.ReactNode }) {
+  const { hasBootstrapped, isLoading } = useAuth();
+  
+  debugLog('AuthGate check', { hasBootstrapped, isLoading });
+  
+  if (!hasBootstrapped || isLoading) {
+    debugLog('AuthGate: blocking render, showing spinner');
+    return <LoadingSpinner />;
+  }
+  
+  debugLog('AuthGate: bootstrap complete, rendering children');
+  return <>{children}</>;
+}
+
+// Simplified ProtectedRoute - only runs after AuthGate confirms bootstrap
 function ProtectedRoute({ children }: { children: React.ReactNode }) {
-  const { user, isLoading, hasBootstrapped } = useAuth();
-  const location = useLocation();
-  const hasRedirectedRef = useRef(false);
+  const { user, hasBootstrapped, isLoading } = useAuth();
+  const [canRedirect, setCanRedirect] = useState(false);
+  const hasCheckedLoopRef = useRef(false);
 
-  // Reset redirect tracking when component mounts with a valid user
+  // Small delay to ensure state is fully stabilized
   useEffect(() => {
-    if (user && hasBootstrapped) {
-      clearRedirectCount();
-      hasRedirectedRef.current = false;
+    if (hasBootstrapped && !isLoading) {
+      const timer = setTimeout(() => {
+        debugLog('ProtectedRoute: stabilization complete');
+        setCanRedirect(true);
+      }, 50);
+      return () => clearTimeout(timer);
     }
-  }, [user, hasBootstrapped]);
+  }, [hasBootstrapped, isLoading]);
 
-  if (isLoading) {
-    debugLog('ProtectedRoute: isLoading=true, showing spinner');
-    return (
-      <div className="flex min-h-screen items-center justify-center">
-        <div className="h-8 w-8 animate-spin rounded-full border-4 border-primary border-t-transparent" />
-      </div>
-    );
+  // Reset redirect tracking when user is authenticated
+  useEffect(() => {
+    if (user && canRedirect) {
+      clearRedirectCount();
+    }
+  }, [user, canRedirect]);
+
+  // Still waiting for stabilization
+  if (!canRedirect) {
+    debugLog('ProtectedRoute: waiting for stabilization');
+    return <LoadingSpinner />;
   }
 
-  // Wait for bootstrap to complete before making redirect decisions
-  if (!hasBootstrapped) {
-    debugLog('ProtectedRoute: waiting for bootstrap');
-    return (
-      <div className="flex min-h-screen items-center justify-center">
-        <div className="h-8 w-8 animate-spin rounded-full border-4 border-primary border-t-transparent" />
-      </div>
-    );
-  }
-
+  // No user - need to redirect
   if (!user) {
-    debugLog('ProtectedRoute: no user, checking for redirect loop', { path: location.pathname });
+    debugLog('ProtectedRoute: no user, checking for loop');
     
-    // Check for redirect loop before redirecting
-    if (!hasRedirectedRef.current) {
-      hasRedirectedRef.current = true;
+    if (!hasCheckedLoopRef.current) {
+      hasCheckedLoopRef.current = true;
       const isLoop = incrementRedirectCount();
       
       if (isLoop) {
-        debugLog('ProtectedRoute: REDIRECT LOOP DETECTED, showing fallback');
+        debugLog('ProtectedRoute: REDIRECT LOOP DETECTED');
         return <RedirectLoopFallback />;
       }
     }
@@ -209,52 +229,50 @@ function ProtectedRoute({ children }: { children: React.ReactNode }) {
     return <Navigate to="/landing" replace />;
   }
 
-  debugLog('ProtectedRoute: user authenticated, rendering children');
+  debugLog('ProtectedRoute: user authenticated, rendering');
   return <>{children}</>;
 }
 
+// Simplified PublicRoute - only runs after AuthGate confirms bootstrap
 function PublicRoute({ children }: { children: React.ReactNode }) {
-  const { user, isLoading, hasBootstrapped } = useAuth();
-  const location = useLocation();
-  const hasRedirectedRef = useRef(false);
+  const { user, hasBootstrapped, isLoading } = useAuth();
+  const [canRedirect, setCanRedirect] = useState(false);
+  const hasCheckedLoopRef = useRef(false);
 
-  // Reset redirect tracking when component mounts without a user
+  // Small delay to ensure state is fully stabilized
   useEffect(() => {
-    if (!user && hasBootstrapped) {
-      clearRedirectCount();
-      hasRedirectedRef.current = false;
+    if (hasBootstrapped && !isLoading) {
+      const timer = setTimeout(() => {
+        debugLog('PublicRoute: stabilization complete');
+        setCanRedirect(true);
+      }, 50);
+      return () => clearTimeout(timer);
     }
-  }, [user, hasBootstrapped]);
+  }, [hasBootstrapped, isLoading]);
 
-  if (isLoading) {
-    debugLog('PublicRoute: isLoading=true, showing spinner');
-    return (
-      <div className="flex min-h-screen items-center justify-center">
-        <div className="h-8 w-8 animate-spin rounded-full border-4 border-primary border-t-transparent" />
-      </div>
-    );
+  // Reset redirect tracking when no user
+  useEffect(() => {
+    if (!user && canRedirect) {
+      clearRedirectCount();
+    }
+  }, [user, canRedirect]);
+
+  // Still waiting for stabilization
+  if (!canRedirect) {
+    debugLog('PublicRoute: waiting for stabilization');
+    return <LoadingSpinner />;
   }
 
-  // Wait for bootstrap to complete before making redirect decisions
-  if (!hasBootstrapped) {
-    debugLog('PublicRoute: waiting for bootstrap');
-    return (
-      <div className="flex min-h-screen items-center justify-center">
-        <div className="h-8 w-8 animate-spin rounded-full border-4 border-primary border-t-transparent" />
-      </div>
-    );
-  }
-
+  // User exists - need to redirect to protected area
   if (user) {
-    debugLog('PublicRoute: user exists, checking for redirect loop', { path: location.pathname });
+    debugLog('PublicRoute: user exists, checking for loop');
     
-    // Check for redirect loop before redirecting
-    if (!hasRedirectedRef.current) {
-      hasRedirectedRef.current = true;
+    if (!hasCheckedLoopRef.current) {
+      hasCheckedLoopRef.current = true;
       const isLoop = incrementRedirectCount();
       
       if (isLoop) {
-        debugLog('PublicRoute: REDIRECT LOOP DETECTED, showing fallback');
+        debugLog('PublicRoute: REDIRECT LOOP DETECTED');
         return <RedirectLoopFallback />;
       }
     }
@@ -263,40 +281,42 @@ function PublicRoute({ children }: { children: React.ReactNode }) {
     return <Navigate to="/" replace />;
   }
 
-  debugLog('PublicRoute: no user, rendering children');
+  debugLog('PublicRoute: no user, rendering public content');
   return <>{children}</>;
 }
 
 const AppRoutes = () => (
-  <Routes>
-    <Route 
-      path="/" 
-      element={
-        <ProtectedRoute>
-          <Index />
-        </ProtectedRoute>
-      } 
-    />
-    <Route 
-      path="/landing" 
-      element={
-        <PublicRoute>
-          <Landing />
-        </PublicRoute>
-      } 
-    />
-    <Route 
-      path="/auth" 
-      element={
-        <PublicRoute>
-          <Auth />
-        </PublicRoute>
-      } 
-    />
-    <Route path="/pricing" element={<Pricing onBack={() => window.history.back()} />} />
-    <Route path="/reset-password" element={<ResetPassword />} />
-    <Route path="*" element={<NotFound />} />
-  </Routes>
+  <AuthGate>
+    <Routes>
+      <Route 
+        path="/" 
+        element={
+          <ProtectedRoute>
+            <Index />
+          </ProtectedRoute>
+        } 
+      />
+      <Route 
+        path="/landing" 
+        element={
+          <PublicRoute>
+            <Landing />
+          </PublicRoute>
+        } 
+      />
+      <Route 
+        path="/auth" 
+        element={
+          <PublicRoute>
+            <Auth />
+          </PublicRoute>
+        } 
+      />
+      <Route path="/pricing" element={<Pricing onBack={() => window.history.back()} />} />
+      <Route path="/reset-password" element={<ResetPassword />} />
+      <Route path="*" element={<NotFound />} />
+    </Routes>
+  </AuthGate>
 );
 
 const App = () => (

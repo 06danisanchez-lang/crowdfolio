@@ -11,7 +11,7 @@ const isDebugAuth = () => {
 
 const debugLog = (message: string, data?: unknown) => {
   if (isDebugAuth()) {
-    console.debug(`[Auth] ${message}`, data ?? '');
+    console.log(`[Auth] ${message}`, data ?? '');
   }
 };
 

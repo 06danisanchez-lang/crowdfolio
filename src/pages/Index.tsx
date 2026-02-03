@@ -25,6 +25,7 @@ import { ShareableCard } from '@/components/dashboard/ShareableCard';
 import { ShareSuccessButton } from '@/components/dashboard/ShareSuccessButton';
 import { BillingSettings } from '@/components/subscription/BillingSettings';
 import { UpgradeModal } from '@/components/subscription/UpgradeModal';
+import { FounderWelcomeModal } from '@/components/subscription/FounderWelcomeModal';
 import { AdminPanel } from '@/components/admin/AdminPanel';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { HelpTooltip } from '@/components/ui/help-tooltip';
@@ -392,6 +393,9 @@ const Index = () => {
           <AdminPanel />
         </div>
       )}
+
+      {/* Founder Welcome Modal - solo para usuarios Pro */}
+      <FounderWelcomeModal />
 
       {/* Upgrade Modal */}
       <UpgradeModal

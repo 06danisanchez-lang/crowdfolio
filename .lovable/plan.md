@@ -1,161 +1,41 @@
 
-# Plan: Botón "Compartir mi Éxito"
 
-## Objetivo
-Crear un botón que capture la tarjeta de resumen de rentabilidad como imagen y la comparta usando el menú nativo de compartir del móvil con el texto: "Gestiono mi cartera de Urbanitae con https://crowdfolio.es 🚀"
+# Plan: Configurar Stripe API Keys (Modo Live)
 
-## Dependencias a Instalar
-- `html-to-image` - Para capturar el DOM como imagen PNG/JPEG
+## Estado Actual
+- El proyecto ya tiene el secret `STRIPE_SECRET_KEY` configurado
+- Los Price IDs (`price_1Sojl3QUWwNtRMNN31qri8TI` y `price_1SojlIQUWwNtRMNNdCIqvHwD`) ya están correctamente configurados en el código
+- Las Edge Functions (`create-checkout`, `check-subscription`, `customer-portal`) ya usan `STRIPE_SECRET_KEY`
 
-## Componentes a Crear
+## Acciones a Realizar
 
-### 1. ShareSuccessButton.tsx
-**Ubicación:** `src/components/dashboard/ShareSuccessButton.tsx`
-
-Botón con las siguientes funcionalidades:
-- Icono de compartir (Share2 de lucide-react)
-- Texto "Compartir mi éxito"
-- Al hacer clic:
-  1. Captura la tarjeta de rentabilidad usando `html-to-image`
-  2. Convierte a blob
-  3. Usa `navigator.share()` con la imagen y el texto predefinido
-  4. Fallback para navegadores sin Web Share API (descarga la imagen)
-
-```typescript
-// Estructura del componente
-interface ShareSuccessButtonProps {
-  targetRef: React.RefObject<HTMLDivElement>;
-  summary: {
-    totalInvested: number;
-    totalReturns: number;
-    averageReturn: number;
-  };
-}
+### 1. Actualizar STRIPE_SECRET_KEY
+Actualizaré el secret existente con tu nueva clave live:
+```
+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
 ```
 
-## Archivos a Modificar
+### 2. Publishable Key (Opcional)
+La Publishable Key (`pk_live_...`) es segura para usar en el frontend, pero actualmente tu proyecto no la utiliza directamente ya que todo el procesamiento de Stripe se hace a través de Edge Functions con checkout sessions. No es necesario añadirla.
 
-### 1. src/pages/Index.tsx
-**Cambios:**
-- Añadir un `useRef` para referenciar la tarjeta a capturar
-- Crear una tarjeta especial "shareable" que contenga los KPIs de rentabilidad
-- Añadir el `ShareSuccessButton` en la cabecera del dashboard junto al botón de añadir inversión
+## Verificación Post-Configuración
 
-### 2. Crear componente ShareableCard.tsx (opcional)
-**Ubicación:** `src/components/dashboard/ShareableCard.tsx`
+Después de actualizar la clave, las siguientes funciones usarán el modo live:
+- **create-checkout**: Crear sesiones de pago para suscripciones
+- **check-subscription**: Verificar estado de suscripciones activas
+- **customer-portal**: Permitir a usuarios gestionar su suscripción
 
-Una tarjeta diseñada específicamente para ser capturada:
-- Fondo con gradiente atractivo
-- Logo de Crowdfolio
-- Métricas principales (capital invertido, retornos, rentabilidad)
-- Diseño optimizado para compartir en redes sociales
+## Advertencia de Seguridad
 
-## Flujo de Usuario
+**IMPORTANTE**: Has compartido tu Secret Key live en el chat. Por seguridad, te recomiendo:
+1. Aprobar este plan para que actualice la configuración
+2. Una vez confirmado que funciona, ir a tu [Dashboard de Stripe](https://dashboard.stripe.com/apikeys) y rotar/regenerar la Secret Key
+3. Volver a actualizarla aquí con la nueva clave
 
-```text
-Usuario en Dashboard
-        │
-        ▼
-Clic en "Compartir mi éxito"
-        │
-        ▼
-┌─────────────────────────────┐
-│  html-to-image captura      │
-│  la tarjeta de resumen      │
-└──────────────┬──────────────┘
-               │
-               ▼
-┌─────────────────────────────┐
-│  navigator.share() abre     │
-│  menú nativo de compartir   │
-│  - WhatsApp                 │
-│  - Twitter                  │
-│  - Instagram Stories        │
-│  - etc.                     │
-└─────────────────────────────┘
-```
+## Resumen de Cambios
 
-## Detalles Técnicos
+| Acción | Detalle |
+|--------|---------|
+| Actualizar Secret | `STRIPE_SECRET_KEY` con clave live |
+| Modo | Live (sk_live_*) - Pagos reales |
 
-### Captura con html-to-image
-```typescript
-import { toPng } from 'html-to-image';
-
-const captureAndShare = async () => {
-  const node = targetRef.current;
-  if (!node) return;
-  
-  // Capturar como PNG
-  const dataUrl = await toPng(node, { quality: 0.95 });
-  
-  // Convertir a blob para compartir
-  const response = await fetch(dataUrl);
-  const blob = await response.blob();
-  const file = new File([blob], 'mi-exito-crowdfolio.png', { type: 'image/png' });
-  
-  // Usar Web Share API
-  if (navigator.share && navigator.canShare({ files: [file] })) {
-    await navigator.share({
-      title: 'Mi éxito en Crowdfolio',
-      text: 'Gestiono mi cartera de Urbanitae con https://crowdfolio.es 🚀',
-      files: [file]
-    });
-  } else {
-    // Fallback: descargar imagen
-    downloadImage(dataUrl);
-  }
-};
-```
-
-### Web Share API
-- Disponible en móviles (iOS Safari, Android Chrome)
-- Requiere contexto seguro (HTTPS)
-- Fallback para desktop: descarga directa de la imagen
-
-## Diseño de la Tarjeta para Compartir
-
-```text
-┌────────────────────────────────┐
-│  ┌──────┐                      │
-│  │ LOGO │  CROWDFOLIO          │
-│  └──────┘                      │
-├────────────────────────────────┤
-│                                │
-│   💰 Capital Invertido         │
-│      €25,000                   │
-│                                │
-│   📈 Retornos Recibidos        │
-│      €3,250 (+13%)             │
-│                                │
-│   ⭐ Rentabilidad Media        │
-│      8.5% anual                │
-│                                │
-├────────────────────────────────┤
-│  🚀 crowdfolio.es              │
-└────────────────────────────────┘
-```
-
-## Archivos Finales
-
-| Archivo | Acción | Descripción |
-|---------|--------|-------------|
-| `package.json` | Modificar | Añadir `html-to-image` |
-| `src/components/dashboard/ShareSuccessButton.tsx` | Crear | Botón de compartir |
-| `src/components/dashboard/ShareableCard.tsx` | Crear | Tarjeta optimizada para captura |
-| `src/pages/Index.tsx` | Modificar | Integrar botón y refs |
-
-## Consideraciones
-
-### Compatibilidad
-- Web Share API: iOS 12.2+, Android Chrome 61+
-- Desktop: Fallback a descarga directa
-- Mostrar toast de éxito/error según resultado
-
-### UX
-- Loading state mientras se genera la imagen
-- Toast de confirmación al compartir
-- Ocultar botón si no hay inversiones (nada que compartir)
-
-### Privacidad
-- El usuario decide qué compartir
-- No se comparten datos sensibles automáticamente

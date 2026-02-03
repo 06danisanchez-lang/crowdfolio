@@ -47,10 +47,12 @@ export function TaxDashboard() {
     );
   }
 
-  // Detectar si el ejercicio no tiene datos
+  // Detectar si el ejercicio no tiene datos NI proyecciones
+  const hasProjections = projection.byInvestment.length > 0;
   const hasNoData = summary.grossIncome === 0 && 
                     summary.withholdingsApplied === 0 && 
-                    summary.deductibleExpenses === 0;
+                    summary.deductibleExpenses === 0 &&
+                    !hasProjections;
 
   if (hasNoData) {
     return (

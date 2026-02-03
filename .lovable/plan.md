@@ -1,166 +1,188 @@
 
 
-## Plan: Solución Definitiva del Parpadeo (Enfoque Más Agresivo)
+# Plan: Rediseño de Landing Page - Crowdfolio
 
-### Diagnóstico Actualizado
+## Objetivo
+Transformar la landing page actual en una experiencia visual más moderna, atractiva y profesional, inspirada en diseños de fintech actuales con elementos visuales impactantes.
 
-Después de una investigación exhaustiva:
-- El código actual tiene los cambios correctos implementados
-- Las pruebas en el navegador controlado funcionan correctamente
-- Sin embargo, el problema persiste en tu entorno
+## Cambios Principales
 
-Esto sugiere que hay **condiciones de carrera más sutiles** que solo se manifiestan en ciertos escenarios (como recargas rápidas del HMR, caché parcial, o timing específico del navegador).
+### 1. Hero Section Renovado
+**Archivo:** `src/pages/Landing.tsx`
 
-### Solución Propuesta
+Mejoras visuales:
+- Fondo con gradiente animado más vibrante (azul/violeta/teal)
+- Elementos decorativos flotantes (círculos blur, patrones geométricos)
+- Mockup del dashboard en perspectiva 3D (en lugar del logo gigante)
+- Badge animado con "pulse" effect
+- Tipografía más grande y con mejor contraste
+- Estadísticas destacadas debajo del CTA (ej: "+500 inversores", "€2M+ gestionados")
 
-Implementar un enfoque más robusto con las siguientes mejoras:
+### 2. Sección de Plataformas Mejorada
+**Archivo:** `src/pages/Landing.tsx`
 
-#### 1. Bloquear renderizado hasta que `hasBootstrapped` sea true (más estricto)
+- Logos animados en marquee infinito (auto-scroll)
+- Efecto de aparición gradual al hacer scroll
+- Mejor espaciado y diseño visual
 
-En lugar de solo mostrar un spinner mientras `isLoading` es true, bloquearemos el renderizado de toda la aplicación hasta que el bootstrap esté completo.
+### 3. Features con Iconos Animados
+**Archivo:** `src/pages/Landing.tsx`
 
-**Archivo:** `src/App.tsx`
+- Tarjetas con hover más dinámico (elevación + glow)
+- Iconos con animación sutil al aparecer
+- Layout en grid asimétrico (feature principal más grande)
+- Gradientes de fondo sutiles por tarjeta
 
+### 4. Nuevo Componente: Stats Counter
+**Archivo:** `src/components/landing/StatsSection.tsx` (nuevo)
+
+Sección con números animados:
+- "500+" inversores activos
+- "€2M+" en inversiones gestionadas
+- "15+" plataformas soportadas
+- "4.9/5" valoración media
+
+### 5. Product Showcase Mejorado
+**Archivo:** `src/components/landing/ProductShowcase.tsx`
+
+- Screenshots con efecto de mockup (marco de dispositivo)
+- Animación de autoplay opcional
+- Transiciones más suaves
+- Thumbnails clickables debajo del carrusel
+
+### 6. Testimonios Rediseñados
+**Archivo:** `src/pages/Landing.tsx`
+
+- Cards con foto de avatar (placeholder)
+- Diseño en carrusel para móvil
+- Citas con tipografía más grande
+- Efecto de glassmorphism sutil
+
+### 7. CTA Final con Más Impacto
+**Archivo:** `src/pages/Landing.tsx`
+
+- Fondo con gradiente vibrante (no sutil)
+- Botón más grande con animación de hover
+- Countdown o urgencia ("Únete a los primeros 500")
+- Iconos de beneficios más visibles
+
+### 8. Footer Ampliado
+**Archivo:** `src/pages/Landing.tsx`
+
+- Links organizados en columnas
+- Iconos de redes sociales
+- Newsletter signup (opcional)
+- Badges de seguridad/confianza
+
+### 9. Animaciones de Scroll
+**Archivo:** `src/pages/Landing.tsx`
+
+- Fade-in al hacer scroll (usando IntersectionObserver)
+- Parallax sutil en el hero
+- Elementos que aparecen escalonados
+
+## Nuevos Componentes a Crear
+
+| Componente | Descripción |
+|------------|-------------|
+| `StatsSection.tsx` | Contadores animados de estadísticas |
+| `AnimatedBackground.tsx` | Fondo con formas geométricas animadas |
+| `FeatureHighlight.tsx` | Feature principal destacada |
+| `TestimonialCarousel.tsx` | Carrusel de testimonios para móvil |
+| `TrustBadges.tsx` | Badges de seguridad y confianza |
+
+## Archivos a Modificar
+
+| Archivo | Cambios |
+|---------|---------|
+| `src/pages/Landing.tsx` | Reestructuración completa del layout y estilos |
+| `src/components/landing/ProductShowcase.tsx` | Mejoras visuales y mockup frame |
+| `src/index.css` | Nuevas animaciones y utilidades CSS |
+| `tailwind.config.ts` | Nuevas animaciones (float, glow, etc.) |
+
+## Paleta de Colores Mejorada
+
+Se mantiene la paleta actual pero se añaden:
+- Gradientes más vibrantes para fondos de sección
+- Efectos de glassmorphism (`backdrop-blur`)
+- Sombras coloreadas (`shadow-primary/20`)
+
+## Diseño Responsive
+
+- Mobile-first con stack vertical
+- Tablet: 2 columnas para features
+- Desktop: Layout completo con animaciones
+
+## Sección Técnica
+
+### Animaciones CSS Nuevas
+```css
+@keyframes float {
+  0%, 100% { transform: translateY(0px); }
+  50% { transform: translateY(-20px); }
+}
+
+@keyframes glow {
+  0%, 100% { box-shadow: 0 0 20px rgba(59, 130, 246, 0.3); }
+  50% { box-shadow: 0 0 40px rgba(59, 130, 246, 0.6); }
+}
+```
+
+### Intersection Observer para Scroll Animations
 ```typescript
-// Añadir un componente envolvente que bloquea todo hasta bootstrap
-function AuthGate({ children }: { children: React.ReactNode }) {
-  const { hasBootstrapped, isLoading } = useAuth();
+// Hook personalizado para animaciones al scroll
+const useScrollAnimation = () => {
+  const ref = useRef(null);
+  const [isVisible, setIsVisible] = useState(false);
   
-  // Bloquear renderizado hasta que bootstrap esté completo
-  if (!hasBootstrapped || isLoading) {
-    return (
-      <div className="flex min-h-screen items-center justify-center">
-        <div className="h-8 w-8 animate-spin rounded-full border-4 border-primary border-t-transparent" />
-      </div>
+  useEffect(() => {
+    const observer = new IntersectionObserver(
+      ([entry]) => setIsVisible(entry.isIntersecting),
+      { threshold: 0.1 }
     );
-  }
+    if (ref.current) observer.observe(ref.current);
+    return () => observer.disconnect();
+  }, []);
   
-  return <>{children}</>;
-}
-
-// Envolver AppRoutes con AuthGate
-const AppRoutes = () => (
-  <AuthGate>
-    <Routes>
-      {/* ... rutas */}
-    </Routes>
-  </AuthGate>
-);
+  return { ref, isVisible };
+};
 ```
 
-#### 2. Usar `console.log` en lugar de `console.debug` para diagnósticos
-
-El `console.debug` puede no aparecer en todos los entornos. Cambiaremos temporalmente a `console.log` para mejor visibilidad.
-
-#### 3. Añadir un delay mínimo antes de cualquier redirección
-
-Añadir un pequeño delay (50ms) antes de hacer redirecciones para asegurar que el estado esté completamente estabilizado:
-
-```typescript
-// En ProtectedRoute y PublicRoute
-const [canRedirect, setCanRedirect] = useState(false);
-
-useEffect(() => {
-  if (hasBootstrapped && !isLoading) {
-    const timer = setTimeout(() => setCanRedirect(true), 50);
-    return () => clearTimeout(timer);
-  }
-}, [hasBootstrapped, isLoading]);
-
-if (!canRedirect) {
-  return <Spinner />;
-}
-```
-
-#### 4. Simplificar la lógica de ProtectedRoute/PublicRoute
-
-Eliminar los refs y useEffects complejos, reemplazándolos con una lógica más simple y predecible:
-
-```typescript
-function ProtectedRoute({ children }: { children: React.ReactNode }) {
-  const { user, hasBootstrapped, isLoading } = useAuth();
-
-  // Siempre esperar a que bootstrap termine
-  if (!hasBootstrapped || isLoading) {
-    return <Spinner />;
-  }
-
-  // Ahora el estado es estable - decidir
-  if (!user) {
-    return <Navigate to="/landing" replace />;
-  }
-
-  return <>{children}</>;
-}
-```
-
-#### 5. Mantener el detector de bucles como red de seguridad
-
-El `RedirectLoopFallback` se mantiene como última línea de defensa, pero con un umbral más bajo (4 redirecciones en 2 segundos).
-
-### Flujo de Datos Propuesto
-
+### Estructura del Hero Renovado
 ```text
-Inicio de App
-     │
-     ▼
-┌─────────────────────────────┐
-│  AuthProvider inicializa    │
-│  hasBootstrapped = false    │
-│  isLoading = true           │
-└──────────────┬──────────────┘
-               │
-               ▼
-┌─────────────────────────────┐
-│  AuthGate bloquea           │
-│  renderizado → Spinner      │
-└──────────────┬──────────────┘
-               │
-               ▼
-┌─────────────────────────────┐
-│  getSession() resuelve      │
-│  setUser(), setSession()    │
-│  hasBootstrapped = true     │
-│  isLoading = false          │
-└──────────────┬──────────────┘
-               │
-               ▼
-┌─────────────────────────────┐
-│  AuthGate permite           │
-│  renderizado de Routes      │
-└──────────────┬──────────────┘
-               │
-               ▼
-┌─────────────────────────────┐
-│  ProtectedRoute/PublicRoute │
-│  evalúa user (estable)      │
-│  → Redirige una sola vez    │
-└─────────────────────────────┘
+┌─────────────────────────────────────────┐
+│  [Fondo gradiente animado]              │
+│                                         │
+│  ┌─────────────────────────────────┐    │
+│  │  Badge: "Gestión inteligente"   │    │
+│  └─────────────────────────────────┘    │
+│                                         │
+│  ┌─────────────────────────────────┐    │
+│  │  H1: Toda tu cartera de         │    │
+│  │  Crowdfunding bajo control      │    │
+│  └─────────────────────────────────┘    │
+│                                         │
+│  ┌──────────────┐ ┌───────────────┐     │
+│  │ CTA Primario │ │ Ver planes    │     │
+│  └──────────────┘ └───────────────┘     │
+│                                         │
+│  ┌─────┐ ┌─────┐ ┌─────┐                │
+│  │500+ │ │ €2M │ │ 15+ │  (Stats)       │
+│  └─────┘ └─────┘ └─────┘                │
+│                                         │
+│  ┌─────────────────────────────────┐    │
+│  │  [Mockup Dashboard 3D]          │    │
+│  └─────────────────────────────────┘    │
+│                                         │
+└─────────────────────────────────────────┘
 ```
 
-### Archivos a Modificar
+## Resultado Esperado
 
-1. **`src/contexts/AuthContext.tsx`**
-   - Cambiar `console.debug` a `console.log` (temporalmente)
-   - Asegurar que `hasBootstrapped` se exponga correctamente
-
-2. **`src/App.tsx`**
-   - Añadir componente `AuthGate`
-   - Simplificar `ProtectedRoute` y `PublicRoute`
-   - Reducir umbral del detector de bucles
-
-### Verificación
-
-Una vez implementados los cambios:
-1. Abre el preview en modo incógnito
-2. Observa que aparece el spinner brevemente
-3. Confirma que la página se estabiliza en `/landing` sin parpadeos
-4. Prueba ir a `/auth` y verifica estabilidad
-5. (Opcional) Inicia sesión y verifica acceso al dashboard
-
-### Sección Técnica
-
-**Patrón clave:** El "AuthGate" actúa como un semáforo que bloquea todo el árbol de componentes hasta que el estado de autenticación está definitivamente resuelto. Esto es más robusto que confiar en que cada Route individual maneje su propio estado de carga.
-
-**Trade-off:** Puede añadir unos milisegundos extra al tiempo de carga inicial, pero elimina completamente la posibilidad de ver estados intermedios o parpadeos.
+Una landing page que:
+- Transmita profesionalismo y confianza
+- Capture la atención inmediatamente con el hero
+- Guíe al usuario naturalmente hacia el CTA
+- Sea memorable y diferenciadora de competidores
+- Funcione perfectamente en móvil y desktop
 

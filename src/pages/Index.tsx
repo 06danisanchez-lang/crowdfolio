@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { Wallet, TrendingUp, PiggyBank, CalendarClock, Target, Heart, Search as SearchIcon, Plus } from 'lucide-react';
 import { useInvestments } from '@/hooks/useInvestments';
 import { useAlerts } from '@/hooks/useAlerts';
@@ -21,6 +21,8 @@ import { ScrapeButton } from '@/components/opportunities/ScrapeButton';
 import { AlertSettings } from '@/components/opportunities/AlertSettings';
 import { PlatformList } from '@/components/platforms/PlatformList';
 import { TaxDashboard } from '@/components/tax/TaxDashboard';
+import { ShareableCard } from '@/components/dashboard/ShareableCard';
+import { ShareSuccessButton } from '@/components/dashboard/ShareSuccessButton';
 import { BillingSettings } from '@/components/subscription/BillingSettings';
 import { UpgradeModal } from '@/components/subscription/UpgradeModal';
 import { AdminPanel } from '@/components/admin/AdminPanel';
@@ -36,6 +38,7 @@ const Index = () => {
   const [selectedOpportunity, setSelectedOpportunity] = useState<Opportunity | null>(null);
   const [upgradeModalOpen, setUpgradeModalOpen] = useState(false);
   const [upgradeFeature, setUpgradeFeature] = useState('default');
+  const shareableCardRef = useRef<HTMLDivElement>(null);
   
   const { isPro, subscription } = useSubscription();
   
@@ -122,11 +125,29 @@ const Index = () => {
               <h1 className="text-3xl font-bold">Dashboard</h1>
               <p className="text-muted-foreground">Resumen de tus inversiones inmobiliarias</p>
             </div>
-            <InvestmentForm 
-              onSubmit={addInvestment}
-              investmentCount={investments.length}
-              isPro={isPro}
-              onProRequired={() => openUpgradeModal('unlimited_investments')}
+            <div className="flex flex-wrap gap-2">
+              {investments.length > 0 && (
+                <ShareSuccessButton 
+                  targetRef={shareableCardRef}
+                  disabled={investments.length === 0}
+                />
+              )}
+              <InvestmentForm 
+                onSubmit={addInvestment}
+                investmentCount={investments.length}
+                isPro={isPro}
+                onProRequired={() => openUpgradeModal('unlimited_investments')}
+              />
+            </div>
+          </div>
+
+          {/* Tarjeta oculta para captura - renderizada fuera de la vista */}
+          <div className="fixed -left-[9999px] -top-[9999px]" aria-hidden="true">
+            <ShareableCard
+              ref={shareableCardRef}
+              totalInvested={summary.totalInvested}
+              totalReturns={summary.totalReturns}
+              averageReturn={summary.averageReturn}
             />
           </div>
 

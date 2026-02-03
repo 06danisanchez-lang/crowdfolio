@@ -1,7 +1,19 @@
-import { createContext, useContext, useEffect, useState, useCallback, ReactNode } from 'react';
-import { User, Session } from '@supabase/supabase-js';
+import { createContext, useContext, useEffect, useState, useCallback, useRef, ReactNode } from 'react';
+import { User, Session, AuthChangeEvent } from '@supabase/supabase-js';
 import { supabase } from '@/integrations/supabase/client';
 import { lovable } from '@/integrations/lovable';
+
+// Debug flag - enable with ?debugAuth=1 in URL
+const isDebugAuth = () => {
+  if (typeof window === 'undefined') return false;
+  return new URLSearchParams(window.location.search).has('debugAuth');
+};
+
+const debugLog = (message: string, data?: unknown) => {
+  if (isDebugAuth()) {
+    console.debug(`[Auth] ${message}`, data ?? '');
+  }
+};
 
 /**
  * Devuelve el origen canónico para redirects de autenticación.
@@ -25,6 +37,7 @@ interface AuthContextType {
   session: Session | null;
   isLoading: boolean;
   isAdmin: boolean;
+  hasBootstrapped: boolean;
   signIn: (email: string, password: string) => Promise<{ error: Error | null }>;
   signUp: (email: string, password: string) => Promise<{ error: Error | null }>;
   signInWithGoogle: () => Promise<{ error: Error | null }>;
@@ -40,9 +53,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [session, setSession] = useState<Session | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [isAdmin, setIsAdmin] = useState(false);
+  const [hasBootstrapped, setHasBootstrapped] = useState(false);
+  
+  // Ref to track if initial bootstrap has completed
+  const hasBootstrappedRef = useRef(false);
 
   const checkAdminRole = useCallback(async (userId: string) => {
     try {
+      debugLog('Checking admin role for user', userId);
       const { data, error } = await supabase
         .from('user_roles')
         .select('role')
@@ -56,7 +74,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         return;
       }
 
-      setIsAdmin(!!data);
+      const isAdminResult = !!data;
+      debugLog('Admin role result', isAdminResult);
+      setIsAdmin(isAdminResult);
     } catch (error) {
       console.error('Error checking admin role:', error);
       setIsAdmin(false);
@@ -66,38 +86,76 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     let isMounted = true;
 
-    // Listener para cambios POSTERIORES (NO controla isLoading)
+    debugLog('Setting up auth listener and initializing');
+
+    // Listener para cambios POSTERIORES al bootstrap
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
-      (event, session) => {
+      (event: AuthChangeEvent, newSession) => {
         if (!isMounted) return;
         
-        setSession(session);
-        setUser(session?.user ?? null);
+        debugLog('onAuthStateChange event', { event, hasSession: !!newSession, hasBootstrapped: hasBootstrappedRef.current });
 
-        // Fire and forget - no await, no setIsLoading
-        if (session?.user) {
-          checkAdminRole(session.user.id);
+        // CRITICAL: Ignore INITIAL_SESSION - we handle initial state via getSession()
+        // This prevents the race condition where INITIAL_SESSION fires before/after getSession()
+        if (event === 'INITIAL_SESSION') {
+          debugLog('Ignoring INITIAL_SESSION event - handled by getSession()');
+          return;
+        }
+
+        // For all other events (SIGNED_IN, SIGNED_OUT, TOKEN_REFRESHED, etc.)
+        // Update state normally
+        debugLog('Processing auth event', { event, userId: newSession?.user?.id });
+        
+        setSession(newSession);
+        setUser(newSession?.user ?? null);
+
+        // Fire and forget admin check - don't block or affect isLoading
+        if (newSession?.user) {
+          checkAdminRole(newSession.user.id);
         } else {
           setIsAdmin(false);
         }
       }
     );
 
-    // CARGA INICIAL (controla isLoading)
+    // CARGA INICIAL - única fuente de verdad para el primer estado
     const initializeAuth = async () => {
       try {
-        const { data: { session } } = await supabase.auth.getSession();
+        debugLog('Starting initializeAuth');
+        
+        const { data: { session: initialSession }, error } = await supabase.auth.getSession();
+        
+        if (error) {
+          console.error('Error getting session:', error);
+        }
+        
         if (!isMounted) return;
 
-        setSession(session);
-        setUser(session?.user ?? null);
+        debugLog('getSession result', { hasSession: !!initialSession, userId: initialSession?.user?.id });
 
-        // Esperar checkAdminRole ANTES de setIsLoading(false)
-        if (session?.user) {
-          await checkAdminRole(session.user.id);
+        setSession(initialSession);
+        setUser(initialSession?.user ?? null);
+
+        // Fire and forget admin check - don't await, don't block loading
+        if (initialSession?.user) {
+          checkAdminRole(initialSession.user.id);
+        } else {
+          setIsAdmin(false);
         }
+
+        // Mark bootstrap as complete BEFORE setting isLoading to false
+        hasBootstrappedRef.current = true;
+        setHasBootstrapped(true);
+        
+        debugLog('Bootstrap complete, setting isLoading to false');
+      } catch (error) {
+        console.error('Error in initializeAuth:', error);
       } finally {
-        if (isMounted) setIsLoading(false);
+        if (isMounted) {
+          hasBootstrappedRef.current = true;
+          setHasBootstrapped(true);
+          setIsLoading(false);
+        }
       }
     };
 
@@ -174,7 +232,19 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   };
 
   return (
-    <AuthContext.Provider value={{ user, session, isLoading, isAdmin, signIn, signUp, signInWithGoogle, signOut, resetPassword, updatePassword }}>
+    <AuthContext.Provider value={{ 
+      user, 
+      session, 
+      isLoading, 
+      isAdmin, 
+      hasBootstrapped,
+      signIn, 
+      signUp, 
+      signInWithGoogle, 
+      signOut, 
+      resetPassword, 
+      updatePassword 
+    }}>
       {children}
     </AuthContext.Provider>
   );

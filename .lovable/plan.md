@@ -1,41 +1,51 @@
 
 
-# Plan: Configurar Stripe API Keys (Modo Live)
+# Plan: Habilitar Códigos Promocionales en Stripe Checkout
 
 ## Estado Actual
-- El proyecto ya tiene el secret `STRIPE_SECRET_KEY` configurado
-- Los Price IDs (`price_1Sojl3QUWwNtRMNN31qri8TI` y `price_1SojlIQUWwNtRMNNdCIqvHwD`) ya están correctamente configurados en el código
-- Las Edge Functions (`create-checkout`, `check-subscription`, `customer-portal`) ya usan `STRIPE_SECRET_KEY`
+- El Price ID `price_1SojlIQUWwNtRMNNdCIqvHwD` (plan anual) ya está configurado correctamente
+- Las claves `sk_test` y `pk_test` ya están en los Secrets de Supabase
+- Falta habilitar `allow_promotion_codes` en la sesión de checkout
 
-## Acciones a Realizar
+## Cambio Requerido
 
-### 1. Actualizar STRIPE_SECRET_KEY
-Actualizaré el secret existente con tu nueva clave live:
+### Modificar create-checkout Edge Function
+Añadir la opción `allow_promotion_codes: true` a la creación de la sesión de Stripe:
+
+```typescript
+const session = await stripe.checkout.sessions.create({
+  customer: customerId,
+  customer_email: customerId ? undefined : user.email,
+  line_items: [
+    {
+      price: priceId,
+      quantity: 1,
+    },
+  ],
+  mode: "subscription",
+  allow_promotion_codes: true,  // <-- AÑADIR ESTA LÍNEA
+  success_url: `${origin}/?subscription=success`,
+  cancel_url: `${origin}/?subscription=cancelled`,
+  metadata: {
+    user_id: user.id,
+  },
+});
 ```
-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
-```
 
-### 2. Publishable Key (Opcional)
-La Publishable Key (`pk_live_...`) es segura para usar en el frontend, pero actualmente tu proyecto no la utiliza directamente ya que todo el procesamiento de Stripe se hace a través de Edge Functions con checkout sessions. No es necesario añadirla.
+## Pasos de Implementación
 
-## Verificación Post-Configuración
+1. Editar `supabase/functions/create-checkout/index.ts`
+2. Añadir `allow_promotion_codes: true` en la configuración de la sesión (línea 82)
+3. Redesplegar la función `create-checkout`
 
-Después de actualizar la clave, las siguientes funciones usarán el modo live:
-- **create-checkout**: Crear sesiones de pago para suscripciones
-- **check-subscription**: Verificar estado de suscripciones activas
-- **customer-portal**: Permitir a usuarios gestionar su suscripción
+## Resultado Esperado
+- Al hacer checkout, aparecerá un campo para introducir código promocional
+- El cupón "FOUNDER" (creado en Stripe Dashboard) podrá aplicarse durante el pago
+- Los nuevos secrets `sk_test`/`pk_test` se usarán automáticamente
 
-## Advertencia de Seguridad
+## Archivos a Modificar
 
-**IMPORTANTE**: Has compartido tu Secret Key live en el chat. Por seguridad, te recomiendo:
-1. Aprobar este plan para que actualice la configuración
-2. Una vez confirmado que funciona, ir a tu [Dashboard de Stripe](https://dashboard.stripe.com/apikeys) y rotar/regenerar la Secret Key
-3. Volver a actualizarla aquí con la nueva clave
-
-## Resumen de Cambios
-
-| Acción | Detalle |
-|--------|---------|
-| Actualizar Secret | `STRIPE_SECRET_KEY` con clave live |
-| Modo | Live (sk_live_*) - Pagos reales |
+| Archivo | Cambio |
+|---------|--------|
+| `supabase/functions/create-checkout/index.ts` | Añadir `allow_promotion_codes: true` |
 

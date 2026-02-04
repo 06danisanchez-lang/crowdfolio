@@ -131,7 +131,12 @@ export function SubscriptionProvider({ children }: { children: ReactNode }) {
     }
 
     if (data?.url) {
-      window.open(data.url, '_blank');
+      // Try popup first, fallback to redirect if blocked
+      const popup = window.open(data.url, '_blank');
+      if (!popup || popup.closed || typeof popup.closed === 'undefined') {
+        // Popup was blocked, redirect instead
+        window.location.href = data.url;
+      }
     } else {
       throw new Error('No checkout URL returned');
     }
@@ -153,7 +158,11 @@ export function SubscriptionProvider({ children }: { children: ReactNode }) {
     }
 
     if (data?.url) {
-      window.open(data.url, '_blank');
+      // Try popup first, fallback to redirect if blocked
+      const popup = window.open(data.url, '_blank');
+      if (!popup || popup.closed || typeof popup.closed === 'undefined') {
+        window.location.href = data.url;
+      }
     } else {
       throw new Error('No portal URL returned');
     }

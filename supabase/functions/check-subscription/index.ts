@@ -12,10 +12,10 @@ const logStep = (step: string, details?: unknown) => {
   console.log(`[CHECK-SUBSCRIPTION] ${step}${detailsStr}`);
 };
 
-// Product IDs from Stripe
-const STRIPE_PRODUCTS = {
-  monthly: 'prod_TmILDXzjeP7RY2',
-  yearly: 'prod_TmILACrcuLThuR',
+// Price IDs from Stripe (more reliable than product IDs)
+const STRIPE_PRICES = {
+  monthly: 'price_1SwtR9QaxtKtYFASkIW4VGNl',
+  yearly: 'price_1SwsPQQaxtKtYFASptg5zqXs',
 };
 
 serve(async (req) => {
@@ -34,7 +34,7 @@ serve(async (req) => {
 
     const stripeKey = Deno.env.get("STRIPE_SECRET_KEY");
     if (!stripeKey) throw new Error("STRIPE_SECRET_KEY is not set");
-    logStep("Stripe key verified");
+    logStep("Stripe key verified", { keyPrefix: stripeKey.substring(0, 7) });
 
     const authHeader = req.headers.get("Authorization");
     if (!authHeader) throw new Error("No authorization header provided");
@@ -85,14 +85,15 @@ serve(async (req) => {
       logStep("Active subscription found", { subscriptionId: subscription.id, endDate: subscriptionEnd });
       
       productId = subscription.items.data[0].price.product as string;
+      const priceId = subscription.items.data[0].price.id;
       
-      // Determine plan type
-      if (productId === STRIPE_PRODUCTS.monthly) {
+      // Determine plan type by Price ID (more reliable than product ID)
+      if (priceId === STRIPE_PRICES.monthly) {
         plan = 'monthly';
-      } else if (productId === STRIPE_PRODUCTS.yearly) {
+      } else if (priceId === STRIPE_PRICES.yearly) {
         plan = 'yearly';
       }
-      logStep("Determined subscription plan", { productId, plan });
+      logStep("Determined subscription plan", { priceId, productId, plan });
     } else {
       logStep("No active subscription found");
     }

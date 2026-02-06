@@ -3,6 +3,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import { useAdminDashboard, type AdminUser } from '@/hooks/useAdminDashboard';
 import { useNavigate, Navigate } from 'react-router-dom';
 import { Shield, Users, Crown, TrendingUp, ArrowLeft, Eye } from 'lucide-react';
+import AdminAnalyticsSection from '@/components/admin/AdminAnalyticsSection';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -131,6 +132,9 @@ export default function AdminDashboard() {
             </Card>
           </div>
         )}
+
+        {/* Analytics Section */}
+        {!isLoading && data && <AdminAnalyticsSection data={data} />}
 
         {/* Error state */}
         {error && (

@@ -1,75 +1,78 @@
 
 
-## Corregir: Usuarios no aparecen en el Admin Dashboard
+## Seccion de Analytics para el Admin Dashboard
 
-### Diagnostico
+### Resumen
 
-He investigado la base de datos y encontrado la causa raiz:
+Se anadira una seccion visual de "Analytics" entre las tarjetas KPI y la tabla de usuarios en `/admin-dashboard`. Contendra tres graficos profesionales y responsive usando Recharts (ya instalado en el proyecto).
 
-**La tabla `profiles` esta vacia** (0 filas), a pesar de que existen **4 usuarios registrados** en el sistema de autenticacion:
+### Datos disponibles
 
-| Email | User ID |
-|---|---|
-| jesvivlc@gmail.com | e228e62b-... |
-| prueba@gmail.com | e9390a4f-... |
-| anllmar32@gmail.com | 0cbc1ef4-... |
-| 80brunosanchez@gmail.com | b8de563c-... |
+Antes de implementar, es importante saber que:
+- La tabla `investments` no tiene un campo `investment_type`. La clasificacion Lending/Equity solo existe en la tabla `assets` (campo `asset_type`). El grafico de Asset Allocation usara los datos de `assets`.
+- La tabla `investments` si tiene datos reales (6 registros en plataformas como Urbanitae, Wecity, etc.). Se combinaran ambas tablas para el Market Share.
+- La tabla `tax_years` esta actualmente vacia, por lo que la metrica de retencion mostrara 0% con un estado vacio elegante.
 
-El hook `useAdminDashboard` construye la lista de usuarios a partir de la tabla `profiles`. Al estar vacia, el dashboard muestra 0 usuarios.
+### Los 3 graficos
 
-**Causa**: La funcion `handle_new_user()` existe en la base de datos, pero el **trigger** que deberia ejecutarla automaticamente al registrarse un usuario **no esta creado**. Por eso los perfiles nunca se insertaron.
+**1. Grafico de Tarta - Asset Allocation (Lending vs Equity)**
+- Fuente: tabla `assets`, campo `asset_type`
+- Muestra distribucion porcentual del volumen entre LENDING y EQUITY
+- Colores: azul para Lending, violeta para Equity
+- Estado vacio: mensaje "Sin activos clasificados" con icono
 
-Adicionalmente, solo 2 de los 4 usuarios tienen registro en la tabla `subscriptions`, lo que significa que el trigger `handle_new_user_subscription()` tampoco esta conectado.
+**2. Grafico de Barras - Market Share por Plataforma**
+- Fuente: combinacion de `investments` (platform/custom_platform_name) y `assets` (platform_name)
+- Barras horizontales ordenadas de mayor a menor volumen
+- Colores con gradiente profesional
+- Estado vacio: mensaje "Sin inversiones registradas"
 
-### Solucion (2 pasos)
+**3. Metrica de Retencion - Actividad Fiscal**
+- Calculo: (usuarios con al menos 1 registro en `tax_years`) / (total usuarios) x 100
+- Indicador circular tipo gauge con porcentaje
+- Texto descriptivo: "X de Y usuarios han configurado su perfil fiscal"
+- Estado vacio: muestra 0% con mensaje motivador
 
-**Paso 1: Crear los triggers faltantes**
+### Arquitectura tecnica
 
-Crear una migracion SQL que:
-1. Cree el trigger `on_auth_user_created` en `auth.users` que ejecute `handle_new_user()` para insertar perfiles automaticamente en futuros registros.
-2. Cree el trigger `on_auth_user_created_subscription` en `auth.users` que ejecute `handle_new_user_subscription()` para insertar suscripciones automaticamente.
+**Archivos nuevos:**
+- `src/components/admin/AdminAnalyticsSection.tsx` - Componente principal que contiene los 3 graficos en un grid responsive (1 columna en movil, 3 en desktop)
 
-**Paso 2: Rellenar datos historicos**
+**Archivos modificados:**
+- `src/hooks/useAdminDashboard.ts` - Extender la query para incluir tambien datos de `tax_years` (solo user_id distintos). Anadir al tipo `AdminDashboardData` los campos calculados: `assetAllocation`, `platformMarketShare` y `taxRetentionRate`.
+- `src/pages/AdminDashboard.tsx` - Importar y renderizar `AdminAnalyticsSection` entre las KPI cards y la tabla de usuarios.
 
-Insertar los perfiles y suscripciones faltantes para los 4 usuarios existentes que se registraron antes de que los triggers estuvieran activos:
-- Insertar los 4 perfiles en `profiles` con datos de `auth.users` (email y metadata).
-- Insertar las 2 suscripciones faltantes en `subscriptions` para los usuarios que no la tienen.
+**Sin cambios en base de datos** - Toda la informacion necesaria ya existe en las tablas actuales con las politicas RLS de admin configuradas.
 
-### Detalle tecnico
+### Detalles de implementacion
 
-**Migracion SQL necesaria:**
-
-```sql
--- 1. Trigger para crear perfiles automaticamente
-CREATE TRIGGER on_auth_user_created
-  AFTER INSERT ON auth.users
-  FOR EACH ROW EXECUTE FUNCTION public.handle_new_user();
-
--- 2. Trigger para crear suscripciones automaticamente
-CREATE TRIGGER on_auth_user_created_subscription
-  AFTER INSERT ON auth.users
-  FOR EACH ROW EXECUTE FUNCTION public.handle_new_user_subscription();
-
--- 3. Backfill: insertar perfiles historicos
-INSERT INTO public.profiles (id, email, full_name, avatar_url)
-SELECT 
-  id, 
-  email,
-  COALESCE(raw_user_meta_data->>'full_name', raw_user_meta_data->>'name'),
-  raw_user_meta_data->>'avatar_url'
-FROM auth.users
-WHERE id NOT IN (SELECT id FROM public.profiles)
-ON CONFLICT (id) DO NOTHING;
-
--- 4. Backfill: insertar suscripciones historicas
-INSERT INTO public.subscriptions (user_id, status, plan)
-SELECT id, 'free', 'free'
-FROM auth.users
-WHERE id NOT IN (SELECT user_id FROM public.subscriptions)
-ON CONFLICT DO NOTHING;
+**Hook `useAdminDashboard.ts`:**
+```
+// Nuevos datos a agregar en la query
+- Fetch adicional: supabase.from('tax_years').select('user_id')
+- Calcular assetAllocation: agrupar assets por asset_type, sumar volumen
+- Calcular platformMarketShare: combinar investments + assets, agrupar por plataforma
+- Calcular taxRetention: contar user_ids unicos en tax_years vs total profiles
 ```
 
-**Archivos a modificar:** Ninguno. El codigo del hook `useAdminDashboard` y la pagina `AdminDashboard.tsx` ya funcionan correctamente. El problema es exclusivamente de datos faltantes en la base de datos.
+**Tipo extendido de `AdminDashboardData`:**
+```
+assetAllocation: { name: string; value: number }[]
+platformMarketShare: { name: string; value: number }[]
+taxRetention: { usersWithTax: number; totalUsers: number; rate: number }
+```
 
-**Resultado esperado:** Tras aplicar la migracion, el dashboard mostrara los 4 usuarios con sus datos de perfil, plan de suscripcion y las 6 inversiones existentes.
+**Componente `AdminAnalyticsSection`:**
+- Grid `grid-cols-1 lg:grid-cols-3` con gap-4
+- Cada grafico dentro de un Card con CardHeader y CardTitle
+- PieChart de Recharts para Asset Allocation (innerRadius para donut)
+- BarChart horizontal de Recharts para Market Share
+- Indicador circular custom con SVG para retencion
+- Todos los graficos con ResponsiveContainer height={250}
+- Paleta de colores coherente con el tema del dashboard
+
+**Estados vacios:**
+- Centrados verticalmente en el espacio del grafico
+- Icono en gris claro + texto descriptivo
+- Misma altura que el grafico normal para mantener consistencia visual
 

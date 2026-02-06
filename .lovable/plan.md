@@ -1,87 +1,97 @@
 
-## Diagnóstico (por qué “Pricing no funciona” ahora)
-He revisado los logs de la función de pago y el error es consistente:
 
-- La función `create-checkout` está ejecutándose con **`STRIPE_SECRET_KEY` en modo test** (los logs muestran `keyPrefix: "sk_test"`).
-- Pero el checkout intenta usar **Price IDs de producción** (por ejemplo `price_1SwsPQQaxtKtYFASptg5zqXs`).
-- Resultado: Stripe (en modo test) responde **`No such price`**, y la UI muestra el toast “No se pudo iniciar el proceso de pago…”.
+## Nueva Pagina de Admin Dashboard en `/admin-dashboard`
 
-Esto significa que el problema no es la página de pricing en sí, sino que el backend todavía está leyendo una clave **sk_test** en el entorno donde estás probando.
+### Estado actual
+- El panel de admin actual esta embebido como una vista (`'admin'`) dentro de la pagina `Index.tsx`, no es una ruta separada.
+- Las tablas `profiles` y `subscriptions` **no tienen politicas RLS para admins**, por lo que un admin no puede ver datos de otros usuarios desde estas tablas.
+- La tabla `investments` y `assets` ya tienen politicas de admin configuradas.
 
-## Objetivo
-1) Forzar que el sistema use **sk_live** en el entorno correcto.
-2) Asegurar que el sistema reconoce la suscripción correctamente tras pagar (ahora mismo hay un segundo bug: `check-subscription` tiene Product IDs antiguos).
-3) Redesplegar y verificar end-to-end.
+### Cambios necesarios
 
----
+#### 1. Base de datos: Nuevas politicas RLS para admin
+Agregar politicas de lectura para admins en:
+- **`profiles`**: `has_role(auth.uid(), 'admin')` para SELECT - permite al admin ver todos los perfiles
+- **`subscriptions`**: `has_role(auth.uid(), 'admin')` para SELECT - permite al admin ver todas las suscripciones
 
-## Cambios necesarios
+Sin estas politicas, el admin no podria ver el plan ni el email de otros usuarios.
 
-### A) Asegurar claves live realmente activas (paso imprescindible)
-1. **Reconfigurar `STRIPE_SECRET_KEY`** para que sea `sk_live_...` usando el flujo seguro (modal de secretos) desde Lovable Cloud.
-2. Confirmar en logs que al invocar checkout aparece:
-   - `Stripe key verified - { keyPrefix: "sk_live" }`
+#### 2. Nuevo hook: `src/hooks/useAdminDashboard.ts`
+Un hook dedicado que:
+- Verifica rol admin via `user_roles`
+- Consulta `profiles` (email, full_name)
+- Consulta `subscriptions` (plan, status, current_period_end)
+- Consulta `investments` para calcular volumen total por usuario
+- Consulta `assets` para incluir tambien el modelo nuevo
+- Combina todo en una estructura con:
+  - KPIs: Total Usuarios, Usuarios Pro activos, Volumen Total Gestionado
+  - Lista de usuarios con: nombre, email, plan, vencimiento, volumen gestionado
 
-Nota: En Lovable Cloud existen entornos **Test (preview)** y **Live (publicado)**. Si pruebas en preview pero solo pusiste la clave live en Live, seguirás viendo `sk_test`. En la implementación verificaré y te guiaré para dejarlo correcto en el entorno que estés usando.
+#### 3. Nueva pagina: `src/pages/AdminDashboard.tsx`
+Pagina independiente con:
+- **Header**: Titulo "Panel de Administracion" con icono Shield
+- **3 Tarjetas KPI** superiores:
+  - Total Usuarios (total de perfiles registrados)
+  - Usuarios Pro Activos (subscriptions con status = 'active')
+  - Volumen Total Gestionado (suma de investments.amount + assets.acquisition_cost)
+- **Tabla principal** con columnas:
+  - Usuario (full_name del perfil)
+  - Email
+  - Plan (badge: Free / Pro)
+  - Vencimiento (current_period_end formateado, o "---" si free)
+  - Boton "Ver Detalles" (expandira la fila para mostrar inversiones del usuario)
+- **Estado de carga**: Skeleton loaders para las 3 tarjetas y la tabla mientras se reciben datos
+- **Acceso denegado**: Si no es admin, muestra pantalla de acceso denegado
+- Boton de volver al dashboard principal
 
-### B) Asegurar Price IDs de producción (ya en código, pero se valida)
-Verificar que `create-checkout` usa exactamente:
-- Mensual: `price_1SwtR9QaxtKtYFASkIW4VGNl`
-- Anual: `price_1SwsPQQaxtKtYFASptg5zqXs`
+#### 4. Ruta en `src/App.tsx`
+Agregar ruta `/admin-dashboard` protegida con `ProtectedRoute`, que renderiza `AdminDashboard`.
 
-(Esto ya está reflejado en tu diff.)
+#### 5. Navegacion
+Agregar enlace al sidebar en `AppLayout.tsx` (solo visible para admins) que apunte a `/admin-dashboard` via `react-router-dom` Link/navigate.
 
-### C) Corregir `check-subscription` (bug crítico post-pago)
-Ahora mismo `check-subscription` usa estos Product IDs antiguos:
-- `prod_TmILDXzjeP7RY2`
-- `prod_TmILACrcuLThuR`
+### Detalle tecnico
 
-Pero el frontend ya cambió a:
-- `prod_TnQ71KYMnm4v1a`
-- `prod_TnPWRPKu6evzqz`
+**Migracion SQL:**
+```text
+-- Admin can read all profiles
+CREATE POLICY "Admins can view all profiles"
+ON public.profiles FOR SELECT
+TO authenticated
+USING (has_role(auth.uid(), 'admin'::app_role));
 
-Si no arreglamos esto, aunque el pago se complete, la app puede seguir mostrando plan “Gratis” o no activar el gating correctamente.
+-- Admin can read all subscriptions
+CREATE POLICY "Admins can view all subscriptions"
+ON public.subscriptions FOR SELECT
+TO authenticated
+USING (has_role(auth.uid(), 'admin'::app_role));
+```
 
-Implementación propuesta (más robusta):
-- En `check-subscription`, determinar el plan **por `subscription.items.data[0].price.id` (Price ID)** en lugar de por productId.
-  - Esto evita desajustes si cambian product IDs o si tienes varios precios por producto.
-- Añadir log del `keyPrefix` también en `check-subscription` para confirmar `sk_live` en ese flujo.
+**Estructura de datos del hook:**
+```text
+interface AdminUser {
+  userId: string
+  fullName: string | null
+  email: string | null
+  plan: 'free' | 'monthly' | 'yearly'
+  subscriptionStatus: string
+  subscriptionEnd: string | null
+  totalInvested: number  // investments + assets
+}
 
-### D) Hardening UX (recomendado para “no funciona” percibido)
-1. En `openCheckout()` (frontend), usar una apertura más robusta:
-   - Intentar `window.open(url, "_blank")`
-   - Si el navegador bloquea popups (devuelve `null`), hacer fallback a `window.location.href = url`
-2. Mejorar el mensaje de error mostrado en toast (sin exponer secretos):
-   - Mostrar “Configuración de pagos en modo test/producción incorrecta” cuando el error sea “No such price”.
+interface AdminDashboardSummary {
+  totalUsers: number
+  proUsers: number
+  totalVolume: number
+}
+```
 
----
+**Archivos a crear:**
+- `src/pages/AdminDashboard.tsx` - Pagina principal
+- `src/hooks/useAdminDashboard.ts` - Hook de datos
 
-## Redespliegue total (cuando esté listo)
-Tras actualizar secretos y código:
-1. Redesplegar funciones:
-   - `create-checkout`
-   - `check-subscription`
-   - `customer-portal` (para asegurar consistencia de clave)
-2. Verificar con una llamada de prueba autenticada que `create-checkout` devuelve una `url` válida.
-3. Probar flujo real en el dominio donde estás operando:
-   - Clic “Empezar con Pro”
-   - Stripe Checkout abre sin banner de test
-   - Tras volver a la app, `check-subscription` detecta el plan correcto.
+**Archivos a modificar:**
+- `src/App.tsx` - Agregar ruta `/admin-dashboard`
+- `src/components/layout/AppLayout.tsx` - Agregar link de navegacion para admins
+- `src/types/investment.ts` - No necesita cambios, View ya incluye 'admin'
 
----
-
-## Verificación (checklist de “listo para pagos reales”)
-Consideraré el sistema listo cuando:
-- Logs de `create-checkout` muestren `keyPrefix: "sk_live"`.
-- `create-checkout` cree sesión correctamente para **mensual y anual**.
-- En Stripe Checkout **no** aparezca indicador de test.
-- Tras completar pago, `check-subscription` devuelva `subscribed: true` y `plan: "monthly"|"yearly"` correctamente (y la UI refleje Pro).
-
----
-
-## Archivos involucrados
-- `supabase/functions/create-checkout/index.ts` (validar price IDs + verificación de keyPrefix ya añadida)
-- `supabase/functions/check-subscription/index.ts` (actualizar lógica de detección de plan a Price IDs + log keyPrefix)
-- `src/contexts/SubscriptionContext.tsx` (fallback si popup bloqueado + mensaje de error más informativo)
-
----

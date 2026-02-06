@@ -1,42 +1,59 @@
 
 
-## Notificacion a n8n en el registro de usuario
+## Boton temporal "Probar Conexion n8n" en la pagina de Auth
 
 ### Resumen
 
-Tras un registro exitoso en el formulario de signup, se enviara una peticion HTTP POST silenciosa al webhook de n8n. Si falla, el error se ignora y el usuario continua con normalidad.
+Se anadira un boton de depuracion temporal en la parte inferior del formulario de Login/Signup que permite verificar manualmente que el webhook de n8n recibe la senal correctamente. El boton disparara un `fetch` POST al mismo endpoint ya configurado y mostrara el resultado en pantalla usando el sistema de alertas existente.
 
 ### Cambio
 
 **Archivo modificado:** `src/pages/Auth.tsx`
 
-En el bloque `else` del signup exitoso (linea 137-138), se anadira una llamada `fetch` fire-and-forget justo antes del mensaje de exito:
-
-```
-// Signup exitoso -> notificar a n8n (fire and forget)
-fetch('https://brunosanchez.app.n8n.cloud/webhook-test/nuevo-usuario', {
-  method: 'POST',
-  headers: { 'Content-Type': 'application/json' },
-  body: JSON.stringify({
-    email: email,
-    fecha: new Date().toISOString(),
-    origen: 'crowdfolio_beta',
-  }),
-}).catch(() => {});  // Ignorar errores silenciosamente
-
-setSuccessMessage('Cuenta creada! ...');
-```
+1. Anadir un estado `testResult` para almacenar el resultado del test (exito o error).
+2. Anadir una funcion `handleTestN8n` que:
+   - Envia un POST a `https://brunosanchez.app.n8n.cloud/webhook-test/nuevo-usuario` con un payload de prueba.
+   - Si la respuesta es `ok`, muestra "Conexion Exitosa!".
+   - Si falla (error de red o respuesta no-ok), muestra "Error: " con el mensaje tecnico.
+3. Renderizar un boton con estilo `outline` y un icono de prueba debajo del enlace "Registrate / Inicia sesion", junto con una alerta condicional que muestre el resultado.
 
 ### Detalles tecnicos
 
-- Se usa `fetch` nativo del navegador (no se necesita instalar axios ni ninguna dependencia adicional).
-- `.catch(() => {})` garantiza que cualquier fallo de red o del webhook se ignora sin afectar al usuario.
-- La peticion no es `await`-ed, por lo que no bloquea la UI ni retrasa el mensaje de exito.
-- Solo se dispara en registros exitosos (cuando `signUp` no devuelve error).
-- No afecta al flujo de login ni al de recuperacion de contrasena.
+**Funcion de test:**
+```
+const handleTestN8n = async () => {
+  setTestResult(null);
+  try {
+    const res = await fetch('https://brunosanchez.app.n8n.cloud/webhook-test/nuevo-usuario', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        email: 'test@debug.com',
+        fecha: new Date().toISOString(),
+        origen: 'crowdfolio_debug_test',
+      }),
+    });
+    if (res.ok) {
+      setTestResult({ success: true, message: 'Conexion Exitosa!' });
+    } else {
+      setTestResult({ success: false, message: `Error: HTTP ${res.status} ${res.statusText}` });
+    }
+  } catch (err) {
+    setTestResult({ success: false, message: `Error: ${err instanceof Error ? err.message : 'Desconocido'}` });
+  }
+};
+```
+
+**UI del boton (bajo el enlace de cambio login/signup):**
+- Separador visual (linea fina)
+- Boton con variante `outline`, tamano `sm`, texto "Probar Conexion n8n" con icono Zap
+- Alerta verde si exito, alerta roja si error, que aparece debajo del boton
+- Texto pequeno "(Solo depuracion - eliminar antes de produccion)" para recordar que es temporal
 
 ### Alcance
 
-- Un solo archivo modificado, una sola linea logica anadida.
-- Sin cambios en base de datos, componentes UI, ni dependencias.
+- Un solo archivo modificado: `src/pages/Auth.tsx`
+- Sin dependencias nuevas (usa `fetch` nativo, iconos de `lucide-react` ya disponibles)
+- Sin cambios en base de datos ni otros componentes
+- Boton solo visible en la vista de login/signup (no en forgot-password)
 

@@ -10,6 +10,7 @@ import Auth from "./pages/Auth";
 import Landing from "./pages/Landing";
 import Pricing from "./pages/Pricing";
 import ResetPassword from "./pages/ResetPassword";
+import AdminDashboard from "./pages/AdminDashboard";
 import NotFound from "./pages/NotFound";
 import { useEffect, useRef, useState } from "react";
 import { Button } from "@/components/ui/button";
@@ -310,6 +311,14 @@ const AppRoutes = () => (
           <PublicRoute>
             <Auth />
           </PublicRoute>
+        } 
+      />
+      <Route 
+        path="/admin-dashboard" 
+        element={
+          <ProtectedRoute>
+            <AdminDashboard />
+          </ProtectedRoute>
         } 
       />
       <Route path="/pricing" element={<Pricing onBack={() => window.history.back()} />} />

@@ -11,6 +11,7 @@ import {
   Shield,
   Building2
 } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
 import { AlertsPanel } from '@/components/dashboard/AlertsPanel';
@@ -40,6 +41,7 @@ export function AppLayout({
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [darkMode, setDarkMode] = useState(false);
   const { user, isAdmin, signOut } = useAuth();
+  const navigate = useNavigate();
 
   const toggleDarkMode = () => {
     setDarkMode(!darkMode);
@@ -56,7 +58,6 @@ export function AppLayout({
     { id: 'opportunities' as View, label: 'Oportunidades', icon: Search },
     { id: 'platforms' as View, label: 'Plataformas', icon: Building2 },
     { id: 'tax' as View, label: 'Fiscalidad', icon: Receipt },
-    ...(isAdmin ? [{ id: 'admin' as View, label: 'Administración', icon: Shield }] : []),
   ];
 
   return (
@@ -114,6 +115,18 @@ export function AppLayout({
                 {item.label}
               </button>
             ))}
+            {isAdmin && (
+              <button
+                onClick={() => {
+                  navigate('/admin-dashboard');
+                  setSidebarOpen(false);
+                }}
+                className="flex w-full items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium text-muted-foreground hover:bg-accent hover:text-accent-foreground transition-colors"
+              >
+                <Shield className="h-4 w-4" />
+                Administración
+              </button>
+            )}
           </nav>
 
           {/* User info and logout */}

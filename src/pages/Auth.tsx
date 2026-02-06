@@ -135,6 +135,17 @@ export default function Auth() {
             setError(error.message);
           }
         } else {
+          // Signup exitoso -> notificar a n8n (fire and forget)
+          fetch('https://brunosanchez.app.n8n.cloud/webhook-test/nuevo-usuario', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              email,
+              fecha: new Date().toISOString(),
+              origen: 'crowdfolio_beta',
+            }),
+          }).catch(() => {});
+
           setSuccessMessage('¡Cuenta creada! Revisa tu correo para verificar tu cuenta antes de iniciar sesión.');
         }
       }

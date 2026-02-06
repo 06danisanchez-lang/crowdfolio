@@ -1,79 +1,81 @@
 
 
-## Eliminar usuarios desde el Panel de Administracion
+## Webhook n8n para registros via Google OAuth
 
-### Resumen
+### Problema
 
-Se creara una funcion backend segura que permite a los administradores eliminar usuarios de prueba (o cualquier usuario) directamente desde el panel de administracion. Gracias a que todas las tablas del sistema tienen `ON DELETE CASCADE` vinculado a `auth.users`, al eliminar el usuario de autenticacion se eliminan automaticamente todos sus datos (inversiones, assets, transacciones, perfil, suscripcion, etc.).
+Cuando un usuario se registra con Google, el flujo OAuth redirige al usuario fuera de la app y vuelve mediante `onAuthStateChange` con evento `SIGNED_IN`. Esto salta por completo el `handleSubmit` de `Auth.tsx`, donde actualmente vive el webhook a n8n. Resultado: los registros con Google no se notifican.
 
-### Cambios necesarios
+### Solucion
 
-#### 1. Nueva funcion backend: `delete-user`
+Anadir logica en el listener `onAuthStateChange` del `AuthContext.tsx` que detecte registros nuevos (Google u otros proveedores OAuth futuros) y dispare el webhook de forma silenciosa.
 
-Crea un endpoint seguro que:
-- Verifica que el solicitante tiene el token de autenticacion valido
-- Confirma que el solicitante tiene rol `admin` consultando la tabla `user_roles`
-- Impide que el admin se elimine a si mismo (proteccion de seguridad)
-- Usa la API de administracion para eliminar el usuario de `auth.users`, lo cual borra en cascada todos los datos asociados en las tablas publicas
+### Cambio
 
-**Archivo:** `supabase/functions/delete-user/index.ts`
+**Archivo modificado:** `src/contexts/AuthContext.tsx`
 
-#### 2. Boton "Eliminar" en el panel lateral de detalle del usuario
+1. **Nuevo `useRef`**: `webhookFiredForRef = useRef<Set<string>>(new Set())` para rastrear los user IDs a los que ya se les envio el webhook en esta sesion, evitando duplicados por re-renders o multiples eventos.
 
-Se anadira un boton rojo "Eliminar Usuario" en la parte inferior del componente `AdminUserDetailSheet`. Al pulsarlo:
-- Aparece un dialogo de confirmacion con el email del usuario para evitar borrados accidentales
-- Si se confirma, llama a la funcion backend
-- Si tiene exito, cierra el panel y refresca la lista de usuarios
-- Si falla, muestra un mensaje de error
+2. **Nueva funcion `fireNewUserWebhook`**: funcion auxiliar que:
+   - Recibe el objeto `User` de Supabase
+   - Calcula la diferencia entre `Date.now()` y `user.created_at`
+   - Si la cuenta tiene menos de 30 segundos de vida Y el user ID no esta en el Set del ref, envia el POST al webhook
+   - Anade el user ID al Set para bloquear disparos duplicados
 
-**Archivo modificado:** `src/components/admin/AdminUserDetailSheet.tsx`
-
-#### 3. Refrescar datos tras eliminar
-
-Se pasara un callback `onUserDeleted` desde `AdminDashboard` al componente `AdminUserDetailSheet` para invalidar la query de datos y refrescar la tabla automaticamente.
-
-**Archivo modificado:** `src/pages/AdminDashboard.tsx`
-
-### Flujo de usuario
-
-```text
-Admin abre panel de un usuario
-       |
-       v
-Hace clic en "Eliminar Usuario" (boton rojo)
-       |
-       v
-Aparece dialogo: "Vas a eliminar a user@email.com y todos sus datos. Esta accion es irreversible."
-       |
-  [Cancelar]  [Eliminar]
-                  |
-                  v
-         POST /delete-user { userId }
-                  |
-            +-----+------+
-            |            |
-         Exito        Error
-            |            |
-     Cierra panel   Muestra toast
-     Refresca tabla  de error
-```
+3. **Integrar en `onAuthStateChange`**: Dentro del bloque que ya procesa el evento `SIGNED_IN`, llamar a `fireNewUserWebhook(newSession.user)` de forma "fire and forget".
 
 ### Detalles tecnicos
 
-**Edge Function (`delete-user`):**
-- Recibe `{ userId: string }` en el body
-- Usa `SUPABASE_SERVICE_ROLE_KEY` para acceder a `supabase.auth.admin.deleteUser(userId)`
-- Valida el rol admin del solicitante con la funcion `has_role` de la base de datos
-- Devuelve 200 si exito, 403 si no es admin, 400 si intenta eliminarse a si mismo
+**Funcion auxiliar (dentro de AuthProvider):**
+```text
+const webhookFiredForRef = useRef<Set<string>>(new Set());
 
-**Protecciones de seguridad:**
-- Solo administradores verificados del lado servidor pueden ejecutar la eliminacion
-- Se impide la auto-eliminacion del admin
-- Se requiere confirmacion explicita en la UI antes de proceder
-- Todas las tablas ya tienen `ON DELETE CASCADE`, por lo que no se necesitan migraciones de base de datos
+const fireNewUserWebhook = useCallback((user: User) => {
+  // Evitar duplicados
+  if (webhookFiredForRef.current.has(user.id)) return;
 
-**Componentes UI utilizados:**
-- `AlertDialog` (ya disponible) para la confirmacion
-- `Button` con variante `destructive` para el boton de eliminar
-- `toast` de Sonner para feedback de exito/error
+  const createdAt = new Date(user.created_at).getTime();
+  const now = Date.now();
+  const ageMs = now - createdAt;
 
+  // Solo si la cuenta tiene menos de 30 segundos
+  if (ageMs > 30_000) return;
+
+  // Marcar como enviado ANTES del fetch para evitar race conditions
+  webhookFiredForRef.current.add(user.id);
+
+  fetch('https://brunosanchez.app.n8n.cloud/webhook/nuevo-usuario', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      email: user.email,
+      fecha: new Date().toISOString(),
+      origen: 'crowdfolio_google',
+    }),
+  }).catch(() => {});
+}, []);
+```
+
+**Integracion en el listener (linea ~107 del onAuthStateChange):**
+```text
+if (event === 'SIGNED_IN' && newSession?.user) {
+  fireNewUserWebhook(newSession.user);
+}
+```
+
+### Mecanismo anti-duplicados
+
+Se usan dos capas de proteccion:
+- **`useRef<Set<string>>`**: almacena los user IDs ya notificados durante la vida del componente, impidiendo que re-renders o multiples eventos `SIGNED_IN` disparen el webhook dos veces
+- **Ventana de 30 segundos sobre `created_at`**: asegura que solo cuentas recien creadas disparan el webhook; logins posteriores del mismo usuario nunca lo activan
+
+### Por que no se duplica con el registro manual
+
+El webhook del registro manual (en `Auth.tsx`) usa `origen: 'crowdfolio_prod'` y se dispara solo cuando el `signUp` manual tiene exito. El evento `SIGNED_IN` de `onAuthStateChange` no se dispara inmediatamente para el registro con email/password porque el usuario debe verificar su email primero. Para cuando se verifica, `created_at` ya tiene mas de 30 segundos, por lo que la condicion de "cuenta nueva" no se cumple.
+
+### Alcance
+
+- Un solo archivo modificado: `src/contexts/AuthContext.tsx`
+- Sin dependencias nuevas
+- Sin cambios en base de datos
+- Sin cambios en la UI

@@ -6,7 +6,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardDescription, CardHeader } from '@/components/ui/card';
-import { Loader2, Mail, Lock, AlertCircle, RefreshCw, ArrowLeft, Crown, Zap } from 'lucide-react';
+import { Loader2, Mail, Lock, AlertCircle, RefreshCw, ArrowLeft, Crown } from 'lucide-react';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { z } from 'zod';
 import crowdfolioLogo from '@/assets/crowdfolio-logo.png';
@@ -33,8 +33,6 @@ export default function Auth() {
   const [isResending, setIsResending] = useState(false);
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
   const [showResendOption, setShowResendOption] = useState(false);
-  const [testResult, setTestResult] = useState<{ success: boolean; message: string } | null>(null);
-  const [isTesting, setIsTesting] = useState(false);
   
   const { signIn, signUp, resetPassword } = useAuth();
   const navigate = useNavigate();
@@ -138,13 +136,13 @@ export default function Auth() {
           }
         } else {
           // Signup exitoso -> notificar a n8n (fire and forget)
-          fetch('https://brunosanchez.app.n8n.cloud/webhook-test/nuevo-usuario', {
+          fetch('https://brunosanchez.app.n8n.cloud/webhook/nuevo-usuario', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
               email,
               fecha: new Date().toISOString(),
-              origen: 'crowdfolio_beta',
+              origen: 'crowdfolio_prod',
             }),
           }).catch(() => {});
 
@@ -163,36 +161,11 @@ export default function Auth() {
     setError(null);
     setSuccessMessage(null);
     setShowResendOption(false);
-    setTestResult(null);
     if (newView !== 'forgot-password') {
       setPassword('');
     }
   };
 
-  const handleTestN8n = async () => {
-    setTestResult(null);
-    setIsTesting(true);
-    try {
-      const res = await fetch('https://brunosanchez.app.n8n.cloud/webhook-test/nuevo-usuario', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          email: 'test@debug.com',
-          fecha: new Date().toISOString(),
-          origen: 'crowdfolio_debug_test',
-        }),
-      });
-      if (res.ok) {
-        setTestResult({ success: true, message: '¡Conexión Exitosa!' });
-      } else {
-        setTestResult({ success: false, message: `Error: HTTP ${res.status} ${res.statusText}` });
-      }
-    } catch (err) {
-      setTestResult({ success: false, message: `Error: ${err instanceof Error ? err.message : 'Desconocido'}` });
-    } finally {
-      setIsTesting(false);
-    }
-  };
 
   // Forgot Password View
   if (view === 'forgot-password') {
@@ -410,43 +383,6 @@ export default function Auth() {
             </button>
           </div>
 
-          {/* Debug: Probar conexión n8n */}
-          <div className="mt-6 border-t pt-4 space-y-3">
-            <Button
-              type="button"
-              variant="outline"
-              size="sm"
-              className="w-full"
-              onClick={handleTestN8n}
-              disabled={isTesting}
-            >
-              {isTesting ? (
-                <>
-                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                  Probando...
-                </>
-              ) : (
-                <>
-                  <Zap className="mr-2 h-4 w-4" />
-                  Probar Conexión n8n
-                </>
-              )}
-            </Button>
-
-            {testResult && (
-              <Alert
-                variant={testResult.success ? 'default' : 'destructive'}
-                className={testResult.success ? 'border-green-500 bg-green-50 text-green-700 dark:bg-green-950 dark:text-green-300' : ''}
-              >
-                <Zap className="h-4 w-4" />
-                <AlertDescription>{testResult.message}</AlertDescription>
-              </Alert>
-            )}
-
-            <p className="text-xs text-center text-muted-foreground">
-              (Solo depuración — eliminar antes de producción)
-            </p>
-          </div>
         </CardContent>
       </Card>
     </div>

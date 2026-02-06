@@ -1,3 +1,4 @@
+import { useState } from 'react';
 import type { AdminUser } from '@/hooks/useAdminDashboard';
 import {
   Sheet,
@@ -6,7 +7,19 @@ import {
   SheetTitle,
   SheetDescription,
 } from '@/components/ui/sheet';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from '@/components/ui/alert-dialog';
 import { Badge } from '@/components/ui/badge';
+import { Button } from '@/components/ui/button';
 import { Separator } from '@/components/ui/separator';
 import {
   Table,
@@ -16,7 +29,9 @@ import {
   TableHeader,
   TableRow,
 } from '@/components/ui/table';
-import { Briefcase, Hash, TrendingUp } from 'lucide-react';
+import { Briefcase, Hash, TrendingUp, Trash2, Loader2 } from 'lucide-react';
+import { supabase } from '@/integrations/supabase/client';
+import { toast } from 'sonner';
 
 function formatCurrency(value: number) {
   return new Intl.NumberFormat('es-ES', { style: 'currency', currency: 'EUR' }).format(value);
@@ -45,10 +60,45 @@ interface Props {
   user: AdminUser | null;
   open: boolean;
   onOpenChange: (open: boolean) => void;
+  onUserDeleted?: () => void;
 }
 
-export default function AdminUserDetailSheet({ user, open, onOpenChange }: Props) {
+export default function AdminUserDetailSheet({ user, open, onOpenChange, onUserDeleted }: Props) {
+  const [isDeleting, setIsDeleting] = useState(false);
+
   if (!user) return null;
+
+  const handleDeleteUser = async () => {
+    setIsDeleting(true);
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) {
+        toast.error('Sesión expirada. Inicia sesión de nuevo.');
+        return;
+      }
+
+      const response = await supabase.functions.invoke('delete-user', {
+        body: { userId: user.userId },
+      });
+
+      if (response.error) {
+        throw new Error(response.error.message || 'Error al eliminar');
+      }
+
+      const data = response.data;
+      if (data?.error) {
+        throw new Error(data.error);
+      }
+
+      toast.success(`Usuario ${user.email || user.fullName} eliminado correctamente`);
+      onOpenChange(false);
+      onUserDeleted?.();
+    } catch (err: any) {
+      toast.error(err.message || 'Error al eliminar el usuario');
+    } finally {
+      setIsDeleting(false);
+    }
+  };
 
   return (
     <Sheet open={open} onOpenChange={onOpenChange}>
@@ -122,6 +172,42 @@ export default function AdminUserDetailSheet({ user, open, onOpenChange }: Props
             </TableBody>
           </Table>
         )}
+
+        {/* Delete user section */}
+        <Separator className="my-5" />
+
+        <AlertDialog>
+          <AlertDialogTrigger asChild>
+            <Button variant="destructive" className="w-full" disabled={isDeleting}>
+              {isDeleting ? (
+                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+              ) : (
+                <Trash2 className="mr-2 h-4 w-4" />
+              )}
+              Eliminar Usuario
+            </Button>
+          </AlertDialogTrigger>
+          <AlertDialogContent>
+            <AlertDialogHeader>
+              <AlertDialogTitle>¿Eliminar este usuario?</AlertDialogTitle>
+              <AlertDialogDescription>
+                Vas a eliminar a <strong>{user.email || user.fullName}</strong> y todos sus datos
+                (inversiones, activos, transacciones, perfil, suscripción…).
+                <br /><br />
+                <strong>Esta acción es irreversible.</strong>
+              </AlertDialogDescription>
+            </AlertDialogHeader>
+            <AlertDialogFooter>
+              <AlertDialogCancel>Cancelar</AlertDialogCancel>
+              <AlertDialogAction
+                onClick={handleDeleteUser}
+                className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+              >
+                Eliminar
+              </AlertDialogAction>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
       </SheetContent>
     </Sheet>
   );

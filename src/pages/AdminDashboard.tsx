@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import { useAdminDashboard, type AdminUser } from '@/hooks/useAdminDashboard';
+import { useQueryClient } from '@tanstack/react-query';
 import { useNavigate, Navigate } from 'react-router-dom';
 import { Shield, Users, Crown, TrendingUp, ArrowLeft, Eye } from 'lucide-react';
 import AdminAnalyticsSection from '@/components/admin/AdminAnalyticsSection';
@@ -69,8 +70,13 @@ function TableSkeleton() {
 export default function AdminDashboard() {
   const { isAdmin } = useAuth();
   const navigate = useNavigate();
+  const queryClient = useQueryClient();
   const { data, isLoading, error } = useAdminDashboard();
   const [selectedUser, setSelectedUser] = useState<AdminUser | null>(null);
+
+  const handleUserDeleted = () => {
+    queryClient.invalidateQueries({ queryKey: ['admin-dashboard'] });
+  };
 
   if (!isAdmin) {
     return <Navigate to="/" replace />;
@@ -230,6 +236,7 @@ export default function AdminDashboard() {
           onOpenChange={(open) => {
             if (!open) setSelectedUser(null);
           }}
+          onUserDeleted={handleUserDeleted}
         />
       </div>
     </div>

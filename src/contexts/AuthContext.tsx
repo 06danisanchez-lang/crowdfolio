@@ -57,6 +57,32 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   
   // Ref to track if initial bootstrap has completed
   const hasBootstrappedRef = useRef(false);
+  
+  // Ref to track user IDs for which the new-user webhook has already fired
+  const webhookFiredForRef = useRef<Set<string>>(new Set());
+
+  const fireNewUserWebhook = useCallback((user: User) => {
+    if (webhookFiredForRef.current.has(user.id)) return;
+
+    const createdAt = new Date(user.created_at).getTime();
+    const ageMs = Date.now() - createdAt;
+
+    // Solo disparar para cuentas creadas hace menos de 30 segundos
+    if (ageMs > 30_000) return;
+
+    // Marcar ANTES del fetch para evitar race conditions
+    webhookFiredForRef.current.add(user.id);
+
+    fetch('https://brunosanchez.app.n8n.cloud/webhook/nuevo-usuario', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        email: user.email,
+        fecha: new Date().toISOString(),
+        origen: 'crowdfolio_google',
+      }),
+    }).catch(() => {});
+  }, []);
 
   const checkAdminRole = useCallback(async (userId: string) => {
     try {
@@ -108,6 +134,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         
         setSession(newSession);
         setUser(newSession?.user ?? null);
+
+        // Fire webhook for new Google OAuth registrations
+        if (event === 'SIGNED_IN' && newSession?.user) {
+          fireNewUserWebhook(newSession.user);
+        }
 
         // Fire and forget admin check - don't block or affect isLoading
         if (newSession?.user) {

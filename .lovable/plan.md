@@ -1,57 +1,75 @@
 
 
-## Preparar el Proyecto para Exportacion y Despliegue
+## Corregir: Usuarios no aparecen en el Admin Dashboard
 
-### 1. Verificacion de variables de entorno (estado actual: OK)
+### Diagnostico
 
-Las 3 variables de entorno del frontend ya estan correctamente configuradas en `.env`:
+He investigado la base de datos y encontrado la causa raiz:
 
-- `VITE_SUPABASE_URL` - URL del backend
-- `VITE_SUPABASE_PUBLISHABLE_KEY` - Clave publica (anon key)
-- `VITE_SUPABASE_PROJECT_ID` - ID del proyecto
+**La tabla `profiles` esta vacia** (0 filas), a pesar de que existen **4 usuarios registrados** en el sistema de autenticacion:
 
-Estas son **claves publicas** (publishable) y es seguro que esten en el repositorio. El cliente Supabase en `src/integrations/supabase/client.ts` las consume correctamente via `import.meta.env`.
+| Email | User ID |
+|---|---|
+| jesvivlc@gmail.com | e228e62b-... |
+| prueba@gmail.com | e9390a4f-... |
+| anllmar32@gmail.com | 0cbc1ef4-... |
+| 80brunosanchez@gmail.com | b8de563c-... |
 
-Los **secretos privados** (STRIPE_SECRET_KEY, FIRECRAWL_API_KEY, SUPABASE_SERVICE_ROLE_KEY) estan almacenados de forma segura en Lovable Cloud y solo son accesibles desde las Edge Functions del backend. No necesitan estar en el frontend.
+El hook `useAdminDashboard` construye la lista de usuarios a partir de la tabla `profiles`. Al estar vacia, el dashboard muestra 0 usuarios.
 
-**Accion:** Agregar `.env` al `.gitignore` para evitar que las variables se suban al repositorio de GitHub, ya que en Vercel se configuraran como variables de entorno del proyecto.
+**Causa**: La funcion `handle_new_user()` existe en la base de datos, pero el **trigger** que deberia ejecutarla automaticamente al registrarse un usuario **no esta creado**. Por eso los perfiles nunca se insertaron.
 
-### 2. Sincronizacion con GitHub
+Adicionalmente, solo 2 de los 4 usuarios tienen registro en la tabla `subscriptions`, lo que significa que el trigger `handle_new_user_subscription()` tampoco esta conectado.
 
-La sincronizacion con GitHub es una **funcionalidad nativa de la plataforma Lovable**, no un boton dentro de la aplicacion. Se activa desde:
+### Solucion (2 pasos)
 
-**Settings -> GitHub -> Connect project**
+**Paso 1: Crear los triggers faltantes**
 
-Una vez conectado, la sincronizacion es bidireccional y automatica (cada cambio en Lovable se pushea a GitHub y viceversa).
+Crear una migracion SQL que:
+1. Cree el trigger `on_auth_user_created` en `auth.users` que ejecute `handle_new_user()` para insertar perfiles automaticamente en futuros registros.
+2. Cree el trigger `on_auth_user_created_subscription` en `auth.users` que ejecute `handle_new_user_subscription()` para insertar suscripciones automaticamente.
 
-**Accion:** No se requiere codigo. Se agregara una seccion en el README explicando como activar la sincronizacion.
+**Paso 2: Rellenar datos historicos**
 
-### 3. Actualizar README.md
-
-Reescribir el README.md con documentacion completa del proyecto, incluyendo:
-
-**Secciones del nuevo README:**
-
-- **Crowdfolio** - Descripcion del proyecto (plataforma de gestion de inversiones en crowdfunding/crowdlending)
-- **Stack Tecnologico** - React, Vite, TypeScript, Tailwind CSS, shadcn/ui, Lovable Cloud (backend)
-- **Estructura del Proyecto** - Carpetas principales y su proposito
-- **Variables de Entorno** - Las 3 variables VITE_SUPABASE_* necesarias para el frontend
-- **Desarrollo Local** - Instrucciones para clonar, instalar y ejecutar
-- **Panel de Administracion** - Documentacion de /admin-dashboard (acceso, roles, funcionalidades)
-- **Despliegue en Vercel** - Guia paso a paso:
-  1. Conectar repositorio de GitHub a Vercel
-  2. Configurar variables de entorno en el dashboard de Vercel
-  3. Build command: `npm run build`
-  4. Output directory: `dist`
-  5. Nota sobre Edge Functions (se ejecutan en Lovable Cloud, no en Vercel)
-- **Sincronizacion con GitHub** - Como activar la sync desde Lovable
-- **Edge Functions** - Lista de las 9 funciones del backend y su proposito
+Insertar los perfiles y suscripciones faltantes para los 4 usuarios existentes que se registraron antes de que los triggers estuvieran activos:
+- Insertar los 4 perfiles en `profiles` con datos de `auth.users` (email y metadata).
+- Insertar las 2 suscripciones faltantes en `subscriptions` para los usuarios que no la tienen.
 
 ### Detalle tecnico
 
-**Archivos a modificar:**
-- `README.md` - Reescritura completa con documentacion del proyecto y guia de despliegue
-- `.gitignore` - Agregar `.env` para proteger variables al pushear a GitHub
+**Migracion SQL necesaria:**
 
-**No se crean componentes ni paginas nuevas.** El "Sync to GitHub" no es un boton en la UI, sino una funcionalidad de la plataforma Lovable que se documenta en el README.
+```sql
+-- 1. Trigger para crear perfiles automaticamente
+CREATE TRIGGER on_auth_user_created
+  AFTER INSERT ON auth.users
+  FOR EACH ROW EXECUTE FUNCTION public.handle_new_user();
+
+-- 2. Trigger para crear suscripciones automaticamente
+CREATE TRIGGER on_auth_user_created_subscription
+  AFTER INSERT ON auth.users
+  FOR EACH ROW EXECUTE FUNCTION public.handle_new_user_subscription();
+
+-- 3. Backfill: insertar perfiles historicos
+INSERT INTO public.profiles (id, email, full_name, avatar_url)
+SELECT 
+  id, 
+  email,
+  COALESCE(raw_user_meta_data->>'full_name', raw_user_meta_data->>'name'),
+  raw_user_meta_data->>'avatar_url'
+FROM auth.users
+WHERE id NOT IN (SELECT id FROM public.profiles)
+ON CONFLICT (id) DO NOTHING;
+
+-- 4. Backfill: insertar suscripciones historicas
+INSERT INTO public.subscriptions (user_id, status, plan)
+SELECT id, 'free', 'free'
+FROM auth.users
+WHERE id NOT IN (SELECT user_id FROM public.subscriptions)
+ON CONFLICT DO NOTHING;
+```
+
+**Archivos a modificar:** Ninguno. El codigo del hook `useAdminDashboard` y la pagina `AdminDashboard.tsx` ya funcionan correctamente. El problema es exclusivamente de datos faltantes en la base de datos.
+
+**Resultado esperado:** Tras aplicar la migracion, el dashboard mostrara los 4 usuarios con sus datos de perfil, plan de suscripcion y las 6 inversiones existentes.
 

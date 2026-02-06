@@ -1,59 +1,28 @@
 
 
-## Boton temporal "Probar Conexion n8n" en la pagina de Auth
+## Finalizar integracion n8n: limpiar debug y apuntar a produccion
 
 ### Resumen
 
-Se anadira un boton de depuracion temporal en la parte inferior del formulario de Login/Signup que permite verificar manualmente que el webhook de n8n recibe la senal correctamente. El boton disparara un `fetch` POST al mismo endpoint ya configurado y mostrara el resultado en pantalla usando el sistema de alertas existente.
+Se eliminara todo el codigo de depuracion (boton "Probar Conexion n8n", estados asociados y funcion `handleTestN8n`) y se actualizara la URL del webhook de registro al endpoint de produccion con el nuevo origen.
 
-### Cambio
+### Cambios en `src/pages/Auth.tsx`
 
-**Archivo modificado:** `src/pages/Auth.tsx`
+**Eliminar:**
+1. Import de `Zap` de lucide-react (linea 9) -- ya no se usa en ningun sitio
+2. Estados `testResult` e `isTesting` (lineas 36-37)
+3. Linea `setTestResult(null)` en `switchView` (linea 166)
+4. Funcion completa `handleTestN8n` (lineas 172-195)
+5. Bloque JSX completo del debug (lineas 413-449) -- boton, alerta de resultado y texto de disclaimer
 
-1. Anadir un estado `testResult` para almacenar el resultado del test (exito o error).
-2. Anadir una funcion `handleTestN8n` que:
-   - Envia un POST a `https://brunosanchez.app.n8n.cloud/webhook-test/nuevo-usuario` con un payload de prueba.
-   - Si la respuesta es `ok`, muestra "Conexion Exitosa!".
-   - Si falla (error de red o respuesta no-ok), muestra "Error: " con el mensaje tecnico.
-3. Renderizar un boton con estilo `outline` y un icono de prueba debajo del enlace "Registrate / Inicia sesion", junto con una alerta condicional que muestre el resultado.
+**Modificar:**
+1. URL del webhook en el signup exitoso (linea 141):
+   - De: `https://brunosanchez.app.n8n.cloud/webhook-test/nuevo-usuario`
+   - A: `https://brunosanchez.app.n8n.cloud/webhook/nuevo-usuario`
+2. Campo `origen` en el body (linea 147):
+   - De: `'crowdfolio_beta'`
+   - A: `'crowdfolio_prod'`
 
-### Detalles tecnicos
+### Resultado final
 
-**Funcion de test:**
-```
-const handleTestN8n = async () => {
-  setTestResult(null);
-  try {
-    const res = await fetch('https://brunosanchez.app.n8n.cloud/webhook-test/nuevo-usuario', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        email: 'test@debug.com',
-        fecha: new Date().toISOString(),
-        origen: 'crowdfolio_debug_test',
-      }),
-    });
-    if (res.ok) {
-      setTestResult({ success: true, message: 'Conexion Exitosa!' });
-    } else {
-      setTestResult({ success: false, message: `Error: HTTP ${res.status} ${res.statusText}` });
-    }
-  } catch (err) {
-    setTestResult({ success: false, message: `Error: ${err instanceof Error ? err.message : 'Desconocido'}` });
-  }
-};
-```
-
-**UI del boton (bajo el enlace de cambio login/signup):**
-- Separador visual (linea fina)
-- Boton con variante `outline`, tamano `sm`, texto "Probar Conexion n8n" con icono Zap
-- Alerta verde si exito, alerta roja si error, que aparece debajo del boton
-- Texto pequeno "(Solo depuracion - eliminar antes de produccion)" para recordar que es temporal
-
-### Alcance
-
-- Un solo archivo modificado: `src/pages/Auth.tsx`
-- Sin dependencias nuevas (usa `fetch` nativo, iconos de `lucide-react` ya disponibles)
-- Sin cambios en base de datos ni otros componentes
-- Boton solo visible en la vista de login/signup (no en forgot-password)
-
+La pagina de Auth quedara limpia, sin ningun elemento de depuracion visible. El webhook de produccion se disparara silenciosamente en cada registro exitoso sin que el usuario lo note.

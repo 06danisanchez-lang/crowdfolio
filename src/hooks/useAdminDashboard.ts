@@ -2,6 +2,16 @@ import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 
+export interface AdminUserInvestment {
+  id: string;
+  source: 'investment' | 'asset';
+  projectName: string;
+  platformName: string;
+  amount: number;
+  assetType: 'LENDING' | 'EQUITY' | null;
+  status: string;
+}
+
 export interface AdminUser {
   userId: string;
   fullName: string | null;
@@ -10,6 +20,9 @@ export interface AdminUser {
   subscriptionStatus: string;
   subscriptionEnd: string | null;
   totalInvested: number;
+  investments: AdminUserInvestment[];
+  investmentCount: number;
+  averageTicket: number;
 }
 
 export interface AdminDashboardData {
@@ -26,12 +39,11 @@ export function useAdminDashboard() {
     queryKey: ['admin-dashboard', user?.id],
     enabled: !!user && isAdmin,
     queryFn: async () => {
-      // Fetch all data in parallel
       const [profilesRes, subscriptionsRes, investmentsRes, assetsRes] = await Promise.all([
         supabase.from('profiles').select('id, email, full_name'),
         supabase.from('subscriptions').select('user_id, plan, status, current_period_end'),
-        supabase.from('investments').select('user_id, amount'),
-        supabase.from('assets').select('user_id, acquisition_cost'),
+        supabase.from('investments').select('id, user_id, amount, platform, custom_platform_name, project_name, status'),
+        supabase.from('assets').select('id, user_id, acquisition_cost, platform_name, project_name, asset_type, status'),
       ]);
 
       if (profilesRes.error) throw profilesRes.error;
@@ -49,18 +61,43 @@ export function useAdminDashboard() {
         subscriptions.map((s) => [s.user_id, s])
       );
 
-      // Sum investments per user
-      const investmentVolume = new Map<string, number>();
+      // Group investments per user
+      const investmentsByUser = new Map<string, AdminUserInvestment[]>();
       for (const inv of investments) {
-        investmentVolume.set(inv.user_id, (investmentVolume.get(inv.user_id) ?? 0) + Number(inv.amount));
+        const list = investmentsByUser.get(inv.user_id) ?? [];
+        list.push({
+          id: inv.id,
+          source: 'investment',
+          projectName: inv.project_name,
+          platformName: inv.custom_platform_name || inv.platform,
+          amount: Number(inv.amount),
+          assetType: null,
+          status: inv.status,
+        });
+        investmentsByUser.set(inv.user_id, list);
       }
+
       for (const asset of assets) {
-        investmentVolume.set(asset.user_id, (investmentVolume.get(asset.user_id) ?? 0) + Number(asset.acquisition_cost));
+        const list = investmentsByUser.get(asset.user_id) ?? [];
+        list.push({
+          id: asset.id,
+          source: 'asset',
+          projectName: asset.project_name,
+          platformName: asset.platform_name,
+          amount: Number(asset.acquisition_cost),
+          assetType: asset.asset_type as 'LENDING' | 'EQUITY',
+          status: asset.status,
+        });
+        investmentsByUser.set(asset.user_id, list);
       }
 
       // Build user list
       const users: AdminUser[] = profiles.map((p) => {
         const sub = subsByUser.get(p.id);
+        const userInvestments = investmentsByUser.get(p.id) ?? [];
+        const totalInvested = userInvestments.reduce((sum, i) => sum + i.amount, 0);
+        const investmentCount = userInvestments.length;
+
         return {
           userId: p.id,
           fullName: p.full_name,
@@ -68,7 +105,10 @@ export function useAdminDashboard() {
           plan: (sub?.plan ?? 'free') as AdminUser['plan'],
           subscriptionStatus: sub?.status ?? 'free',
           subscriptionEnd: sub?.current_period_end ?? null,
-          totalInvested: investmentVolume.get(p.id) ?? 0,
+          totalInvested,
+          investments: userInvestments,
+          investmentCount,
+          averageTicket: investmentCount > 0 ? totalInvested / investmentCount : 0,
         };
       });
 

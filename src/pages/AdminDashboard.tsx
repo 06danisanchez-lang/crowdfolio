@@ -1,11 +1,13 @@
+import { useState } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
-import { useAdminDashboard } from '@/hooks/useAdminDashboard';
+import { useAdminDashboard, type AdminUser } from '@/hooks/useAdminDashboard';
 import { useNavigate } from 'react-router-dom';
 import { Shield, Users, Crown, TrendingUp, ArrowLeft, ShieldAlert, Eye } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
+import AdminUserDetailSheet from '@/components/admin/AdminUserDetailSheet';
 import {
   Table,
   TableBody,
@@ -91,6 +93,7 @@ export default function AdminDashboard() {
   const { isAdmin } = useAuth();
   const navigate = useNavigate();
   const { data, isLoading, error } = useAdminDashboard();
+  const [selectedUser, setSelectedUser] = useState<AdminUser | null>(null);
 
   if (!isAdmin) {
     return <AccessDenied />;
@@ -191,7 +194,11 @@ export default function AdminDashboard() {
                     </TableRow>
                   )}
                   {data?.users.map((u) => (
-                    <TableRow key={u.userId}>
+                    <TableRow
+                      key={u.userId}
+                      className="cursor-pointer"
+                      onClick={() => setSelectedUser(u)}
+                    >
                       <TableCell className="font-medium">
                         {u.fullName || '—'}
                       </TableCell>
@@ -216,7 +223,14 @@ export default function AdminDashboard() {
                         {formatCurrency(u.totalInvested)}
                       </TableCell>
                       <TableCell className="text-right">
-                        <Button variant="ghost" size="sm" disabled>
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            setSelectedUser(u);
+                          }}
+                        >
                           <Eye className="mr-1 h-4 w-4" />
                           Ver Detalles
                         </Button>
@@ -228,6 +242,15 @@ export default function AdminDashboard() {
             </CardContent>
           </Card>
         )}
+
+        {/* User detail side panel */}
+        <AdminUserDetailSheet
+          user={selectedUser}
+          open={!!selectedUser}
+          onOpenChange={(open) => {
+            if (!open) setSelectedUser(null);
+          }}
+        />
       </div>
     </div>
   );

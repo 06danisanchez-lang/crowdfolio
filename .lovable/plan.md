@@ -1,41 +1,57 @@
 
 
-## Proteccion de Ruta para /admin-dashboard
+## Preparar el Proyecto para Exportacion y Despliegue
 
-### Estado actual
+### 1. Verificacion de variables de entorno (estado actual: OK)
 
-La mayor parte de lo solicitado **ya esta implementado**:
+Las 3 variables de entorno del frontend ya estan correctamente configuradas en `.env`:
 
-- La ruta `/admin-dashboard` esta protegida con `ProtectedRoute` (requiere autenticacion).
-- El componente `AdminDashboard` verifica `isAdmin` del contexto de autenticacion y muestra una pantalla de "Acceso Denegado" si el usuario no es admin.
-- El enlace "Administracion" en el sidebar solo es visible para administradores.
-- El rol de admin se verifica de forma segura mediante la tabla `user_roles` y la funcion `has_role()` (patron SECURITY DEFINER), no mediante un campo booleano en `profiles` (lo cual seria vulnerable a ataques de escalacion de privilegios).
+- `VITE_SUPABASE_URL` - URL del backend
+- `VITE_SUPABASE_PUBLISHABLE_KEY` - Clave publica (anon key)
+- `VITE_SUPABASE_PROJECT_ID` - ID del proyecto
 
-### Unico cambio necesario
+Estas son **claves publicas** (publishable) y es seguro que esten en el repositorio. El cliente Supabase en `src/integrations/supabase/client.ts` las consume correctamente via `import.meta.env`.
 
-El comportamiento actual muestra una pantalla estatica de "Acceso Denegado". El usuario solicita **redireccion automatica** a la home (`/`). 
+Los **secretos privados** (STRIPE_SECRET_KEY, FIRECRAWL_API_KEY, SUPABASE_SERVICE_ROLE_KEY) estan almacenados de forma segura en Lovable Cloud y solo son accesibles desde las Edge Functions del backend. No necesitan estar en el frontend.
 
-El cambio es minimo: en `AdminDashboard.tsx`, reemplazar el componente `AccessDenied` por un `<Navigate to="/" replace />` de React Router, para que el usuario no-admin sea redirigido automaticamente sin ver ninguna pantalla intermedia.
+**Accion:** Agregar `.env` al `.gitignore` para evitar que las variables se suban al repositorio de GitHub, ya que en Vercel se configuraran como variables de entorno del proyecto.
+
+### 2. Sincronizacion con GitHub
+
+La sincronizacion con GitHub es una **funcionalidad nativa de la plataforma Lovable**, no un boton dentro de la aplicacion. Se activa desde:
+
+**Settings -> GitHub -> Connect project**
+
+Una vez conectado, la sincronizacion es bidireccional y automatica (cada cambio en Lovable se pushea a GitHub y viceversa).
+
+**Accion:** No se requiere codigo. Se agregara una seccion en el README explicando como activar la sincronizacion.
+
+### 3. Actualizar README.md
+
+Reescribir el README.md con documentacion completa del proyecto, incluyendo:
+
+**Secciones del nuevo README:**
+
+- **Crowdfolio** - Descripcion del proyecto (plataforma de gestion de inversiones en crowdfunding/crowdlending)
+- **Stack Tecnologico** - React, Vite, TypeScript, Tailwind CSS, shadcn/ui, Lovable Cloud (backend)
+- **Estructura del Proyecto** - Carpetas principales y su proposito
+- **Variables de Entorno** - Las 3 variables VITE_SUPABASE_* necesarias para el frontend
+- **Desarrollo Local** - Instrucciones para clonar, instalar y ejecutar
+- **Panel de Administracion** - Documentacion de /admin-dashboard (acceso, roles, funcionalidades)
+- **Despliegue en Vercel** - Guia paso a paso:
+  1. Conectar repositorio de GitHub a Vercel
+  2. Configurar variables de entorno en el dashboard de Vercel
+  3. Build command: `npm run build`
+  4. Output directory: `dist`
+  5. Nota sobre Edge Functions (se ejecutan en Lovable Cloud, no en Vercel)
+- **Sincronizacion con GitHub** - Como activar la sync desde Lovable
+- **Edge Functions** - Lista de las 9 funciones del backend y su proposito
 
 ### Detalle tecnico
 
-**Archivo a modificar:**
-- `src/pages/AdminDashboard.tsx` - Reemplazar el renderizado de `<AccessDenied />` por `<Navigate to="/" replace />`, importando `Navigate` desde `react-router-dom`.
+**Archivos a modificar:**
+- `README.md` - Reescritura completa con documentacion del proyecto y guia de despliegue
+- `.gitignore` - Agregar `.env` para proteger variables al pushear a GitHub
 
-**Logica resultante:**
-```text
-if (!isAdmin) {
-  return <Navigate to="/" replace />;
-}
-```
-
-Esto significa que si un usuario no-admin accede directamente a `/admin-dashboard` (por URL), sera redirigido instantaneamente al dashboard principal sin ver ningun mensaje de error.
-
-**Nota de seguridad:** El rol de admin NO se almacena en la tabla `profiles` ni se verifica con un campo `is_admin` booleano. Se utiliza una tabla separada `user_roles` con una funcion `has_role()` de tipo SECURITY DEFINER, que es el patron recomendado para evitar ataques de escalacion de privilegios. No se realizaran cambios en la base de datos.
-
-**No se requieren cambios en:**
-- `App.tsx` - La ruta ya existe y esta protegida
-- `AppLayout.tsx` - El enlace de admin ya es condicional
-- `AuthContext.tsx` - La verificacion de admin ya funciona correctamente
-- Base de datos - Las politicas RLS y la tabla `user_roles` ya estan configuradas
+**No se crean componentes ni paginas nuevas.** El "Sync to GitHub" no es un boton en la UI, sino una funcionalidad de la plataforma Lovable que se documenta en el README.
 

@@ -1,97 +1,85 @@
 
 
-## Nueva Pagina de Admin Dashboard en `/admin-dashboard`
+## Mejora del Admin Dashboard: Panel de Detalle de Usuario
 
-### Estado actual
-- El panel de admin actual esta embebido como una vista (`'admin'`) dentro de la pagina `Index.tsx`, no es una ruta separada.
-- Las tablas `profiles` y `subscriptions` **no tienen politicas RLS para admins**, por lo que un admin no puede ver datos de otros usuarios desde estas tablas.
-- La tabla `investments` y `assets` ya tienen politicas de admin configuradas.
+### Objetivo
+Al hacer clic en una fila de usuario o en el boton "Ver Detalles", se abrira un **Sheet (panel lateral)** que muestra el desglose completo de la cartera del usuario seleccionado, incluyendo sus inversiones, assets, tipo de activo, y el ticket promedio.
+
+Se usa un Sheet (panel lateral desde la derecha) en lugar de un modal porque la cantidad de datos puede ser extensa y un panel lateral permite scroll natural sin tapar la tabla principal.
+
+---
 
 ### Cambios necesarios
 
-#### 1. Base de datos: Nuevas politicas RLS para admin
-Agregar politicas de lectura para admins en:
-- **`profiles`**: `has_role(auth.uid(), 'admin')` para SELECT - permite al admin ver todos los perfiles
-- **`subscriptions`**: `has_role(auth.uid(), 'admin')` para SELECT - permite al admin ver todas las suscripciones
+#### 1. Ampliar el hook `useAdminDashboard.ts`
 
-Sin estas politicas, el admin no podria ver el plan ni el email de otros usuarios.
+Actualmente el hook solo trae campos agregados (`user_id, amount` / `user_id, acquisition_cost`). Se necesita traer mas campos para poder mostrar el detalle por inversion:
 
-#### 2. Nuevo hook: `src/hooks/useAdminDashboard.ts`
-Un hook dedicado que:
-- Verifica rol admin via `user_roles`
-- Consulta `profiles` (email, full_name)
-- Consulta `subscriptions` (plan, status, current_period_end)
-- Consulta `investments` para calcular volumen total por usuario
-- Consulta `assets` para incluir tambien el modelo nuevo
-- Combina todo en una estructura con:
-  - KPIs: Total Usuarios, Usuarios Pro activos, Volumen Total Gestionado
-  - Lista de usuarios con: nombre, email, plan, vencimiento, volumen gestionado
+- **Investments**: agregar `id, platform, custom_platform_name, project_name, status` a la query
+- **Assets**: agregar `id, platform_name, project_name, asset_type, status` a la query
 
-#### 3. Nueva pagina: `src/pages/AdminDashboard.tsx`
-Pagina independiente con:
-- **Header**: Titulo "Panel de Administracion" con icono Shield
-- **3 Tarjetas KPI** superiores:
-  - Total Usuarios (total de perfiles registrados)
-  - Usuarios Pro Activos (subscriptions con status = 'active')
-  - Volumen Total Gestionado (suma de investments.amount + assets.acquisition_cost)
-- **Tabla principal** con columnas:
-  - Usuario (full_name del perfil)
-  - Email
-  - Plan (badge: Free / Pro)
-  - Vencimiento (current_period_end formateado, o "---" si free)
-  - Boton "Ver Detalles" (expandira la fila para mostrar inversiones del usuario)
-- **Estado de carga**: Skeleton loaders para las 3 tarjetas y la tabla mientras se reciben datos
-- **Acceso denegado**: Si no es admin, muestra pantalla de acceso denegado
-- Boton de volver al dashboard principal
+Se creara una nueva interfaz `AdminUserInvestment` para representar cada inversion/asset individual, y se agregara un campo `investments` al tipo `AdminUser` con el array de todas sus inversiones y assets combinados.
 
-#### 4. Ruta en `src/App.tsx`
-Agregar ruta `/admin-dashboard` protegida con `ProtectedRoute`, que renderiza `AdminDashboard`.
+Estructura de datos nueva:
 
-#### 5. Navegacion
-Agregar enlace al sidebar en `AppLayout.tsx` (solo visible para admins) que apunte a `/admin-dashboard` via `react-router-dom` Link/navigate.
+```text
+interface AdminUserInvestment {
+  id: string
+  source: 'investment' | 'asset'
+  projectName: string
+  platformName: string
+  amount: number
+  assetType: 'LENDING' | 'EQUITY' | null  // null para inversiones legacy
+  status: string
+}
+
+interface AdminUser {
+  // ...campos existentes...
+  investments: AdminUserInvestment[]
+  investmentCount: number
+  averageTicket: number  // totalInvested / investmentCount
+}
+```
+
+#### 2. Nuevo componente: `AdminUserDetailSheet`
+
+Se creara un componente dentro de `src/pages/AdminDashboard.tsx` (o como componente inline) que renderiza un **Sheet** con:
+
+- **Cabecera**: Nombre del usuario, email y badge de plan (Free/Pro)
+- **3 metricas resumen**:
+  - Total Invertido (formato EUR)
+  - Numero de Inversiones
+  - Ticket Promedio (Total / N inversiones, formato EUR)
+- **Tabla de inversiones**: Columnas: Proyecto, Plataforma, Monto, Tipo (Lending/Equity/Legacy), Estado
+- **Estado vacio**: Mensaje si el usuario no tiene inversiones registradas
+
+#### 3. Modificar la tabla de usuarios en `AdminDashboard.tsx`
+
+- Hacer clickeable toda la fila (`TableRow` con `onClick` y `cursor-pointer`)
+- Activar el boton "Ver Detalles" (quitar `disabled`)
+- Gestionar el estado del Sheet con `useState<AdminUser | null>`
+- Al hacer clic en una fila o en "Ver Detalles", se abre el Sheet con los datos del usuario seleccionado
+
+---
 
 ### Detalle tecnico
 
-**Migracion SQL:**
-```text
--- Admin can read all profiles
-CREATE POLICY "Admins can view all profiles"
-ON public.profiles FOR SELECT
-TO authenticated
-USING (has_role(auth.uid(), 'admin'::app_role));
-
--- Admin can read all subscriptions
-CREATE POLICY "Admins can view all subscriptions"
-ON public.subscriptions FOR SELECT
-TO authenticated
-USING (has_role(auth.uid(), 'admin'::app_role));
-```
-
-**Estructura de datos del hook:**
-```text
-interface AdminUser {
-  userId: string
-  fullName: string | null
-  email: string | null
-  plan: 'free' | 'monthly' | 'yearly'
-  subscriptionStatus: string
-  subscriptionEnd: string | null
-  totalInvested: number  // investments + assets
-}
-
-interface AdminDashboardSummary {
-  totalUsers: number
-  proUsers: number
-  totalVolume: number
-}
-```
-
-**Archivos a crear:**
-- `src/pages/AdminDashboard.tsx` - Pagina principal
-- `src/hooks/useAdminDashboard.ts` - Hook de datos
-
 **Archivos a modificar:**
-- `src/App.tsx` - Agregar ruta `/admin-dashboard`
-- `src/components/layout/AppLayout.tsx` - Agregar link de navegacion para admins
-- `src/types/investment.ts` - No necesita cambios, View ya incluye 'admin'
+- `src/hooks/useAdminDashboard.ts` - Ampliar queries y tipos
+- `src/pages/AdminDashboard.tsx` - Agregar Sheet, estado de seleccion, hacer filas clickeables
 
+**No se necesitan cambios de base de datos** - Las queries existentes ya tienen permisos RLS de admin para leer `investments` y `assets` de todos los usuarios.
+
+**Componentes UI utilizados:**
+- `Sheet`, `SheetContent`, `SheetHeader`, `SheetTitle`, `SheetDescription` (ya disponible en el proyecto)
+- `Table` para la lista de inversiones dentro del panel
+- `Badge` para mostrar el tipo de activo (Lending/Equity)
+- `Separator` para dividir secciones
+
+**Calculo del Ticket Promedio:**
+```text
+averageTicket = totalInvested / investmentCount
+// Si investmentCount === 0, mostrar "0,00 EUR"
+```
+
+**Formato de moneda:** Se reutiliza la funcion `formatCurrency` existente que ya usa `Intl.NumberFormat('es-ES', { style: 'currency', currency: 'EUR' })`.

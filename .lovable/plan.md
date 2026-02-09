@@ -1,41 +1,43 @@
 
 
-## Configurar SPA Fallback para evitar 404 al recargar
+## Ajustar hero: subtitulo mas corto + 3 bullets de valor
 
-### Problema
+### Cambios en `src/components/landing/HeroSection.tsx`
 
-Crowdfolio es una SPA (Single Page Application) con rutas manejadas por React Router en el cliente. Cuando un usuario recarga una ruta interna (por ejemplo `/dashboard` o `/admin-dashboard`), el servidor de hosting busca un archivo fisico en esa ruta, no lo encuentra, y devuelve un 404.
+**1. Importar icono `Check` de lucide-react** (linea 2)
 
-### Solucion
+Añadir `Check` a la importacion existente de lucide-react para usarlo como checkmark en los bullets.
 
-Crear un archivo `vercel.json` en la raiz del proyecto que indique a Vercel que redirija todas las rutas al `index.html`, permitiendo que React Router gestione la navegacion.
+**2. Sustituir subtitulo** (linea 66-68)
 
-### Cambio
+Reemplazar el texto actual por:
+"Centraliza y controla todas tus inversiones desde un unico panel."
 
-**Archivo nuevo:** `vercel.json`
+**3. Añadir 3 bullets de valor** entre el subtitulo y los CTAs (entre lineas 68 y 70)
+
+Insertar una lista con 3 items usando el icono `Check` de lucide-react como checkmark, con estos textos:
+
+- Informe fiscal automatico de todas tus inversiones
+- Centralizacion de todas tus plataformas de crowdfunding
+- Acceso a nuevas oportunidades de inversion
+
+Los bullets se mostraran centrados, con el icono a la izquierda y el texto a la derecha, usando clases de Tailwind consistentes con el diseño existente (`text-muted-foreground`, espaciado con `gap` y `mb`).
+
+### Estructura resultante del bloque de texto
 
 ```text
-{
-  "rewrites": [
-    { "source": "/(.*)", "destination": "/index.html" }
-  ]
-}
+[Logo]
+[Badge]
+[Titulo - sin cambios]
+[Subtitulo corto]
+[3 bullets con checkmarks]
+[CTAs - sin cambios]
+[Trust line - sin cambios]
 ```
 
-Esta unica regla hace que cualquier ruta que no corresponda a un archivo estatico existente (JS, CSS, imagenes, etc.) devuelva `index.html`, donde React Router se encarga de renderizar la vista correcta.
+### Que NO se toca
 
-### Nota sobre otros entornos
-
-Si en el futuro se despliega en otro hosting:
-
-- **Netlify**: crear `public/_redirects` con `/* /index.html 200`
-- **Cloudflare Pages**: el SPA fallback se activa desde el dashboard del proyecto
-- **Lovable Cloud Preview**: ya gestiona el fallback automaticamente, por lo que este cambio solo afecta al despliegue en Vercel
-
-### Alcance
-
-- Un solo archivo nuevo: `vercel.json`
-- Sin cambios en codigo fuente
-- Sin dependencias nuevas
-- Sin cambios en base de datos
+- Titulo principal (se mantiene exacto)
+- Estilos generales, layout, CTAs, trust line, dashboard mockup
+- Ningun otro archivo
 

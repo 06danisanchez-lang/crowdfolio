@@ -1,5 +1,5 @@
 import { useNavigate } from 'react-router-dom';
-import { ArrowRight, Sparkles } from 'lucide-react';
+import { ArrowRight, Check, Sparkles } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import AnimatedBackground from './AnimatedBackground';
 import dashboardImg from '@/assets/screenshots/dashboard.jpg';
@@ -63,9 +63,25 @@ export default function HeroSection() {
           </h1>
 
           {/* Subheadline */}
-          <p className="mx-auto mb-6 max-w-2xl text-lg text-muted-foreground md:text-xl">
-            Centraliza tus inversiones, genera tu informe fiscal y descubre nuevas oportunidades desde un único panel.
+          <p className="mx-auto mb-4 max-w-2xl text-lg text-muted-foreground md:text-xl">
+            Centraliza y controla todas tus inversiones desde un único panel.
           </p>
+
+          {/* Value bullets */}
+          <ul className="mx-auto mb-6 flex max-w-xl flex-col items-start gap-2 text-left text-muted-foreground">
+            <li className="flex items-center gap-2">
+              <Check className="h-5 w-5 shrink-0 text-primary" />
+              <span>Informe fiscal automático de todas tus inversiones</span>
+            </li>
+            <li className="flex items-center gap-2">
+              <Check className="h-5 w-5 shrink-0 text-primary" />
+              <span>Centralización de todas tus plataformas de crowdfunding</span>
+            </li>
+            <li className="flex items-center gap-2">
+              <Check className="h-5 w-5 shrink-0 text-primary" />
+              <span>Acceso a nuevas oportunidades de inversión</span>
+            </li>
+          </ul>
 
           {/* CTAs */}
           <div className="flex flex-col items-center justify-center gap-4 sm:flex-row">

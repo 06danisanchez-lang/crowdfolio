@@ -1,43 +1,41 @@
 
 
-## Eliminar redireccion manual de dominio en `main.tsx`
+## Configurar SPA Fallback para evitar 404 al recargar
 
 ### Problema
 
-En `src/main.tsx` (lineas 6-14) existe una redireccion JavaScript que fuerza `www.crowdfolio.es` hacia `crowdfolio.es`. Esta logica del lado del cliente puede causar bucles de redireccion infinitos al interactuar con la configuracion de redirecciones del hosting (Vercel/Lovable Cloud), ya que ambos intentan redirigir simultaneamente.
+Crowdfolio es una SPA (Single Page Application) con rutas manejadas por React Router en el cliente. Cuando un usuario recarga una ruta interna (por ejemplo `/dashboard` o `/admin-dashboard`), el servidor de hosting busca un archivo fisico en esa ruta, no lo encuentra, y devuelve un 404.
 
 ### Solucion
 
-Eliminar por completo el bloque de redireccion de dominio en `main.tsx`. La normalizacion de dominio (www a no-www o viceversa) y la imposicion de HTTPS deben gestionarse exclusivamente a nivel del servidor/hosting, nunca desde el codigo de la aplicacion.
+Crear un archivo `vercel.json` en la raiz del proyecto que indique a Vercel que redirija todas las rutas al `index.html`, permitiendo que React Router gestione la navegacion.
 
 ### Cambio
 
-**Archivo:** `src/main.tsx`
-
-**Eliminar** las lineas 6-14 (el bloque `if (window.location.hostname === "www.crowdfolio.es")`).
-
-El archivo quedara asi:
+**Archivo nuevo:** `vercel.json`
 
 ```text
-import { StrictMode } from "react";
-import { createRoot } from "react-dom/client";
-import App from "./App.tsx";
-import "./index.css";
-
-createRoot(document.getElementById("root")!).render(
-  <StrictMode>
-    <App />
-  </StrictMode>
-);
+{
+  "rewrites": [
+    { "source": "/(.*)", "destination": "/index.html" }
+  ]
+}
 ```
 
-### Que NO se toca
+Esta unica regla hace que cualquier ruta que no corresponda a un archivo estatico existente (JS, CSS, imagenes, etc.) devuelva `index.html`, donde React Router se encarga de renderizar la vista correcta.
 
-- **`App.tsx`**: Las `window.location.href` que existen ahi son acciones de usuario (botones del fallback de bucle de redireccion, signOut). Son navegaciones intencionales iniciadas por click, no redirecciones automaticas. Son seguras.
-- **`SubscriptionContext.tsx`**: Los `window.location.href` ahi son fallbacks para cuando el popup de Stripe es bloqueado. Son navegaciones a URLs externas (Stripe Checkout), no redirecciones de dominio.
-- **Rutas internas**: Todas las rutas en `App.tsx` ya usan `<Navigate to="..." replace />` de React Router, que son relativas y no causan conflictos con el hosting.
+### Nota sobre otros entornos
 
-### Resultado
+Si en el futuro se despliega en otro hosting:
 
-La app deja de interferir con las redirecciones de dominio/HTTPS del hosting, eliminando el bucle de redireccion. La normalizacion de `www` queda delegada al servidor.
+- **Netlify**: crear `public/_redirects` con `/* /index.html 200`
+- **Cloudflare Pages**: el SPA fallback se activa desde el dashboard del proyecto
+- **Lovable Cloud Preview**: ya gestiona el fallback automaticamente, por lo que este cambio solo afecta al despliegue en Vercel
+
+### Alcance
+
+- Un solo archivo nuevo: `vercel.json`
+- Sin cambios en codigo fuente
+- Sin dependencias nuevas
+- Sin cambios en base de datos
 

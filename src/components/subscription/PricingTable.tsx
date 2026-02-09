@@ -10,14 +10,16 @@ import { STRIPE_PRICES, formatPrice } from '@/lib/stripe/config';
 import { toast } from '@/hooks/use-toast';
 import { cn } from '@/lib/utils';
 
-const FEATURES = [
-  { name: 'Inversiones', free: '3 máximo', pro: 'Ilimitadas' },
-  { name: 'Importar desde archivo', free: '1 al mes', pro: 'Ilimitado' },
-  { name: 'Dashboard y gráficos', free: true, pro: true },
-  { name: 'Oportunidades de inversión', free: true, pro: true },
-  { name: 'Alertas de vencimiento', free: 'Solo lectura', pro: 'Configurables' },
-  { name: 'Exportar resumen IRPF', free: false, pro: true },
-  { name: 'Soporte', free: 'Comunidad', pro: 'Prioritario' },
+const FREE_FEATURES = [
+  'Añade hasta 3 inversiones',
+  'Consulta tu cartera y su evolución',
+  'Explora oportunidades de inversión',
+];
+
+const PRO_FEATURES = [
+  { title: 'Inversiones ilimitadas', desc: 'añade todas las inversiones que tengas, sin límite' },
+  { title: 'Alertas configurables', desc: 'recibe avisos sobre vencimientos y eventos importantes' },
+  { title: 'Informe fiscal automático', desc: 'descarga un resumen con los datos necesarios para tu declaración' },
 ];
 
 export function PricingTable() {

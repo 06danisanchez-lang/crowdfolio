@@ -99,7 +99,7 @@ export default function HeroSection() {
               className="text-lg backdrop-blur-sm"
               onClick={() => navigate('/pricing')}
             >
-              Ver planes
+              Ver precios
             </Button>
           </div>
 

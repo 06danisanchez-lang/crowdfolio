@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Check, X, Crown, Loader2, Sparkles } from 'lucide-react';
+import { Check, Crown, Loader2, Sparkles } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -10,14 +10,16 @@ import { STRIPE_PRICES, formatPrice } from '@/lib/stripe/config';
 import { toast } from '@/hooks/use-toast';
 import { cn } from '@/lib/utils';
 
-const FEATURES = [
-  { name: 'Inversiones', free: '3 máximo', pro: 'Ilimitadas' },
-  { name: 'Importar desde archivo', free: '1 al mes', pro: 'Ilimitado' },
-  { name: 'Dashboard y gráficos', free: true, pro: true },
-  { name: 'Oportunidades de inversión', free: true, pro: true },
-  { name: 'Alertas de vencimiento', free: 'Solo lectura', pro: 'Configurables' },
-  { name: 'Exportar resumen IRPF', free: false, pro: true },
-  { name: 'Soporte', free: 'Comunidad', pro: 'Prioritario' },
+const FREE_FEATURES = [
+  'Añade hasta 3 inversiones',
+  'Consulta tu cartera y su evolución',
+  'Explora oportunidades de inversión',
+];
+
+const PRO_FEATURES = [
+  { title: 'Inversiones ilimitadas', desc: 'añade todas las inversiones que tengas, sin límite' },
+  { title: 'Alertas configurables', desc: 'recibe avisos sobre vencimientos y eventos importantes' },
+  { title: 'Informe fiscal automático', desc: 'descarga un resumen con los datos necesarios para tu declaración' },
 ];
 
 export function PricingTable() {
@@ -67,16 +69,6 @@ export function PricingTable() {
     }
   };
 
-  const renderFeatureValue = (value: boolean | string) => {
-    if (typeof value === 'boolean') {
-      return value ? (
-        <Check className="h-5 w-5 text-primary" />
-      ) : (
-        <X className="h-5 w-5 text-muted-foreground/50" />
-      );
-    }
-    return <span className="text-sm">{value}</span>;
-  };
 
   return (
     <div className="space-y-8">
@@ -127,10 +119,10 @@ export function PricingTable() {
             </div>
 
             <ul className="space-y-3">
-              {FEATURES.map((feature) => (
-                <li key={feature.name} className="flex items-center justify-between">
-                  <span className="text-sm">{feature.name}</span>
-                  {renderFeatureValue(feature.free)}
+              {FREE_FEATURES.map((feature) => (
+                <li key={feature} className="flex items-center gap-2">
+                  <Check className="h-5 w-5 shrink-0 text-primary" />
+                  <span className="text-sm">{feature}</span>
                 </li>
               ))}
             </ul>
@@ -181,12 +173,15 @@ export function PricingTable() {
                 {STRIPE_PRICES.yearly.savings}
               </p>
             )}
+            <p className="text-xs text-muted-foreground">Cancela cuando quieras · Sin permanencia</p>
 
             <ul className="space-y-3">
-              {FEATURES.map((feature) => (
-                <li key={feature.name} className="flex items-center justify-between">
-                  <span className="text-sm">{feature.name}</span>
-                  {renderFeatureValue(feature.pro)}
+              {PRO_FEATURES.map((feature) => (
+                <li key={feature.title} className="flex items-start gap-2">
+                  <Check className="mt-0.5 h-5 w-5 shrink-0 text-primary" />
+                  <span className="text-sm">
+                    <strong>{feature.title}:</strong> {feature.desc}
+                  </span>
                 </li>
               ))}
             </ul>
@@ -212,7 +207,7 @@ export function PricingTable() {
                 ) : (
                   <Crown className="mr-2 h-4 w-4" />
                 )}
-                Empezar con Pro
+                Pasar a Pro
               </Button>
             )}
           </CardContent>

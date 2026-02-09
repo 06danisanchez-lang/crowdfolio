@@ -64,7 +64,7 @@ export default function HeroSection() {
 
           {/* Subheadline */}
           <p className="mx-auto mb-6 max-w-2xl text-lg text-muted-foreground md:text-xl">
-            Deja atrás el caos de los Excels. Centraliza tus inversiones de Urbanitae, Wecity, Brickstarter y más en un solo cuadro de mando profesional.
+            Centraliza tus inversiones, genera tu informe fiscal y descubre nuevas oportunidades desde un único panel.
           </p>
 
           {/* CTAs */}

@@ -35,7 +35,7 @@ export default function HeroSection() {
             Toda tu cartera de{' '}
             <span className="relative">
               <span className="bg-gradient-to-r from-primary via-blue-500 to-violet-500 bg-clip-text text-transparent">
-                Crowdfunding
+                crowdfunding
               </span>
               <svg
                 className="absolute -bottom-2 left-0 w-full"
@@ -57,14 +57,14 @@ export default function HeroSection() {
                   </linearGradient>
                 </defs>
               </svg>
-            </span>{' '}
+            </span>,{' '}
             <br className="hidden sm:block" />
-            bajo control y lista para la Renta
+            en un solo lugar.
           </h1>
 
           {/* Subheadline */}
           <p className="mx-auto mb-6 max-w-2xl text-lg text-muted-foreground md:text-xl">
-            Deja atrás el caos de los Excels. Centraliza tus inversiones de Urbanitae, Wecity, Brickstarter y más en un solo cuadro de mando profesional.
+            Centraliza tus inversiones, genera tu informe fiscal y descubre nuevas oportunidades desde un único panel.
           </p>
 
           {/* CTAs */}

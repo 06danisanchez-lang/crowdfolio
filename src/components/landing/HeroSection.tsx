@@ -35,7 +35,7 @@ export default function HeroSection() {
             Toda tu cartera de{' '}
             <span className="relative">
               <span className="bg-gradient-to-r from-primary via-blue-500 to-violet-500 bg-clip-text text-transparent">
-                Crowdfunding
+                crowdfunding
               </span>
               <svg
                 className="absolute -bottom-2 left-0 w-full"
@@ -57,9 +57,9 @@ export default function HeroSection() {
                   </linearGradient>
                 </defs>
               </svg>
-            </span>{' '}
+            </span>,{' '}
             <br className="hidden sm:block" />
-            bajo control y lista para la Renta
+            en un solo lugar.
           </h1>
 
           {/* Subheadline */}

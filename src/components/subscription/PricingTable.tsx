@@ -173,12 +173,15 @@ export function PricingTable() {
                 {STRIPE_PRICES.yearly.savings}
               </p>
             )}
+            <p className="text-xs text-muted-foreground">Cancela cuando quieras · Sin permanencia</p>
 
             <ul className="space-y-3">
-              {FEATURES.map((feature) => (
-                <li key={feature.name} className="flex items-center justify-between">
-                  <span className="text-sm">{feature.name}</span>
-                  {renderFeatureValue(feature.pro)}
+              {PRO_FEATURES.map((feature) => (
+                <li key={feature.title} className="flex items-start gap-2">
+                  <Check className="mt-0.5 h-5 w-5 shrink-0 text-primary" />
+                  <span className="text-sm">
+                    <strong>{feature.title}:</strong> {feature.desc}
+                  </span>
                 </li>
               ))}
             </ul>

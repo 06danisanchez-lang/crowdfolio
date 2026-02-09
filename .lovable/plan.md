@@ -1,43 +1,59 @@
 
 
-## Ajustar hero: subtitulo mas corto + 3 bullets de valor
+## Implementar modelo freemium completo y ajustar CTAs del hero
 
-### Cambios en `src/components/landing/HeroSection.tsx`
+### 1. Actualizar CTAs del hero
 
-**1. Importar icono `Check` de lucide-react** (linea 2)
+**Archivo:** `src/components/landing/HeroSection.tsx`
 
-Añadir `Check` a la importacion existente de lucide-react para usarlo como checkmark en los bullets.
+- CTA primario: cambiar texto de "Empezar a organizar mi cartera" a **"Crea una cuenta gratis"**
+- CTA secundario: cambiar texto de "Ver planes" a **"Ver precios"** (mantiene la navegacion a `/pricing`)
 
-**2. Sustituir subtitulo** (linea 66-68)
+### 2. Reescribir la tabla de precios con el nuevo contenido
 
-Reemplazar el texto actual por:
-"Centraliza y controla todas tus inversiones desde un unico panel."
+**Archivo:** `src/components/subscription/PricingTable.tsx`
 
-**3. Añadir 3 bullets de valor** entre el subtitulo y los CTAs (entre lineas 68 y 70)
+Reemplazar el array `FEATURES` actual (que usa un formato generico de nombre + valor free/pro) por dos listas independientes de features descriptivas:
 
-Insertar una lista con 3 items usando el icono `Check` de lucide-react como checkmark, con estos textos:
+**Plan Free:**
+- Titulo: "Free"
+- Descripcion: lista con checkmarks:
+  - Anade hasta 3 inversiones
+  - Consulta tu cartera y su evolucion
+  - Explora oportunidades de inversion
+- Precio: 0 EUR
+- Sin CTA activo (muestra "Plan actual" si el usuario esta en Free)
 
-- Informe fiscal automatico de todas tus inversiones
-- Centralizacion de todas tus plataformas de crowdfunding
-- Acceso a nuevas oportunidades de inversion
+**Plan Pro (badge "Recomendado"):**
+- Titulo: "Pro" con icono Crown
+- Descripcion: lista con checkmarks y texto descriptivo por cada feature:
+  - **Inversiones ilimitadas:** anade todas las inversiones que tengas, sin limite
+  - **Alertas configurables:** recibe avisos sobre vencimientos y eventos importantes
+  - **Informe fiscal automatico:** descarga un resumen con los datos necesarios para tu declaracion
+- Precio dinamico segun el toggle Mensual/Anual (5,99 EUR/mes o 59 EUR/ano)
+- Badge "Ahorra 17 %" visible en el toggle Anual (ya existe)
+- Microcopy bajo el precio: "Cancela cuando quieras . Sin permanencia"
+- CTA: **"Pasar a Pro"** (antes decia "Empezar con Pro")
 
-Los bullets se mostraran centrados, con el icono a la izquierda y el texto a la derecha, usando clases de Tailwind consistentes con el diseño existente (`text-muted-foreground`, espaciado con `gap` y `mb`).
+Se mantiene:
+- El selector Mensual/Anual en la parte superior (ya existe, funciona bien)
+- La logica de checkout existente (handleCheckout, handleManageSubscription)
+- La logica de redireccion para usuarios no autenticados (sessionStorage + redirect a /auth)
+- El badge "Tu plan actual" para el plan activo
+- La informacion de renovacion de suscripcion al final
 
-### Estructura resultante del bloque de texto
+### Archivos modificados
 
-```text
-[Logo]
-[Badge]
-[Titulo - sin cambios]
-[Subtitulo corto]
-[3 bullets con checkmarks]
-[CTAs - sin cambios]
-[Trust line - sin cambios]
-```
+| Archivo | Cambio |
+|---------|--------|
+| `src/components/landing/HeroSection.tsx` | Texto de los 2 CTAs |
+| `src/components/subscription/PricingTable.tsx` | Features descriptivas, microcopy, CTA "Pasar a Pro" |
 
 ### Que NO se toca
 
-- Titulo principal (se mantiene exacto)
-- Estilos generales, layout, CTAs, trust line, dashboard mockup
-- Ningun otro archivo
+- Estilos generales del sitio, colores, tipografia
+- Estructura del layout de la pagina de precios (`Pricing.tsx`)
+- Logica de Stripe (config, checkout, portal)
+- Ningun otro componente o pagina
+- Base de datos
 

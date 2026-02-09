@@ -69,16 +69,6 @@ export function PricingTable() {
     }
   };
 
-  const renderFeatureValue = (value: boolean | string) => {
-    if (typeof value === 'boolean') {
-      return value ? (
-        <Check className="h-5 w-5 text-primary" />
-      ) : (
-        <X className="h-5 w-5 text-muted-foreground/50" />
-      );
-    }
-    return <span className="text-sm">{value}</span>;
-  };
 
   return (
     <div className="space-y-8">

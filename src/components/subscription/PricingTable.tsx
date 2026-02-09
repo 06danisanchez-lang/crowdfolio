@@ -119,10 +119,10 @@ export function PricingTable() {
             </div>
 
             <ul className="space-y-3">
-              {FEATURES.map((feature) => (
-                <li key={feature.name} className="flex items-center justify-between">
-                  <span className="text-sm">{feature.name}</span>
-                  {renderFeatureValue(feature.free)}
+              {FREE_FEATURES.map((feature) => (
+                <li key={feature} className="flex items-center gap-2">
+                  <Check className="h-5 w-5 shrink-0 text-primary" />
+                  <span className="text-sm">{feature}</span>
                 </li>
               ))}
             </ul>

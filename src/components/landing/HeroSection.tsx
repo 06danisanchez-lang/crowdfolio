@@ -90,7 +90,7 @@ export default function HeroSection() {
               className="group gap-2 text-lg shadow-lg shadow-primary/25 transition-all hover:shadow-xl hover:shadow-primary/30"
               onClick={() => navigate('/auth')}
             >
-              Empezar a organizar mi cartera
+              Crea una cuenta gratis
               <ArrowRight className="h-5 w-5 transition-transform group-hover:translate-x-1" />
             </Button>
             <Button 

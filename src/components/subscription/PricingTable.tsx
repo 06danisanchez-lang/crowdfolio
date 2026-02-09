@@ -207,7 +207,7 @@ export function PricingTable() {
                 ) : (
                   <Crown className="mr-2 h-4 w-4" />
                 )}
-                Empezar con Pro
+                Pasar a Pro
               </Button>
             )}
           </CardContent>

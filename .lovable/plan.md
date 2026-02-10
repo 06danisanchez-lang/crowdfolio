@@ -1,59 +1,67 @@
 
 
-## Implementar modelo freemium completo y ajustar CTAs del hero
+## Implementar cumplimiento legal minimo (solo frontend)
 
-### 1. Actualizar CTAs del hero
+### Constantes centralizadas
 
-**Archivo:** `src/components/landing/HeroSection.tsx`
+Crear `src/lib/legal/routes.ts`:
 
-- CTA primario: cambiar texto de "Empezar a organizar mi cartera" a **"Crea una cuenta gratis"**
-- CTA secundario: cambiar texto de "Ver planes" a **"Ver precios"** (mantiene la navegacion a `/pricing`)
+```typescript
+export const LEGAL_ROUTES = {
+  legal: '/aviso-legal',
+  privacy: '/politica-privacidad',
+  terms: '/terminos',
+  cookies: '/cookies',
+};
+```
 
-### 2. Reescribir la tabla de precios con el nuevo contenido
+Unica fuente de verdad. Cero strings de ruta duplicados.
 
-**Archivo:** `src/components/subscription/PricingTable.tsx`
+### 1. Crear 4 paginas legales en `src/pages/`
 
-Reemplazar el array `FEATURES` actual (que usa un formato generico de nombre + valor free/pro) por dos listas independientes de features descriptivas:
+| Archivo | Constante usada |
+|---------|----------------|
+| `AvisoLegal.tsx` | `LEGAL_ROUTES.legal` |
+| `PoliticaPrivacidad.tsx` | `LEGAL_ROUTES.privacy` |
+| `Terminos.tsx` | `LEGAL_ROUTES.terms` |
+| `Cookies.tsx` | `LEGAL_ROUTES.cookies` |
 
-**Plan Free:**
-- Titulo: "Free"
-- Descripcion: lista con checkmarks:
-  - Anade hasta 3 inversiones
-  - Consulta tu cartera y su evolucion
-  - Explora oportunidades de inversion
-- Precio: 0 EUR
-- Sin CTA activo (muestra "Plan actual" si el usuario esta en Free)
+Cada pagina: card centrada, titulo, fecha placeholder, secciones editables, boton "Volver" con `useNavigate(-1)`.
 
-**Plan Pro (badge "Recomendado"):**
-- Titulo: "Pro" con icono Crown
-- Descripcion: lista con checkmarks y texto descriptivo por cada feature:
-  - **Inversiones ilimitadas:** anade todas las inversiones que tengas, sin limite
-  - **Alertas configurables:** recibe avisos sobre vencimientos y eventos importantes
-  - **Informe fiscal automatico:** descarga un resumen con los datos necesarios para tu declaracion
-- Precio dinamico segun el toggle Mensual/Anual (5,99 EUR/mes o 59 EUR/ano)
-- Badge "Ahorra 17 %" visible en el toggle Anual (ya existe)
-- Microcopy bajo el precio: "Cancela cuando quieras . Sin permanencia"
-- CTA: **"Pasar a Pro"** (antes decia "Empezar con Pro")
+### 2. Rutas en App.tsx
 
-Se mantiene:
-- El selector Mensual/Anual en la parte superior (ya existe, funciona bien)
-- La logica de checkout existente (handleCheckout, handleManageSubscription)
-- La logica de redireccion para usuarios no autenticados (sessionStorage + redirect a /auth)
-- El badge "Tu plan actual" para el plan activo
-- La informacion de renovacion de suscripcion al final
+Importar `LEGAL_ROUTES` y las 4 paginas. Registrar 4 `<Route>` publicas.
 
-### Archivos modificados
+### 3. Footer landing (`src/components/landing/Footer.tsx`)
 
-| Archivo | Cambio |
-|---------|--------|
-| `src/components/landing/HeroSection.tsx` | Texto de los 2 CTAs |
-| `src/components/subscription/PricingTable.tsx` | Features descriptivas, microcopy, CTA "Pasar a Pro" |
+Importar `LEGAL_ROUTES` y `Link`. Fila con 4 enlaces: Aviso legal, Politica de privacidad, Terminos y condiciones, Cookies. Sin `target="_blank"`. Navegacion interna con `Link`.
 
-### Que NO se toca
+### 4. Footer app (`src/components/layout/AppLayout.tsx`)
 
-- Estilos generales del sitio, colores, tipografia
-- Estructura del layout de la pagina de precios (`Pricing.tsx`)
-- Logica de Stripe (config, checkout, portal)
-- Ningun otro componente o pagina
-- Base de datos
+Importar `LEGAL_ROUTES` y `Link`. Footer discreto al final de `<main>`. Sin `target="_blank"`.
+
+### 5. Checkbox en signup (`src/pages/Auth.tsx`)
+
+- Estado `termsAccepted` (false), reset en `switchView`
+- Solo visible en signup
+- Texto exacto: "Confirmo que he leido y acepto la Politica de privacidad y los Terminos y condiciones."
+- "Politica de privacidad" enlaza a `LEGAL_ROUTES.privacy` con `Link`. Sin `target="_blank"`
+- "Terminos y condiciones" enlaza a `LEGAL_ROUTES.terms` con `Link`. Sin `target="_blank"`
+- Boton: `disabled={isSubmitting || (view === 'signup' && !termsAccepted)}`
+
+### 6. Sin banner de cookies. Solo tecnicas de sesion, documentado en `LEGAL_ROUTES.cookies`.
+
+### Tests garantizados
+
+- **Test A**: `target="_blank"` aparece 0 veces en enlaces legales
+- **Test B**: "acepta" aparece 0 veces en el checkbox
+- **Test C**: Texto exacto con "acepto"
+
+### Seccion tecnica
+
+**Archivos nuevos (5):** `src/lib/legal/routes.ts`, `src/pages/AvisoLegal.tsx`, `src/pages/PoliticaPrivacidad.tsx`, `src/pages/Terminos.tsx`, `src/pages/Cookies.tsx`
+
+**Archivos modificados (4):** `src/App.tsx`, `src/components/landing/Footer.tsx`, `src/components/layout/AppLayout.tsx`, `src/pages/Auth.tsx`
+
+**No se toca:** Base de datos, autenticacion, estilos globales, menus, sidebar. Sin banner. Sin `target="_blank"`.
 

@@ -11,7 +11,8 @@ import {
   Shield,
   Building2
 } from 'lucide-react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, Link } from 'react-router-dom';
+import { LEGAL_ROUTES } from '@/lib/legal/routes';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
 import { AlertsPanel } from '@/components/dashboard/AlertsPanel';
@@ -184,6 +185,14 @@ export function AppLayout({
         {/* Main Content */}
         <main className="flex-1 overflow-auto">
           {children}
+          <footer className="border-t py-4 px-6 mt-8">
+            <div className="flex flex-wrap justify-center gap-4 text-xs text-muted-foreground">
+              <Link to={LEGAL_ROUTES.legal} className="hover:text-foreground transition-colors">Aviso legal</Link>
+              <Link to={LEGAL_ROUTES.privacy} className="hover:text-foreground transition-colors">Política de privacidad</Link>
+              <Link to={LEGAL_ROUTES.terms} className="hover:text-foreground transition-colors">Términos y condiciones</Link>
+              <Link to={LEGAL_ROUTES.cookies} className="hover:text-foreground transition-colors">Cookies</Link>
+            </div>
+          </footer>
         </main>
       </div>
     </div>

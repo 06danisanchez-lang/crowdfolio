@@ -11,6 +11,11 @@ import Landing from "./pages/Landing";
 import Pricing from "./pages/Pricing";
 import ResetPassword from "./pages/ResetPassword";
 import AdminDashboard from "./pages/AdminDashboard";
+import AvisoLegal from "./pages/AvisoLegal";
+import PoliticaPrivacidad from "./pages/PoliticaPrivacidad";
+import Terminos from "./pages/Terminos";
+import CookiesPage from "./pages/Cookies";
+import { LEGAL_ROUTES } from "./lib/legal/routes";
 import NotFound from "./pages/NotFound";
 import { useEffect, useRef, useState } from "react";
 import { Button } from "@/components/ui/button";
@@ -323,6 +328,10 @@ const AppRoutes = () => (
       />
       <Route path="/pricing" element={<Pricing onBack={() => window.history.back()} />} />
       <Route path="/reset-password" element={<ResetPassword />} />
+      <Route path={LEGAL_ROUTES.legal} element={<AvisoLegal />} />
+      <Route path={LEGAL_ROUTES.privacy} element={<PoliticaPrivacidad />} />
+      <Route path={LEGAL_ROUTES.terms} element={<Terminos />} />
+      <Route path={LEGAL_ROUTES.cookies} element={<CookiesPage />} />
       <Route path="*" element={<NotFound />} />
     </Routes>
   </AuthGate>

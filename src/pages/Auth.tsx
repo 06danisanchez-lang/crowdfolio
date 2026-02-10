@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { useNavigate, useLocation } from 'react-router-dom';
+import { useNavigate, useLocation, Link } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';
@@ -8,10 +8,12 @@ import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardDescription, CardHeader } from '@/components/ui/card';
 import { Loader2, Mail, Lock, AlertCircle, RefreshCw, ArrowLeft, Crown } from 'lucide-react';
 import { Alert, AlertDescription } from '@/components/ui/alert';
+import { Checkbox } from '@/components/ui/checkbox';
 import { z } from 'zod';
 import crowdfolioLogo from '@/assets/crowdfolio-logo.png';
 import { GoogleButton } from '@/components/auth/GoogleButton';
 import { AuthDivider } from '@/components/auth/AuthDivider';
+import { LEGAL_ROUTES } from '@/lib/legal/routes';
 
 const authSchema = z.object({
   email: z.string().email('Email inválido'),
@@ -33,6 +35,7 @@ export default function Auth() {
   const [isResending, setIsResending] = useState(false);
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
   const [showResendOption, setShowResendOption] = useState(false);
+  const [termsAccepted, setTermsAccepted] = useState(false);
   
   const { signIn, signUp, resetPassword } = useAuth();
   const navigate = useNavigate();
@@ -161,6 +164,7 @@ export default function Auth() {
     setError(null);
     setSuccessMessage(null);
     setShowResendOption(false);
+    setTermsAccepted(false);
     if (newView !== 'forgot-password') {
       setPassword('');
     }
@@ -358,7 +362,27 @@ export default function Auth() {
               </div>
             </div>
 
-            <Button type="submit" className="w-full" disabled={isSubmitting}>
+            {view === 'signup' && (
+              <div className="flex items-start space-x-2">
+                <Checkbox
+                  id="terms"
+                  checked={termsAccepted}
+                  onCheckedChange={(checked) => setTermsAccepted(checked === true)}
+                />
+                <label htmlFor="terms" className="text-sm leading-snug text-muted-foreground">
+                  Confirmo que he leído y acepto la{' '}
+                  <Link to={LEGAL_ROUTES.privacy} className="text-primary underline hover:text-primary/80">
+                    Política de privacidad
+                  </Link>{' '}
+                  y los{' '}
+                  <Link to={LEGAL_ROUTES.terms} className="text-primary underline hover:text-primary/80">
+                    Términos y condiciones
+                  </Link>.
+                </label>
+              </div>
+            )}
+
+            <Button type="submit" className="w-full" disabled={isSubmitting || (view === 'signup' && !termsAccepted)}>
               {isSubmitting ? (
                 <>
                   <Loader2 className="mr-2 h-4 w-4 animate-spin" />

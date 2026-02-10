@@ -362,7 +362,27 @@ export default function Auth() {
               </div>
             </div>
 
-            <Button type="submit" className="w-full" disabled={isSubmitting}>
+            {view === 'signup' && (
+              <div className="flex items-start space-x-2">
+                <Checkbox
+                  id="terms"
+                  checked={termsAccepted}
+                  onCheckedChange={(checked) => setTermsAccepted(checked === true)}
+                />
+                <label htmlFor="terms" className="text-sm leading-snug text-muted-foreground">
+                  Confirmo que he leído y acepto la{' '}
+                  <Link to={LEGAL_ROUTES.privacy} className="text-primary underline hover:text-primary/80">
+                    Política de privacidad
+                  </Link>{' '}
+                  y los{' '}
+                  <Link to={LEGAL_ROUTES.terms} className="text-primary underline hover:text-primary/80">
+                    Términos y condiciones
+                  </Link>.
+                </label>
+              </div>
+            )}
+
+            <Button type="submit" className="w-full" disabled={isSubmitting || (view === 'signup' && !termsAccepted)}>
               {isSubmitting ? (
                 <>
                   <Loader2 className="mr-2 h-4 w-4 animate-spin" />

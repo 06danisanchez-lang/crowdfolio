@@ -328,6 +328,10 @@ const AppRoutes = () => (
       />
       <Route path="/pricing" element={<Pricing onBack={() => window.history.back()} />} />
       <Route path="/reset-password" element={<ResetPassword />} />
+      <Route path={LEGAL_ROUTES.legal} element={<AvisoLegal />} />
+      <Route path={LEGAL_ROUTES.privacy} element={<PoliticaPrivacidad />} />
+      <Route path={LEGAL_ROUTES.terms} element={<Terminos />} />
+      <Route path={LEGAL_ROUTES.cookies} element={<CookiesPage />} />
       <Route path="*" element={<NotFound />} />
     </Routes>
   </AuthGate>

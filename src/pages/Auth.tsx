@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { useNavigate, useLocation } from 'react-router-dom';
+import { useNavigate, useLocation, Link } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';
@@ -8,10 +8,12 @@ import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardDescription, CardHeader } from '@/components/ui/card';
 import { Loader2, Mail, Lock, AlertCircle, RefreshCw, ArrowLeft, Crown } from 'lucide-react';
 import { Alert, AlertDescription } from '@/components/ui/alert';
+import { Checkbox } from '@/components/ui/checkbox';
 import { z } from 'zod';
 import crowdfolioLogo from '@/assets/crowdfolio-logo.png';
 import { GoogleButton } from '@/components/auth/GoogleButton';
 import { AuthDivider } from '@/components/auth/AuthDivider';
+import { LEGAL_ROUTES } from '@/lib/legal/routes';
 
 const authSchema = z.object({
   email: z.string().email('Email inválido'),

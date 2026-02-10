@@ -164,6 +164,7 @@ export default function Auth() {
     setError(null);
     setSuccessMessage(null);
     setShowResendOption(false);
+    setTermsAccepted(false);
     if (newView !== 'forgot-password') {
       setPassword('');
     }

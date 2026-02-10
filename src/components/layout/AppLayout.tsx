@@ -11,7 +11,8 @@ import {
   Shield,
   Building2
 } from 'lucide-react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, Link } from 'react-router-dom';
+import { LEGAL_ROUTES } from '@/lib/legal/routes';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
 import { AlertsPanel } from '@/components/dashboard/AlertsPanel';

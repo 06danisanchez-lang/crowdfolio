@@ -35,6 +35,7 @@ export default function Auth() {
   const [isResending, setIsResending] = useState(false);
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
   const [showResendOption, setShowResendOption] = useState(false);
+  const [termsAccepted, setTermsAccepted] = useState(false);
   
   const { signIn, signUp, resetPassword } = useAuth();
   const navigate = useNavigate();

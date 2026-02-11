@@ -27,6 +27,8 @@ import { BillingSettings } from '@/components/subscription/BillingSettings';
 import { UpgradeModal } from '@/components/subscription/UpgradeModal';
 import { FounderWelcomeModal } from '@/components/subscription/FounderWelcomeModal';
 import { AdminPanel } from '@/components/admin/AdminPanel';
+import { ProfileView } from '@/components/profile/ProfileView';
+import { SettingsView } from '@/components/settings/SettingsView';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { HelpTooltip } from '@/components/ui/help-tooltip';
 import { HELP_CONTENT } from '@/lib/help/tooltipContent';
@@ -372,17 +374,9 @@ const Index = () => {
         </div>
       )}
 
-      {currentView === 'settings' && (
-        <div className="p-6 lg:p-8">
-          <div className="mb-8">
-            <h1 className="text-3xl font-bold">Configuración</h1>
-            <p className="text-muted-foreground">Gestiona tu cuenta y suscripción</p>
-          </div>
-          <div className="max-w-2xl">
-            <BillingSettings />
-          </div>
-        </div>
-      )}
+      {currentView === 'profile' && <ProfileView />}
+
+      {currentView === 'settings' && <SettingsView />}
 
       {currentView === 'admin' && (
         <div className="p-6 lg:p-8">

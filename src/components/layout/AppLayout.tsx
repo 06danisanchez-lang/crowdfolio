@@ -17,11 +17,11 @@ import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
 import { AlertsPanel } from '@/components/dashboard/AlertsPanel';
 import { NotificationBell } from '@/components/layout/NotificationBell';
+import { UserMenu } from '@/components/layout/UserMenu';
 import { Alert } from '@/hooks/useAlerts';
 import { View } from '@/types/investment';
 import { useAuth } from '@/contexts/AuthContext';
 import { Separator } from '@/components/ui/separator';
-import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import crowdfolioLogo from '@/assets/crowdfolio-logo.png';
 
 interface AppLayoutProps {
@@ -42,7 +42,7 @@ export function AppLayout({
   hasUrgentAlerts = false
 }: AppLayoutProps) {
   const [sidebarOpen, setSidebarOpen] = useState(false);
-  const [darkMode, setDarkMode] = useState(false);
+  const [darkMode, setDarkMode] = useState(document.documentElement.classList.contains('dark'));
   const { user, isAdmin, signOut } = useAuth();
   const navigate = useNavigate();
 
@@ -142,42 +142,12 @@ export function AppLayout({
           </nav>
 
           <Separator />
-          <div className="p-4 space-y-2 shrink-0">
-            {user && (
-              <div className="flex items-center gap-3">
-                <Avatar className="h-8 w-8">
-                  <AvatarFallback className="text-xs">
-                    {user.email?.charAt(0).toUpperCase() ?? '?'}
-                  </AvatarFallback>
-                </Avatar>
-                <p className="truncate text-sm text-muted-foreground flex-1">{user.email}</p>
-              </div>
-            )}
-            <Button
-              variant="outline"
-              className="w-full justify-start"
-              onClick={toggleDarkMode}
-            >
-              {darkMode ? (
-                <>
-                  <Sun className="mr-2 h-4 w-4" />
-                  Modo Claro
-                </>
-              ) : (
-                <>
-                  <Moon className="mr-2 h-4 w-4" />
-                  Modo Oscuro
-                </>
-              )}
-            </Button>
-            <Button
-              variant="outline"
-              className="w-full justify-start"
-              onClick={handleSignOut}
-            >
-              <LogOut className="mr-2 h-4 w-4" />
-              Cerrar Sesión
-            </Button>
+          <div className="p-4 shrink-0">
+            <UserMenu
+              onViewChange={onViewChange}
+              onSignOut={handleSignOut}
+              onCloseSidebar={() => setSidebarOpen(false)}
+            />
           </div>
         </aside>
 

@@ -1,48 +1,113 @@
 
-## Reorganizar sidebar: navegacion arriba, cuenta abajo
 
-**Archivo unico a modificar:** `src/components/layout/AppLayout.tsx`
+## Apartado de cuenta interactivo: User Menu + Perfil + Configuracion
 
-### Cambios
+### Resumen
 
-1. **Nuevos imports**: `Separator` desde `@/components/ui/separator`, `Avatar` y `AvatarFallback` desde `@/components/ui/avatar`.
+Reemplazar los botones visibles del bloque inferior del sidebar por una fila clicable con avatar, nombre y chevron que abre un DropdownMenu. Crear dos nuevas paginas (/perfil y /configuracion) con funcionalidades de gestion de cuenta.
 
-2. **Reestructurar el `<aside>`** para usar `flex flex-col h-screen` (o `h-full` con `inset-y-0`) con dos zonas:
+### 1. Base de datos
 
-#### Zona superior (menu)
-- Logo header (sin cambios)
-- `<nav>` con `flex-1 overflow-y-auto p-4`:
-  - Links de menu: Inicio, Inversiones, Oportunidades, Plataformas, Fiscalidad
-  - Fila horizontal con `NotificationBell` + `AlertsPanel` (movidos aqui desde el bloque inferior)
-  - Administracion (condicional si admin)
+**Storage bucket** (migracion SQL):
+- Crear bucket `avatars` (publico) para fotos de perfil
+- Politica RLS: usuarios pueden subir/actualizar/eliminar solo sus propios avatares (path = `{user_id}/`)
 
-#### Zona inferior (cuenta/sistema)
-- `<Separator />` como divisor visual
-- Contenedor `p-4 space-y-2`:
-  - Fila con `Avatar` (inicial del email) + email truncado con ellipsis
-  - Boton Modo oscuro/claro
-  - Boton Cerrar sesion
+No se necesitan cambios en la tabla `profiles` ya que tiene `full_name` y `avatar_url`.
 
-3. **Eliminar** el bloque `absolute bottom-4` actual (lineas 134-174) y reemplazarlo por la estructura flex natural descrita.
+### 2. Tipo View
 
-4. **Mobile sidebar**: misma estructura, sin `hidden lg:flex` en los botones del bloque inferior (se muestran en ambos breakpoints).
+**Archivo:** `src/types/investment.ts`
 
-5. **Mobile header**: se mantiene sin cambios.
-
-### Estructura resultante
-
-```text
-aside (w-64, flex flex-col, h-screen via inset-y-0)
-  +-- div (h-14, border-b) -> logo
-  +-- nav (flex-1, overflow-y-auto, p-4, space-y-1)
-  |     +-- Inicio, Inversiones, Oportunidades, Plataformas, Fiscalidad
-  |     +-- div (flex gap-2, pt-2): NotificationBell + AlertsPanel
-  |     +-- Administracion (si admin)
-  +-- Separator
-  +-- div (p-4, space-y-2)
-        +-- div (flex items-center gap-3): Avatar(inicial) + email truncado
-        +-- Button: Modo oscuro/claro
-        +-- Button: Cerrar sesion
+Anadir `'profile'` al tipo `View`:
+```
+export type View = 'dashboard' | 'investments' | 'opportunities' | 'platforms' | 'tax' | 'settings' | 'profile' | 'admin';
 ```
 
-Sin cambios en rutas, iconos, logica de vistas, paginas legales, footer, base de datos ni autenticacion.
+### 3. Hook useProfile
+
+**Archivo nuevo:** `src/hooks/useProfile.ts`
+
+Hook que:
+- Carga `full_name` y `avatar_url` desde la tabla `profiles`
+- Expone `updateProfile(full_name)` para guardar nombre
+- Expone `uploadAvatar(file)` que sube a storage `avatars/{userId}/avatar.ext` y actualiza `avatar_url` en profiles
+- Expone `removeAvatar()` que elimina del storage y pone `avatar_url = null`
+- Usa react-query para cache y revalidacion
+
+### 4. Sidebar - Bloque inferior interactivo
+
+**Archivo:** `src/components/layout/AppLayout.tsx`
+
+Reemplazar el bloque inferior actual (Avatar + email + boton modo oscuro + boton cerrar sesion) por:
+
+- Una fila clicable que muestra:
+  - Avatar (con `AvatarImage` si hay `avatar_url`, si no `AvatarFallback` con inicial)
+  - Nombre del usuario (full_name del perfil, fallback al email)
+  - Icono `ChevronUp` a la derecha
+- Al hacer clic se abre un `DropdownMenu` (hacia arriba, side="top") con:
+  - **Perfil** (icono User) - navega a vista profile
+  - **Configuracion** (icono Settings) - navega a vista settings
+  - `DropdownMenuSeparator`
+  - **Cerrar sesion** (icono LogOut, estilo destructivo con `text-destructive`)
+
+El toggle de modo oscuro se mueve a la pagina de Configuracion (preferencias).
+
+Imports adicionales: `ChevronUp`, `User`, `Settings` de lucide-react; `DropdownMenu*` de `@/components/ui/dropdown-menu`; `AvatarImage` de `@/components/ui/avatar`.
+
+### 5. Pagina Perfil
+
+**Archivo nuevo:** `src/pages/Profile.tsx` (o como vista en Index.tsx)
+
+Se renderiza cuando `currentView === 'profile'` dentro de `Index.tsx`.
+
+Contenido:
+- Titulo "Mi Perfil"
+- Seccion foto de perfil:
+  - Avatar grande (80x80)
+  - Botones: "Subir foto" (input file oculto), "Eliminar" (si hay foto)
+  - Validacion: solo imagenes, max 2MB
+- Campo "Nombre visible" (input editable, guardado con boton)
+- Campo "Email" (input de solo lectura, deshabilitado)
+- Boton "Guardar cambios"
+
+### 6. Pagina Configuracion (actualizar vista existente)
+
+**Archivo:** vista `settings` en `src/pages/Index.tsx`
+
+Reestructurar la vista settings para incluir:
+
+**Seccion Seguridad:**
+- Cambiar contrasena: formulario con contrasena actual (opcional), nueva contrasena, confirmar. Usa `updatePassword` del AuthContext.
+- Cambiar email: formulario con nuevo email. Usa `supabase.auth.updateUser({ email })`.
+
+**Seccion Preferencias:**
+- Toggle tema oscuro/claro (mover aqui desde el sidebar)
+
+**Seccion Suscripcion:**
+- Mantener el `BillingSettings` existente
+
+### 7. Rutas (sin cambio)
+
+No se crean rutas nuevas en `App.tsx`. Las vistas `profile` y `settings` se renderizan dentro de `Index.tsx` como las demas vistas, controladas por `currentView`.
+
+### 8. Mobile header
+
+Sin cambios en el header movil (mantiene los iconos actuales). Opcionalmente se puede anadir el mismo DropdownMenu en mobile, pero por ahora se mantiene simple.
+
+### Detalle tecnico - Archivos modificados/creados
+
+| Archivo | Accion |
+|---------|--------|
+| Migracion SQL (storage bucket) | Crear bucket `avatars` + RLS |
+| `src/types/investment.ts` | Anadir `'profile'` a View |
+| `src/hooks/useProfile.ts` | **Nuevo** - hook para perfil |
+| `src/components/layout/AppLayout.tsx` | Reemplazar bloque inferior por DropdownMenu |
+| `src/pages/Index.tsx` | Anadir vista `profile`, reestructurar vista `settings` |
+
+### Reglas de negocio
+
+- Si el usuario no ha definido nombre, mostrar el email como fallback en el sidebar
+- Foto de perfil guardada en storage, URL en `profiles.avatar_url`
+- El bloque inferior del sidebar se mantiene fijo al fondo (estructura flex existente)
+- El DropdownMenu abre hacia arriba (`side="top"`) para no quedar cortado
+

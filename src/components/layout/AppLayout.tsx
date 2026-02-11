@@ -54,7 +54,7 @@ export function AppLayout({
   };
 
   const navItems = [
-    { id: 'dashboard' as View, label: 'Dashboard', icon: LayoutDashboard },
+    { id: 'dashboard' as View, label: 'Inicio', icon: LayoutDashboard },
     { id: 'investments' as View, label: 'Inversiones', icon: Wallet },
     { id: 'opportunities' as View, label: 'Oportunidades', icon: Search },
     { id: 'platforms' as View, label: 'Plataformas', icon: Building2 },

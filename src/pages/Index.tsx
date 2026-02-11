@@ -123,7 +123,7 @@ const Index = () => {
         <div className="p-6 lg:p-8">
           <div className="mb-8 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
             <div>
-              <h1 className="text-3xl font-bold">Dashboard</h1>
+              <h1 className="text-3xl font-bold">Inicio</h1>
               <p className="text-muted-foreground">Resumen de tus inversiones inmobiliarias</p>
             </div>
             <div className="flex flex-wrap gap-2">

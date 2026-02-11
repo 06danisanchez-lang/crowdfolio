@@ -20,6 +20,8 @@ import { NotificationBell } from '@/components/layout/NotificationBell';
 import { Alert } from '@/hooks/useAlerts';
 import { View } from '@/types/investment';
 import { useAuth } from '@/contexts/AuthContext';
+import { Separator } from '@/components/ui/separator';
+import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import crowdfolioLogo from '@/assets/crowdfolio-logo.png';
 
 interface AppLayoutProps {
@@ -90,14 +92,14 @@ export function AppLayout({
       <div className="flex">
         {/* Sidebar */}
         <aside className={cn(
-          "fixed inset-y-0 left-0 z-40 w-64 transform border-r bg-card transition-transform lg:static lg:translate-x-0",
+          "fixed inset-y-0 left-0 z-40 w-64 transform border-r bg-card transition-transform lg:static lg:translate-x-0 flex flex-col",
           sidebarOpen ? "translate-x-0" : "-translate-x-full"
         )}>
-          <div className="flex h-14 items-center gap-2 border-b px-6">
+          <div className="flex h-14 items-center gap-2 border-b px-6 shrink-0">
             <img src={crowdfolioLogo} alt="Crowdfolio" className="h-18" />
           </div>
 
-          <nav className="space-y-1 p-4">
+          <nav className="flex-1 overflow-y-auto space-y-1 p-4">
             {navItems.map((item) => (
               <button
                 key={item.id}
@@ -116,6 +118,15 @@ export function AppLayout({
                 {item.label}
               </button>
             ))}
+            <div className="flex items-center gap-2 pt-2">
+              <NotificationBell onOpportunitiesClick={() => onViewChange('opportunities')} />
+              <AlertsPanel 
+                alerts={alerts} 
+                alertCount={alertCount} 
+                hasUrgentAlerts={hasUrgentAlerts}
+                variant="full"
+              />
+            </div>
             {isAdmin && (
               <button
                 onClick={() => {
@@ -130,25 +141,21 @@ export function AppLayout({
             )}
           </nav>
 
-          {/* User info and logout */}
-          <div className="absolute bottom-4 left-4 right-4 space-y-2">
+          <Separator />
+          <div className="p-4 space-y-2 shrink-0">
             {user && (
-              <div className="rounded-lg bg-muted/50 p-3 text-sm">
-                <p className="truncate text-muted-foreground">{user.email}</p>
+              <div className="flex items-center gap-3">
+                <Avatar className="h-8 w-8">
+                  <AvatarFallback className="text-xs">
+                    {user.email?.charAt(0).toUpperCase() ?? '?'}
+                  </AvatarFallback>
+                </Avatar>
+                <p className="truncate text-sm text-muted-foreground flex-1">{user.email}</p>
               </div>
             )}
-            <div className="hidden lg:flex items-center gap-2">
-              <NotificationBell onOpportunitiesClick={() => onViewChange('opportunities')} />
-              <AlertsPanel 
-                alerts={alerts} 
-                alertCount={alertCount} 
-                hasUrgentAlerts={hasUrgentAlerts}
-                variant="full"
-              />
-            </div>
             <Button
               variant="outline"
-              className="hidden w-full justify-start lg:flex"
+              className="w-full justify-start"
               onClick={toggleDarkMode}
             >
               {darkMode ? (
@@ -165,7 +172,7 @@ export function AppLayout({
             </Button>
             <Button
               variant="outline"
-              className="hidden w-full justify-start lg:flex"
+              className="w-full justify-start"
               onClick={handleSignOut}
             >
               <LogOut className="mr-2 h-4 w-4" />

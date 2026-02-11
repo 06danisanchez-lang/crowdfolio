@@ -57,7 +57,7 @@ export default function HeroSection() {
                   </linearGradient>
                 </defs>
               </svg>
-            </span>,{' '}
+            </span>{' '}
             <br className="hidden sm:block" />
             en un solo lugar.
           </h1>

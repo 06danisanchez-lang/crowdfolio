@@ -1,3 +1,4 @@
+import { useState } from 'react';
 import { Search, X, SlidersHorizontal, ArrowUpDown } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
@@ -17,30 +18,6 @@ interface OpportunityFiltersProps {
   resultCount: number;
 }
 
-const isFromSelectInteraction = (target: EventTarget | null): boolean => {
-  if (!(target instanceof Node)) return false;
-  const selectContent = document.querySelector('[data-radix-select-content]');
-  if (selectContent && selectContent.contains(target)) return true;
-  const el = target instanceof Element ? target : target.parentElement;
-  if (el?.closest('[data-radix-select-trigger]')) return true;
-  return false;
-};
-
-const preventSelectPortalClose = {
-  onPointerDownOutside: (e: any) => {
-    const target = e.detail?.originalEvent?.target || e.target;
-    if (isFromSelectInteraction(target)) e.preventDefault();
-  },
-  onInteractOutside: (e: any) => {
-    const target = e.detail?.originalEvent?.target || e.target;
-    if (isFromSelectInteraction(target)) e.preventDefault();
-  },
-  onFocusOutside: (e: any) => {
-    const target = e.detail?.originalEvent?.target || e.target;
-    if (isFromSelectInteraction(target)) e.preventDefault();
-  },
-};
-
 export function OpportunityFilters({
   filters,
   onFiltersChange,
@@ -48,6 +25,8 @@ export function OpportunityFilters({
   onSortChange,
   resultCount,
 }: OpportunityFiltersProps) {
+  const [sortContainer, setSortContainer] = useState<HTMLDivElement | null>(null);
+  const [filtersContainer, setFiltersContainer] = useState<HTMLDivElement | null>(null);
   const hasActiveFilters = Object.values(filters).some(v => v !== undefined && v !== '' && v !== false);
 
   const clearFilters = () => {
@@ -98,7 +77,7 @@ export function OpportunityFilters({
               <span className="hidden sm:inline">Ordenar</span>
             </Button>
           </PopoverTrigger>
-          <PopoverContent align="end" className="w-56" {...preventSelectPortalClose}>
+          <PopoverContent ref={setSortContainer} align="end" className="w-56">
             <div className="space-y-3">
               <div className="text-sm font-medium">Ordenar por</div>
               <Select
@@ -111,7 +90,7 @@ export function OpportunityFilters({
                 <SelectTrigger>
                   <SelectValue />
                 </SelectTrigger>
-                <SelectContent>
+                <SelectContent container={sortContainer}>
                   <SelectItem value="expectedReturn">Rentabilidad</SelectItem>
                   <SelectItem value="term">Plazo</SelectItem>
                   <SelectItem value="fundingProgress">Progreso</SelectItem>
@@ -129,7 +108,7 @@ export function OpportunityFilters({
                 <SelectTrigger>
                   <SelectValue />
                 </SelectTrigger>
-                <SelectContent>
+                <SelectContent container={sortContainer}>
                   <SelectItem value="desc">Mayor a menor</SelectItem>
                   <SelectItem value="asc">Menor a mayor</SelectItem>
                 </SelectContent>
@@ -151,7 +130,7 @@ export function OpportunityFilters({
               )}
             </Button>
           </PopoverTrigger>
-          <PopoverContent align="end" className="w-72" {...preventSelectPortalClose}>
+          <PopoverContent ref={setFiltersContainer} align="end" className="w-72">
             <div className="space-y-4">
               <div className="text-sm font-medium">Filtros avanzados</div>
               
@@ -196,7 +175,7 @@ export function OpportunityFilters({
                   <SelectTrigger>
                     <SelectValue />
                   </SelectTrigger>
-                  <SelectContent>
+                  <SelectContent container={filtersContainer}>
                     <SelectItem value="all">Todos los tipos</SelectItem>
                     {PROJECT_TYPES.map(type => (
                       <SelectItem key={type.value} value={type.value}>
@@ -220,7 +199,7 @@ export function OpportunityFilters({
                   <SelectTrigger>
                     <SelectValue />
                   </SelectTrigger>
-                  <SelectContent>
+                  <SelectContent container={filtersContainer}>
                     <SelectItem value="all">Todos los niveles</SelectItem>
                     {RISK_LEVELS.map(level => (
                       <SelectItem key={level.value} value={level.value}>
@@ -244,7 +223,7 @@ export function OpportunityFilters({
                   <SelectTrigger>
                     <SelectValue />
                   </SelectTrigger>
-                  <SelectContent>
+                  <SelectContent container={filtersContainer}>
                     <SelectItem value="all">Todos los estados</SelectItem>
                     {OPPORTUNITY_STATUS_OPTIONS.map(status => (
                       <SelectItem key={status.value} value={status.value}>

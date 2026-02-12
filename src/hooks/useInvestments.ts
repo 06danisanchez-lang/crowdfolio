@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback, useMemo } from 'react';
+import { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { Investment, InvestmentSummary, Platform, InvestmentStatus, Payment } from '@/types/investment';
@@ -8,6 +8,12 @@ export function useInvestments() {
   const { user } = useAuth();
   const [investments, setInvestments] = useState<Investment[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const isMountedRef = useRef(true);
+
+  useEffect(() => {
+    isMountedRef.current = true;
+    return () => { isMountedRef.current = false; };
+  }, []);
 
   // Fetch investments from database
   const fetchInvestments = useCallback(async () => {
@@ -16,6 +22,13 @@ export function useInvestments() {
       setIsLoading(false);
       return;
     }
+
+    const timeoutId = setTimeout(() => {
+      if (isMountedRef.current) {
+        setIsLoading(false);
+        console.warn('Investment fetch timed out after 15s');
+      }
+    }, 15000);
 
     try {
       setIsLoading(true);
@@ -67,11 +80,16 @@ export function useInvestments() {
           })),
       }));
 
-      setInvestments(mappedInvestments);
+      if (isMountedRef.current) {
+        setInvestments(mappedInvestments);
+      }
     } catch (error) {
       console.error('Error fetching investments:', error);
     } finally {
-      setIsLoading(false);
+      clearTimeout(timeoutId);
+      if (isMountedRef.current) {
+        setIsLoading(false);
+      }
     }
   }, [user]);
 

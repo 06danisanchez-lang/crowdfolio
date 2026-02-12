@@ -170,10 +170,10 @@ export function OpportunityFilters({
                   })}
                 >
                   <SelectTrigger>
-                    <SelectValue placeholder="Todos" />
+                    <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="all">Todos</SelectItem>
+                    <SelectItem value="all">Todos los tipos</SelectItem>
                     {PROJECT_TYPES.map(type => (
                       <SelectItem key={type.value} value={type.value}>
                         {type.label}
@@ -194,10 +194,10 @@ export function OpportunityFilters({
                   })}
                 >
                   <SelectTrigger>
-                    <SelectValue placeholder="Todos" />
+                    <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="all">Todos</SelectItem>
+                    <SelectItem value="all">Todos los niveles</SelectItem>
                     {RISK_LEVELS.map(level => (
                       <SelectItem key={level.value} value={level.value}>
                         {level.label}
@@ -218,10 +218,10 @@ export function OpportunityFilters({
                   })}
                 >
                   <SelectTrigger>
-                    <SelectValue placeholder="Todos" />
+                    <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="all">Todos</SelectItem>
+                    <SelectItem value="all">Todos los estados</SelectItem>
                     {OPPORTUNITY_STATUS_OPTIONS.map(status => (
                       <SelectItem key={status.value} value={status.value}>
                         {status.label}

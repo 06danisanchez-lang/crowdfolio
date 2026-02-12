@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import { 
   LayoutDashboard, 
   Wallet, 
@@ -45,6 +45,11 @@ export function AppLayout({
   const [darkMode, setDarkMode] = useState(document.documentElement.classList.contains('dark'));
   const { user, isAdmin, signOut } = useAuth();
   const navigate = useNavigate();
+  const mainRef = useRef<HTMLElement>(null);
+
+  useEffect(() => {
+    mainRef.current?.scrollTo(0, 0);
+  }, [currentView]);
 
   const toggleDarkMode = () => {
     setDarkMode(!darkMode);
@@ -160,7 +165,7 @@ export function AppLayout({
         )}
 
         {/* Main Content */}
-        <main className="flex-1 overflow-auto">
+        <main ref={mainRef} className="flex-1 overflow-auto">
           {children}
           <footer className="border-t py-4 px-6 mt-8">
             <div className="flex flex-wrap justify-center gap-4 text-xs text-muted-foreground">

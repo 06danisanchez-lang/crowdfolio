@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef } from 'react';
 import { Wallet, TrendingUp, PiggyBank, CalendarClock, Target, Heart, Search as SearchIcon, Plus } from 'lucide-react';
+import { ErrorBoundary } from '@/components/ErrorBoundary';
 import { useInvestments } from '@/hooks/useInvestments';
 import { useAlerts } from '@/hooks/useAlerts';
 import { useOpportunities } from '@/hooks/useOpportunities';
@@ -114,6 +115,7 @@ const Index = () => {
       alertCount={alertCount}
       hasUrgentAlerts={hasUrgentAlerts}
     >
+      <ErrorBoundary fallbackMessage="Ha ocurrido un error inesperado.">
       {currentView === 'dashboard' && (
         <div className="p-6 lg:p-8">
           {isLoading ? (
@@ -407,6 +409,7 @@ const Index = () => {
         onOpenChange={setUpgradeModalOpen}
         feature={upgradeFeature}
       />
+      </ErrorBoundary>
     </AppLayout>
   );
 };

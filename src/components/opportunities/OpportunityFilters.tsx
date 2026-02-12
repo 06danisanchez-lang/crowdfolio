@@ -17,6 +17,24 @@ interface OpportunityFiltersProps {
   resultCount: number;
 }
 
+const isFromSelectPortal = (target: EventTarget | null): boolean => {
+  if (!(target instanceof Node)) return false;
+  const selectContent = document.querySelector('[data-radix-select-content]');
+  return !!selectContent && selectContent.contains(target);
+};
+
+const preventSelectPortalClose = {
+  onPointerDownOutside: (e: Event) => {
+    if (isFromSelectPortal((e as any).target)) e.preventDefault();
+  },
+  onInteractOutside: (e: Event) => {
+    if (isFromSelectPortal((e as any).target)) e.preventDefault();
+  },
+  onFocusOutside: (e: Event) => {
+    if (isFromSelectPortal((e as any).target)) e.preventDefault();
+  },
+};
+
 export function OpportunityFilters({
   filters,
   onFiltersChange,
@@ -74,7 +92,7 @@ export function OpportunityFilters({
               <span className="hidden sm:inline">Ordenar</span>
             </Button>
           </PopoverTrigger>
-          <PopoverContent align="end" className="w-56">
+          <PopoverContent align="end" className="w-56" {...preventSelectPortalClose}>
             <div className="space-y-3">
               <div className="text-sm font-medium">Ordenar por</div>
               <Select
@@ -127,7 +145,7 @@ export function OpportunityFilters({
               )}
             </Button>
           </PopoverTrigger>
-          <PopoverContent align="end" className="w-72">
+          <PopoverContent align="end" className="w-72" {...preventSelectPortalClose}>
             <div className="space-y-4">
               <div className="text-sm font-medium">Filtros avanzados</div>
               

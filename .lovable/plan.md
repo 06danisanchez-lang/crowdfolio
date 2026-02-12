@@ -1,88 +1,29 @@
 
 
-## Fix definitivo: Select dentro de Popover + ErrorBoundary global
+## Cambios: z-index SelectContent + Popover modal={false}
 
-### Problema
+Dos cambios quirurgicos, sin tocar el helper `isFromSelectPortal` (ya esta correcto).
 
-Los `Select` dentro de los `Popover` ("Ordenar" y "Filtros avanzados") causan crash porque al abrirse, el portal del Select dispara eventos de "click fuera" en el Popover, cerrándolo y desmontando el Select activo.
+### 1. `src/components/ui/select.tsx` (linea 69)
 
-### Cambios
+Cambiar `z-50` a `z-[200]` en el className del `SelectPrimitive.Content`. Esto garantiza que el portal del Select se renderice visualmente por encima del PopoverContent.
 
-#### 1. Helper `isFromSelectPortal` + triple handler en PopoverContent
+### 2. `src/components/opportunities/OpportunityFilters.tsx`
 
-**Archivo:** `src/components/opportunities/OpportunityFilters.tsx`
+Anadir `modal={false}` a los dos componentes `Popover` (el de "Ordenar" y el de "Filtros avanzados"). Esto evita que Radix bloquee interacciones con elementos fuera del Popover (como el portal del Select).
 
-Crear una funcion helper que comprueba si el evento viene del portal del Select:
-
-```typescript
-const isFromSelectPortal = (target: EventTarget | null): boolean => {
-  if (!(target instanceof Node)) return false;
-  const selectContent = document.querySelector('[data-radix-select-content]');
-  return !!selectContent && selectContent.contains(target);
-};
-```
-
-Aplicar **tres handlers** a los dos `PopoverContent` (lineas 77 y 130):
-
-```tsx
-<PopoverContent
-  align="end"
-  className="w-56"
-  onPointerDownOutside={(e) => {
-    if (isFromSelectPortal(e.target)) e.preventDefault();
-  }}
-  onInteractOutside={(e) => {
-    if (isFromSelectPortal(e.target)) e.preventDefault();
-  }}
-  onFocusOutside={(e) => {
-    if (isFromSelectPortal(e.target)) e.preventDefault();
-  }}
->
-```
-
-Esto cubre los tres mecanismos que Radix usa para detectar "interaccion fuera" y es fiable en Chrome, Safari y Firefox.
-
-#### 2. ErrorBoundary global
-
-**Archivo nuevo:** `src/components/ErrorBoundary.tsx`
-
-Componente class-based con:
-- `fallbackMessage` prop opcional (default: "Ha ocurrido un error")
-- `onReset` callback opcional
-- UI: Card con icono AlertTriangle, mensaje, boton "Reintentar"
-- `componentDidCatch` para logging
-
-**Archivo:** `src/pages/Index.tsx`
-
-Envolver todo el contenido dentro de `AppLayout` con `ErrorBoundary`:
-
-```tsx
-<AppLayout ...>
-  <ErrorBoundary fallbackMessage="Ha ocurrido un error inesperado.">
-    {currentView === 'dashboard' && (...)}
-    {currentView === 'opportunities' && (...)}
-    {/* resto de vistas */}
-  </ErrorBoundary>
-</AppLayout>
-```
-
-Esto protege **todas las secciones**, no solo Oportunidades.
+El helper `isFromSelectPortal` y los tres handlers (`onPointerDownOutside`, `onInteractOutside`, `onFocusOutside`) se mantienen exactamente como estan.
 
 ### Archivos modificados
 
 | Archivo | Cambio |
 |---------|--------|
-| `src/components/opportunities/OpportunityFilters.tsx` | Helper `isFromSelectPortal` + triple handler en 2 PopoverContent |
-| `src/components/ErrorBoundary.tsx` | Nuevo - ErrorBoundary reutilizable |
-| `src/pages/Index.tsx` | Envolver contenido con ErrorBoundary global |
+| `src/components/ui/select.tsx` | `z-50` a `z-[200]` en SelectContent |
+| `src/components/opportunities/OpportunityFilters.tsx` | `modal={false}` en los 2 Popover |
 
-### Prueba manual post-deploy
+### Resultado esperado
 
-En Chrome, Safari y Firefox:
-1. Ir a Oportunidades
-2. Abrir "Filtros" (popover)
-3. Abrir Select de "Tipo de proyecto" y seleccionar una opcion
-4. Verificar que el Popover NO se cierra y la vista NO queda en blanco
-5. Repetir con "Nivel de riesgo", "Estado"
-6. Repetir con popover "Ordenar" y sus dos Selects
+- Desktop: al abrir un Select dentro del Popover, las opciones son visibles (z-index superior) y el Popover no se cierra
+- Al clicar fuera de verdad (ni en el Select ni en el Popover), el Popover se cierra normalmente
+- Movil: sin cambios de comportamiento (ya funcionaba)
 

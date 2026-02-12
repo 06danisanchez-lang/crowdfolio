@@ -1,72 +1,60 @@
 
 
-## Fix: target real de Radix + guard para SelectTrigger
+## Fix definitivo: SelectContent dentro del PopoverContent via container state
 
-### Problema actual
+### Enfoque
 
-Dos fallos combinados:
+Renderizar el portal del Select dentro del PopoverContent usando `SelectPrimitive.Portal container={...}`. Usar `useState` (no `useRef`) para garantizar que el container no sea `null` cuando el Select se renderiza.
 
-1. Los handlers acceden a `e.target` (el DismissableLayer), no al target real del click, que Radix expone en `e.detail.originalEvent.target`.
-2. Cuando se hace click en el SelectTrigger para abrir el dropdown, `[data-radix-select-content]` aun no existe en el DOM, asi que `isFromSelectPortal()` devuelve `false` y el Popover se cierra antes de que el Select pueda abrirse.
+### 1. `src/components/ui/select.tsx`
 
-### Cambio unico
-
-**Archivo:** `src/components/opportunities/OpportunityFilters.tsx` (lineas 20-36)
-
-Reemplazar el helper y el objeto `preventSelectPortalClose` por:
+Anadir prop opcional `container` a `SelectContent` y pasarla a `SelectPrimitive.Portal`:
 
 ```typescript
-const isFromSelectInteraction = (target: EventTarget | null): boolean => {
-  if (!(target instanceof Node)) return false;
-  // Caso 1: el Select ya esta abierto y el click es dentro del portal
-  const selectContent = document.querySelector('[data-radix-select-content]');
-  if (selectContent && selectContent.contains(target)) return true;
-  // Caso 2: click en el trigger para abrir el Select (el portal aun no existe)
-  const el = target instanceof Element ? target : target.parentElement;
-  if (el?.closest('[data-radix-select-trigger]')) return true;
-  return false;
-};
-
-const preventSelectPortalClose = {
-  onPointerDownOutside: (e: any) => {
-    const target = e.detail?.originalEvent?.target || e.target;
-    if (isFromSelectInteraction(target)) e.preventDefault();
-  },
-  onInteractOutside: (e: any) => {
-    const target = e.detail?.originalEvent?.target || e.target;
-    if (isFromSelectInteraction(target)) e.preventDefault();
-  },
-  onFocusOutside: (e: any) => {
-    const target = e.detail?.originalEvent?.target || e.target;
-    if (isFromSelectInteraction(target)) e.preventDefault();
-  },
-};
+const SelectContent = React.forwardRef<
+  React.ElementRef<typeof SelectPrimitive.Content>,
+  React.ComponentPropsWithoutRef<typeof SelectPrimitive.Content> & {
+    container?: HTMLElement | null;
+  }
+>(({ className, children, position = "popper", container, ...props }, ref) => (
+  <SelectPrimitive.Portal container={container ?? undefined}>
+    ...
 ```
 
-### Por que esto cubre todo el ciclo
+Sin `container`, sigue usando `document.body` como siempre. Ningun otro uso del proyecto se rompe.
 
-```text
-Click en SelectTrigger          Click en opcion del Select     Click fuera de verdad
-         |                                |                              |
-  [data-radix-select-content]      [data-radix-select-content]     No match en
-  NO existe aun                    SI existe en DOM                 ninguno de los dos
-         |                                |                              |
-  closest('[data-radix-               .contains(target)            isFromSelectInteraction
-  select-trigger]') = true            = true                       = false
-         |                                |                              |
-  preventDefault()                  preventDefault()               Popover se cierra
-  Popover permanece abierto         Popover permanece abierto      (comportamiento correcto)
-```
+### 2. `src/components/opportunities/OpportunityFilters.tsx`
 
-### Lo que no cambia
-
-- `z-[200]` en SelectContent: se mantiene
-- `modal={false}` en los 2 Popover: se mantiene
-- ErrorBoundary global: se mantiene
+- Importar `useState` de React
+- Crear dos states:
+  ```typescript
+  const [sortContainer, setSortContainer] = useState<HTMLDivElement | null>(null);
+  const [filtersContainer, setFiltersContainer] = useState<HTMLDivElement | null>(null);
+  ```
+- Asignar como callback ref en cada `PopoverContent`:
+  ```typescript
+  <PopoverContent ref={setSortContainer} ...>
+  <PopoverContent ref={setFiltersContainer} ...>
+  ```
+- Pasar `container` a cada `SelectContent` dentro del Popover correspondiente:
+  ```typescript
+  <SelectContent container={sortContainer}>
+  <SelectContent container={filtersContainer}>
+  ```
+- **Eliminar completamente**: `isFromSelectInteraction`, `preventSelectPortalClose`, y los spreads `{...preventSelectPortalClose}` de ambos PopoverContent
+- **Mantener**: `modal={false}` en ambos Popover
 
 ### Archivos modificados
 
 | Archivo | Cambio |
 |---------|--------|
-| `src/components/opportunities/OpportunityFilters.tsx` | Nuevo helper `isFromSelectInteraction` con guard dual + target real de Radix en los 3 handlers |
+| `src/components/ui/select.tsx` | Prop `container` en SelectContent, pasada a Portal |
+| `src/components/opportunities/OpportunityFilters.tsx` | Dos useState para containers, eliminar toda logica de outside handlers |
+
+### Resultado esperado
+
+- Desktop: Select se renderiza dentro del PopoverContent, no hay dismiss, opciones visibles y clicables
+- Click fuera del Popover lo cierra normalmente
+- Movil: sin cambios
+- Resto de Selects del proyecto: sin cambios
 

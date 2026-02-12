@@ -27,6 +27,8 @@ export function OpportunityFilters({
 }: OpportunityFiltersProps) {
   const [sortContainer, setSortContainer] = useState<HTMLDivElement | null>(null);
   const [filtersContainer, setFiltersContainer] = useState<HTMLDivElement | null>(null);
+  const [sortOpen, setSortOpen] = useState(false);
+  const [filtersOpen, setFiltersOpen] = useState(false);
   const hasActiveFilters = Object.values(filters).some(v => v !== undefined && v !== '' && v !== false);
 
   const clearFilters = () => {
@@ -70,16 +72,21 @@ export function OpportunityFilters({
         </Select>
 
         {/* Sort */}
-        <Popover modal={false}>
+        <Popover modal={false} open={sortOpen} onOpenChange={setSortOpen}>
           <PopoverTrigger asChild>
             <Button variant="outline" className="gap-2">
               <ArrowUpDown className="h-4 w-4" />
               <span className="hidden sm:inline">Ordenar</span>
             </Button>
           </PopoverTrigger>
-          <PopoverContent ref={setSortContainer} align="end" className="w-56">
+          <PopoverContent ref={setSortContainer} align="end" className="z-50 w-56 rounded-md border bg-popover p-4 text-popover-foreground shadow-md outline-none">
             <div className="space-y-3">
-              <div className="text-sm font-medium">Ordenar por</div>
+              <div className="flex items-center justify-between">
+                <div className="text-sm font-medium">Ordenar por</div>
+                <Button variant="ghost" size="sm" className="h-6 w-6 p-0" onClick={() => setSortOpen(false)}>
+                  <X className="h-4 w-4" />
+                </Button>
+              </div>
               <Select
                 value={sortConfig.field}
                 onValueChange={(value) => onSortChange({ 
@@ -118,7 +125,7 @@ export function OpportunityFilters({
         </Popover>
 
         {/* Advanced filters */}
-        <Popover modal={false}>
+        <Popover modal={false} open={filtersOpen} onOpenChange={setFiltersOpen}>
           <PopoverTrigger asChild>
             <Button variant="outline" className="gap-2">
               <SlidersHorizontal className="h-4 w-4" />
@@ -130,9 +137,14 @@ export function OpportunityFilters({
               )}
             </Button>
           </PopoverTrigger>
-          <PopoverContent ref={setFiltersContainer} align="end" className="w-72">
+          <PopoverContent ref={setFiltersContainer} align="end" className="z-50 w-72 rounded-md border bg-popover p-4 text-popover-foreground shadow-md outline-none">
             <div className="space-y-4">
-              <div className="text-sm font-medium">Filtros avanzados</div>
+              <div className="flex items-center justify-between">
+                <div className="text-sm font-medium">Filtros avanzados</div>
+                <Button variant="ghost" size="sm" className="h-6 w-6 p-0" onClick={() => setFiltersOpen(false)}>
+                  <X className="h-4 w-4" />
+                </Button>
+              </div>
               
               {/* Min return */}
               <div className="space-y-2">

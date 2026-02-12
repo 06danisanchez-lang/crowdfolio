@@ -85,7 +85,7 @@ export function OpportunityFilters({
         </Select>
 
         {/* Sort */}
-        <Popover>
+        <Popover modal={false}>
           <PopoverTrigger asChild>
             <Button variant="outline" className="gap-2">
               <ArrowUpDown className="h-4 w-4" />
@@ -133,7 +133,7 @@ export function OpportunityFilters({
         </Popover>
 
         {/* Advanced filters */}
-        <Popover>
+        <Popover modal={false}>
           <PopoverTrigger asChild>
             <Button variant="outline" className="gap-2">
               <SlidersHorizontal className="h-4 w-4" />

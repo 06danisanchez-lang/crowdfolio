@@ -1,10 +1,13 @@
 import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
-import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import { QueryClientProvider } from "@tanstack/react-query";
+import { queryClient } from "@/lib/queryClient";
 import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import { AuthProvider, useAuth } from "@/contexts/AuthContext";
 import { SubscriptionProvider } from "@/contexts/SubscriptionContext";
+import { GlobalErrorBoundary } from "@/components/GlobalErrorBoundary";
+import { DebugPanel } from "@/components/DebugPanel";
 import Index from "./pages/Index";
 import Auth from "./pages/Auth";
 import Landing from "./pages/Landing";
@@ -22,12 +25,15 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { AlertTriangle, LogOut, Home, RefreshCw, LogIn } from "lucide-react";
 
-const queryClient = new QueryClient();
-
 // Debug flag - enable with ?debugAuth=1 in URL
 const isDebugAuth = () => {
   if (typeof window === 'undefined') return false;
   return new URLSearchParams(window.location.search).has('debugAuth');
+};
+
+const isDebugMode = () => {
+  if (typeof window === 'undefined') return false;
+  return new URLSearchParams(window.location.search).has('debug');
 };
 
 const debugLog = (message: string, data?: unknown) => {
@@ -103,17 +109,17 @@ function RedirectLoopFallback() {
   const handleSignOut = async () => {
     clearRedirectCount();
     await signOut();
-    window.location.href = '/landing';
+    window.location.assign('/landing');
   };
   
   const handleGoToLanding = () => {
     clearRedirectCount();
-    window.location.href = '/landing';
+    window.location.assign('/landing');
   };
   
   const handleGoToAuth = () => {
     clearRedirectCount();
-    window.location.href = '/auth';
+    window.location.assign('/auth');
   };
   
   const handleReload = () => {
@@ -338,19 +344,22 @@ const AppRoutes = () => (
 );
 
 const App = () => (
-  <QueryClientProvider client={queryClient}>
-    <TooltipProvider>
-      <Toaster />
-      <Sonner />
-      <BrowserRouter>
-        <AuthProvider>
-          <SubscriptionProvider>
-            <AppRoutes />
-          </SubscriptionProvider>
-        </AuthProvider>
-      </BrowserRouter>
-    </TooltipProvider>
-  </QueryClientProvider>
+  <GlobalErrorBoundary>
+    <QueryClientProvider client={queryClient}>
+      <TooltipProvider>
+        <Toaster />
+        <Sonner />
+        <BrowserRouter>
+          <AuthProvider>
+            <SubscriptionProvider>
+              <AppRoutes />
+              {isDebugMode() && <DebugPanel />}
+            </SubscriptionProvider>
+          </AuthProvider>
+        </BrowserRouter>
+      </TooltipProvider>
+    </QueryClientProvider>
+  </GlobalErrorBoundary>
 );
 
 export default App;

@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef } from 'react';
 import { Wallet, TrendingUp, PiggyBank, CalendarClock, Target, Heart, Search as SearchIcon, Plus } from 'lucide-react';
 import { ErrorBoundary } from '@/components/ErrorBoundary';
+import { ErrorState } from '@/components/ui/error-state';
 import { useInvestments } from '@/hooks/useInvestments';
 import { useAlerts } from '@/hooks/useAlerts';
 import { useOpportunities } from '@/hooks/useOpportunities';
@@ -50,6 +51,7 @@ const Index = () => {
   const {
     investments,
     isLoading,
+    error: investmentsError,
     summary,
     addInvestment,
     updateInvestment,
@@ -64,6 +66,7 @@ const Index = () => {
     opportunities,
     allOpportunities,
     isLoading: opportunitiesLoading,
+    error: opportunitiesError,
     isScraping,
     lastScrapedAt,
     scrapeError,
@@ -78,6 +81,7 @@ const Index = () => {
     updateOpportunity,
     deleteOpportunity,
     toggleFavorite,
+    refetch: refetchOpportunities,
   } = useOpportunities();
 
   const { alerts, alertCount, hasUrgentAlerts } = useAlerts(investments);
@@ -118,7 +122,9 @@ const Index = () => {
       <ErrorBoundary fallbackMessage="Ha ocurrido un error inesperado.">
       {currentView === 'dashboard' && (
         <div className="p-6 lg:p-8">
-          {isLoading ? (
+          {investmentsError ? (
+            <ErrorState message={investmentsError} onRetry={() => window.location.reload()} />
+          ) : isLoading ? (
             <div className="space-y-4">
               <Skeleton className="h-8 w-48" />
               <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
@@ -289,6 +295,10 @@ const Index = () => {
 
       {currentView === 'opportunities' && (
         <div className="p-6 lg:p-8">
+          {opportunitiesError ? (
+            <ErrorState message={opportunitiesError} onRetry={refetchOpportunities} />
+          ) : (
+          <>
           <div className="mb-8 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
             <div>
               <h1 className="text-3xl font-bold">Oportunidades de Inversión</h1>
@@ -363,9 +373,10 @@ const Index = () => {
             onDelete={deleteOpportunity}
             onUpdate={updateOpportunity}
           />
+          </>
+          )}
         </div>
       )}
-
       {currentView === 'platforms' && (
         <div className="p-6 lg:p-8">
           <div className="mb-8">

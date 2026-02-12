@@ -1,6 +1,8 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
+
+const FETCH_TIMEOUT_MS = 15_000;
 
 export interface Notification {
   id: string;
@@ -18,27 +20,41 @@ export function useNotifications() {
   const [notifications, setNotifications] = useState<Notification[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [unreadCount, setUnreadCount] = useState(0);
+  const [error, setError] = useState<string | null>(null);
+  const requestIdRef = useRef(0);
 
   const fetchNotifications = useCallback(async () => {
     if (!user) {
       setNotifications([]);
       setUnreadCount(0);
       setIsLoading(false);
+      setError(null);
       return;
     }
 
+    const currentId = ++requestIdRef.current;
+
+    const timeoutId = setTimeout(() => {
+      if (requestIdRef.current !== currentId) return;
+      setIsLoading(false);
+      setError('Timeout: la carga de notificaciones tardó demasiado');
+    }, FETCH_TIMEOUT_MS);
+
     try {
-      const { data, error } = await supabase
+      setIsLoading(true);
+      setError(null);
+
+      const { data, error: dbError } = await supabase
         .from('notifications')
         .select('*')
         .eq('user_id', user.id)
         .order('created_at', { ascending: false })
         .limit(50);
 
-      if (error) {
-        console.error('Error fetching notifications:', error);
-        return;
-      }
+      clearTimeout(timeoutId);
+      if (requestIdRef.current !== currentId) return;
+
+      if (dbError) throw dbError;
 
       const typedNotifications = (data || []).map(n => ({
         ...n,
@@ -47,16 +63,22 @@ export function useNotifications() {
 
       setNotifications(typedNotifications);
       setUnreadCount(typedNotifications.filter(n => !n.read).length);
-    } catch (error) {
-      console.error('Error fetching notifications:', error);
+    } catch (err) {
+      clearTimeout(timeoutId);
+      if (requestIdRef.current !== currentId) return;
+      console.error('Error fetching notifications:', err);
+      setError(err instanceof Error ? err.message : 'Error al cargar notificaciones');
     } finally {
-      setIsLoading(false);
+      clearTimeout(timeoutId);
+      if (requestIdRef.current === currentId) {
+        setIsLoading(false);
+      }
     }
   }, [user]);
 
-  // Fetch notifications on mount and when user changes
   useEffect(() => {
     fetchNotifications();
+    return () => { ++requestIdRef.current; };
   }, [fetchNotifications]);
 
   // Subscribe to realtime updates
@@ -67,43 +89,28 @@ export function useNotifications() {
       .channel('notifications-changes')
       .on(
         'postgres_changes',
-        {
-          event: 'INSERT',
-          schema: 'public',
-          table: 'notifications',
-          filter: `user_id=eq.${user.id}`,
-        },
+        { event: 'INSERT', schema: 'public', table: 'notifications', filter: `user_id=eq.${user.id}` },
         (payload) => {
           const newNotification = {
             ...payload.new,
             data: (payload.new.data || {}) as Record<string, unknown>
           } as Notification;
-          
           setNotifications(prev => [newNotification, ...prev]);
           setUnreadCount(prev => prev + 1);
         }
       )
       .on(
         'postgres_changes',
-        {
-          event: 'UPDATE',
-          schema: 'public',
-          table: 'notifications',
-          filter: `user_id=eq.${user.id}`,
-        },
+        { event: 'UPDATE', schema: 'public', table: 'notifications', filter: `user_id=eq.${user.id}` },
         (payload) => {
           const updatedNotification = {
             ...payload.new,
             data: (payload.new.data || {}) as Record<string, unknown>
           } as Notification;
-          
-          setNotifications(prev =>
-            prev.map(n => (n.id === updatedNotification.id ? updatedNotification : n))
-          );
-          // Recalculate unread count
-          setNotifications(current => {
-            setUnreadCount(current.filter(n => !n.read).length);
-            return current;
+          setNotifications(prev => {
+            const updated = prev.map(n => (n.id === updatedNotification.id ? updatedNotification : n));
+            setUnreadCount(updated.filter(n => !n.read).length);
+            return updated;
           });
         }
       )
@@ -116,48 +123,30 @@ export function useNotifications() {
 
   const markAsRead = useCallback(async (notificationId: string) => {
     if (!user) return;
-
     const { error } = await supabase
       .from('notifications')
       .update({ read: true })
       .eq('id', notificationId)
       .eq('user_id', user.id);
-
-    if (error) {
-      console.error('Error marking notification as read:', error);
-      return;
-    }
-
-    setNotifications(prev =>
-      prev.map(n => (n.id === notificationId ? { ...n, read: true } : n))
-    );
+    if (error) { console.error('Error marking notification as read:', error); return; }
+    setNotifications(prev => prev.map(n => (n.id === notificationId ? { ...n, read: true } : n)));
     setUnreadCount(prev => Math.max(0, prev - 1));
   }, [user]);
 
   const markAllAsRead = useCallback(async () => {
     if (!user) return;
-
     const { error } = await supabase
       .from('notifications')
       .update({ read: true })
       .eq('user_id', user.id)
       .eq('read', false);
-
-    if (error) {
-      console.error('Error marking all notifications as read:', error);
-      return;
-    }
-
+    if (error) { console.error('Error marking all notifications as read:', error); return; }
     setNotifications(prev => prev.map(n => ({ ...n, read: true })));
     setUnreadCount(0);
   }, [user]);
 
   return {
-    notifications,
-    isLoading,
-    unreadCount,
-    markAsRead,
-    markAllAsRead,
-    refetch: fetchNotifications,
+    notifications, isLoading, unreadCount, error,
+    markAsRead, markAllAsRead, refetch: fetchNotifications,
   };
 }

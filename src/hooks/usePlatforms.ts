@@ -1,30 +1,47 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { toast } from 'sonner';
 import { UserPlatform, UserPlatformFormData } from '@/types/userPlatform';
 
+const FETCH_TIMEOUT_MS = 15_000;
+
 export function usePlatforms() {
   const { user } = useAuth();
   const [platforms, setPlatforms] = useState<UserPlatform[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const requestIdRef = useRef(0);
 
   const fetchPlatforms = useCallback(async () => {
     if (!user) {
       setPlatforms([]);
       setIsLoading(false);
+      setError(null);
       return;
     }
 
+    const currentId = ++requestIdRef.current;
+
+    const timeoutId = setTimeout(() => {
+      if (requestIdRef.current !== currentId) return;
+      setIsLoading(false);
+      setError('Timeout: la carga de plataformas tardó demasiado');
+    }, FETCH_TIMEOUT_MS);
+
     try {
       setIsLoading(true);
-      const { data, error } = await supabase
+      setError(null);
+      const { data, error: dbError } = await supabase
         .from('user_platforms')
         .select('*')
         .eq('user_id', user.id)
         .order('name', { ascending: true });
 
-      if (error) throw error;
+      clearTimeout(timeoutId);
+      if (requestIdRef.current !== currentId) return;
+
+      if (dbError) throw dbError;
 
       const mappedPlatforms: UserPlatform[] = (data || []).map((row) => ({
         id: row.id,
@@ -44,108 +61,75 @@ export function usePlatforms() {
       }));
 
       setPlatforms(mappedPlatforms);
-    } catch (error) {
-      console.error('Error fetching platforms:', error);
+    } catch (err) {
+      clearTimeout(timeoutId);
+      if (requestIdRef.current !== currentId) return;
+      const msg = err instanceof Error ? err.message : 'Error al cargar las plataformas';
+      console.error('Error fetching platforms:', err);
+      setError(msg);
       toast.error('Error al cargar las plataformas');
     } finally {
-      setIsLoading(false);
+      clearTimeout(timeoutId);
+      if (requestIdRef.current === currentId) {
+        setIsLoading(false);
+      }
     }
   }, [user]);
 
   useEffect(() => {
     fetchPlatforms();
+    return () => { ++requestIdRef.current; };
   }, [fetchPlatforms]);
 
   const createPlatform = async (formData: UserPlatformFormData): Promise<boolean> => {
-    if (!user) {
-      toast.error('Debes iniciar sesión');
-      return false;
-    }
-
+    if (!user) { toast.error('Debes iniciar sesión'); return false; }
     try {
       const { error } = await supabase.from('user_platforms').insert({
-        user_id: user.id,
-        name: formData.name,
-        country_code: formData.countryCode,
-        platform_type: formData.platformType,
-        website_url: formData.websiteUrl || null,
-        registration_date: formData.registrationDate || null,
-        status: formData.status,
-        username: formData.username || null,
-        notes: formData.notes || null,
+        user_id: user.id, name: formData.name, country_code: formData.countryCode,
+        platform_type: formData.platformType, website_url: formData.websiteUrl || null,
+        registration_date: formData.registrationDate || null, status: formData.status,
+        username: formData.username || null, notes: formData.notes || null,
         default_withholding: formData.defaultWithholding,
       });
-
       if (error) throw error;
-
       toast.success('Plataforma añadida correctamente');
       await fetchPlatforms();
       return true;
     } catch (error: any) {
       console.error('Error creating platform:', error);
-      if (error.code === '23505') {
-        toast.error('Ya tienes una plataforma con ese nombre');
-      } else {
-        toast.error('Error al crear la plataforma');
-      }
+      if (error.code === '23505') { toast.error('Ya tienes una plataforma con ese nombre'); }
+      else { toast.error('Error al crear la plataforma'); }
       return false;
     }
   };
 
   const updatePlatform = async (id: string, formData: UserPlatformFormData): Promise<boolean> => {
-    if (!user) {
-      toast.error('Debes iniciar sesión');
-      return false;
-    }
-
+    if (!user) { toast.error('Debes iniciar sesión'); return false; }
     try {
-      const { error } = await supabase
-        .from('user_platforms')
-        .update({
-          name: formData.name,
-          country_code: formData.countryCode,
-          platform_type: formData.platformType,
-          website_url: formData.websiteUrl || null,
-          registration_date: formData.registrationDate || null,
-          status: formData.status,
-          username: formData.username || null,
-          notes: formData.notes || null,
-          default_withholding: formData.defaultWithholding,
-        })
-        .eq('id', id)
-        .eq('user_id', user.id);
-
+      const { error } = await supabase.from('user_platforms').update({
+        name: formData.name, country_code: formData.countryCode,
+        platform_type: formData.platformType, website_url: formData.websiteUrl || null,
+        registration_date: formData.registrationDate || null, status: formData.status,
+        username: formData.username || null, notes: formData.notes || null,
+        default_withholding: formData.defaultWithholding,
+      }).eq('id', id).eq('user_id', user.id);
       if (error) throw error;
-
       toast.success('Plataforma actualizada');
       await fetchPlatforms();
       return true;
     } catch (error: any) {
       console.error('Error updating platform:', error);
-      if (error.code === '23505') {
-        toast.error('Ya tienes una plataforma con ese nombre');
-      } else {
-        toast.error('Error al actualizar la plataforma');
-      }
+      if (error.code === '23505') { toast.error('Ya tienes una plataforma con ese nombre'); }
+      else { toast.error('Error al actualizar la plataforma'); }
       return false;
     }
   };
 
   const deletePlatform = async (id: string): Promise<boolean> => {
-    if (!user) {
-      toast.error('Debes iniciar sesión');
-      return false;
-    }
-
+    if (!user) { toast.error('Debes iniciar sesión'); return false; }
     try {
-      const { error } = await supabase
-        .from('user_platforms')
-        .delete()
-        .eq('id', id)
-        .eq('user_id', user.id);
-
+      const { error } = await supabase.from('user_platforms').delete().eq('id', id).eq('user_id', user.id);
       if (error) throw error;
-
       toast.success('Plataforma eliminada');
       await fetchPlatforms();
       return true;
@@ -157,11 +141,8 @@ export function usePlatforms() {
   };
 
   return {
-    platforms,
-    isLoading,
-    createPlatform,
-    updatePlatform,
-    deletePlatform,
+    platforms, isLoading, error,
+    createPlatform, updatePlatform, deletePlatform,
     refetch: fetchPlatforms,
   };
 }

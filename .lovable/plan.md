@@ -1,29 +1,72 @@
 
 
-## Cambios: z-index SelectContent + Popover modal={false}
+## Fix: target real de Radix + guard para SelectTrigger
 
-Dos cambios quirurgicos, sin tocar el helper `isFromSelectPortal` (ya esta correcto).
+### Problema actual
 
-### 1. `src/components/ui/select.tsx` (linea 69)
+Dos fallos combinados:
 
-Cambiar `z-50` a `z-[200]` en el className del `SelectPrimitive.Content`. Esto garantiza que el portal del Select se renderice visualmente por encima del PopoverContent.
+1. Los handlers acceden a `e.target` (el DismissableLayer), no al target real del click, que Radix expone en `e.detail.originalEvent.target`.
+2. Cuando se hace click en el SelectTrigger para abrir el dropdown, `[data-radix-select-content]` aun no existe en el DOM, asi que `isFromSelectPortal()` devuelve `false` y el Popover se cierra antes de que el Select pueda abrirse.
 
-### 2. `src/components/opportunities/OpportunityFilters.tsx`
+### Cambio unico
 
-Anadir `modal={false}` a los dos componentes `Popover` (el de "Ordenar" y el de "Filtros avanzados"). Esto evita que Radix bloquee interacciones con elementos fuera del Popover (como el portal del Select).
+**Archivo:** `src/components/opportunities/OpportunityFilters.tsx` (lineas 20-36)
 
-El helper `isFromSelectPortal` y los tres handlers (`onPointerDownOutside`, `onInteractOutside`, `onFocusOutside`) se mantienen exactamente como estan.
+Reemplazar el helper y el objeto `preventSelectPortalClose` por:
+
+```typescript
+const isFromSelectInteraction = (target: EventTarget | null): boolean => {
+  if (!(target instanceof Node)) return false;
+  // Caso 1: el Select ya esta abierto y el click es dentro del portal
+  const selectContent = document.querySelector('[data-radix-select-content]');
+  if (selectContent && selectContent.contains(target)) return true;
+  // Caso 2: click en el trigger para abrir el Select (el portal aun no existe)
+  const el = target instanceof Element ? target : target.parentElement;
+  if (el?.closest('[data-radix-select-trigger]')) return true;
+  return false;
+};
+
+const preventSelectPortalClose = {
+  onPointerDownOutside: (e: any) => {
+    const target = e.detail?.originalEvent?.target || e.target;
+    if (isFromSelectInteraction(target)) e.preventDefault();
+  },
+  onInteractOutside: (e: any) => {
+    const target = e.detail?.originalEvent?.target || e.target;
+    if (isFromSelectInteraction(target)) e.preventDefault();
+  },
+  onFocusOutside: (e: any) => {
+    const target = e.detail?.originalEvent?.target || e.target;
+    if (isFromSelectInteraction(target)) e.preventDefault();
+  },
+};
+```
+
+### Por que esto cubre todo el ciclo
+
+```text
+Click en SelectTrigger          Click en opcion del Select     Click fuera de verdad
+         |                                |                              |
+  [data-radix-select-content]      [data-radix-select-content]     No match en
+  NO existe aun                    SI existe en DOM                 ninguno de los dos
+         |                                |                              |
+  closest('[data-radix-               .contains(target)            isFromSelectInteraction
+  select-trigger]') = true            = true                       = false
+         |                                |                              |
+  preventDefault()                  preventDefault()               Popover se cierra
+  Popover permanece abierto         Popover permanece abierto      (comportamiento correcto)
+```
+
+### Lo que no cambia
+
+- `z-[200]` en SelectContent: se mantiene
+- `modal={false}` en los 2 Popover: se mantiene
+- ErrorBoundary global: se mantiene
 
 ### Archivos modificados
 
 | Archivo | Cambio |
 |---------|--------|
-| `src/components/ui/select.tsx` | `z-50` a `z-[200]` en SelectContent |
-| `src/components/opportunities/OpportunityFilters.tsx` | `modal={false}` en los 2 Popover |
-
-### Resultado esperado
-
-- Desktop: al abrir un Select dentro del Popover, las opciones son visibles (z-index superior) y el Popover no se cierra
-- Al clicar fuera de verdad (ni en el Select ni en el Popover), el Popover se cierra normalmente
-- Movil: sin cambios de comportamiento (ya funcionaba)
+| `src/components/opportunities/OpportunityFilters.tsx` | Nuevo helper `isFromSelectInteraction` con guard dual + target real de Radix en los 3 handlers |
 

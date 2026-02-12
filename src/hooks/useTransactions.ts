@@ -1,100 +1,93 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { toast } from '@/hooks/use-toast';
 import { Transaction, TransactionRow, transactionFromRow, TransactionType } from '@/types/asset';
 
+const FETCH_TIMEOUT_MS = 15_000;
+
 export function useTransactions(assetId?: string, year?: number) {
   const { user } = useAuth();
   const [transactions, setTransactions] = useState<Transaction[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const requestIdRef = useRef(0);
 
   const fetchTransactions = useCallback(async () => {
     if (!user) {
       setTransactions([]);
       setIsLoading(false);
+      setError(null);
       return;
     }
 
+    const currentId = ++requestIdRef.current;
+
+    const timeoutId = setTimeout(() => {
+      if (requestIdRef.current !== currentId) return;
+      setIsLoading(false);
+      setError('Timeout: la carga de transacciones tardó demasiado');
+    }, FETCH_TIMEOUT_MS);
+
     try {
       setIsLoading(true);
-      
+      setError(null);
+
       let query = supabase
         .from('transactions')
-        .select(`
-          *,
-          assets!inner(user_id)
-        `)
+        .select(`*, assets!inner(user_id)`)
         .eq('assets.user_id', user.id)
         .order('date', { ascending: false });
 
-      if (assetId) {
-        query = query.eq('asset_id', assetId);
-      }
-
+      if (assetId) query = query.eq('asset_id', assetId);
       if (year) {
-        const startDate = `${year}-01-01`;
-        const endDate = `${year}-12-31`;
-        query = query.gte('date', startDate).lte('date', endDate);
+        query = query.gte('date', `${year}-01-01`).lte('date', `${year}-12-31`);
       }
 
-      const { data, error } = await query;
+      const { data, error: dbError } = await query;
 
-      if (error) throw error;
+      clearTimeout(timeoutId);
+      if (requestIdRef.current !== currentId) return;
+      if (dbError) throw dbError;
 
       const mappedTransactions = (data as (TransactionRow & { assets: { user_id: string } })[])
         .map((row) => transactionFromRow(row));
       setTransactions(mappedTransactions);
-    } catch (error) {
-      console.error('Error fetching transactions:', error);
-      toast({
-        title: 'Error',
-        description: 'No se pudieron cargar las transacciones',
-        variant: 'destructive',
-      });
+    } catch (err) {
+      clearTimeout(timeoutId);
+      if (requestIdRef.current !== currentId) return;
+      console.error('Error fetching transactions:', err);
+      setError(err instanceof Error ? err.message : 'Error al cargar transacciones');
+      toast({ title: 'Error', description: 'No se pudieron cargar las transacciones', variant: 'destructive' });
     } finally {
-      setIsLoading(false);
+      clearTimeout(timeoutId);
+      if (requestIdRef.current === currentId) {
+        setIsLoading(false);
+      }
     }
   }, [user, assetId, year]);
 
   useEffect(() => {
     fetchTransactions();
+    return () => { ++requestIdRef.current; };
   }, [fetchTransactions]);
 
   const addTransaction = async (transaction: Omit<Transaction, 'id' | 'createdAt'>) => {
     try {
-      const { data, error } = await supabase
-        .from('transactions')
-        .insert({
-          asset_id: transaction.assetId,
-          date: transaction.date,
-          type: transaction.type as TransactionType,
-          gross_amount: transaction.grossAmount,
-          withholding_amount: transaction.withholdingAmount,
-          currency: transaction.currency,
-          notes: transaction.notes || null,
-        })
-        .select()
-        .single();
-
+      const { data, error } = await supabase.from('transactions').insert({
+        asset_id: transaction.assetId, date: transaction.date,
+        type: transaction.type as TransactionType, gross_amount: transaction.grossAmount,
+        withholding_amount: transaction.withholdingAmount,
+        currency: transaction.currency, notes: transaction.notes || null,
+      }).select().single();
       if (error) throw error;
-
       const newTransaction = transactionFromRow(data as TransactionRow);
       setTransactions((prev) => [newTransaction, ...prev]);
-      
-      toast({
-        title: 'Transacción añadida',
-        description: 'La transacción ha sido registrada correctamente',
-      });
-      
+      toast({ title: 'Transacción añadida', description: 'La transacción ha sido registrada correctamente' });
       return newTransaction;
     } catch (error) {
       console.error('Error adding transaction:', error);
-      toast({
-        title: 'Error',
-        description: 'No se pudo añadir la transacción',
-        variant: 'destructive',
-      });
+      toast({ title: 'Error', description: 'No se pudo añadir la transacción', variant: 'destructive' });
       return null;
     }
   };
@@ -102,7 +95,6 @@ export function useTransactions(assetId?: string, year?: number) {
   const updateTransaction = async (id: string, updates: Partial<Omit<Transaction, 'id' | 'createdAt'>>) => {
     try {
       const updateData: Record<string, unknown> = {};
-      
       if (updates.assetId !== undefined) updateData.asset_id = updates.assetId;
       if (updates.date !== undefined) updateData.date = updates.date;
       if (updates.type !== undefined) updateData.type = updates.type;
@@ -111,69 +103,37 @@ export function useTransactions(assetId?: string, year?: number) {
       if (updates.currency !== undefined) updateData.currency = updates.currency;
       if (updates.notes !== undefined) updateData.notes = updates.notes;
 
-      const { data, error } = await supabase
-        .from('transactions')
-        .update(updateData)
-        .eq('id', id)
-        .select()
-        .single();
-
+      const { data, error } = await supabase.from('transactions').update(updateData).eq('id', id).select().single();
       if (error) throw error;
-
       const updatedTransaction = transactionFromRow(data as TransactionRow);
       setTransactions((prev) => prev.map((t) => (t.id === id ? updatedTransaction : t)));
-      
-      toast({
-        title: 'Transacción actualizada',
-        description: 'Los cambios se han guardado correctamente',
-      });
-      
+      toast({ title: 'Transacción actualizada', description: 'Los cambios se han guardado correctamente' });
       return updatedTransaction;
     } catch (error) {
       console.error('Error updating transaction:', error);
-      toast({
-        title: 'Error',
-        description: 'No se pudo actualizar la transacción',
-        variant: 'destructive',
-      });
+      toast({ title: 'Error', description: 'No se pudo actualizar la transacción', variant: 'destructive' });
       return null;
     }
   };
 
   const deleteTransaction = async (id: string) => {
     try {
-      const { error } = await supabase
-        .from('transactions')
-        .delete()
-        .eq('id', id);
-
+      const { error } = await supabase.from('transactions').delete().eq('id', id);
       if (error) throw error;
-
       setTransactions((prev) => prev.filter((t) => t.id !== id));
-      
-      toast({
-        title: 'Transacción eliminada',
-        description: 'La transacción ha sido eliminada correctamente',
-      });
-      
+      toast({ title: 'Transacción eliminada', description: 'La transacción ha sido eliminada correctamente' });
       return true;
     } catch (error) {
       console.error('Error deleting transaction:', error);
-      toast({
-        title: 'Error',
-        description: 'No se pudo eliminar la transacción',
-        variant: 'destructive',
-      });
+      toast({ title: 'Error', description: 'No se pudo eliminar la transacción', variant: 'destructive' });
       return false;
     }
   };
 
-  // Computed values by type
   const interestTransactions = transactions.filter((t) => t.type === 'INTEREST');
   const dividendTransactions = transactions.filter((t) => t.type === 'DIVIDEND');
   const saleTransactions = transactions.filter((t) => t.type === 'SALE');
   const lossTransactions = transactions.filter((t) => t.type === 'LOSS');
-
   const totalInterest = interestTransactions.reduce((sum, t) => sum + t.grossAmount, 0);
   const totalDividends = dividendTransactions.reduce((sum, t) => sum + t.grossAmount, 0);
   const totalSales = saleTransactions.reduce((sum, t) => sum + t.grossAmount, 0);
@@ -181,22 +141,10 @@ export function useTransactions(assetId?: string, year?: number) {
   const totalWithholdings = transactions.reduce((sum, t) => sum + t.withholdingAmount, 0);
 
   return {
-    transactions,
-    isLoading,
-    addTransaction,
-    updateTransaction,
-    deleteTransaction,
+    transactions, isLoading, error,
+    addTransaction, updateTransaction, deleteTransaction,
     refetch: fetchTransactions,
-    // By type
-    interestTransactions,
-    dividendTransactions,
-    saleTransactions,
-    lossTransactions,
-    // Totals
-    totalInterest,
-    totalDividends,
-    totalSales,
-    totalLosses,
-    totalWithholdings,
+    interestTransactions, dividendTransactions, saleTransactions, lossTransactions,
+    totalInterest, totalDividends, totalSales, totalLosses, totalWithholdings,
   };
 }

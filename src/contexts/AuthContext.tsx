@@ -3,6 +3,8 @@ import { User, Session, AuthChangeEvent } from '@supabase/supabase-js';
 import { supabase } from '@/integrations/supabase/client';
 import { lovable } from '@/integrations/lovable';
 
+const AUTH_TIMEOUT_MS = 10_000;
+
 // Debug flag - enable with ?debugAuth=1 in URL
 const isDebugAuth = () => {
   if (typeof window === 'undefined') return false;
@@ -15,20 +17,11 @@ const debugLog = (message: string, data?: unknown) => {
   }
 };
 
-/**
- * Devuelve el origen canónico para redirects de autenticación.
- * En producción siempre devuelve https://crowdfolio.es (sin www).
- * En otros entornos (preview/staging) usa window.location.origin.
- */
 function getAuthOrigin(): string {
   const { hostname, origin } = window.location;
-  
-  // En producción, forzar el dominio canónico sin www
   if (hostname === 'crowdfolio.es' || hostname === 'www.crowdfolio.es') {
     return 'https://crowdfolio.es';
   }
-  
-  // En otros entornos (preview, localhost, etc.), usar el origen actual
   return origin;
 }
 
@@ -55,24 +48,15 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [isAdmin, setIsAdmin] = useState(false);
   const [hasBootstrapped, setHasBootstrapped] = useState(false);
   
-  // Ref to track if initial bootstrap has completed
   const hasBootstrappedRef = useRef(false);
-  
-  // Ref to track user IDs for which the new-user webhook has already fired
   const webhookFiredForRef = useRef<Set<string>>(new Set());
 
   const fireNewUserWebhook = useCallback((user: User) => {
     if (webhookFiredForRef.current.has(user.id)) return;
-
     const createdAt = new Date(user.created_at).getTime();
     const ageMs = Date.now() - createdAt;
-
-    // Solo disparar para cuentas creadas hace menos de 30 segundos
     if (ageMs > 30_000) return;
-
-    // Marcar ANTES del fetch para evitar race conditions
     webhookFiredForRef.current.add(user.id);
-
     fetch('https://brunosanchez.app.n8n.cloud/webhook/nuevo-usuario', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -99,7 +83,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         setIsAdmin(false);
         return;
       }
-
       const isAdminResult = !!data;
       debugLog('Admin role result', isAdminResult);
       setIsAdmin(isAdminResult);
@@ -114,33 +97,24 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
     debugLog('Setting up auth listener and initializing');
 
-    // Listener para cambios POSTERIORES al bootstrap
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
       (event: AuthChangeEvent, newSession) => {
         if (!isMounted) return;
-        
         debugLog('onAuthStateChange event', { event, hasSession: !!newSession, hasBootstrapped: hasBootstrappedRef.current });
 
-        // CRITICAL: Ignore INITIAL_SESSION - we handle initial state via getSession()
-        // This prevents the race condition where INITIAL_SESSION fires before/after getSession()
         if (event === 'INITIAL_SESSION') {
           debugLog('Ignoring INITIAL_SESSION event - handled by getSession()');
           return;
         }
 
-        // For all other events (SIGNED_IN, SIGNED_OUT, TOKEN_REFRESHED, etc.)
-        // Update state normally
         debugLog('Processing auth event', { event, userId: newSession?.user?.id });
-        
         setSession(newSession);
         setUser(newSession?.user ?? null);
 
-        // Fire webhook for new Google OAuth registrations
         if (event === 'SIGNED_IN' && newSession?.user) {
           fireNewUserWebhook(newSession.user);
         }
 
-        // Fire and forget admin check - don't block or affect isLoading
         if (newSession?.user) {
           checkAdminRole(newSession.user.id);
         } else {
@@ -149,40 +123,59 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       }
     );
 
-    // CARGA INICIAL - única fuente de verdad para el primer estado
+    // CARGA INICIAL con timeout de 10s
     const initializeAuth = async () => {
+      let resolved = false;
+
+      const timeoutId = setTimeout(() => {
+        if (!resolved) {
+          resolved = true;
+          console.warn('[Auth] Bootstrap timeout after 10s - falling back to unauthenticated');
+          if (isMounted) {
+            setUser(null);
+            setSession(null);
+            setIsAdmin(false);
+            hasBootstrappedRef.current = true;
+            setHasBootstrapped(true);
+            setIsLoading(false);
+          }
+        }
+      }, AUTH_TIMEOUT_MS);
+
       try {
         debugLog('Starting initializeAuth');
-        
         const { data: { session: initialSession }, error } = await supabase.auth.getSession();
         
+        clearTimeout(timeoutId);
+        if (resolved) return; // timeout already fired, ignore late response
+        resolved = true;
+
         if (error) {
           console.error('Error getting session:', error);
         }
-        
         if (!isMounted) return;
 
         debugLog('getSession result', { hasSession: !!initialSession, userId: initialSession?.user?.id });
-
         setSession(initialSession);
         setUser(initialSession?.user ?? null);
 
-        // Fire and forget admin check - don't await, don't block loading
         if (initialSession?.user) {
           checkAdminRole(initialSession.user.id);
         } else {
           setIsAdmin(false);
         }
 
-        // Mark bootstrap as complete BEFORE setting isLoading to false
         hasBootstrappedRef.current = true;
         setHasBootstrapped(true);
-        
         debugLog('Bootstrap complete, setting isLoading to false');
       } catch (error) {
+        clearTimeout(timeoutId);
+        if (resolved) return;
+        resolved = true;
+
         console.error('Error in initializeAuth:', error);
       } finally {
-        if (isMounted) {
+        if (isMounted && resolved) {
           hasBootstrappedRef.current = true;
           setHasBootstrapped(true);
           setIsLoading(false);
@@ -199,22 +192,15 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, [checkAdminRole]);
 
   const signIn = async (email: string, password: string) => {
-    const { error } = await supabase.auth.signInWithPassword({
-      email,
-      password,
-    });
+    const { error } = await supabase.auth.signInWithPassword({ email, password });
     return { error: error as Error | null };
   };
 
   const signUp = async (email: string, password: string) => {
     const redirectUrl = `${getAuthOrigin()}/`;
-    
     const { error } = await supabase.auth.signUp({
-      email,
-      password,
-      options: {
-        emailRedirectTo: redirectUrl,
-      },
+      email, password,
+      options: { emailRedirectTo: redirectUrl },
     });
     return { error: error as Error | null };
   };
@@ -226,55 +212,30 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const signInWithGoogle = async () => {
     const redirectUri = getAuthOrigin();
-    
-    const result = await lovable.auth.signInWithOAuth("google", {
-      redirect_uri: redirectUri,
-    });
-    
-    if (result.redirected) {
-      return { error: null };
-    }
-    
-    // Añadir información de diagnóstico al error
+    const result = await lovable.auth.signInWithOAuth("google", { redirect_uri: redirectUri });
+    if (result.redirected) return { error: null };
     if (result.error) {
-      const enhancedError = new Error(
-        `${result.error.message} (redirect_uri usado: ${redirectUri})`
-      );
+      const enhancedError = new Error(`${result.error.message} (redirect_uri usado: ${redirectUri})`);
       return { error: enhancedError };
     }
-    
     return { error: null };
   };
 
   const resetPassword = async (email: string) => {
     const redirectUrl = `${getAuthOrigin()}/reset-password`;
-    
-    const { error } = await supabase.auth.resetPasswordForEmail(email, {
-      redirectTo: redirectUrl,
-    });
+    const { error } = await supabase.auth.resetPasswordForEmail(email, { redirectTo: redirectUrl });
     return { error: error as Error | null };
   };
 
   const updatePassword = async (newPassword: string) => {
-    const { error } = await supabase.auth.updateUser({
-      password: newPassword,
-    });
+    const { error } = await supabase.auth.updateUser({ password: newPassword });
     return { error: error as Error | null };
   };
 
   return (
     <AuthContext.Provider value={{ 
-      user, 
-      session, 
-      isLoading, 
-      isAdmin, 
-      hasBootstrapped,
-      signIn, 
-      signUp, 
-      signInWithGoogle, 
-      signOut, 
-      resetPassword, 
-      updatePassword 
+      user, session, isLoading, isAdmin, hasBootstrapped,
+      signIn, signUp, signInWithGoogle, signOut, resetPassword, updatePassword 
     }}>
       {children}
     </AuthContext.Provider>

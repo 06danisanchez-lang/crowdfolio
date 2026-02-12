@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect, useMemo, useRef } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { TaxSummary } from '@/types/tax';
@@ -6,6 +6,8 @@ import { Investment } from '@/types/investment';
 import { calculateProgressiveTax, calculateEffectiveRate } from '@/lib/tax/calculations';
 import { calculateYearlyProjection, TaxProjection } from '@/lib/tax/projections';
 import { useTaxExpenses } from './useTaxExpenses';
+
+const FETCH_TIMEOUT_MS = 15_000;
 
 interface PaymentWithInvestment {
   id: string;
@@ -36,19 +38,32 @@ export function useTaxSummary(year: number) {
   const [payments, setPayments] = useState<PaymentWithInvestment[]>([]);
   const [investments, setInvestments] = useState<Investment[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const requestIdRef = useRef(0);
   const { expenses, totalExpenses, isLoading: expensesLoading } = useTaxExpenses(year);
 
   useEffect(() => {
+    const currentId = ++requestIdRef.current;
+
     async function fetchData() {
       if (!user) {
         setPayments([]);
         setInvestments([]);
         setIsLoading(false);
+        setError(null);
         return;
       }
 
+      const timeoutId = setTimeout(() => {
+        if (requestIdRef.current !== currentId) return;
+        setIsLoading(false);
+        setError('Timeout: la carga fiscal tardó demasiado');
+      }, FETCH_TIMEOUT_MS);
+
       try {
-        // Fetch user's investments
+        setIsLoading(true);
+        setError(null);
+
         const { data: investmentsData, error: investmentsError } = await supabase
           .from('investments')
           .select('*')
@@ -57,36 +72,30 @@ export function useTaxSummary(year: number) {
         if (investmentsError) throw investmentsError;
 
         const mappedInvestments: Investment[] = (investmentsData as InvestmentRow[] || []).map((inv) => ({
-          id: inv.id,
-          platform: inv.platform as Investment['platform'],
+          id: inv.id, platform: inv.platform as Investment['platform'],
           customPlatformName: inv.custom_platform_name || undefined,
-          projectName: inv.project_name,
-          amount: Number(inv.amount),
-          investmentDate: inv.investment_date,
-          expectedEndDate: inv.expected_end_date || undefined,
-          expectedReturn: Number(inv.expected_return),
-          status: inv.status as Investment['status'],
-          notes: inv.notes || undefined,
-          payments: [],
-          createdAt: inv.created_at,
-          updatedAt: inv.updated_at,
+          projectName: inv.project_name, amount: Number(inv.amount),
+          investmentDate: inv.investment_date, expectedEndDate: inv.expected_end_date || undefined,
+          expectedReturn: Number(inv.expected_return), status: inv.status as Investment['status'],
+          notes: inv.notes || undefined, payments: [],
+          createdAt: inv.created_at, updatedAt: inv.updated_at,
         }));
-
-        setInvestments(mappedInvestments);
 
         const investmentIds = mappedInvestments.map((i) => i.id);
 
         if (investmentIds.length === 0) {
+          clearTimeout(timeoutId);
+          if (requestIdRef.current !== currentId) return;
+          setInvestments(mappedInvestments);
           setPayments([]);
           setIsLoading(false);
           return;
         }
 
-        // Get payments for user's investments in the specified year
         const startDate = `${year}-01-01`;
         const endDate = `${year}-12-31`;
 
-        const { data, error } = await supabase
+        const { data, error: paymentsError } = await supabase
           .from('payments')
           .select('id, date, amount, type, withholding_applied, investment_id')
           .in('investment_id', investmentIds)
@@ -94,141 +103,82 @@ export function useTaxSummary(year: number) {
           .lte('date', endDate)
           .order('date', { ascending: true });
 
-        if (error) throw error;
+        clearTimeout(timeoutId);
+        if (requestIdRef.current !== currentId) return;
+        if (paymentsError) throw paymentsError;
 
+        setInvestments(mappedInvestments);
         setPayments(
           (data || []).map((p) => ({
-            ...p,
-            amount: Number(p.amount),
+            ...p, amount: Number(p.amount),
             withholding_applied: p.withholding_applied ? Number(p.withholding_applied) : null,
           }))
         );
-      } catch (error) {
-        console.error('Error fetching data for tax summary:', error);
+      } catch (err) {
+        clearTimeout(timeoutId);
+        if (requestIdRef.current !== currentId) return;
+        console.error('Error fetching data for tax summary:', err);
+        setError(err instanceof Error ? err.message : 'Error al cargar datos fiscales');
       } finally {
-        setIsLoading(false);
+        if (requestIdRef.current === currentId) {
+          setIsLoading(false);
+        }
       }
     }
 
     fetchData();
+
+    return () => { ++requestIdRef.current; };
   }, [user, year]);
 
   const summary: TaxSummary = useMemo(() => {
-    // Calculate income by type
-    const interestIncome = payments
-      .filter((p) => p.type === 'interest')
-      .reduce((sum, p) => sum + p.amount, 0);
-
-    const dividendIncome = payments
-      .filter((p) => p.type === 'dividend')
-      .reduce((sum, p) => sum + p.amount, 0);
-
-    const principalReturns = payments
-      .filter((p) => p.type === 'principal')
-      .reduce((sum, p) => sum + p.amount, 0);
-
-    // Gross income (interest + dividends, principal returns don't count until gain/loss)
+    const interestIncome = payments.filter((p) => p.type === 'interest').reduce((sum, p) => sum + p.amount, 0);
+    const dividendIncome = payments.filter((p) => p.type === 'dividend').reduce((sum, p) => sum + p.amount, 0);
+    const principalReturns = payments.filter((p) => p.type === 'principal').reduce((sum, p) => sum + p.amount, 0);
     const grossIncome = interestIncome + dividendIncome;
-
-    // Total withholdings already applied
-    const withholdingsApplied = payments.reduce(
-      (sum, p) => sum + (p.withholding_applied || 0),
-      0
-    );
-
-    // Taxable base (gross income - deductible expenses)
+    const withholdingsApplied = payments.reduce((sum, p) => sum + (p.withholding_applied || 0), 0);
     const taxableBase = Math.max(0, grossIncome - totalExpenses);
-
-    // Calculate estimated tax
     const estimatedTax = calculateProgressiveTax(taxableBase);
-
-    // Effective rate
     const effectiveRate = calculateEffectiveRate(taxableBase, estimatedTax);
-
     return {
-      year,
-      grossIncome,
-      interestIncome,
-      dividendIncome,
-      principalReturns,
-      withholdingsApplied,
-      deductibleExpenses: totalExpenses,
-      taxableBase,
-      estimatedTax,
-      effectiveRate,
+      year, grossIncome, interestIncome, dividendIncome, principalReturns,
+      withholdingsApplied, deductibleExpenses: totalExpenses, taxableBase, estimatedTax, effectiveRate,
     };
   }, [payments, totalExpenses, year]);
 
-  // Calculate projection
   const projection: TaxProjection = useMemo(() => {
-    // Build map of payments by investment (only interest + dividend)
     const paymentsByInvestment = new Map<string, number>();
-    payments
-      .filter((p) => p.type === 'interest' || p.type === 'dividend')
-      .forEach((p) => {
-        const current = paymentsByInvestment.get(p.investment_id) || 0;
-        paymentsByInvestment.set(p.investment_id, current + p.amount);
-      });
-
-    return calculateYearlyProjection(
-      investments,
-      paymentsByInvestment,
-      summary.grossIncome,
-      summary.withholdingsApplied,
-      totalExpenses,
-      year
-    );
+    payments.filter((p) => p.type === 'interest' || p.type === 'dividend').forEach((p) => {
+      const current = paymentsByInvestment.get(p.investment_id) || 0;
+      paymentsByInvestment.set(p.investment_id, current + p.amount);
+    });
+    return calculateYearlyProjection(investments, paymentsByInvestment, summary.grossIncome, summary.withholdingsApplied, totalExpenses, year);
   }, [investments, payments, summary, totalExpenses, year]);
 
-  // Get available years from payments
   const [availableYears, setAvailableYears] = useState<number[]>([]);
 
   useEffect(() => {
     async function fetchAvailableYears() {
       if (!user) return;
-
       try {
-        const { data: investments } = await supabase
-          .from('investments')
-          .select('id')
-          .eq('user_id', user.id);
-
+        const { data: investments } = await supabase.from('investments').select('id').eq('user_id', user.id);
         const investmentIds = investments?.map((i) => i.id) || [];
-
-        if (investmentIds.length === 0) {
-          setAvailableYears([new Date().getFullYear()]);
-          return;
-        }
-
-        const { data: paymentsData } = await supabase
-          .from('payments')
-          .select('date')
-          .in('investment_id', investmentIds);
-
+        if (investmentIds.length === 0) { setAvailableYears([new Date().getFullYear()]); return; }
+        const { data: paymentsData } = await supabase.from('payments').select('date').in('investment_id', investmentIds);
         const years = new Set<number>();
-        years.add(new Date().getFullYear()); // Always include current year
-
-        paymentsData?.forEach((p) => {
-          const paymentYear = new Date(p.date).getFullYear();
-          years.add(paymentYear);
-        });
-
+        years.add(new Date().getFullYear());
+        paymentsData?.forEach((p) => { years.add(new Date(p.date).getFullYear()); });
         setAvailableYears(Array.from(years).sort((a, b) => b - a));
       } catch (error) {
         console.error('Error fetching available years:', error);
         setAvailableYears([new Date().getFullYear()]);
       }
     }
-
     fetchAvailableYears();
   }, [user]);
 
   return {
-    summary,
-    projection,
-    payments,
-    expenses,
-    isLoading: isLoading || expensesLoading,
-    availableYears,
+    summary, projection, payments, expenses, error,
+    isLoading: isLoading || expensesLoading, availableYears,
   };
 }

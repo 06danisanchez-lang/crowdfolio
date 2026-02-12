@@ -3,6 +3,8 @@ import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { PlanType, isPro } from '@/lib/stripe/config';
 
+const SUB_TIMEOUT_MS = 8_000;
+
 export interface SubscriptionState {
   plan: PlanType;
   subscribed: boolean;
@@ -40,12 +42,25 @@ export function SubscriptionProvider({ children }: { children: ReactNode }) {
       return;
     }
 
+    let resolved = false;
+
+    const timeoutId = setTimeout(() => {
+      if (!resolved) {
+        resolved = true;
+        console.warn('[Subscription] Check timeout after 8s - falling back to free plan');
+        setSubscription(defaultSubscription);
+        setIsLoading(false);
+      }
+    }, SUB_TIMEOUT_MS);
+
     try {
       const { data, error } = await supabase.functions.invoke('check-subscription', {
-        headers: {
-          Authorization: `Bearer ${session.access_token}`,
-        },
+        headers: { Authorization: `Bearer ${session.access_token}` },
       });
+
+      clearTimeout(timeoutId);
+      if (resolved) return; // timeout already fired
+      resolved = true;
 
       if (error) {
         console.error('Error checking subscription:', error);
@@ -59,10 +74,16 @@ export function SubscriptionProvider({ children }: { children: ReactNode }) {
         });
       }
     } catch (error) {
+      clearTimeout(timeoutId);
+      if (resolved) return;
+      resolved = true;
+
       console.error('Error refreshing subscription:', error);
       setSubscription(defaultSubscription);
     } finally {
-      setIsLoading(false);
+      if (resolved) {
+        setIsLoading(false);
+      }
     }
   }, [session?.access_token]);
 
@@ -79,7 +100,6 @@ export function SubscriptionProvider({ children }: { children: ReactNode }) {
   // Auto-refresh every 60 seconds
   useEffect(() => {
     if (!user) return;
-
     const interval = setInterval(refreshSubscription, 60000);
     return () => clearInterval(interval);
   }, [user, refreshSubscription]);
@@ -90,12 +110,9 @@ export function SubscriptionProvider({ children }: { children: ReactNode }) {
     const subscriptionStatus = params.get('subscription');
     
     if (subscriptionStatus === 'success') {
-      // Refresh subscription after successful checkout
       setTimeout(refreshSubscription, 2000);
-      // Clean URL
       window.history.replaceState({}, '', window.location.pathname);
     } else if (subscriptionStatus === 'cancelled') {
-      // Clean URL
       window.history.replaceState({}, '', window.location.pathname);
     }
   }, [refreshSubscription]);
@@ -106,7 +123,6 @@ export function SubscriptionProvider({ children }: { children: ReactNode }) {
       const pendingPlan = sessionStorage.getItem('pending_checkout_plan');
       if (pendingPlan && ['monthly', 'yearly'].includes(pendingPlan)) {
         sessionStorage.removeItem('pending_checkout_plan');
-        // Small delay to ensure dashboard is loaded
         setTimeout(() => {
           openCheckout(pendingPlan as 'monthly' | 'yearly').catch(console.error);
         }, 1500);
@@ -115,26 +131,18 @@ export function SubscriptionProvider({ children }: { children: ReactNode }) {
   }, [user, session?.access_token]);
 
   const openCheckout = async (plan: 'monthly' | 'yearly') => {
-    if (!session?.access_token) {
-      throw new Error('User not authenticated');
-    }
+    if (!session?.access_token) throw new Error('User not authenticated');
 
     const { data, error } = await supabase.functions.invoke('create-checkout', {
       body: { plan },
-      headers: {
-        Authorization: `Bearer ${session.access_token}`,
-      },
+      headers: { Authorization: `Bearer ${session.access_token}` },
     });
 
-    if (error) {
-      throw new Error(error.message || 'Error creating checkout session');
-    }
+    if (error) throw new Error(error.message || 'Error creating checkout session');
 
     if (data?.url) {
-      // Try popup first, fallback to redirect if blocked
       const popup = window.open(data.url, '_blank');
       if (!popup || popup.closed || typeof popup.closed === 'undefined') {
-        // Popup was blocked, redirect instead
         window.location.href = data.url;
       }
     } else {
@@ -143,22 +151,15 @@ export function SubscriptionProvider({ children }: { children: ReactNode }) {
   };
 
   const openCustomerPortal = async () => {
-    if (!session?.access_token) {
-      throw new Error('User not authenticated');
-    }
+    if (!session?.access_token) throw new Error('User not authenticated');
 
     const { data, error } = await supabase.functions.invoke('customer-portal', {
-      headers: {
-        Authorization: `Bearer ${session.access_token}`,
-      },
+      headers: { Authorization: `Bearer ${session.access_token}` },
     });
 
-    if (error) {
-      throw new Error(error.message || 'Error opening customer portal');
-    }
+    if (error) throw new Error(error.message || 'Error opening customer portal');
 
     if (data?.url) {
-      // Try popup first, fallback to redirect if blocked
       const popup = window.open(data.url, '_blank');
       if (!popup || popup.closed || typeof popup.closed === 'undefined') {
         window.location.href = data.url;

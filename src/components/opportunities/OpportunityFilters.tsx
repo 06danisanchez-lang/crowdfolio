@@ -17,21 +17,27 @@ interface OpportunityFiltersProps {
   resultCount: number;
 }
 
-const isFromSelectPortal = (target: EventTarget | null): boolean => {
+const isFromSelectInteraction = (target: EventTarget | null): boolean => {
   if (!(target instanceof Node)) return false;
   const selectContent = document.querySelector('[data-radix-select-content]');
-  return !!selectContent && selectContent.contains(target);
+  if (selectContent && selectContent.contains(target)) return true;
+  const el = target instanceof Element ? target : target.parentElement;
+  if (el?.closest('[data-radix-select-trigger]')) return true;
+  return false;
 };
 
 const preventSelectPortalClose = {
-  onPointerDownOutside: (e: Event) => {
-    if (isFromSelectPortal((e as any).target)) e.preventDefault();
+  onPointerDownOutside: (e: any) => {
+    const target = e.detail?.originalEvent?.target || e.target;
+    if (isFromSelectInteraction(target)) e.preventDefault();
   },
-  onInteractOutside: (e: Event) => {
-    if (isFromSelectPortal((e as any).target)) e.preventDefault();
+  onInteractOutside: (e: any) => {
+    const target = e.detail?.originalEvent?.target || e.target;
+    if (isFromSelectInteraction(target)) e.preventDefault();
   },
-  onFocusOutside: (e: Event) => {
-    if (isFromSelectPortal((e as any).target)) e.preventDefault();
+  onFocusOutside: (e: any) => {
+    const target = e.detail?.originalEvent?.target || e.target;
+    if (isFromSelectInteraction(target)) e.preventDefault();
   },
 };
 

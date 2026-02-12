@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Search, X, SlidersHorizontal, ArrowUpDown } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
@@ -29,6 +29,14 @@ export function OpportunityFilters({
   const [filtersContainer, setFiltersContainer] = useState<HTMLDivElement | null>(null);
   const [sortOpen, setSortOpen] = useState(false);
   const [filtersOpen, setFiltersOpen] = useState(false);
+  useEffect(() => {
+    if (!sortOpen) setSortContainer(null);
+  }, [sortOpen]);
+
+  useEffect(() => {
+    if (!filtersOpen) setFiltersContainer(null);
+  }, [filtersOpen]);
+
   const hasActiveFilters = Object.values(filters).some(v => v !== undefined && v !== '' && v !== false);
 
   const clearFilters = () => {
@@ -79,7 +87,7 @@ export function OpportunityFilters({
               <span className="hidden sm:inline">Ordenar</span>
             </Button>
           </PopoverTrigger>
-          <PopoverContent ref={setSortContainer} align="end" className="z-50 w-56 rounded-md border bg-popover p-4 text-popover-foreground shadow-md outline-none">
+          <PopoverContent ref={setSortContainer} align="end" disableAnimations className="w-56">
             <div className="space-y-3">
               <div className="flex items-center justify-between">
                 <div className="text-sm font-medium">Ordenar por</div>
@@ -137,7 +145,7 @@ export function OpportunityFilters({
               )}
             </Button>
           </PopoverTrigger>
-          <PopoverContent ref={setFiltersContainer} align="end" className="z-50 w-72 rounded-md border bg-popover p-4 text-popover-foreground shadow-md outline-none">
+          <PopoverContent ref={setFiltersContainer} align="end" disableAnimations className="w-72">
             <div className="space-y-4">
               <div className="flex items-center justify-between">
                 <div className="text-sm font-medium">Filtros avanzados</div>

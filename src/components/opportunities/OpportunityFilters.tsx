@@ -84,7 +84,7 @@ export function OpportunityFilters({
           <PopoverTrigger asChild>
             <Button variant="outline" className="gap-2">
               <ArrowUpDown className="h-4 w-4" />
-              <span className="hidden sm:inline">Ordenar</span>
+              <span>Ordenar</span>
             </Button>
           </PopoverTrigger>
           <PopoverContent ref={setSortContainer} align="end" disableAnimations className="w-56">
@@ -137,7 +137,7 @@ export function OpportunityFilters({
           <PopoverTrigger asChild>
             <Button variant="outline" className="gap-2">
               <SlidersHorizontal className="h-4 w-4" />
-              <span className="hidden sm:inline">Filtros</span>
+              <span>Filtros</span>
               {hasActiveFilters && (
                 <span className="flex h-5 w-5 items-center justify-center rounded-full bg-primary text-xs text-primary-foreground">
                   !

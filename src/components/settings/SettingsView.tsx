@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { Moon, Sun } from 'lucide-react';
+import { useTheme } from '@/contexts/ThemeContext';
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';
@@ -12,7 +13,7 @@ import { toast } from 'sonner';
 
 export function SettingsView() {
   const { updatePassword } = useAuth();
-  const [darkMode, setDarkMode] = useState(document.documentElement.classList.contains('dark'));
+  const { darkMode, toggleDarkMode } = useTheme();
 
   // Password
   const [newPassword, setNewPassword] = useState('');
@@ -23,10 +24,6 @@ export function SettingsView() {
   const [newEmail, setNewEmail] = useState('');
   const [emailLoading, setEmailLoading] = useState(false);
 
-  const toggleDarkMode = () => {
-    setDarkMode(!darkMode);
-    document.documentElement.classList.toggle('dark');
-  };
 
   const handleChangePassword = async () => {
     if (newPassword.length < 6) {

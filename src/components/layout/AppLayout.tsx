@@ -1,12 +1,10 @@
-import { useState, useRef, useEffect } from 'react';
+import { useRef, useEffect } from 'react';
+import { useState } from 'react';
 import { 
   LayoutDashboard, 
   Wallet, 
   Menu,
-  Moon,
-  Sun,
   Search,
-  LogOut,
   Receipt,
   Shield,
   Building2
@@ -42,7 +40,6 @@ export function AppLayout({
   hasUrgentAlerts = false
 }: AppLayoutProps) {
   const [sidebarOpen, setSidebarOpen] = useState(false);
-  const [darkMode, setDarkMode] = useState(document.documentElement.classList.contains('dark'));
   const { user, isAdmin, signOut } = useAuth();
   const navigate = useNavigate();
   const mainRef = useRef<HTMLElement>(null);
@@ -51,10 +48,6 @@ export function AppLayout({
     mainRef.current?.scrollTo(0, 0);
   }, [currentView]);
 
-  const toggleDarkMode = () => {
-    setDarkMode(!darkMode);
-    document.documentElement.classList.toggle('dark');
-  };
 
   const handleSignOut = async () => {
     await signOut();
@@ -85,12 +78,6 @@ export function AppLayout({
             alertCount={alertCount} 
             hasUrgentAlerts={hasUrgentAlerts} 
           />
-          <Button variant="ghost" size="icon" onClick={toggleDarkMode}>
-            {darkMode ? <Sun className="h-5 w-5" /> : <Moon className="h-5 w-5" />}
-          </Button>
-          <Button variant="ghost" size="icon" onClick={handleSignOut} title="Cerrar sesión">
-            <LogOut className="h-5 w-5" />
-          </Button>
         </div>
       </header>
 

@@ -1,4 +1,4 @@
-import { ChevronUp, User, Settings, LogOut } from 'lucide-react';
+import { ChevronUp, User, Settings, LogOut, Moon, Sun } from 'lucide-react';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import {
   DropdownMenu,
@@ -8,6 +8,7 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 import { useProfile } from '@/hooks/useProfile';
+import { useTheme } from '@/contexts/ThemeContext';
 import { View } from '@/types/investment';
 
 interface UserMenuProps {
@@ -18,6 +19,7 @@ interface UserMenuProps {
 
 export function UserMenu({ onViewChange, onSignOut, onCloseSidebar }: UserMenuProps) {
   const { displayName, avatarUrl } = useProfile();
+  const { darkMode, toggleDarkMode } = useTheme();
 
   const navigate = (view: View) => {
     onViewChange(view);
@@ -46,6 +48,10 @@ export function UserMenu({ onViewChange, onSignOut, onCloseSidebar }: UserMenuPr
         <DropdownMenuItem onClick={() => navigate('settings')}>
           <Settings className="mr-2 h-4 w-4" />
           Configuración
+        </DropdownMenuItem>
+        <DropdownMenuItem onClick={toggleDarkMode}>
+          {darkMode ? <Sun className="mr-2 h-4 w-4" /> : <Moon className="mr-2 h-4 w-4" />}
+          {darkMode ? 'Modo claro' : 'Modo oscuro'}
         </DropdownMenuItem>
         <DropdownMenuSeparator />
         <DropdownMenuItem className="text-destructive focus:text-destructive" onClick={onSignOut}>

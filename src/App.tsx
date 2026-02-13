@@ -7,6 +7,7 @@ import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import { AuthProvider, useAuth } from "@/contexts/AuthContext";
 import { SubscriptionProvider } from "@/contexts/SubscriptionContext";
 import { GlobalErrorBoundary } from "@/components/GlobalErrorBoundary";
+import { ThemeProvider } from "@/contexts/ThemeContext";
 import { DebugPanel } from "@/components/DebugPanel";
 import Index from "./pages/Index";
 import Auth from "./pages/Auth";
@@ -345,6 +346,7 @@ const AppRoutes = () => (
 
 const App = () => (
   <GlobalErrorBoundary>
+    <ThemeProvider>
     <QueryClientProvider client={queryClient}>
       <TooltipProvider>
         <Toaster />
@@ -359,6 +361,7 @@ const App = () => (
         </BrowserRouter>
       </TooltipProvider>
     </QueryClientProvider>
+    </ThemeProvider>
   </GlobalErrorBoundary>
 );
 

@@ -1,49 +1,42 @@
 
+# Paso 1: Overlay Root + Helper
 
-# ThemeProvider global + menu de usuario unificado
+Solo 2 cambios. Nada mas.
 
-## Cambios
+## 1. `index.html` (editar linea 22-23)
 
-### 1. Nuevo: `src/contexts/ThemeContext.tsx`
+Estado actual (lineas 21-24):
+```html
+<body>
+  <div id="root"></div>
+  <script type="module" src="/src/main.tsx"></script>
+</body>
+```
 
-Contexto y Provider con estado unico:
+Resultado tras el cambio:
+```html
+<body>
+  <div id="root"></div>
+  <div id="overlay-root" translate="no" class="notranslate"></div>
+  <script type="module" src="/src/main.tsx"></script>
+</body>
+```
 
-- Inicializacion: lee `localStorage.getItem('theme')` dentro de try/catch. Si no hay valor, comprueba `window.matchMedia?.('(prefers-color-scheme: dark)')?.matches` con guarda de existencia. Fallback: `false` (light).
-- `useEffect` que aplica `document.documentElement.classList.toggle('dark', darkMode)` y escribe en localStorage dentro de try/catch.
-- Exporta `ThemeProvider` y `useTheme()` (lanza error si se usa fuera del provider).
+Se inserta una linea nueva entre `#root` y el script.
 
-### 2. `src/App.tsx`
+## 2. `src/lib/overlayContainer.ts` (archivo nuevo)
 
-Envolver con `<ThemeProvider>` justo dentro de `<GlobalErrorBoundary>`, antes de `<QueryClientProvider>`.
+Contenido completo:
+```ts
+export function getOverlayContainer(): HTMLElement {
+  const el = document.getElementById("overlay-root");
+  return el ?? document.body;
+}
+```
 
-### 3. `src/components/layout/UserMenu.tsx`
+## Que NO se toca
 
-- Importar `useTheme` y los iconos `Moon`, `Sun`.
-- Anadir un `DropdownMenuItem` entre "Configuracion" y el separador para cambiar tema:
-  - Icono: Sun si darkMode, Moon si no.
-  - Texto: "Modo claro" / "Modo oscuro".
-
-### 4. `src/components/layout/AppLayout.tsx`
-
-- Eliminar linea 45: `const [darkMode, setDarkMode] = useState(...)`.
-- Eliminar lineas 54-57: funcion `toggleDarkMode`.
-- Eliminar lineas 88-93: botones sueltos de tema y logout del header movil.
-- Eliminar imports no usados: `Moon`, `Sun`, `LogOut` de lucide-react y `useState` de react (se mantiene `useRef`, `useEffect`).
-
-### 5. `src/components/settings/SettingsView.tsx`
-
-- Eliminar linea 1: `import { useState } from 'react'` (ya no se necesita para darkMode; se mantiene para password/email pero se reimporta sin el default).
-- Eliminar linea 15: `const [darkMode, setDarkMode] = useState(...)`.
-- Eliminar lineas 26-29: funcion `toggleDarkMode`.
-- Importar `useTheme` del contexto.
-- El Switch de Preferencias usa `darkMode` y `toggleDarkMode` del contexto.
-
-## Verificacion
-
-- Ningun `useState` de darkMode queda en AppLayout ni SettingsView.
-- Ningun `document.documentElement.classList.toggle('dark')` fuera del ThemeContext.
-- Header movil: solo hamburguesa + logo + NotificationBell + AlertsPanel.
-- UserMenu y SettingsView sincronizados via contexto unico.
-- localStorage protegido con try/catch.
-- `window.matchMedia` protegido con optional chaining.
-
+- Ningun archivo UI (dialog, sheet, select, etc.)
+- Ningun archivo de i18n
+- Ningun otro archivo del proyecto
+- No se crean carpetas fuera de `src/`

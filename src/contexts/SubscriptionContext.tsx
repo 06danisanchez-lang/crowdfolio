@@ -104,18 +104,42 @@ export function SubscriptionProvider({ children }: { children: ReactNode }) {
     return () => clearInterval(interval);
   }, [user, refreshSubscription]);
 
-  // Check URL params for subscription success
+  // Check URL params for subscription success — aggressive retry
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
     const subscriptionStatus = params.get('subscription');
-    
+
     if (subscriptionStatus === 'success') {
-      setTimeout(refreshSubscription, 2000);
       window.history.replaceState({}, '', window.location.pathname);
-    } else if (subscriptionStatus === 'cancelled') {
+      const delays = [1000, 3000, 7000, 15000];
+      let attempt = 0;
+      let cancelled = false;
+      let timeoutId: number | null = null;
+
+      const scheduleNext = () => {
+        if (cancelled) return;
+        if (subscription?.subscribed) return;
+        if (attempt >= delays.length) return;
+        const delay = delays[attempt];
+        attempt++;
+        timeoutId = window.setTimeout(async () => {
+          if (cancelled) return;
+          await refreshSubscription();
+          scheduleNext();
+        }, delay);
+      };
+
+      scheduleNext();
+      return () => {
+        cancelled = true;
+        if (timeoutId) window.clearTimeout(timeoutId);
+      };
+    }
+
+    if (subscriptionStatus === 'cancelled') {
       window.history.replaceState({}, '', window.location.pathname);
     }
-  }, [refreshSubscription]);
+  }, [refreshSubscription, subscription?.subscribed]);
 
   // Handle pending checkout after login
   useEffect(() => {

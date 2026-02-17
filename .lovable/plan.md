@@ -1,62 +1,39 @@
 
 
-# Step 2 (Layer A): Patch `src/components/ui/dropdown-menu.tsx`
+# Fix: Crowdfolio no reconoce usuarios Pro (Stripe)
 
-Single file modification. No files created or renamed.
+## Problem
 
-## Step 0: Verify file
+1. Edge function `check-subscription` queries Stripe with `status: "active", limit: 1` -- misses `trialing` subs, can pick stale ones
+2. Frontend retries only once after 2s post-checkout -- often too early
 
-File confirmed at exact path: `src/components/ui/dropdown-menu.tsx` (already provided in current-code context).
+## Files Modified (2 only, no new files)
 
-## Change 1: Add import (line 6)
+### 1. `supabase/functions/check-subscription/index.ts`
 
-After `import { cn } from "@/lib/utils";`, add:
+**Replace lines 71-99** with the new subscription validation block:
 
-```ts
-import { getOverlayContainer } from "@/lib/overlayContainer";
-```
+- `limit: 10` without status filter
+- Manual filter for `active` OR `trialing`
+- Validate `current_period_end > nowSec`
+- Sort by `current_period_end` desc, pick first
+- Safe access to `items.data[0].price` with optional chaining
+- Response JSON shape unchanged: `subscribed`, `plan`, `product_id`, `subscription_end`
 
-## Change 2: SubContent (lines 44-51)
+### 2. `src/contexts/SubscriptionContext.tsx`
 
-Add `translate="no"` prop and prepend `"notranslate"` in `cn()`:
+**Replace lines 107-118** (the `?subscription=success` useEffect) with aggressive retry loop:
 
-```tsx
-<DropdownMenuPrimitive.SubContent
-  ref={ref}
-  translate="no"
-  className={cn(
-    "notranslate",
-    "z-50 min-w-[8rem] overflow-hidden rounded-md border bg-popover p-1 text-popover-foreground shadow-lg data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0 data-[state=closed]:zoom-out-95 data-[state=open]:zoom-in-95 data-[side=bottom]:slide-in-from-top-2 data-[side=left]:slide-in-from-right-2 data-[side=right]:slide-in-from-left-2 data-[side=top]:slide-in-from-bottom-2",
-    className,
-  )}
-  {...props}
-/>
-```
+- Retries at 1s, 3s, 7s, 15s
+- Stops early if `subscription.subscribed` becomes true
+- Cleans URL params immediately
+- Cleans up timers on unmount
+- Adds `subscription?.subscribed` to dependency array
 
-## Change 3: Portal + Content (lines 59-70)
+## Acceptance Criteria
 
-Portal gets `container={getOverlayContainer()}`, Content gets `translate="no"` + `"notranslate"`:
-
-```tsx
-<DropdownMenuPrimitive.Portal container={getOverlayContainer()}>
-  <DropdownMenuPrimitive.Content
-    ref={ref}
-    sideOffset={sideOffset}
-    translate="no"
-    className={cn(
-      "notranslate",
-      "z-50 min-w-[8rem] overflow-hidden rounded-md border bg-popover p-1 text-popover-foreground shadow-md data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0 data-[state=closed]:zoom-out-95 data-[state=open]:zoom-in-95 data-[side=bottom]:slide-in-from-top-2 data-[side=left]:slide-in-from-right-2 data-[side=right]:slide-in-from-left-2 data-[side=top]:slide-in-from-bottom-2",
-      className,
-    )}
-    {...props}
-  />
-</DropdownMenuPrimitive.Portal>
-```
-
-## Constraints
-
-- Only file modified: `src/components/ui/dropdown-menu.tsx`
-- No files created or renamed
-- All identifiers in English
-- `git diff --name-only` will show only `src/components/ui/dropdown-menu.tsx`
+- `trialing` subscriptions recognized as Pro
+- Expired subscriptions (past `current_period_end`) rejected
+- Multiple subscriptions: most recent valid one wins
+- Post-checkout: app updates without reload via staggered retries
 

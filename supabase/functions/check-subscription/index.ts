@@ -68,34 +68,47 @@ serve(async (req) => {
     const customerId = customers.data[0].id;
     logStep("Found Stripe customer", { customerId });
 
-    const subscriptions = await stripe.subscriptions.list({
+    const nowSec = Math.floor(Date.now() / 1000);
+
+    const subsRes = await stripe.subscriptions.list({
       customer: customerId,
-      status: "active",
-      limit: 1,
+      limit: 10,
     });
-    
-    const hasActiveSub = subscriptions.data.length > 0;
+
+    const validSubs = (subsRes.data || [])
+      .filter((s) => s && (s.status === "active" || s.status === "trialing"))
+      .filter((s) => typeof s.current_period_end === "number" && s.current_period_end > nowSec)
+      .sort((a, b) => (b.current_period_end ?? 0) - (a.current_period_end ?? 0));
+
+    const activeSub = validSubs[0];
+    const hasActiveSub = !!activeSub;
     let productId: string | null = null;
     let subscriptionEnd: string | null = null;
     let plan: 'free' | 'monthly' | 'yearly' = 'free';
 
     if (hasActiveSub) {
-      const subscription = subscriptions.data[0];
-      subscriptionEnd = new Date(subscription.current_period_end * 1000).toISOString();
-      logStep("Active subscription found", { subscriptionId: subscription.id, endDate: subscriptionEnd });
-      
-      productId = subscription.items.data[0].price.product as string;
-      const priceId = subscription.items.data[0].price.id;
-      
-      // Determine plan type by Price ID (more reliable than product ID)
-      if (priceId === STRIPE_PRICES.monthly) {
+      subscriptionEnd = new Date(activeSub.current_period_end * 1000).toISOString();
+      logStep("Valid subscription found", {
+        subscriptionId: activeSub.id,
+        status: activeSub.status,
+        endDate: subscriptionEnd,
+        cancel_at_period_end: activeSub.cancel_at_period_end,
+      });
+
+      const firstItem = activeSub.items?.data?.[0];
+      const price = firstItem?.price;
+      const priceId = price?.id ?? null;
+      const product = price?.product ?? null;
+      productId = typeof product === "string" ? product : null;
+
+      if (priceId && priceId === STRIPE_PRICES.monthly) {
         plan = 'monthly';
-      } else if (priceId === STRIPE_PRICES.yearly) {
+      } else if (priceId && priceId === STRIPE_PRICES.yearly) {
         plan = 'yearly';
       }
       logStep("Determined subscription plan", { priceId, productId, plan });
     } else {
-      logStep("No active subscription found");
+      logStep("No valid subscription found", { totalFetched: subsRes.data.length });
     }
 
     return new Response(JSON.stringify({

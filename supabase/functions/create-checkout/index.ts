@@ -165,46 +165,10 @@ serve(async (req) => {
 
       // Handle subscription updates too (safety net)
       if (
-  event.type === "customer.subscription.created" ||
-  event.type === "customer.subscription.updated"
-) {
-  const sub = event.data.object as Stripe.Subscription;
-
-  const subscriptionId = sub.id;
-  const customerId =
-    typeof sub.customer === "string"
-      ? sub.customer
-      : sub.customer?.id;
-
-  const status = sub.status;
-
-  const userId =
-    (sub.metadata as any)?.user_id ?? null;
-
-  if (!userId || !customerId) {
-    console.log("Subscription event without userId");
-    return new Response("ok", { status: 200 });
-  }
-
-  await supabaseAdmin.from("profiles").upsert({
-    id: userId,
-    stripe_customer_id: customerId,
-  });
-
-  await supabaseAdmin.from("subscriptions").upsert(
-    {
-      user_id: userId,
-      stripe_customer_id: customerId,
-      stripe_subscription_id: subscriptionId,
-      status,
-      plan: status === "active" || status === "trialing" ? "pro" : "free",
-    },
-    { onConflict: "user_id" }
-  );
-
-  return new Response("ok", { status: 200 });
-}
-
+        event.type === "customer.subscription.created" ||
+        event.type === "customer.subscription.updated" ||
+        event.type === "customer.subscription.deleted"
+      ) {
         const sub = event.data.object as Stripe.Subscription;
 
         const subscriptionId = sub.id;
@@ -309,18 +273,19 @@ serve(async (req) => {
 
     const origin = req.headers.get("origin") || "https://lovable.dev";
 
-    const session = await stripe.checkout.sessions.create({
-      customer: customerId,
-      customer_email: customerId ? undefined : user.email,
-      line_items: [{ price: priceId, quantity: 1 }],
-      mode: "subscription",
-      allow_promotion_codes: true,
-      success_url: `${origin}/?subscription=success`,
-      cancel_url: `${origin}/?subscription=cancelled`,
-      metadata: {
-        user_id: user.id,
-      },
-    });
+const session = await stripe.checkout.sessions.create({
+  customer: customerId,
+  customer_email: customerId ? undefined : user.email,
+  line_items: [{ price: priceId, quantity: 1 }],
+  mode: "subscription",
+  allow_promotion_codes: true,
+  success_url: `${origin}/?subscription=success`,
+  cancel_url: `${origin}/?subscription=cancelled`,
+  client_reference_id: user.id,
+  subscription_data: { metadata: { user_id: user.id } },
+  metadata: { user_id: user.id },
+});
+
 
     logStep("Checkout session created", { sessionId: session.id, url: session.url });
 

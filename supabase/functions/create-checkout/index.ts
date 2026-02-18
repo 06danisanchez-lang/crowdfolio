@@ -4,7 +4,8 @@ import { createClient } from "https://esm.sh/@supabase/supabase-js@2.57.2";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
-  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type, stripe-signature",
+  "Access-Control-Allow-Headers":
+    "authorization, x-client-info, apikey, content-type, stripe-signature",
 };
 
 const logStep = (step: string, details?: unknown) => {
@@ -96,9 +97,11 @@ serve(async (req) => {
           (session.metadata && (session.metadata as Record<string, string>).user_id) ||
           (session.client_reference_id ?? null);
 
-        const customerId = typeof session.customer === "string" ? session.customer : session.customer?.id;
+        const customerId =
+          typeof session.customer === "string" ? session.customer : session.customer?.id;
 
-        const subscriptionId = typeof session.subscription === "string" ? session.subscription : null;
+        const subscriptionId =
+          typeof session.subscription === "string" ? session.subscription : null;
 
         logStep("checkout.session.completed parsed", {
           userId,
@@ -130,6 +133,168 @@ serve(async (req) => {
           logStep("DB ERROR updating profiles", { message: profErr.message });
           throw new Error(`DB: profiles update failed - ${profErr.message}`);
         }
+
+        // Upsert subscriptions row
+        // Assumptions: subscriptions has user_id (PK or unique), stripe_customer_id, stripe_subscription_id, status, plan
+        const upsertPayload: Record<string, unknown> = {
+          user_id: userId,
+          stripe_customer_id: customerId,
+          stripe_subscription_id: subscriptionId,
+          status,          // e.g. active/trialing
+          plan: "pro",     // your app-level plan
+        };
+
+        // Optional fields if your table has them (won't break if not present? Supabase will error if column doesn't exist)
+        // If you DO have these columns, uncomment:
+        // upsertPayload.subscription_end = subscriptionEnd;
+        // upsertPayload.billing_interval = plan; // monthly/yearly
+
+        const { error: subErr } = await supabaseAdmin
+          .from("subscriptions")
+          .upsert(upsertPayload, { onConflict: "user_id" });
+
+        if (subErr) {
+          logStep("DB ERROR upserting subscriptions", { message: subErr.message });
+          throw new Error(`DB: subscriptions upsert failed - ${subErr.message}`);
+        }
+
+        logStep("Webhook handled: Pro activated", { userId, status, plan, subscriptionEnd });
+
+        return new Response("ok", { status: 200 });
+      }
+
+      // Handle subscription updates too (safety net)
+      if (
+        event.type === "customer.subscription.created" ||
+        event.type === "customer.subscription.updated" ||
+        event.type === "customer.subscription.deleted"
+      ) {
+        const sub = event.data.object as Stripe.Subscription;
+
+        const subscriptionId = sub.id;
+        const customerId = typeof sub.customer === "string" ? sub.customer : sub.customer?.id;
+        const status = sub.status;
+
+        // We might not have user_id here unless you store it in subscription metadata (optional).
+        const userId =
+          (sub.metadata && (sub.metadata as Record<string, string>).user_id) || null;
+
+        logStep("subscription.* event parsed", { userId, customerId, subscriptionId, status });
+
+        // If no userId, we can't link reliably. We still return 200 to avoid retries.
+        if (!userId) return new Response("ok", { status: 200 });
+        if (!customerId) return new Response("ok", { status: 200 });
+
+        // Update profiles + subscriptions minimal
+        const { error: profErr } = await supabaseAdmin
+          .from("profiles")
+          .update({ stripe_customer_id: customerId })
+          .eq("id", userId);
+
+        if (profErr) {
+          logStep("DB ERROR updating profiles (subscription event)", { message: profErr.message });
+          // still throw to notice; Stripe will retry
+          throw new Error(`DB: profiles update failed - ${profErr.message}`);
+        }
+
+        const { error: subErr } = await supabaseAdmin
+          .from("subscriptions")
+          .upsert(
+            {
+              user_id: userId,
+              stripe_customer_id: customerId,
+              stripe_subscription_id: subscriptionId,
+              status,
+              plan: status === "active" || status === "trialing" ? "pro" : "free",
+            },
+            { onConflict: "user_id" },
+          );
+
+        if (subErr) {
+          logStep("DB ERROR upserting subscriptions (subscription event)", { message: subErr.message });
+          throw new Error(`DB: subscriptions upsert failed - ${subErr.message}`);
+        }
+
+        return new Response("ok", { status: 200 });
+      }
+
+      // Ignore other events (but return 200 so Stripe doesn't retry)
+      logStep("Webhook ignored", { type: event.type });
+      return new Response("ok", { status: 200 });
+    } catch (error) {
+      const msg = error instanceof Error ? error.message : String(error);
+      logStep("ERROR in webhook handler", { msg });
+      return new Response("Webhook error", { status: 500 });
+    }
+  }
+
+  // ---------
+  // 2) NORMAL CHECKOUT PATH (Frontend -> this function)
+  // ---------
+  try {
+    logStep("Function started (checkout path)");
+    logStep("Stripe key verified", { keyPrefix: stripeKey.substring(0, 7) });
+
+    const supabaseClient = createClient(
+      Deno.env.get("SUPABASE_URL") ?? "",
+      Deno.env.get("SUPABASE_ANON_KEY") ?? "",
+    );
+
+    const authHeader = req.headers.get("Authorization");
+    if (!authHeader) throw new Error("No authorization header provided");
+    logStep("Authorization header found");
+
+    const token = authHeader.replace("Bearer ", "");
+    const { data: userData, error: userError } = await supabaseClient.auth.getUser(token);
+    if (userError) throw new Error(`Authentication error: ${userError.message}`);
+    const user = userData.user;
+    if (!user?.email) throw new Error("User not authenticated or email not available");
+    logStep("User authenticated", { userId: user.id, email: user.email });
+
+    const { plan } = await req.json();
+    if (!plan || !["monthly", "yearly"].includes(plan)) {
+      throw new Error("Invalid plan. Must be 'monthly' or 'yearly'");
+    }
+    logStep("Plan selected", { plan });
+
+    const priceId = STRIPE_PRICES[plan as Plan];
+    logStep("Price ID resolved", { priceId });
+
+    // Check if customer already exists
+    const customers = await stripe.customers.list({ email: user.email, limit: 1 });
+    let customerId: string | undefined;
+
+    if (customers.data.length > 0) {
+      customerId = customers.data[0].id;
+      logStep("Existing customer found", { customerId });
+    } else {
+      logStep("No existing customer, will create during checkout");
+    }
+
+    const origin = req.headers.get("origin") || "https://lovable.dev";
+
+    const session = await stripe.checkout.sessions.create({
+      customer: customerId,
+      customer_email: customerId ? undefined : user.email,
+      line_items: [{ price: priceId, quantity: 1 }],
+      mode: "subscription",
+      allow_promotion_codes: true,
+      success_url: `${origin}/?subscription=success`,
+      cancel_url: `${origin}/?subscription=cancelled`,
+      metadata: {
+        user_id: user.id,
+      },
+    });
+
+    logStep("Checkout session created", { sessionId: session.id, url: session.url });
+
+    return jsonResponse({ url: session.url }, 200);
+  } catch (error) {
+    const errorMessage = error instanceof Error ? error.message : String(error);
+    logStep("ERROR in create-checkout (checkout path)", { message: errorMessage });
+    return jsonResponse({ error: errorMessage }, 500);
+  }
+});
 
         // Upsert subscriptions row
         // Assumptions: subscriptions has user_id (PK or unique), stripe_customer_id, stripe_subscription_id, status, plan

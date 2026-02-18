@@ -1,39 +1,46 @@
 
 
-# Fix: Crowdfolio no reconoce usuarios Pro (Stripe)
+# Fix: Variables de entorno en Vercel apuntando al backend incorrecto
 
-## Problem
+## Diagnostico
 
-1. Edge function `check-subscription` queries Stripe with `status: "active", limit: 1` -- misses `trialing` subs, can pick stale ones
-2. Frontend retries only once after 2s post-checkout -- often too early
+La preview de Lovable funciona correctamente con el backend `vqazrgwjcglnqrmdcjdm`. Sin embargo, la version desplegada en Vercel tiene sus propias variables de entorno que probablemente apuntan a un proyecto diferente.
 
-## Files Modified (2 only, no new files)
+## Solucion (no requiere cambios de codigo)
 
-### 1. `supabase/functions/check-subscription/index.ts`
+Este problema se resuelve **exclusivamente en el dashboard de Vercel**, ya que las variables de entorno de Vercel son independientes de las de Lovable.
 
-**Replace lines 71-99** with the new subscription validation block:
+### Paso 1: Actualizar variables en Vercel
 
-- `limit: 10` without status filter
-- Manual filter for `active` OR `trialing`
-- Validate `current_period_end > nowSec`
-- Sort by `current_period_end` desc, pick first
-- Safe access to `items.data[0].price` with optional chaining
-- Response JSON shape unchanged: `subscribed`, `plan`, `product_id`, `subscription_end`
+1. Ir a [vercel.com/dashboard](https://vercel.com/dashboard)
+2. Seleccionar el proyecto Crowdfolio
+3. Ir a **Settings** -> **Environment Variables**
+4. Verificar y actualizar estas 3 variables para que coincidan con las de Lovable Cloud:
 
-### 2. `src/contexts/SubscriptionContext.tsx`
+```text
+VITE_SUPABASE_URL = https://vqazrgwjcglnqrmdcjdm.supabase.co
+VITE_SUPABASE_PUBLISHABLE_KEY = eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InZxYXpyZ3dqY2dsbnFybWRjamRtIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjgxNjE4ODksImV4cCI6MjA4MzczNzg4OX0.a_rCxFjO_WckVmXl9pbWZlN8NaRWMZVeCtD6cP6qrGw
+VITE_SUPABASE_PROJECT_ID = vqazrgwjcglnqrmdcjdm
+```
 
-**Replace lines 107-118** (the `?subscription=success` useEffect) with aggressive retry loop:
+5. Asegurarse de que estan habilitadas para **Production**, **Preview** y **Development**
 
-- Retries at 1s, 3s, 7s, 15s
-- Stops early if `subscription.subscribed` becomes true
-- Cleans URL params immediately
-- Cleans up timers on unmount
-- Adds `subscription?.subscribed` to dependency array
+### Paso 2: Redesplegar en Vercel
 
-## Acceptance Criteria
+Despues de actualizar las variables, hacer un **redeploy** desde el dashboard de Vercel:
+- Ir a **Deployments** -> seleccionar el ultimo deployment -> menu de 3 puntos -> **Redeploy**
 
-- `trialing` subscriptions recognized as Pro
-- Expired subscriptions (past `current_period_end`) rejected
-- Multiple subscriptions: most recent valid one wins
-- Post-checkout: app updates without reload via staggered retries
+### Paso 3: Verificar webhooks de Stripe (si aplica)
+
+Si tienes webhooks de Stripe configurados apuntando al backend antiguo, actualizarlos en el [dashboard de Stripe](https://dashboard.stripe.com/webhooks) para que apunten a:
+
+```text
+https://vqazrgwjcglnqrmdcjdm.supabase.co/functions/v1/<nombre-funcion>
+```
+
+## Importante
+
+- No se requiere ningun cambio de codigo en este proyecto
+- La edge function `check-subscription` ya esta desplegada correctamente en el backend de Lovable Cloud
+- Una vez que Vercel apunte al backend correcto, las suscripciones Pro deberian reconocerse automaticamente
 

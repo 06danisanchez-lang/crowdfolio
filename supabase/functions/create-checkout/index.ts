@@ -165,10 +165,46 @@ serve(async (req) => {
 
       // Handle subscription updates too (safety net)
       if (
-        event.type === "customer.subscription.created" ||
-        event.type === "customer.subscription.updated" ||
-        event.type === "customer.subscription.deleted"
-      ) {
+  event.type === "customer.subscription.created" ||
+  event.type === "customer.subscription.updated"
+) {
+  const sub = event.data.object as Stripe.Subscription;
+
+  const subscriptionId = sub.id;
+  const customerId =
+    typeof sub.customer === "string"
+      ? sub.customer
+      : sub.customer?.id;
+
+  const status = sub.status;
+
+  const userId =
+    (sub.metadata as any)?.user_id ?? null;
+
+  if (!userId || !customerId) {
+    console.log("Subscription event without userId");
+    return new Response("ok", { status: 200 });
+  }
+
+  await supabaseAdmin.from("profiles").upsert({
+    id: userId,
+    stripe_customer_id: customerId,
+  });
+
+  await supabaseAdmin.from("subscriptions").upsert(
+    {
+      user_id: userId,
+      stripe_customer_id: customerId,
+      stripe_subscription_id: subscriptionId,
+      status,
+      plan: status === "active" || status === "trialing" ? "pro" : "free",
+    },
+    { onConflict: "user_id" }
+  );
+
+  return new Response("ok", { status: 200 });
+}
+
         const sub = event.data.object as Stripe.Subscription;
 
         const subscriptionId = sub.id;

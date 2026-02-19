@@ -442,13 +442,3 @@ const session = await stripe.checkout.sessions.create({
         user_id: user.id,
       },
     });
-
-    logStep("Checkout session created", { sessionId: session.id, url: session.url });
-
-    return jsonResponse({ url: session.url }, 200);
-  } catch (error) {
-    const errorMessage = error instanceof Error ? error.message : String(error);
-    logStep("ERROR in create-checkout (checkout path)", { message: errorMessage });
-    return jsonResponse({ error: errorMessage }, 500);
-  }
-});

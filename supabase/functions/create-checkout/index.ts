@@ -32,6 +32,17 @@ serve(async (req) => {
   if (req.method === "OPTIONS") {
     return new Response(null, { headers: corsHeaders });
   }
+  const sig1 = req.headers.get("stripe-signature");
+  const sig2 = req.headers.get("Stripe-Signature");
+  const auth = req.headers.get("Authorization");
+
+  logStep("Incoming headers check", {
+    hasStripeSigLower: Boolean(sig1),
+    hasStripeSigTitle: Boolean(sig2),
+    hasAuth: Boolean(auth),
+  });
+
+  const stripeSig = sig1 ?? sig2;
 
   const stripeKey = Deno.env.get("STRIPE_SECRET_KEY");
   if (!stripeKey) {
@@ -44,7 +55,7 @@ serve(async (req) => {
   // ---------
   // 1) WEBHOOK PATH (Stripe -> this function)
   // ---------
-  const stripeSig = req.headers.get("stripe-signature");
+
   if (stripeSig) {
     try {
       logStep("Webhook received", { hasSignature: true });

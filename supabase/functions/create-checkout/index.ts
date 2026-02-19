@@ -32,17 +32,15 @@ serve(async (req) => {
   if (req.method === "OPTIONS") {
     return new Response(null, { headers: corsHeaders });
   }
-  const sig1 = req.headers.get("stripe-signature");
-  const sig2 = req.headers.get("Stripe-Signature");
-  const auth = req.headers.get("Authorization");
-
-  logStep("Incoming headers check", {
-    hasStripeSigLower: Boolean(sig1),
-    hasStripeSigTitle: Boolean(sig2),
-    hasAuth: Boolean(auth),
-  });
-
-  const stripeSig = sig1 ?? sig2;
+  // Read body ONCE (needed for webhook)
+  const rawBody = await req.text();
+  let looksLikeStripeEvent = false;
+  try {
+    const parsed = JSON.parse(rawBody);
+    looksLikeStripeEvent = parsed?.object === "event" && typeof parsed?.type === "string";
+  } catch (_) {
+    // not JSON
+  }
 
   const stripeKey = Deno.env.get("STRIPE_SECRET_KEY");
   if (!stripeKey) {
@@ -55,8 +53,12 @@ serve(async (req) => {
   // ---------
   // 1) WEBHOOK PATH (Stripe -> this function)
   // ---------
+  const sig1 = req.headers.get("stripe-signature");
+const sig2 = req.headers.get("Stripe-Signature");
+const stripeSig = sig1 ?? sig2;
 
-  if (stripeSig) {
+if (stripeSig || looksLikeStripeEvent) {
+
     try {
       logStep("Webhook received", { hasSignature: true });
 
@@ -64,7 +66,7 @@ serve(async (req) => {
       if (!webhookSecret) throw new Error("STRIPE_WEBHOOK_SECRET is not set");
 
       // RAW body required for signature verification
-      const rawBody = await req.text();
+      
 
       let event: Stripe.Event;
       try {
@@ -262,7 +264,8 @@ serve(async (req) => {
     if (!user?.email) throw new Error("User not authenticated or email not available");
     logStep("User authenticated", { userId: user.id, email: user.email });
 
-    const { plan } = await req.json();
+    const { plan } = JSON.parse(rawBody);
+
     if (!plan || !["monthly", "yearly"].includes(plan)) {
       throw new Error("Invalid plan. Must be 'monthly' or 'yearly'");
     }

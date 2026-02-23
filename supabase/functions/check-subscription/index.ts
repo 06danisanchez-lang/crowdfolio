@@ -66,7 +66,7 @@ serve(async (req) => {
       .from("profiles")
       .select("stripe_customer_id")
       .eq("id", user.id)
-      .single();
+      .maybeSingle();
 
     let customerId: string | null = profile?.stripe_customer_id || null;
     let activeSub: any = null;

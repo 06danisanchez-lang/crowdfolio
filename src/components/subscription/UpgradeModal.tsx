@@ -36,7 +36,7 @@ const PRO_FEATURES = [
 ];
 
 export function UpgradeModal({ open, onOpenChange, feature = 'default' }: UpgradeModalProps) {
-  const { openCheckout } = useSubscription();
+  const { openCheckout, isPro } = useSubscription();
   const [isLoading, setIsLoading] = useState<'monthly' | 'yearly' | null>(null);
   const [selectedPlan, setSelectedPlan] = useState<'monthly' | 'yearly'>('yearly');
 
@@ -65,58 +65,62 @@ export function UpgradeModal({ open, onOpenChange, feature = 'default' }: Upgrad
         <DialogHeader>
           <div className="flex items-center gap-2">
             <Crown className="h-6 w-6 text-primary" />
-            <DialogTitle>Desbloquea Crowdfolio Pro</DialogTitle>
+            <DialogTitle>{isPro ? 'Tu Plan Pro' : 'Desbloquea Crowdfolio Pro'}</DialogTitle>
           </div>
           <DialogDescription className="pt-2">
-            {featureMessage}
+            {isPro ? 'Estos son tus beneficios activos.' : featureMessage}
           </DialogDescription>
         </DialogHeader>
 
         <div className="space-y-4 py-4">
-          {/* Plan Toggle */}
-          <div className="flex rounded-lg border p-1">
-            <button
-              onClick={() => setSelectedPlan('monthly')}
-              className={`flex-1 rounded-md py-2 text-sm font-medium transition-colors ${
-                selectedPlan === 'monthly'
-                  ? 'bg-primary text-primary-foreground'
-                  : 'text-muted-foreground hover:text-foreground'
-              }`}
-            >
-              Mensual
-            </button>
-            <button
-              onClick={() => setSelectedPlan('yearly')}
-              className={`flex-1 rounded-md py-2 text-sm font-medium transition-colors ${
-                selectedPlan === 'yearly'
-                  ? 'bg-primary text-primary-foreground'
-                  : 'text-muted-foreground hover:text-foreground'
-              }`}
-            >
-              Anual
-              <Badge variant="secondary" className="ml-1.5 text-xs">
-                -17%
-              </Badge>
-            </button>
-          </div>
+          {!isPro && (
+            <>
+              {/* Plan Toggle */}
+              <div className="flex rounded-lg border p-1">
+                <button
+                  onClick={() => setSelectedPlan('monthly')}
+                  className={`flex-1 rounded-md py-2 text-sm font-medium transition-colors ${
+                    selectedPlan === 'monthly'
+                      ? 'bg-primary text-primary-foreground'
+                      : 'text-muted-foreground hover:text-foreground'
+                  }`}
+                >
+                  Mensual
+                </button>
+                <button
+                  onClick={() => setSelectedPlan('yearly')}
+                  className={`flex-1 rounded-md py-2 text-sm font-medium transition-colors ${
+                    selectedPlan === 'yearly'
+                      ? 'bg-primary text-primary-foreground'
+                      : 'text-muted-foreground hover:text-foreground'
+                  }`}
+                >
+                  Anual
+                  <Badge variant="secondary" className="ml-1.5 text-xs">
+                    -17%
+                  </Badge>
+                </button>
+              </div>
 
-          {/* Price Display */}
-          <div className="rounded-lg border bg-muted/50 p-4 text-center">
-            <div className="flex items-baseline justify-center gap-1">
-              <span className="text-3xl font-bold">
-                {formatPrice(STRIPE_PRICES[selectedPlan].amount)}
-              </span>
-              <span className="text-muted-foreground">
-                /{selectedPlan === 'monthly' ? 'mes' : 'año'}
-              </span>
-            </div>
-            {selectedPlan === 'yearly' && (
-              <p className="mt-1 text-sm text-primary">
-                <Sparkles className="mr-1 inline h-3 w-3" />
-                {STRIPE_PRICES.yearly.savings}
-              </p>
-            )}
-          </div>
+              {/* Price Display */}
+              <div className="rounded-lg border bg-muted/50 p-4 text-center">
+                <div className="flex items-baseline justify-center gap-1">
+                  <span className="text-3xl font-bold">
+                    {formatPrice(STRIPE_PRICES[selectedPlan].amount)}
+                  </span>
+                  <span className="text-muted-foreground">
+                    /{selectedPlan === 'monthly' ? 'mes' : 'año'}
+                  </span>
+                </div>
+                {selectedPlan === 'yearly' && (
+                  <p className="mt-1 text-sm text-primary">
+                    <Sparkles className="mr-1 inline h-3 w-3" />
+                    {STRIPE_PRICES.yearly.savings}
+                  </p>
+                )}
+              </div>
+            </>
+          )}
 
           {/* Features List */}
           <ul className="space-y-2">
@@ -128,24 +132,28 @@ export function UpgradeModal({ open, onOpenChange, feature = 'default' }: Upgrad
             ))}
           </ul>
 
-          {/* CTA Button */}
-          <Button
-            className="w-full"
-            size="lg"
-            onClick={() => handleCheckout(selectedPlan)}
-            disabled={isLoading !== null}
-          >
-            {isLoading === selectedPlan ? (
-              <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-            ) : (
-              <Crown className="mr-2 h-4 w-4" />
-            )}
-            Empezar con Pro
-          </Button>
+          {!isPro && (
+            <>
+              {/* CTA Button */}
+              <Button
+                className="w-full"
+                size="lg"
+                onClick={() => handleCheckout(selectedPlan)}
+                disabled={isLoading !== null}
+              >
+                {isLoading === selectedPlan ? (
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                ) : (
+                  <Crown className="mr-2 h-4 w-4" />
+                )}
+                Empezar con Pro
+              </Button>
 
-          <p className="text-center text-xs text-muted-foreground">
-            Cancela cuando quieras. Sin compromisos.
-          </p>
+              <p className="text-center text-xs text-muted-foreground">
+                Cancela cuando quieras. Sin compromisos.
+              </p>
+            </>
+          )}
         </div>
       </DialogContent>
     </Dialog>

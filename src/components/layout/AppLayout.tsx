@@ -7,7 +7,8 @@ import {
   Search,
   Receipt,
   Shield,
-  Building2
+  Building2,
+  Crown
 } from 'lucide-react';
 import { useNavigate, Link } from 'react-router-dom';
 import { LEGAL_ROUTES } from '@/lib/legal/routes';
@@ -20,6 +21,8 @@ import { Alert } from '@/hooks/useAlerts';
 import { View } from '@/types/investment';
 import { useAuth } from '@/contexts/AuthContext';
 import { Separator } from '@/components/ui/separator';
+import { useSubscription } from '@/contexts/SubscriptionContext';
+import { UpgradeModal } from '@/components/subscription/UpgradeModal';
 import crowdfolioLogo from '@/assets/crowdfolio-logo.png';
 
 interface AppLayoutProps {
@@ -40,7 +43,9 @@ export function AppLayout({
   hasUrgentAlerts = false
 }: AppLayoutProps) {
   const [sidebarOpen, setSidebarOpen] = useState(false);
+  const [upgradeOpen, setUpgradeOpen] = useState(false);
   const { user, isAdmin, signOut } = useAuth();
+  const { isPro } = useSubscription();
   const navigate = useNavigate();
   const mainRef = useRef<HTMLElement>(null);
 
@@ -72,6 +77,14 @@ export function AppLayout({
           <img src={crowdfolioLogo} alt="Crowdfolio" className="h-16" />
         </div>
         <div className="flex items-center gap-1">
+          <Button
+            variant={isPro ? "outline" : "default"}
+            size="sm"
+            onClick={() => setUpgradeOpen(true)}
+          >
+            <Crown className="h-4 w-4" />
+            {isPro ? 'Ya eres Pro' : 'Hazte Pro'}
+          </Button>
           <NotificationBell onOpportunitiesClick={() => onViewChange('opportunities')} />
           <AlertsPanel 
             alerts={alerts} 
@@ -110,6 +123,18 @@ export function AppLayout({
                 {item.label}
               </button>
             ))}
+            <button
+              onClick={() => { setUpgradeOpen(true); setSidebarOpen(false); }}
+              className={cn(
+                "flex w-full items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium transition-colors",
+                isPro
+                  ? "text-primary hover:bg-accent"
+                  : "bg-primary/10 text-primary hover:bg-primary/20"
+              )}
+            >
+              <Crown className="h-4 w-4" />
+              {isPro ? 'Ya eres Pro' : 'Hazte Pro'}
+            </button>
             <div className="flex items-center gap-2 pt-2">
               <NotificationBell onOpportunitiesClick={() => onViewChange('opportunities')} />
               <AlertsPanel 
@@ -164,6 +189,7 @@ export function AppLayout({
           </footer>
         </main>
       </div>
+      <UpgradeModal open={upgradeOpen} onOpenChange={setUpgradeOpen} />
     </div>
   );
 }

@@ -74,7 +74,7 @@ serve(async (req) => {
       .from("profiles")
       .select("stripe_customer_id")
       .eq("id", user.id)
-      .single();
+      .maybeSingle();
 
     const customerId = profile?.stripe_customer_id || undefined;
     logStep("Customer lookup", { customerId: customerId || "none - Stripe will create new" });

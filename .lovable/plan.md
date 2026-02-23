@@ -1,146 +1,187 @@
 
-
-# Reflejar estado Pro/Free en toda la UI
+# Stripe auto-curativo: fallback siempre si no hay sub valida
 
 ## Resumen
 
-2 archivos modificados, 0 archivos nuevos. El boton Pro aparece en todas las paginas del panel porque todas pasan por `AppLayout` (verificado en `Index.tsx` linea 256).
+2 archivos modificados, 0 nuevos. Unico cambio respecto al plan anterior: en `check-subscription`, el fallback por email se ejecuta siempre que `!activeSub`, no solo cuando `!customerId`.
 
-## Archivo 1: `src/components/subscription/UpgradeModal.tsx`
+---
 
-**Cambio:** Leer `isPro` del contexto y condicionar el contenido del modal.
+## Archivo 1: `supabase/functions/create-checkout/index.ts`
 
-- Importar `useSubscription` (ya importado el contexto, solo falta leer `isPro`)
-- Si `isPro`:
-  - Titulo: "Tu Plan Pro" en vez de "Desbloquea Crowdfolio Pro"
-  - Descripcion: "Estos son tus beneficios activos."
-  - Ocultar: toggle Mensual/Anual, bloque de precio, boton CTA, texto "Cancela cuando quieras"
-- Si no es Pro: sin cambios (comportamiento actual)
-- La lista `PRO_FEATURES` siempre visible (es la unica fuente de verdad)
+**Cambios (lineas 44-78):**
+
+1. Cliente Supabase con ANON_KEY + Authorization header del usuario (RLS)
+2. Leer `profiles.stripe_customer_id` en vez de `stripe.customers.list`
+3. Si existe customerId: `customer: customerId`. Si no: `customer_email: user.email`
 
 ```diff
- export function UpgradeModal({ open, onOpenChange, feature = 'default' }: UpgradeModalProps) {
--  const { openCheckout } = useSubscription();
-+  const { openCheckout, isPro } = useSubscription();
-   const [isLoading, setIsLoading] = useState<'monthly' | 'yearly' | null>(null);
-   ...
+-  const supabaseClient = createClient(Deno.env.get("SUPABASE_URL") ?? "", Deno.env.get("SUPABASE_ANON_KEY") ?? "");
++  const supabaseClient = createClient(
++    Deno.env.get("SUPABASE_URL") ?? "",
++    Deno.env.get("SUPABASE_ANON_KEY") ?? "",
++    { global: { headers: { Authorization: authHeader } } }
++  );
 
-         <div className="flex items-center gap-2">
-           <Crown className="h-6 w-6 text-primary" />
--          <DialogTitle>Desbloquea Crowdfolio Pro</DialogTitle>
-+          <DialogTitle>{isPro ? 'Tu Plan Pro' : 'Desbloquea Crowdfolio Pro'}</DialogTitle>
-         </div>
-         <DialogDescription className="pt-2">
--          {featureMessage}
-+          {isPro ? 'Estos son tus beneficios activos.' : featureMessage}
-         </DialogDescription>
+     // ... auth getUser sin cambios ...
 
-       <div className="space-y-4 py-4">
--        {/* Plan Toggle */}
--        <div className="flex rounded-lg border p-1">
--          ...
--        </div>
--        {/* Price Display */}
--        <div className="rounded-lg border bg-muted/50 p-4 text-center">
--          ...
--        </div>
-+        {!isPro && (
-+          <>
-+            {/* Plan Toggle */}
-+            <div className="flex rounded-lg border p-1">...</div>
-+            {/* Price Display */}
-+            <div className="rounded-lg border bg-muted/50 p-4 text-center">...</div>
-+          </>
-+        )}
+-    // Reutiliza customer si existe
+-    const customers = await stripe.customers.list({ email: user.email, limit: 1 });
+-    const customerId = customers.data[0]?.id;
++    // Leer stripe_customer_id guardado (RLS: solo el propio usuario)
++    const { data: profile } = await supabaseClient
++      .from("profiles")
++      .select("stripe_customer_id")
++      .eq("id", user.id)
++      .single();
++
++    const customerId = profile?.stripe_customer_id || undefined;
++    logStep("Customer lookup", { customerId: customerId || "none - Stripe will create new" });
 
-         {/* Features List -- siempre visible */}
-         <ul className="space-y-2">
-           {PRO_FEATURES.map(...)}
-         </ul>
+     const session = await stripe.checkout.sessions.create({
+       mode: "subscription",
+       line_items: [{ price: priceId, quantity: 1 }],
+       allow_promotion_codes: true,
 
--        {/* CTA Button */}
--        <Button ...>Empezar con Pro</Button>
--        <p ...>Cancela cuando quieras...</p>
-+        {!isPro && (
-+          <>
-+            <Button ...>Empezar con Pro</Button>
-+            <p ...>Cancela cuando quieras. Sin compromisos.</p>
-+          </>
-+        )}
-       </div>
+-      customer: customerId,
+-      customer_email: customerId ? undefined : user.email,
++      ...(customerId
++        ? { customer: customerId }
++        : { customer_email: user.email }),
+
+       // resto identico
+     });
 ```
 
-## Archivo 2: `src/components/layout/AppLayout.tsx`
+---
 
-**Cambio:** Anadir boton Pro global en mobile header y sidebar desktop + instanciar UpgradeModal.
+## Archivo 2: `supabase/functions/check-subscription/index.ts`
 
-- Importar `Crown` de lucide, `useSubscription`, `UpgradeModal`, y `useState` (ya importado)
-- Anadir estado local `upgradeOpen`
-- **Mobile header** (linea 74, dentro del div `gap-1`): anadir boton antes de NotificationBell
-- **Sidebar** (linea 113, antes del div de NotificationBell): anadir boton como nav item
-- **Ambos** muestran: `isPro ? "Ya eres Pro" : "Hazte Pro"` (texto completo, incluido mobile)
-- Instanciar `<UpgradeModal open={upgradeOpen} onOpenChange={setUpgradeOpen} />` al final del JSX
+**Cambios (lineas 52-112):** Reescribir toda la seccion de customer lookup + sub validation.
 
 ```diff
- import { useState } from 'react';
-+import { Crown } from 'lucide-react';  // (anadir a imports existentes de lucide)
-+import { useSubscription } from '@/contexts/SubscriptionContext';
-+import { UpgradeModal } from '@/components/subscription/UpgradeModal';
+     const stripe = new Stripe(stripeKey, { apiVersion: "2025-08-27.basil" });
+-    const customers = await stripe.customers.list({ email: user.email, limit: 1 });
+-
+-    if (customers.data.length === 0) {
+-      logStep("No customer found, returning free status");
+-      return new Response(JSON.stringify({
+-        subscribed: false, plan: 'free', product_id: null, subscription_end: null
+-      }), { headers: { ...corsHeaders, "Content-Type": "application/json" }, status: 200 });
+-    }
+-
+-    const customerId = customers.data[0].id;
+-    logStep("Found Stripe customer", { customerId });
+-
+-    const nowSec = Math.floor(Date.now() / 1000);
+-
+-    const subsRes = await stripe.subscriptions.list({ customer: customerId, limit: 10 });
+-
+-    const validSubs = (subsRes.data || [])
+-      .filter((s) => s && (s.status === "active" || s.status === "trialing"))
+-      .filter((s) => typeof s.current_period_end === "number" && s.current_period_end > nowSec)
+-      .sort((a, b) => (b.current_period_end ?? 0) - (a.current_period_end ?? 0));
+-
+-    const activeSub = validSubs[0];
+-    const hasActiveSub = !!activeSub;
+-    let productId: string | null = null;
+-    let subscriptionEnd: string | null = null;
+-    let plan: 'free' | 'monthly' | 'yearly' = 'free';
+-
+-    if (hasActiveSub) {
++    const nowSec = Math.floor(Date.now() / 1000);
++
++    // Helper: find valid sub for a customer
++    const findValidSub = async (custId: string) => {
++      const subsRes = await stripe.subscriptions.list({ customer: custId, limit: 10 });
++      return (subsRes.data || [])
++        .filter((s) => s && (s.status === "active" || s.status === "trialing"))
++        .filter((s) => typeof s.current_period_end === "number" && s.current_period_end > nowSec)
++        .sort((a, b) => (b.current_period_end ?? 0) - (a.current_period_end ?? 0))[0] || null;
++    };
++
++    // 1. Read stored stripe_customer_id
++    const { data: profile } = await supabaseClient
++      .from("profiles")
++      .select("stripe_customer_id")
++      .eq("id", user.id)
++      .single();
++
++    let customerId: string | null = profile?.stripe_customer_id || null;
++    let activeSub: any = null;
++
++    // 2. Primary path: stored customerId
++    if (customerId) {
++      logStep("Using stored stripe_customer_id", { customerId });
++      activeSub = await findValidSub(customerId);
++    }
++
++    // 3. Fallback: SIEMPRE si no hay sub valida (incluso con customerId stale)
++    if (!activeSub) {
++      logStep("No valid sub via stored customerId, falling back to email search");
++      const customers = await stripe.customers.list({ email: user.email, limit: 10 });
++      for (const cust of customers.data) {
++        if (cust.id === customerId) continue; // ya comprobado
++        const sub = await findValidSub(cust.id);
++        if (sub) {
++          activeSub = sub;
++          customerId = cust.id;
++          await supabaseClient
++            .from("profiles")
++            .update({ stripe_customer_id: cust.id })
++            .eq("id", user.id);
++          logStep("Auto-healed stripe_customer_id", { customerId: cust.id });
++          break;
++        }
++      }
++    }
++
++    if (!activeSub) {
++      logStep("No valid subscription found after all checks");
++      return new Response(JSON.stringify({
++        subscribed: false, plan: 'free', product_id: null, subscription_end: null
++      }), {
++        headers: { ...corsHeaders, "Content-Type": "application/json" },
++        status: 200,
++      });
++    }
++
++    let productId: string | null = null;
++    let subscriptionEnd: string | null = null;
++    let plan: 'free' | 'monthly' | 'yearly' = 'free';
++
++    {
+       subscriptionEnd = new Date(activeSub.current_period_end * 1000).toISOString();
+       // ... plan mapping identico ...
+-    } else {
+-      logStep("No valid subscription found", { totalFetched: subsRes.data.length });
+     }
 
- export function AppLayout(...) {
-   const [sidebarOpen, setSidebarOpen] = useState(false);
-+  const [upgradeOpen, setUpgradeOpen] = useState(false);
-+  const { isPro } = useSubscription();
-   ...
-
-   {/* Mobile Header - dentro del div gap-1 */}
-   <div className="flex items-center gap-1">
-+    <Button
-+      variant={isPro ? "outline" : "default"}
-+      size="sm"
-+      onClick={() => setUpgradeOpen(true)}
-+    >
-+      <Crown className="h-4 w-4" />
-+      {isPro ? 'Ya eres Pro' : 'Hazte Pro'}
-+    </Button>
-     <NotificationBell ... />
-     <AlertsPanel ... />
-   </div>
-
-   {/* Sidebar - antes del div de NotificationBell (linea 113) */}
-+  <button
-+    onClick={() => { setUpgradeOpen(true); setSidebarOpen(false); }}
-+    className={cn(
-+      "flex w-full items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium transition-colors",
-+      isPro
-+        ? "text-primary hover:bg-accent"
-+        : "bg-primary/10 text-primary hover:bg-primary/20"
-+    )}
-+  >
-+    <Crown className="h-4 w-4" />
-+    {isPro ? 'Ya eres Pro' : 'Hazte Pro'}
-+  </button>
-   <div className="flex items-center gap-2 pt-2">
-     ...
-
-   {/* Al final, antes del cierre de </div> raiz */}
-+  <UpgradeModal open={upgradeOpen} onOpenChange={setUpgradeOpen} />
-   </div>
+     return new Response(JSON.stringify({
+-      subscribed: hasActiveSub,
++      subscribed: true,
+       plan,
+       product_id: productId,
+       subscription_end: subscriptionEnd
+     }), { ... });
 ```
 
-## Cobertura global verificada
+Nota clave: `if (cust.id === customerId) continue;` evita repetir la consulta al customer que ya se comprobo en el paso 2.
 
-`Index.tsx` (linea 256-278) envuelve **todas** las vistas (dashboard, investments, opportunities, platforms, tax, profile, settings, admin) dentro de `<AppLayout>`. No hay ninguna vista del panel que use otro layout. El boton sera visible en todas.
+---
 
-## Flujo post-checkout
+## Cambio critico vs plan anterior
 
-Sin cambios necesarios. `SubscriptionContext` ya tiene retry agresivo (1s, 3s, 7s, 15s) al detectar `?subscription=success`. Cuando `isPro` cambia a `true`, React re-renderiza automaticamente el boton a "Ya eres Pro" y el modal oculta el CTA.
+| Condicion fallback | Antes | Ahora |
+|---|---|---|
+| `!activeSub && !customerId` | Solo si no habia ID guardado | -- |
+| `!activeSub` | -- | Siempre que no haya sub valida (auto-cura IDs stale) |
 
 ## Archivos tocados
 
 | Archivo | Cambio |
 |---------|--------|
-| `src/components/subscription/UpgradeModal.tsx` | Leer `isPro`, condicionar titulo/descripcion/CTA |
-| `src/components/layout/AppLayout.tsx` | Boton Pro en mobile header + sidebar + UpgradeModal |
+| `supabase/functions/create-checkout/index.ts` | ANON+JWT, leer profiles, no email search |
+| `supabase/functions/check-subscription/index.ts` | Stored ID primero, fallback email siempre si !activeSub, auto-heal |
 
-Total: **2 archivos, 0 nuevos, 0 rutas renombradas**.
+Total: **2 archivos, 0 nuevos**.

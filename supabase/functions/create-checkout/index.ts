@@ -41,10 +41,14 @@ serve(async (req) => {
 
     const stripe = new Stripe(stripeKey, { apiVersion: "2024-06-20" });
 
-    const supabaseClient = createClient(Deno.env.get("SUPABASE_URL") ?? "", Deno.env.get("SUPABASE_ANON_KEY") ?? "");
-
     const authHeader = req.headers.get("Authorization");
     if (!authHeader) throw new Error("No authorization header provided");
+
+    const supabaseClient = createClient(
+      Deno.env.get("SUPABASE_URL") ?? "",
+      Deno.env.get("SUPABASE_ANON_KEY") ?? "",
+      { global: { headers: { Authorization: authHeader } } }
+    );
 
     const token = authHeader.replace("Bearer ", "");
     const { data: userData, error: userError } = await supabaseClient.auth.getUser(token);
@@ -65,17 +69,24 @@ serve(async (req) => {
     const priceId = STRIPE_PRICES[plan];
     const origin = req.headers.get("origin") || "https://lovable.dev";
 
-    // Reutiliza customer si existe
-    const customers = await stripe.customers.list({ email: user.email, limit: 1 });
-    const customerId = customers.data[0]?.id;
+    // Leer stripe_customer_id guardado (RLS: solo el propio usuario)
+    const { data: profile } = await supabaseClient
+      .from("profiles")
+      .select("stripe_customer_id")
+      .eq("id", user.id)
+      .single();
+
+    const customerId = profile?.stripe_customer_id || undefined;
+    logStep("Customer lookup", { customerId: customerId || "none - Stripe will create new" });
 
     const session = await stripe.checkout.sessions.create({
       mode: "subscription",
       line_items: [{ price: priceId, quantity: 1 }],
       allow_promotion_codes: true,
 
-      customer: customerId,
-      customer_email: customerId ? undefined : user.email,
+      ...(customerId
+        ? { customer: customerId }
+        : { customer_email: user.email }),
 
       success_url: `${origin}/?subscription=success`,
       cancel_url: `${origin}/?subscription=cancelled`,

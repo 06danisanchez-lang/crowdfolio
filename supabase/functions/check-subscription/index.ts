@@ -152,6 +152,11 @@ serve(async (req) => {
           plan: "free",
           product_id: null,
           subscription_end: null,
+
+          // DEBUG TEMPORAL (quitar cuando esté arreglado)
+          debug_user_id: user.id,
+          debug_email: user.email,
+          debug_db_sub: debugDbSub ?? null,
         }),
         {
           headers: { ...corsHeaders, "Content-Type": "application/json" },

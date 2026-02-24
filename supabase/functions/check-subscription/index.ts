@@ -58,7 +58,7 @@ serve(async (req) => {
       .gt("current_period_end", nowIso)
       .order("current_period_end", { ascending: false })
       .maybeSingle();
-
+    const debugDbSub = dbSub;
     if (dbSubError) {
       logStep("DB subscription check error", { message: dbSubError.message });
       // continue to Stripe fallback below

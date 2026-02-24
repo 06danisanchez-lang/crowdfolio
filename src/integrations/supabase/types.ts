@@ -632,7 +632,12 @@ export type Database = {
       platform_status: "active" | "inactive" | "pending_verification"
       platform_type: "equity" | "lending" | "real_estate" | "mixed"
       subscription_plan: "free" | "monthly" | "yearly"
-      subscription_status: "free" | "active" | "past_due" | "canceled"
+      subscription_status:
+        | "free"
+        | "active"
+        | "past_due"
+        | "canceled"
+        | "trialing"
       tax_expense_category:
         | "platform_fees"
         | "advisory"
@@ -772,7 +777,13 @@ export const Constants = {
       platform_status: ["active", "inactive", "pending_verification"],
       platform_type: ["equity", "lending", "real_estate", "mixed"],
       subscription_plan: ["free", "monthly", "yearly"],
-      subscription_status: ["free", "active", "past_due", "canceled"],
+      subscription_status: [
+        "free",
+        "active",
+        "past_due",
+        "canceled",
+        "trialing",
+      ],
       tax_expense_category: [
         "platform_fees",
         "advisory",

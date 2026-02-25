@@ -1,36 +1,18 @@
 import { useScrollAnimation } from '@/hooks/useScrollAnimation';
 import { cn } from '@/lib/utils';
 import { Users, Euro, Building2, Star } from 'lucide-react';
-
-const stats = [
-  {
-    icon: Users,
-    value: '500+',
-    label: 'Inversores activos',
-    description: 'Confían en nosotros',
-  },
-  {
-    icon: Euro,
-    value: '€2M+',
-    label: 'Inversiones gestionadas',
-    description: 'En seguimiento',
-  },
-  {
-    icon: Building2,
-    value: '15+',
-    label: 'Plataformas',
-    description: 'Compatibles',
-  },
-  {
-    icon: Star,
-    value: '4.9/5',
-    label: 'Valoración media',
-    description: 'De usuarios',
-  },
-];
+import { useLanguage } from '@/contexts/LanguageContext';
 
 export default function StatsSection() {
   const { ref, isVisible } = useScrollAnimation({ threshold: 0.2 });
+  const { t } = useLanguage();
+
+  const stats = [
+    { icon: Users, value: '500+', label: t('stats.label1'), description: t('stats.desc1') },
+    { icon: Euro, value: '€2M+', label: t('stats.label2'), description: t('stats.desc2') },
+    { icon: Building2, value: '15+', label: t('stats.label3'), description: t('stats.desc3') },
+    { icon: Star, value: '4.9/5', label: t('stats.label4'), description: t('stats.desc4') },
+  ];
 
   return (
     <section ref={ref} className="py-10 md:py-12">
@@ -45,9 +27,7 @@ export default function StatsSection() {
               )}
               style={{ transitionDelay: `${index * 100}ms` }}
             >
-              {/* Gradient background on hover */}
               <div className="absolute inset-0 bg-gradient-to-br from-primary/5 to-transparent opacity-0 transition-opacity group-hover:opacity-100" />
-              
               <div className="relative">
                 <div className="mx-auto mb-3 flex h-12 w-12 items-center justify-center rounded-xl bg-primary/10 text-primary transition-colors group-hover:bg-primary group-hover:text-primary-foreground">
                   <stat.icon className="h-6 w-6" />

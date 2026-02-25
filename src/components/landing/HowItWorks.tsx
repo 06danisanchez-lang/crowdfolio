@@ -1,26 +1,16 @@
 import { useScrollAnimation } from '@/hooks/useScrollAnimation';
 import { cn } from '@/lib/utils';
-
-const steps = [
-  {
-    step: '1',
-    title: 'Crea tu cuenta',
-    description: 'Regístrate gratis en menos de 1 minuto.',
-  },
-  {
-    step: '2',
-    title: 'Añade inversiones',
-    description: 'Importa o registra manualmente tus proyectos.',
-  },
-  {
-    step: '3',
-    title: 'Analiza y optimiza',
-    description: 'Visualiza rendimientos y toma mejores decisiones.',
-  },
-];
+import { useLanguage } from '@/contexts/LanguageContext';
 
 export default function HowItWorks() {
   const { ref, isVisible } = useScrollAnimation({ threshold: 0.2 });
+  const { t } = useLanguage();
+
+  const steps = [
+    { step: '1', title: t('how.step1.title'), description: t('how.step1.desc') },
+    { step: '2', title: t('how.step2.title'), description: t('how.step2.desc') },
+    { step: '3', title: t('how.step3.title'), description: t('how.step3.desc') },
+  ];
 
   return (
     <section ref={ref} className="border-y bg-muted/30 py-12 md:py-16">
@@ -32,10 +22,10 @@ export default function HowItWorks() {
           )}
         >
           <span className="mb-4 inline-block rounded-full bg-primary/10 px-4 py-1.5 text-sm font-medium text-primary">
-            Cómo funciona
+            {t('how.sectionBadge')}
           </span>
           <h2 className="text-3xl font-bold md:text-4xl">
-            Empieza en 3 simples pasos
+            {t('how.sectionTitle')}
           </h2>
         </div>
 
@@ -49,11 +39,9 @@ export default function HowItWorks() {
               )}
               style={{ transitionDelay: `${index * 150}ms` }}
             >
-              {/* Connector line - only on desktop */}
               {index < steps.length - 1 && (
                 <div className="absolute left-[calc(50%+32px)] top-7 hidden h-0.5 w-[calc(100%-64px)] bg-gradient-to-r from-primary/50 to-primary/20 md:block" />
               )}
-              
               <div className="relative mx-auto mb-4 flex h-14 w-14 items-center justify-center rounded-2xl bg-primary text-2xl font-bold text-primary-foreground shadow-lg shadow-primary/25 transition-transform group-hover:scale-110">
                 {item.step}
               </div>

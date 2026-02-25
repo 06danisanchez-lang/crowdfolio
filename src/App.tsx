@@ -9,6 +9,7 @@ import { SubscriptionProvider } from "@/contexts/SubscriptionContext";
 import { GlobalErrorBoundary } from "@/components/GlobalErrorBoundary";
 import { ThemeProvider } from "@/contexts/ThemeContext";
 import { DebugPanel } from "@/components/DebugPanel";
+import { LanguageProvider } from "@/contexts/LanguageContext";
 import Index from "./pages/Index";
 import Auth from "./pages/Auth";
 import Landing from "./pages/Landing";
@@ -347,6 +348,7 @@ const AppRoutes = () => (
 const App = () => (
   <GlobalErrorBoundary>
     <ThemeProvider>
+    <LanguageProvider>
     <QueryClientProvider client={queryClient}>
       <TooltipProvider>
         <Toaster />
@@ -361,6 +363,7 @@ const App = () => (
         </BrowserRouter>
       </TooltipProvider>
     </QueryClientProvider>
+    </LanguageProvider>
     </ThemeProvider>
   </GlobalErrorBoundary>
 );

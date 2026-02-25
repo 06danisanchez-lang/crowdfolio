@@ -10,9 +10,12 @@ import HowItWorks from '@/components/landing/HowItWorks';
 import TestimonialCarousel from '@/components/landing/TestimonialCarousel';
 import CTASection from '@/components/landing/CTASection';
 import Footer from '@/components/landing/Footer';
+import { useLanguage } from '@/contexts/LanguageContext';
+import { LanguageToggle } from '@/components/ui/LanguageToggle';
 
 export default function Landing() {
   const navigate = useNavigate();
+  const { t } = useLanguage();
 
   return (
     <div className="min-h-screen bg-background">
@@ -21,41 +24,25 @@ export default function Landing() {
         <div className="container mx-auto flex h-16 items-center justify-between px-4">
           <img src={crowdfolioLogo} alt="Crowdfolio" className="h-20 md:h-24" />
           <div className="flex items-center gap-4">
+            <LanguageToggle />
             <Button variant="ghost" onClick={() => navigate('/auth')}>
-              Iniciar Sesión
+              {t('header.signIn')}
             </Button>
             <Button onClick={() => navigate('/auth')} className="shadow-sm">
-              Empezar Gratis
+              {t('header.getStarted')}
             </Button>
           </div>
         </div>
       </header>
 
-      {/* Hero Section */}
       <HeroSection />
-
-      {/* Stats Section */}
       <StatsSection />
-
-      {/* Product Showcase */}
       <ProductShowcase />
-
-      {/* Platforms Marquee */}
       <PlatformMarquee />
-
-      {/* Features Section */}
       <FeaturesGrid />
-
-      {/* How it works */}
       <HowItWorks />
-
-      {/* Testimonials */}
       <TestimonialCarousel />
-
-      {/* CTA Section */}
       <CTASection />
-
-      {/* Footer */}
       <Footer />
     </div>
   );

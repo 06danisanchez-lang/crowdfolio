@@ -3,11 +3,12 @@ import { ArrowRight, Check, Sparkles } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import AnimatedBackground from './AnimatedBackground';
 import dashboardImg from '@/assets/screenshots/dashboard.jpg';
-
 import crowdfolioLogo from '@/assets/crowdfolio-logo.png';
+import { useLanguage } from '@/contexts/LanguageContext';
 
 export default function HeroSection() {
   const navigate = useNavigate();
+  const { t } = useLanguage();
 
   return (
     <section className="relative overflow-hidden py-12 md:py-16 lg:py-20">
@@ -27,12 +28,12 @@ export default function HeroSection() {
           {/* Badge */}
           <div className="mb-4 inline-flex items-center gap-2 rounded-full border border-primary/20 bg-primary/10 px-4 py-2 text-sm font-medium text-primary backdrop-blur-sm animate-pulse-soft">
             <Sparkles className="h-4 w-4" />
-            <span>Gestión inteligente de inversiones</span>
+            <span>{t('hero.badge')}</span>
           </div>
 
           {/* Main Headline */}
           <h1 className="mb-4 text-4xl font-bold tracking-tight md:text-5xl lg:text-6xl xl:text-7xl">
-            Toda tu cartera de{' '}
+            {t('hero.headline1')}{' '}
             <span className="relative">
               <span className="bg-gradient-to-r from-primary via-blue-500 to-violet-500 bg-clip-text text-transparent">
                 crowdfunding
@@ -59,27 +60,27 @@ export default function HeroSection() {
               </svg>
             </span>{' '}
             <br className="hidden sm:block" />
-            en un solo lugar.
+            {t('hero.headline2')}
           </h1>
 
           {/* Subheadline */}
           <p className="mx-auto mb-4 max-w-2xl text-lg text-muted-foreground md:text-xl">
-            Centraliza y controla todas tus inversiones desde un único panel.
+            {t('hero.subheadline')}
           </p>
 
           {/* Value bullets */}
           <ul className="mx-auto mb-6 flex max-w-xl flex-col items-start gap-2 text-left text-muted-foreground">
             <li className="flex items-center gap-2">
               <Check className="h-5 w-5 shrink-0 text-primary" />
-              <span>Informe fiscal automático de todas tus inversiones</span>
+              <span>{t('hero.bullet1')}</span>
             </li>
             <li className="flex items-center gap-2">
               <Check className="h-5 w-5 shrink-0 text-primary" />
-              <span>Centralización de todas tus plataformas de crowdfunding</span>
+              <span>{t('hero.bullet2')}</span>
             </li>
             <li className="flex items-center gap-2">
               <Check className="h-5 w-5 shrink-0 text-primary" />
-              <span>Acceso a nuevas oportunidades de inversión</span>
+              <span>{t('hero.bullet3')}</span>
             </li>
           </ul>
 
@@ -90,7 +91,7 @@ export default function HeroSection() {
               className="group gap-2 text-lg shadow-lg shadow-primary/25 transition-all hover:shadow-xl hover:shadow-primary/30"
               onClick={() => navigate('/auth')}
             >
-              Crea una cuenta gratis
+              {t('hero.ctaPrimary')}
               <ArrowRight className="h-5 w-5 transition-transform group-hover:translate-x-1" />
             </Button>
             <Button 
@@ -99,24 +100,20 @@ export default function HeroSection() {
               className="text-lg backdrop-blur-sm"
               onClick={() => navigate('/pricing')}
             >
-              Ver precios
+              {t('hero.ctaSecondary')}
             </Button>
           </div>
 
           {/* Trust line */}
           <p className="mt-6 text-sm text-muted-foreground">
-            Sin tarjeta de crédito · Configura en 2 minutos · Cancela cuando quieras
+            {t('hero.trustLine')}
           </p>
         </div>
 
         {/* Dashboard Mockup */}
         <div className="relative mx-auto mt-10 max-w-5xl md:mt-12">
-          {/* Glow effect behind */}
           <div className="absolute -inset-4 rounded-3xl bg-gradient-to-r from-primary/20 via-blue-500/20 to-violet-500/20 blur-2xl" />
-          
-          {/* Browser frame */}
           <div className="relative overflow-hidden rounded-2xl border bg-card shadow-2xl">
-            {/* Browser header */}
             <div className="flex items-center gap-2 border-b bg-muted/50 px-4 py-3">
               <div className="flex gap-1.5">
                 <div className="h-3 w-3 rounded-full bg-red-400" />
@@ -129,8 +126,6 @@ export default function HeroSection() {
                 </div>
               </div>
             </div>
-            
-            {/* Screenshot */}
             <img
               src={dashboardImg}
               alt="Crowdfolio Dashboard"

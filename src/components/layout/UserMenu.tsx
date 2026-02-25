@@ -10,6 +10,8 @@ import {
 import { useProfile } from '@/hooks/useProfile';
 import { useTheme } from '@/contexts/ThemeContext';
 import { View } from '@/types/investment';
+import { useLanguage } from '@/contexts/LanguageContext';
+import { LanguageToggle } from '@/components/ui/LanguageToggle';
 
 interface UserMenuProps {
   onViewChange: (view: View) => void;
@@ -20,6 +22,7 @@ interface UserMenuProps {
 export function UserMenu({ onViewChange, onSignOut, onCloseSidebar }: UserMenuProps) {
   const { displayName, avatarUrl } = useProfile();
   const { darkMode, toggleDarkMode } = useTheme();
+  const { t } = useLanguage();
 
   const navigate = (view: View) => {
     onViewChange(view);
@@ -43,20 +46,25 @@ export function UserMenu({ onViewChange, onSignOut, onCloseSidebar }: UserMenuPr
       <DropdownMenuContent side="top" align="start" className="w-56">
         <DropdownMenuItem onClick={() => navigate('profile')}>
           <User className="mr-2 h-4 w-4" />
-          Perfil
+          {t('usermenu.profile')}
         </DropdownMenuItem>
         <DropdownMenuItem onClick={() => navigate('settings')}>
           <Settings className="mr-2 h-4 w-4" />
-          Configuración
+          {t('usermenu.settings')}
         </DropdownMenuItem>
         <DropdownMenuItem onClick={toggleDarkMode}>
           {darkMode ? <Sun className="mr-2 h-4 w-4" /> : <Moon className="mr-2 h-4 w-4" />}
-          {darkMode ? 'Modo claro' : 'Modo oscuro'}
+          {darkMode ? t('usermenu.lightMode') : t('usermenu.darkMode')}
+        </DropdownMenuItem>
+        <DropdownMenuItem asChild>
+          <div className="flex items-center px-2 py-1.5">
+            <LanguageToggle />
+          </div>
         </DropdownMenuItem>
         <DropdownMenuSeparator />
         <DropdownMenuItem className="text-destructive focus:text-destructive" onClick={onSignOut}>
           <LogOut className="mr-2 h-4 w-4" />
-          Cerrar sesión
+          {t('usermenu.signOut')}
         </DropdownMenuItem>
       </DropdownMenuContent>
     </DropdownMenu>

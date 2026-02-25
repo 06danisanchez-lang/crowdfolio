@@ -24,6 +24,7 @@ import { Separator } from '@/components/ui/separator';
 import { useSubscription } from '@/contexts/SubscriptionContext';
 import { UpgradeModal } from '@/components/subscription/UpgradeModal';
 import crowdfolioLogo from '@/assets/crowdfolio-logo.png';
+import { useLanguage } from '@/contexts/LanguageContext';
 
 interface AppLayoutProps {
   children: React.ReactNode;
@@ -48,22 +49,22 @@ export function AppLayout({
   const { isPro } = useSubscription();
   const navigate = useNavigate();
   const mainRef = useRef<HTMLElement>(null);
+  const { t } = useLanguage();
 
   useEffect(() => {
     mainRef.current?.scrollTo(0, 0);
   }, [currentView]);
-
 
   const handleSignOut = async () => {
     await signOut();
   };
 
   const navItems = [
-    { id: 'dashboard' as View, label: 'Inicio', icon: LayoutDashboard },
-    { id: 'investments' as View, label: 'Inversiones', icon: Wallet },
-    { id: 'opportunities' as View, label: 'Oportunidades', icon: Search },
-    { id: 'platforms' as View, label: 'Plataformas', icon: Building2 },
-    { id: 'tax' as View, label: 'Fiscalidad', icon: Receipt },
+    { id: 'dashboard' as View, label: t('nav.dashboard'), icon: LayoutDashboard },
+    { id: 'investments' as View, label: t('nav.investments'), icon: Wallet },
+    { id: 'opportunities' as View, label: t('nav.opportunities'), icon: Search },
+    { id: 'platforms' as View, label: t('nav.platforms'), icon: Building2 },
+    { id: 'tax' as View, label: t('nav.tax'), icon: Receipt },
   ];
 
   return (
@@ -83,7 +84,7 @@ export function AppLayout({
             onClick={() => setUpgradeOpen(true)}
           >
             <Crown className="h-4 w-4" />
-            {isPro ? 'Ya eres Pro' : 'Hazte Pro'}
+            {isPro ? t('nav.alreadyPro') : t('nav.upgradePro')}
           </Button>
           <NotificationBell onOpportunitiesClick={() => onViewChange('opportunities')} />
           <AlertsPanel 
@@ -133,7 +134,7 @@ export function AppLayout({
               )}
             >
               <Crown className="h-4 w-4" />
-              {isPro ? 'Ya eres Pro' : 'Hazte Pro'}
+              {isPro ? t('nav.alreadyPro') : t('nav.upgradePro')}
             </button>
             <div className="flex items-center gap-2 pt-2">
               <NotificationBell onOpportunitiesClick={() => onViewChange('opportunities')} />
@@ -153,7 +154,7 @@ export function AppLayout({
                 className="flex w-full items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium text-muted-foreground hover:bg-accent hover:text-accent-foreground transition-colors"
               >
                 <Shield className="h-4 w-4" />
-                Administración
+                {t('nav.admin')}
               </button>
             )}
           </nav>
@@ -181,10 +182,10 @@ export function AppLayout({
           {children}
           <footer className="border-t py-4 px-6 mt-8">
             <div className="flex flex-wrap justify-center gap-4 text-xs text-muted-foreground">
-              <Link to={LEGAL_ROUTES.legal} className="hover:text-foreground transition-colors">Aviso legal</Link>
-              <Link to={LEGAL_ROUTES.privacy} className="hover:text-foreground transition-colors">Política de privacidad</Link>
-              <Link to={LEGAL_ROUTES.terms} className="hover:text-foreground transition-colors">Términos y condiciones</Link>
-              <Link to={LEGAL_ROUTES.cookies} className="hover:text-foreground transition-colors">Cookies</Link>
+              <Link to={LEGAL_ROUTES.legal} className="hover:text-foreground transition-colors">{t('footer.legal')}</Link>
+              <Link to={LEGAL_ROUTES.privacy} className="hover:text-foreground transition-colors">{t('footer.privacy')}</Link>
+              <Link to={LEGAL_ROUTES.terms} className="hover:text-foreground transition-colors">{t('footer.terms')}</Link>
+              <Link to={LEGAL_ROUTES.cookies} className="hover:text-foreground transition-colors">{t('footer.cookies')}</Link>
             </div>
           </footer>
         </main>

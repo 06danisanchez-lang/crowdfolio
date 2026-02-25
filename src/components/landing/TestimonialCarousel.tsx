@@ -4,34 +4,34 @@ import { Button } from '@/components/ui/button';
 import { ChevronLeft, ChevronRight, Star, Quote } from 'lucide-react';
 import { useScrollAnimation } from '@/hooks/useScrollAnimation';
 import { cn } from '@/lib/utils';
+import { useLanguage } from '@/contexts/LanguageContext';
 
-const testimonials = [
-  {
-    name: 'Carlos M.',
-    role: 'Inversor particular',
-    avatar: 'CM',
-    content: 'Por fin puedo ver todas mis inversiones en un solo sitio. La parte fiscal me ahorra horas cada año.',
-    rating: 5,
-  },
-  {
-    name: 'Laura S.',
-    role: 'Inversora desde 2019',
-    avatar: 'LS',
-    content: 'Las alertas de vencimiento son geniales. Nunca más olvidaré renovar o retirar fondos.',
-    rating: 5,
-  },
-  {
-    name: 'Miguel A.',
-    role: 'Portfolio de 15+ proyectos',
-    avatar: 'MA',
-    content: 'El dashboard me da una visión clara de mi diversificación. Muy recomendable.',
-    rating: 5,
-  },
-];
+type TestimonialItem = {
+  name: string;
+  role: string;
+  avatar: string;
+  content: string;
+  rating: number;
+};
 
 export default function TestimonialCarousel() {
   const [activeIndex, setActiveIndex] = useState(0);
   const { ref, isVisible } = useScrollAnimation({ threshold: 0.2 });
+  const { lang, t } = useLanguage();
+
+  const testimonialsEs: TestimonialItem[] = [
+    { name: 'Carlos M.', role: 'Inversor particular', avatar: 'CM', content: 'Por fin puedo ver todas mis inversiones en un solo sitio. La parte fiscal me ahorra horas cada año.', rating: 5 },
+    { name: 'Laura S.', role: 'Inversora desde 2019', avatar: 'LS', content: 'Las alertas de vencimiento son geniales. Nunca más olvidaré renovar o retirar fondos.', rating: 5 },
+    { name: 'Miguel A.', role: 'Portfolio de 15+ proyectos', avatar: 'MA', content: 'El dashboard me da una visión clara de mi diversificación. Muy recomendable.', rating: 5 },
+  ];
+
+  const testimonialsEn: TestimonialItem[] = [
+    { name: 'Carlos M.', role: 'Individual investor', avatar: 'CM', content: 'I can finally see all my investments in one place. The tax section saves me hours every year.', rating: 5 },
+    { name: 'Laura S.', role: 'Investor since 2019', avatar: 'LS', content: 'The maturity alerts are great. I will never forget to renew or withdraw funds again.', rating: 5 },
+    { name: 'Miguel A.', role: 'Portfolio of 15+ projects', avatar: 'MA', content: 'The dashboard gives me a clear view of my diversification. Highly recommended.', rating: 5 },
+  ];
+
+  const testimonials = lang === 'en' ? testimonialsEn : testimonialsEs;
 
   const goToPrev = () => {
     setActiveIndex((prev) => (prev === 0 ? testimonials.length - 1 : prev - 1));
@@ -51,10 +51,10 @@ export default function TestimonialCarousel() {
           )}
         >
           <span className="mb-4 inline-block rounded-full bg-primary/10 px-4 py-1.5 text-sm font-medium text-primary">
-            Testimonios
+            {t('testimonials.sectionBadge')}
           </span>
           <h2 className="text-3xl font-bold md:text-4xl">
-            Lo que dicen nuestros usuarios
+            {t('testimonials.sectionTitle')}
           </h2>
         </div>
 
@@ -73,7 +73,6 @@ export default function TestimonialCarousel() {
             </div>
           </div>
           
-          {/* Navigation */}
           <div className="mt-6 flex items-center justify-center gap-4">
             <Button variant="outline" size="icon" onClick={goToPrev} className="rounded-full">
               <ChevronLeft className="h-4 w-4" />
@@ -116,22 +115,19 @@ export default function TestimonialCarousel() {
   );
 }
 
-function TestimonialCard({ testimonial }: { testimonial: typeof testimonials[0] }) {
+function TestimonialCard({ testimonial }: { testimonial: TestimonialItem }) {
   return (
     <Card className="group relative h-full overflow-hidden border-0 bg-card/50 backdrop-blur-sm transition-all hover:bg-card hover:shadow-xl">
       <CardContent className="p-6">
         <Quote className="mb-4 h-8 w-8 text-primary/20" />
-        
         <div className="mb-4 flex gap-1">
           {Array.from({ length: testimonial.rating }).map((_, i) => (
             <Star key={i} className="h-4 w-4 fill-primary text-primary" />
           ))}
         </div>
-        
         <p className="mb-6 text-lg leading-relaxed text-muted-foreground">
           "{testimonial.content}"
         </p>
-        
         <div className="flex items-center gap-3">
           <div className="flex h-12 w-12 items-center justify-center rounded-full bg-primary/10 font-semibold text-primary">
             {testimonial.avatar}

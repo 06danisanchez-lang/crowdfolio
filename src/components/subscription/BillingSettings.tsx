@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { useLanguage } from '@/contexts/LanguageContext';
 import { Crown, Loader2, CreditCard, Calendar, ArrowRight } from 'lucide-react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -9,6 +10,7 @@ import { toast } from '@/hooks/use-toast';
 import { PromoCodeInput } from './PromoCodeInput';
 
 export function BillingSettings() {
+  const { t } = useLanguage();
   const { subscription, isPro, openCheckout, openCustomerPortal, refreshSubscription, isLoading } = useSubscription();
   const [isProcessing, setIsProcessing] = useState<string | null>(null);
 
@@ -72,12 +74,12 @@ export function BillingSettings() {
       {/* Current Plan */}
       <Card>
         <CardHeader>
-          <CardTitle className="flex items-center gap-2">
+        <CardTitle className="flex items-center gap-2">
             <CreditCard className="h-5 w-5" />
-            Tu Plan
+            {t('billing.yourPlan')}
           </CardTitle>
           <CardDescription>
-            Gestiona tu suscripción y facturación
+            {t('billing.manageDesc')}
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
@@ -93,7 +95,7 @@ export function BillingSettings() {
               <div>
                 <div className="flex items-center gap-2">
                   <h3 className="font-semibold">
-                    {isPro ? 'Crowdfolio Pro' : 'Plan Gratis'}
+                    {isPro ? 'Crowdfolio Pro' : t('billing.freePlan')}
                   </h3>
                   {isPro && (
                     <Badge variant="secondary">
@@ -114,7 +116,7 @@ export function BillingSettings() {
                 )}
                 {!isPro && (
                   <p className="text-sm text-muted-foreground">
-                    3 inversiones, 1 importación/mes
+                    {t('billing.freeLimit')}
                   </p>
                 )}
               </div>
@@ -129,7 +131,7 @@ export function BillingSettings() {
                   {isProcessing === 'portal' && (
                     <Loader2 className="mr-2 h-4 w-4 animate-spin" />
                   )}
-                  Gestionar
+                  {t('billing.manage')}
                 </Button>
               ) : (
                 <Button onClick={() => handleCheckout('yearly')} disabled={isProcessing !== null}>
@@ -137,7 +139,7 @@ export function BillingSettings() {
                     <Loader2 className="mr-2 h-4 w-4 animate-spin" />
                   )}
                   <Crown className="mr-2 h-4 w-4" />
-                  Actualizar a Pro
+                  {t('billing.upgradePro')}
                 </Button>
               )}
             </div>
@@ -152,7 +154,7 @@ export function BillingSettings() {
             {isProcessing === 'refresh' && (
               <Loader2 className="mr-2 h-4 w-4 animate-spin" />
             )}
-            Actualizar estado
+            {t('billing.refreshStatus')}
           </Button>
         </CardContent>
       </Card>
@@ -161,23 +163,23 @@ export function BillingSettings() {
       {!isPro && (
         <Card>
           <CardHeader>
-            <CardTitle className="flex items-center gap-2">
+          <CardTitle className="flex items-center gap-2">
               <Crown className="h-5 w-5 text-primary" />
-              Actualizar a Pro
+              {t('billing.upgradePro')}
             </CardTitle>
             <CardDescription>
-              Desbloquea todas las funcionalidades
+              {t('billing.upgradeDesc')}
             </CardDescription>
           </CardHeader>
           <CardContent className="grid gap-4 md:grid-cols-2">
             <div className="rounded-lg border p-4">
               <div className="mb-2 flex items-baseline justify-between">
-                <h4 className="font-medium">Mensual</h4>
+                <h4 className="font-medium">{t('billing.monthly')}</h4>
                 <span className="text-2xl font-bold">
                   {formatPrice(STRIPE_PRICES.monthly.amount)}
                 </span>
               </div>
-              <p className="mb-4 text-sm text-muted-foreground">/mes</p>
+              <p className="mb-4 text-sm text-muted-foreground">/{t('billing.perMonth')}</p>
               <Button
                 variant="outline"
                 className="w-full"
@@ -187,7 +189,7 @@ export function BillingSettings() {
                 {isProcessing === 'monthly' && (
                   <Loader2 className="mr-2 h-4 w-4 animate-spin" />
                 )}
-                Elegir mensual
+                {t('billing.chooseMonthly')}
                 <ArrowRight className="ml-2 h-4 w-4" />
               </Button>
             </div>
@@ -195,12 +197,12 @@ export function BillingSettings() {
             <div className="relative rounded-lg border-2 border-primary p-4">
               <Badge className="absolute -top-2 right-4">Ahorra 17%</Badge>
               <div className="mb-2 flex items-baseline justify-between">
-                <h4 className="font-medium">Anual</h4>
+                <h4 className="font-medium">{t('billing.yearly')}</h4>
                 <span className="text-2xl font-bold">
                   {formatPrice(STRIPE_PRICES.yearly.amount)}
                 </span>
               </div>
-              <p className="mb-4 text-sm text-muted-foreground">/año (4,92€/mes)</p>
+              <p className="mb-4 text-sm text-muted-foreground">/{t('billing.perYear')} (4,92€/{t('billing.perMonth')})</p>
               <Button
                 className="w-full"
                 onClick={() => handleCheckout('yearly')}
@@ -209,7 +211,7 @@ export function BillingSettings() {
                 {isProcessing === 'yearly' && (
                   <Loader2 className="mr-2 h-4 w-4 animate-spin" />
                 )}
-                Elegir anual
+                {t('billing.chooseYearly')}
                 <ArrowRight className="ml-2 h-4 w-4" />
               </Button>
             </div>

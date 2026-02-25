@@ -1,4 +1,5 @@
 import { useRef, useState } from 'react';
+import { useLanguage } from '@/contexts/LanguageContext';
 import { Upload, Download, FileJson, FileSpreadsheet, AlertCircle } from 'lucide-react';
 import { Investment, PLATFORMS, STATUS_OPTIONS, Platform, InvestmentStatus } from '@/types/investment';
 import { Button } from '@/components/ui/button';
@@ -54,6 +55,7 @@ export function ImportExport({
   onProRequired,
   importsThisMonth = 0
 }: ImportExportProps) {
+  const { t } = useLanguage();
   const [importOpen, setImportOpen] = useState(false);
   const [importError, setImportError] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -80,7 +82,7 @@ export function ImportExport({
     a.click();
     document.body.removeChild(a);
     URL.revokeObjectURL(url);
-    toast.success('Datos exportados correctamente');
+    toast.success(t('investments.exportSuccess'));
   };
 
   const handleExportCSV = () => {
@@ -119,7 +121,7 @@ export function ImportExport({
     a.click();
     document.body.removeChild(a);
     URL.revokeObjectURL(url);
-    toast.success('Datos exportados a CSV');
+    toast.success(t('investments.exportCsvSuccess'));
   };
 
   const handleDownloadTemplate = () => {
@@ -201,7 +203,7 @@ export function ImportExport({
         onImport(validatedData, false);
         setImportOpen(false);
         setImportError(null);
-        toast.success(`${validatedData.length} inversiones importadas`);
+        toast.success(t('investments.importSuccess').replace('{n}', String(validatedData.length)));
       } catch (error) {
         if (error instanceof ZodError) {
           setImportError(`Error de validación:\n${formatZodError(error)}`);
@@ -345,7 +347,7 @@ export function ImportExport({
             }
           }}>
             <Upload className="mr-2 h-4 w-4" />
-            Importar
+            {t('investments.import')}
             {!isPro && importsThisMonth >= 1 && (
               <span className="ml-1 text-xs text-muted-foreground">(Pro)</span>
             )}
@@ -353,9 +355,9 @@ export function ImportExport({
         </DialogTrigger>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>Importar Inversiones</DialogTitle>
+            <DialogTitle>{t('investments.importTitle')}</DialogTitle>
             <DialogDescription>
-              Importa tus inversiones desde un archivo JSON o CSV
+              {t('investments.importDesc')}
             </DialogDescription>
           </DialogHeader>
 
@@ -368,9 +370,9 @@ export function ImportExport({
 
           <div className="space-y-4">
             <div className="rounded-lg border p-4">
-              <h4 className="mb-2 font-medium">Desde archivo JSON</h4>
+              <h4 className="mb-2 font-medium">{t('investments.fromJSON')}</h4>
               <p className="mb-3 text-sm text-muted-foreground">
-                Importa un backup previo exportado desde esta aplicación
+                {t('investments.fromJSONDesc')}
               </p>
               <input
                 ref={fileInputRef}
@@ -381,14 +383,14 @@ export function ImportExport({
               />
               <Button variant="secondary" onClick={() => fileInputRef.current?.click()}>
                 <FileJson className="mr-2 h-4 w-4" />
-                Seleccionar JSON
+                {t('investments.selectJSON')}
               </Button>
             </div>
 
             <div className="rounded-lg border p-4">
-              <h4 className="mb-2 font-medium">Desde archivo CSV/Excel</h4>
+              <h4 className="mb-2 font-medium">{t('investments.fromCSV')}</h4>
               <p className="mb-3 text-sm text-muted-foreground">
-                Importa inversiones desde una hoja de cálculo
+                {t('investments.fromCSVDesc')}
               </p>
               <div className="flex gap-2">
                 <input
@@ -400,10 +402,10 @@ export function ImportExport({
                 />
                 <Button variant="secondary" onClick={() => csvInputRef.current?.click()}>
                   <FileSpreadsheet className="mr-2 h-4 w-4" />
-                  Seleccionar CSV
+                  {t('investments.selectCSV')}
                 </Button>
                 <Button variant="ghost" onClick={handleDownloadTemplate}>
-                  Descargar Plantilla
+                  {t('investments.downloadTemplate')}
                 </Button>
               </div>
             </div>
@@ -415,37 +417,37 @@ export function ImportExport({
         <DialogTrigger asChild>
           <Button variant="outline">
             <Download className="mr-2 h-4 w-4" />
-            Exportar
+            {t('investments.export')}
           </Button>
         </DialogTrigger>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>Exportar Inversiones</DialogTitle>
+            <DialogTitle>{t('investments.exportTitle')}</DialogTitle>
             <DialogDescription>
-              Descarga tus inversiones para backup o análisis
+              {t('investments.exportDesc')}
             </DialogDescription>
           </DialogHeader>
 
           <div className="space-y-4">
             <div className="rounded-lg border p-4">
-              <h4 className="mb-2 font-medium">Exportar como JSON</h4>
+              <h4 className="mb-2 font-medium">{t('investments.exportJSON')}</h4>
               <p className="mb-3 text-sm text-muted-foreground">
-                Incluye todos los datos y pagos. Ideal para backups.
+                {t('investments.exportJSONDesc')}
               </p>
               <Button onClick={handleExportJSON}>
                 <FileJson className="mr-2 h-4 w-4" />
-                Descargar JSON
+                {t('investments.downloadJSON')}
               </Button>
             </div>
 
             <div className="rounded-lg border p-4">
-              <h4 className="mb-2 font-medium">Exportar como CSV</h4>
+              <h4 className="mb-2 font-medium">{t('investments.exportCSV')}</h4>
               <p className="mb-3 text-sm text-muted-foreground">
-                Compatible con Excel y Google Sheets
+                {t('investments.exportCSVDesc')}
               </p>
               <Button onClick={handleExportCSV}>
                 <FileSpreadsheet className="mr-2 h-4 w-4" />
-                Descargar CSV
+                {t('investments.downloadCSV')}
               </Button>
             </div>
           </div>

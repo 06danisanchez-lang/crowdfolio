@@ -1,291 +1,100 @@
 
-# Implementar ES/EN nativo en toda la app + Bloquear Google Translate
+# Fix: Build Error in translations.ts
 
-## Contexto
+## Root Cause (Confirmed)
 
-El proyecto tiene ~40 componentes con texto hardcodeado en español. La estrategia es crear un sistema i18n ligero sin librerías externas: un diccionario plano + React Context + función `t(key)`. Exactamente 3 archivos nuevos y 23 archivos editados según la lista especificada.
-
----
-
-## Bloque 1 — Bloquear Google Translate (`index.html`)
-
-```html
-<html lang="es" translate="no">
-<head>
-  <meta name="google" content="notranslate">
-  <meta name="translation" content="no">
-```
-
-El `overlay-root` ya tiene `translate="no"` según la memoria de arquitectura — consistente con esto.
-
----
-
-## Bloque 2 — Archivo nuevo: `src/lib/i18n/translations.ts`
-
-Diccionario plano ES/EN con todos los namespaces necesarios:
+The file `src/lib/i18n/translations.ts` has a structural break at **lines 540-541**. The `es` block closes normally at line 540 (`},`), but then line 541 has `};` which **closes the entire `translations` object prematurely**. The entire `en` block (lines 542–1079) is therefore floating outside the object, causing ~150+ TypeScript syntax errors.
 
 ```
-common.*       → Guardar, Cancelar, Cargando, Error, Cerrar, Editar, Eliminar, Ver, Aceptar, Añadir, Guardar cambios, Filtrar...
-nav.*          → Inicio, Inversiones, Oportunidades, Plataformas, Fiscalidad, Administración
-header.*       → signIn ("Iniciar Sesión" / "Sign In"), getStarted ("Empezar Gratis" / "Get Started Free")
-hero.*         → badge, headline, subheadline, bullet1-3, ctaPrimary, ctaSecondary, trustLine
-stats.*        → label1-4 + desc1-4
-features.*     → sectionBadge, sectionTitle, sectionDesc, f1.title, f1.desc ... f6.title, f6.desc
-how.*          → sectionBadge, sectionTitle, step1.title, step1.desc ... step3
-cta.*          → headline, subheadline, benefit1-3, button
-footer.*       → contact, pricing
-testimonials.* → sectionBadge, sectionTitle, t1.name, t1.role, t1.content ... t3
-dashboard.*    → title, subtitle, kpi.invested, kpi.current, kpi.returns, kpi.performance, upcomingTitle, charts.timeline, charts.distribution, charts.comparison
-investments.*  → title, subtitle, addBtn, form.title, form.platform, form.project, form.amount, form.date, form.endDate, form.expectedReturn, form.status, form.notes, form.save, table.platform, table.project, table.amount, table.date, table.status, table.actions, empty, deleteConfirm, deleteDesc
-opportunities.*→ title, subtitle, addBtn, filters.all, filters.active, form labels...
-platforms.*    → title, subtitle, addBtn, form labels, empty
-tax.*          → title, subtitle, section headers
-profile.*      → title, subtitle, photoTitle, nameLabel, emailLabel, saveBtn
-settings.*     → title, account, changePassword, changeEmail, appearance, darkMode, billing
-auth.*         → (para Auth.tsx si tiene textos)
-subscription.* → upgradeTitle, monthly, yearly, features.1-5, checkoutBtn, alreadyPro
-errors.*       → save, load, generic, passwordShort, passwordMismatch
-usermenu.*     → profile, settings, darkMode, lightMode, signOut
+// CURRENT BROKEN STRUCTURE:
+export const translations = {
+  es: {
+    ...                    ← line 540: closes es
+  },
+};                         ← line 541: PREMATURE close of whole object ← BUG
+    // en keys floating outside... ← lines 542-1079: SYNTAX ERRORS
 ```
 
-Todas las claves tienen valor en ES y EN. Si la key no existe → se devuelve la key (fallback).
-
----
-
-## Bloque 3 — Archivo nuevo: `src/contexts/LanguageContext.tsx`
-
-```typescript
-export type Lang = 'es' | 'en';
-
-interface LanguageContextType {
-  lang: Lang;
-  setLang: (l: Lang) => void;
-  t: (key: string) => string;
-}
-
-// - Lee localStorage('app_language'), default 'es'
-// - setLang escribe en localStorage y actualiza estado
-// - t(key): translations[lang]?.[key] ?? key  (nunca crashea)
-// - export LanguageProvider({ children })
-// - export useLanguage()
+```
+// CORRECT STRUCTURE:
+export const translations = {
+  es: {
+    ...
+  },
+  en: {                    ← needs to open here
+    ...
+  },
+};                         ← closes at line 1079 (already correct)
 ```
 
----
+## The Fix: 2 Line Edit
 
-## Bloque 4 — Archivo nuevo: `src/components/ui/LanguageToggle.tsx`
+**In `src/lib/i18n/translations.ts`, lines 540–543:**
 
-```tsx
-// Botón compacto "ES | EN"
-// - Activo: font-semibold text-foreground
-// - Inactivo: text-muted-foreground hover:text-foreground
-// - Separador "|" entre los dos
-// - onClick: setLang('es') / setLang('en')
-// - Sin dependencias externas, usa <button> con Tailwind
+Replace:
+```
+    'subscription.cancelAnytime': 'Cancela cuando quieras. Sin compromisos.',
+  },
+};
+    // Header / Landing nav
+    'header.signIn': 'Sign In',
 ```
 
----
-
-## Bloque 5 — `src/App.tsx`
-
-Importar `LanguageProvider` y envolver el árbol existente. Orden correcto:
-
+With:
 ```
-<GlobalErrorBoundary>
-  <ThemeProvider>
-    <LanguageProvider>          ← NUEVO
-      <QueryClientProvider>
-        ...resto sin cambios...
-      </QueryClientProvider>
-    </LanguageProvider>
-  </ThemeProvider>
-</GlobalErrorBoundary>
+    'subscription.cancelAnytime': 'Cancela cuando quieras. Sin compromisos.',
+  },
+  en: {
+    // Header / Landing nav
+    'header.signIn': 'Sign In',
 ```
 
----
+That's it. The `en:` opening brace is missing — adding it fixes all 150+ syntax errors in one change.
 
-## Bloque 6 — Landing page (7 componentes)
+**Line 1079 is already correct** — the last two lines are `  },\n};` which correctly close `en` and the whole object.
 
-### `src/pages/Landing.tsx`
-- Import `useLanguage`, `LanguageToggle`
-- Header: `{t('header.signIn')}`, `{t('header.getStarted')}`
-- `<LanguageToggle />` antes de los botones de auth
+## Secondary Cleanup: Duplicate Keys in `es` Block
 
-### `src/components/landing/HeroSection.tsx`
-- Badge: `{t('hero.badge')}`
-- H1 parte 1: `{t('hero.headline1')}` + "crowdfunding" (word kept) + `{t('hero.headline2')}`
-- Subheadline: `{t('hero.subheadline')}`
-- 3 bullets: `{t('hero.bullet1')}`, `{t('hero.bullet2')}`, `{t('hero.bullet3')}`
-- CTA primario: `{t('hero.ctaPrimary')}`
-- CTA secundario: `{t('hero.ctaSecondary')}`
-- Trust line: `{t('hero.trustLine')}`
+There are duplicate keys in the `es` block (the "missing keys" section added at lines 395–539 has some keys already defined at lines 122–393). Examples:
+- `dashboard.subtitle` (defined at line 124 AND line 402)
+- `dashboard.kpi.invested` (line 125 AND line 403)
+- `platforms.title` (line 281 AND line 510)
+- `subscription.yourPro` (line 346 AND line 535)
 
-### `src/components/landing/StatsSection.tsx`
-Mover array `stats` **dentro del componente** (para reaccionar al cambio de lang):
-```typescript
-const { t } = useLanguage();
-const stats = [
-  { icon: Users, value: '500+', label: t('stats.label1'), description: t('stats.desc1') },
-  // ...
-```
+**TypeScript does NOT error on duplicate object keys** (last one wins silently), so these don't cause build errors. They will be cleaned up as part of this fix by removing the redundant second definitions at lines 395–539. The earlier definitions (lines 122–393) are the canonical ones and will be kept.
 
-### `src/components/landing/FeaturesGrid.tsx`
-Mover array `features` **dentro del componente**:
-```typescript
-const { t } = useLanguage();
-const features = [
-  { icon: FileText, title: t('features.f1.title'), description: t('features.f1.desc'), highlight: true },
-  // ...6 items
-```
-Section badge, title, subtitle: `{t('features.sectionBadge')}` etc.
+## Step-by-Step Changes
 
-### `src/components/landing/HowItWorks.tsx`
-Mover array `steps` **dentro del componente**. Section label, title: `{t('how.sectionBadge')}` etc.
+### File: `src/lib/i18n/translations.ts`
 
-### `src/components/landing/CTASection.tsx`
-Mover array `benefits` **dentro del componente**. H2, p, button: `{t('cta.*')}`.
+**Change 1** — Fix the structural break (lines 540–543):
+- Remove the premature `};` on line 541
+- Add `en: {` to open the English block
 
-### `src/components/landing/Footer.tsx`
-Solo los 2 textos de links: `{t('footer.contact')}`, `{t('footer.pricing')}`.
+**Change 2** — Remove duplicate `es` keys (lines 395–539, the "Missing keys for components" section):
+- These are all redundant re-definitions of keys already declared above them in the `es` block
+- Removing them leaves the `es` object clean with one canonical definition per key
 
-### `src/components/landing/TestimonialCarousel.tsx`
-Dos arrays: `testimonialsEs` (actuales) y `testimonialsEn` (EN hardcodeados). Dentro del componente:
-```typescript
-const { lang, t } = useLanguage();
-const testimonials = lang === 'en' ? testimonialsEn : testimonialsEs;
-```
-Section badge y título: `{t('testimonials.sectionBadge')}`, `{t('testimonials.sectionTitle')}`.
+**Change 3** — The `en` block already has matching keys for all the ones added in the "missing keys" section (lines 932–1079), so the `en` block is complete and correct as-is.
 
----
+## After This Fix: Continue with SettingsView + ProfileView
 
-## Bloque 7 — App interior
-
-### `src/components/layout/AppLayout.tsx`
-- Import `useLanguage`
-- `navItems` array **dentro del componente** (ya que los labels deben ser reactivos):
-  ```typescript
-  const { t } = useLanguage();
-  const navItems = [
-    { id: 'dashboard', label: t('nav.dashboard'), icon: LayoutDashboard },
-    { id: 'investments', label: t('nav.investments'), icon: Wallet },
-    // ...
-  ```
-- `{isPro ? t('nav.alreadyPro') : t('nav.upgradePro')}`
-- `{t('nav.admin')}`
-- Footer links labels: `{t('footer.legal')}`, `{t('footer.privacy')}`, `{t('footer.terms')}`, `{t('footer.cookies')}`
-
-### `src/components/layout/UserMenu.tsx`
-- Import `useLanguage`, `LanguageToggle`
-- `{t('usermenu.profile')}`, `{t('usermenu.settings')}`
-- `{darkMode ? t('usermenu.lightMode') : t('usermenu.darkMode')}`
-- `{t('usermenu.signOut')}`
-- Añadir `<LanguageToggle />` como item en el dropdown (antes del separator, junto al dark mode)
-
-### `src/pages/Index.tsx`
-Solo los títulos de sección de la vista dashboard (H1/H2 hardcodeados que aparecen en el render). Los datos dinámicos (nombres de inversiones, cantidades) no se tocan.
-
-### `src/components/investments/InvestmentList.tsx`
-- Cabeceras de tabla: `{t('investments.table.platform')}` etc.
-- Botones: `{t('common.edit')}`, `{t('common.delete')}`, `{t('common.view')}`
-- Empty state
-- AlertDialog de confirmación borrado: `{t('investments.deleteConfirm')}`, `{t('investments.deleteDesc')}`
-- Select de filtros de estado
-
-### `src/components/investments/InvestmentForm.tsx`
-- Labels del formulario: `{t('investments.form.platform')}` etc.
-- Placeholders donde hay texto visible
-- Botones de submit: `{t('common.save')}`
-- Mensajes de modo de entrada (image/manual)
-
-### `src/components/investments/InvestmentDetail.tsx`
-- Títulos de sección, labels, botones
-
-### `src/components/investments/ImportExport.tsx`
-- Botones y labels
-
-### `src/components/opportunities/OpportunityFilters.tsx`
-- Labels de filtros
-
-### `src/components/opportunities/OpportunityForm.tsx`
-- Labels y botones del formulario
-
-### `src/components/opportunities/OpportunityList.tsx`
-- Cabeceras, empty state, botones
-
-### `src/components/platforms/PlatformList.tsx`
-- Títulos, empty state, botones
-
-### `src/components/platforms/PlatformForm.tsx`
-- Labels y botones
+Once the build is green, translate the 2 remaining pending components:
 
 ### `src/components/settings/SettingsView.tsx`
-- Títulos de secciones (Apariencia, Cuenta, Cambiar contraseña...)
-- Labels de inputs
-- Botones
-- **Mensajes toast propios**: `toast.error(t('errors.passwordShort'))`, `toast.success(t('settings.passwordUpdated'))`
+- Import `useLanguage`
+- Replace all hardcoded strings with `t('settings.*')`, `t('errors.*')`, `t('toast.*')` keys (all keys already exist in the dictionary)
 
 ### `src/components/profile/ProfileView.tsx`
-- Títulos, labels, botones
+- Import `useLanguage`  
+- Replace all hardcoded strings with `t('profile.*')` keys (all already in dictionary)
 
-### `src/components/subscription/UpgradeModal.tsx`
-- Título, features list, botones de plan
-- Feature messages del objeto `FEATURE_MESSAGES` → usando `t()` keys
+## Files Changed
 
-### `src/components/subscription/BillingSettings.tsx`
-- Títulos y botones
+| File | Change |
+|------|--------|
+| `src/lib/i18n/translations.ts` | Fix structural break (add `en: {`), remove duplicate `es` keys |
+| `src/components/settings/SettingsView.tsx` | Add `useLanguage`, replace strings with `t()` |
+| `src/components/profile/ProfileView.tsx` | Add `useLanguage`, replace strings with `t()` |
 
----
-
-## Regla sobre arrays fuera de render
-
-Los arrays como `features`, `steps`, `benefits`, `stats`, `navItems` que contienen strings de UI deben moverse **dentro del cuerpo del componente** (después de `useLanguage()`). De lo contrario, no reaccionarían al cambio de idioma (serían strings fijadas en el primer render).
-
----
-
-## Criterios de aceptación cubiertos
-
-| # | Criterio | Implementación |
-|---|----------|----------------|
-| 1 | Chrome no ofrece traducir | `translate="no"` + 2 meta tags en `index.html` |
-| 2 | Toggle cambia landing + interior | `useLanguage()` en todos los componentes listados |
-| 3 | Persiste al recargar | `localStorage('app_language')` en `LanguageContext` |
-| 4 | Sin errores en consola | Arrays dentro del componente, fallback `?? key` |
-| 5 | Menús y botones traducidos | AppLayout, UserMenu, todos los formularios |
-| 6 | Fallback sin crash | `translations[lang]?.[key] ?? key` |
-
----
-
-## Archivos totales
-
-| Archivo | Acción |
-|---------|--------|
-| `index.html` | Editar (3 líneas) |
-| `src/lib/i18n/translations.ts` | **NUEVO** |
-| `src/contexts/LanguageContext.tsx` | **NUEVO** |
-| `src/components/ui/LanguageToggle.tsx` | **NUEVO** |
-| `src/App.tsx` | Editar (LanguageProvider) |
-| `src/pages/Landing.tsx` | Editar |
-| `src/components/landing/HeroSection.tsx` | Editar |
-| `src/components/landing/StatsSection.tsx` | Editar |
-| `src/components/landing/FeaturesGrid.tsx` | Editar |
-| `src/components/landing/HowItWorks.tsx` | Editar |
-| `src/components/landing/CTASection.tsx` | Editar |
-| `src/components/landing/Footer.tsx` | Editar |
-| `src/components/landing/TestimonialCarousel.tsx` | Editar |
-| `src/components/layout/AppLayout.tsx` | Editar |
-| `src/components/layout/UserMenu.tsx` | Editar |
-| `src/pages/Index.tsx` | Editar (solo títulos de sección) |
-| `src/components/investments/InvestmentForm.tsx` | Editar |
-| `src/components/investments/InvestmentList.tsx` | Editar |
-| `src/components/investments/InvestmentDetail.tsx` | Editar |
-| `src/components/investments/ImportExport.tsx` | Editar |
-| `src/components/opportunities/OpportunityFilters.tsx` | Editar |
-| `src/components/opportunities/OpportunityForm.tsx` | Editar |
-| `src/components/opportunities/OpportunityList.tsx` | Editar |
-| `src/components/platforms/PlatformList.tsx` | Editar |
-| `src/components/platforms/PlatformForm.tsx` | Editar |
-| `src/components/settings/SettingsView.tsx` | Editar |
-| `src/components/profile/ProfileView.tsx` | Editar |
-| `src/components/subscription/UpgradeModal.tsx` | Editar |
-| `src/components/subscription/BillingSettings.tsx` | Editar |
-
-**Total: 3 nuevos + 26 editados = 29 archivos. Cero librerías externas.**
+**Zero new files. Zero new dependencies.**

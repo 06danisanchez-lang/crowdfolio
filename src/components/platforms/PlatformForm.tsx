@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { useLanguage } from '@/contexts/LanguageContext';
 import {
   Dialog,
   DialogContent,
@@ -38,6 +39,7 @@ export function PlatformForm({
   platform,
   onSubmit,
 }: PlatformFormProps) {
+  const { t } = useLanguage();
   const [formData, setFormData] = useState<UserPlatformFormData>(DEFAULT_PLATFORM_FORM_DATA);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
@@ -77,13 +79,13 @@ export function PlatformForm({
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-lg max-h-[90vh] overflow-y-auto">
         <DialogHeader>
-          <DialogTitle>
-            {platform ? 'Editar Plataforma' : 'Añadir Plataforma'}
+        <DialogTitle>
+            {platform ? t('platforms.form.editTitle') : t('platforms.form.addTitle')}
           </DialogTitle>
         </DialogHeader>
         <form onSubmit={handleSubmit} className="space-y-4">
           <div className="space-y-2">
-            <Label htmlFor="name">Nombre *</Label>
+            <Label htmlFor="name">{t('platforms.form.name')} *</Label>
             <Input
               id="name"
               value={formData.name}
@@ -95,7 +97,7 @@ export function PlatformForm({
 
           <div className="grid grid-cols-2 gap-4">
             <div className="space-y-2">
-              <Label htmlFor="countryCode">País</Label>
+              <Label htmlFor="countryCode">{t('platforms.form.country')}</Label>
               <Select
                 value={formData.countryCode}
                 onValueChange={(value) => setFormData({ ...formData, countryCode: value })}
@@ -114,7 +116,7 @@ export function PlatformForm({
             </div>
 
             <div className="space-y-2">
-              <Label htmlFor="platformType">Tipo</Label>
+              <Label htmlFor="platformType">{t('platforms.form.type')}</Label>
               <Select
                 value={formData.platformType}
                 onValueChange={(value: any) => setFormData({ ...formData, platformType: value })}
@@ -146,7 +148,7 @@ export function PlatformForm({
 
           <div className="grid grid-cols-2 gap-4">
             <div className="space-y-2">
-              <Label htmlFor="registrationDate">Fecha de registro</Label>
+              <Label htmlFor="registrationDate">{t('platforms.form.registrationDate')}</Label>
               <Input
                 id="registrationDate"
                 type="date"
@@ -156,7 +158,7 @@ export function PlatformForm({
             </div>
 
             <div className="space-y-2">
-              <Label htmlFor="status">Estado</Label>
+              <Label htmlFor="status">{t('common.status')}</Label>
               <Select
                 value={formData.status}
                 onValueChange={(value: any) => setFormData({ ...formData, status: value })}
@@ -177,7 +179,7 @@ export function PlatformForm({
 
           <div className="grid grid-cols-2 gap-4">
             <div className="space-y-2">
-              <Label htmlFor="username">Usuario (opcional)</Label>
+              <Label htmlFor="username">{t('platforms.form.username')}</Label>
               <Input
                 id="username"
                 value={formData.username}
@@ -187,7 +189,7 @@ export function PlatformForm({
             </div>
 
             <div className="space-y-2">
-              <Label htmlFor="defaultWithholding">Retención por defecto (%)</Label>
+              <Label htmlFor="defaultWithholding">{t('platforms.form.withholding')}</Label>
               <Input
                 id="defaultWithholding"
                 type="number"
@@ -202,7 +204,7 @@ export function PlatformForm({
           </div>
 
           <div className="space-y-2">
-            <Label htmlFor="notes">Notas</Label>
+            <Label htmlFor="notes">{t('common.notes')}</Label>
             <Textarea
               id="notes"
               value={formData.notes}
@@ -218,10 +220,10 @@ export function PlatformForm({
               variant="outline"
               onClick={() => onOpenChange(false)}
             >
-              Cancelar
+              {t('common.cancel')}
             </Button>
             <Button type="submit" disabled={isSubmitting || !formData.name.trim()}>
-              {isSubmitting ? 'Guardando...' : platform ? 'Guardar Cambios' : 'Añadir Plataforma'}
+              {isSubmitting ? t('common.saving') : platform ? t('common.saveChanges') : t('platforms.form.addBtn')}
             </Button>
           </div>
         </form>

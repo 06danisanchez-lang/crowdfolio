@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { useLanguage } from '@/contexts/LanguageContext';
 import { Sparkles, Check, Crown, Loader2 } from 'lucide-react';
 import {
   Dialog,
@@ -36,6 +37,7 @@ const PRO_FEATURES = [
 ];
 
 export function UpgradeModal({ open, onOpenChange, feature = 'default' }: UpgradeModalProps) {
+  const { t } = useLanguage();
   const { openCheckout, isPro } = useSubscription();
   const [isLoading, setIsLoading] = useState<'monthly' | 'yearly' | null>(null);
   const [selectedPlan, setSelectedPlan] = useState<'monthly' | 'yearly'>('yearly');
@@ -65,10 +67,10 @@ export function UpgradeModal({ open, onOpenChange, feature = 'default' }: Upgrad
         <DialogHeader>
           <div className="flex items-center gap-2">
             <Crown className="h-6 w-6 text-primary" />
-            <DialogTitle>{isPro ? 'Tu Plan Pro' : 'Desbloquea Crowdfolio Pro'}</DialogTitle>
+            <DialogTitle>{isPro ? t('subscription.yourPro') : t('subscription.upgradeTitle')}</DialogTitle>
           </div>
           <DialogDescription className="pt-2">
-            {isPro ? 'Estos son tus beneficios activos.' : featureMessage}
+            {isPro ? t('subscription.activePerks') : featureMessage}
           </DialogDescription>
         </DialogHeader>
 
@@ -85,7 +87,7 @@ export function UpgradeModal({ open, onOpenChange, feature = 'default' }: Upgrad
                       : 'text-muted-foreground hover:text-foreground'
                   }`}
                 >
-                  Mensual
+                  {t('billing.monthly')}
                 </button>
                 <button
                   onClick={() => setSelectedPlan('yearly')}
@@ -95,7 +97,7 @@ export function UpgradeModal({ open, onOpenChange, feature = 'default' }: Upgrad
                       : 'text-muted-foreground hover:text-foreground'
                   }`}
                 >
-                  Anual
+                  {t('billing.yearly')}
                   <Badge variant="secondary" className="ml-1.5 text-xs">
                     -17%
                   </Badge>
@@ -109,7 +111,7 @@ export function UpgradeModal({ open, onOpenChange, feature = 'default' }: Upgrad
                     {formatPrice(STRIPE_PRICES[selectedPlan].amount)}
                   </span>
                   <span className="text-muted-foreground">
-                    /{selectedPlan === 'monthly' ? 'mes' : 'año'}
+                    /{selectedPlan === 'monthly' ? t('billing.perMonth') : t('billing.perYear')}
                   </span>
                 </div>
                 {selectedPlan === 'yearly' && (
@@ -135,7 +137,7 @@ export function UpgradeModal({ open, onOpenChange, feature = 'default' }: Upgrad
           {!isPro && (
             <>
               {/* CTA Button */}
-              <Button
+                <Button
                 className="w-full"
                 size="lg"
                 onClick={() => handleCheckout(selectedPlan)}
@@ -146,11 +148,11 @@ export function UpgradeModal({ open, onOpenChange, feature = 'default' }: Upgrad
                 ) : (
                   <Crown className="mr-2 h-4 w-4" />
                 )}
-                Empezar con Pro
+                {t('subscription.startPro')}
               </Button>
 
               <p className="text-center text-xs text-muted-foreground">
-                Cancela cuando quieras. Sin compromisos.
+                {t('subscription.cancelAnytime')}
               </p>
             </>
           )}

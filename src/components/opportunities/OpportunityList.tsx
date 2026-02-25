@@ -1,4 +1,5 @@
 import { Search, Sparkles } from 'lucide-react';
+import { useLanguage } from '@/contexts/LanguageContext';
 import { Opportunity } from '@/types/opportunity';
 import { OpportunityCard } from './OpportunityCard';
 import { Skeleton } from '@/components/ui/skeleton';
@@ -16,6 +17,7 @@ export function OpportunityList({
   onToggleFavorite, 
   onSelect 
 }: OpportunityListProps) {
+  const { t } = useLanguage();
   if (isLoading) {
     return (
       <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
@@ -37,13 +39,13 @@ export function OpportunityList({
         <div className="mb-4 rounded-full bg-muted p-4">
           <Search className="h-8 w-8 text-muted-foreground" />
         </div>
-        <h3 className="mb-2 text-lg font-semibold">No hay oportunidades</h3>
+        <h3 className="mb-2 text-lg font-semibold">{t('opportunities.emptyTitle')}</h3>
         <p className="mb-6 max-w-md text-center text-muted-foreground">
-          Usa el botón de scraping para buscar nuevas oportunidades de inversión en las plataformas de crowdfunding, o añade una manualmente.
+          {t('opportunities.emptyDesc')}
         </p>
         <div className="flex items-center gap-2 text-sm text-muted-foreground">
           <Sparkles className="h-4 w-4" />
-          <span>Pulsa "Buscar Oportunidades" para comenzar</span>
+          <span>{t('opportunities.emptyHint')}</span>
         </div>
       </div>
     );

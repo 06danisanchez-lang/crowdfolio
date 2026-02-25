@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { useLanguage } from '@/contexts/LanguageContext';
 import { format, parseISO } from 'date-fns';
 import { es } from 'date-fns/locale';
 import { 
@@ -66,6 +67,7 @@ export function InvestmentList({
   onAddPayment,
   onDeletePayment
 }: InvestmentListProps) {
+  const { t } = useLanguage();
   const [search, setSearch] = useState('');
   const [platformFilter, setPlatformFilter] = useState<Platform | 'all'>('all');
   const [statusFilter, setStatusFilter] = useState<InvestmentStatus | 'all'>('all');
@@ -155,7 +157,7 @@ export function InvestmentList({
         <div className="relative flex-1">
           <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
           <Input
-            placeholder="Buscar proyectos..."
+            placeholder={t('investments.searchPlaceholder')}
             value={search}
             onChange={(e) => setSearch(e.target.value)}
             className="pl-9"
@@ -165,10 +167,10 @@ export function InvestmentList({
           <Select value={platformFilter} onValueChange={(v) => setPlatformFilter(v as Platform | 'all')}>
             <SelectTrigger className="w-[150px]">
               <Filter className="mr-2 h-4 w-4" />
-              <SelectValue placeholder="Plataforma" />
+              <SelectValue placeholder={t('common.platform')} />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value="all">Todas</SelectItem>
+              <SelectItem value="all">{t('common.all')}</SelectItem>
               {PLATFORMS.map((platform) => (
                 <SelectItem key={platform.value} value={platform.value}>
                   {platform.label}
@@ -178,10 +180,10 @@ export function InvestmentList({
           </Select>
           <Select value={statusFilter} onValueChange={(v) => setStatusFilter(v as InvestmentStatus | 'all')}>
             <SelectTrigger className="w-[140px]">
-              <SelectValue placeholder="Estado" />
+              <SelectValue placeholder={t('common.status')} />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value="all">Todos</SelectItem>
+              <SelectItem value="all">{t('common.allStatuses')}</SelectItem>
               {STATUS_OPTIONS.map((status) => (
                 <SelectItem key={status.value} value={status.value}>
                   {status.label}
@@ -199,32 +201,32 @@ export function InvestmentList({
             <TableRow>
               <TableHead>
                 <Button variant="ghost" size="sm" onClick={() => handleSort('projectName')}>
-                  Proyecto
+                  {t('investments.table.project')}
                   <ArrowUpDown className="ml-2 h-4 w-4" />
                 </Button>
               </TableHead>
-              <TableHead>Plataforma</TableHead>
+              <TableHead>{t('investments.table.platform')}</TableHead>
               <TableHead>
                 <Button variant="ghost" size="sm" onClick={() => handleSort('amount')}>
-                  Monto
+                  {t('investments.table.amount')}
                   <ArrowUpDown className="ml-2 h-4 w-4" />
                 </Button>
               </TableHead>
               <TableHead>
                 <Button variant="ghost" size="sm" onClick={() => handleSort('investmentDate')}>
-                  Fecha
+                  {t('investments.table.date')}
                   <ArrowUpDown className="ml-2 h-4 w-4" />
                 </Button>
               </TableHead>
               <TableHead>
                 <Button variant="ghost" size="sm" onClick={() => handleSort('expectedReturn')}>
-                  Rendimiento
+                  {t('investments.table.return')}
                   <ArrowUpDown className="ml-2 h-4 w-4" />
                 </Button>
               </TableHead>
               <TableHead>
                 <Button variant="ghost" size="sm" onClick={() => handleSort('status')}>
-                  Estado
+                  {t('investments.table.status')}
                   <ArrowUpDown className="ml-2 h-4 w-4" />
                 </Button>
               </TableHead>
@@ -235,7 +237,7 @@ export function InvestmentList({
             {filteredAndSortedInvestments.length === 0 ? (
               <TableRow>
                 <TableCell colSpan={7} className="h-24 text-center text-muted-foreground">
-                  No se encontraron inversiones
+                  {t('investments.empty')}
                 </TableCell>
               </TableRow>
             ) : (
@@ -257,7 +259,7 @@ export function InvestmentList({
                       <DropdownMenuContent align="end">
                         <DropdownMenuItem onClick={() => setViewingInvestment(investment)}>
                           <Eye className="mr-2 h-4 w-4" />
-                          Ver Detalles
+                          {t('common.view')}
                         </DropdownMenuItem>
                         <InvestmentForm
                           initialData={investment}
@@ -265,7 +267,7 @@ export function InvestmentList({
                           trigger={
                             <DropdownMenuItem onSelect={(e) => e.preventDefault()}>
                               <Pencil className="mr-2 h-4 w-4" />
-                              Editar
+                              {t('common.edit')}
                             </DropdownMenuItem>
                           }
                         />
@@ -274,7 +276,7 @@ export function InvestmentList({
                           onClick={() => setDeleteId(investment.id)}
                         >
                           <Trash2 className="mr-2 h-4 w-4" />
-                          Eliminar
+                          {t('common.delete')}
                         </DropdownMenuItem>
                       </DropdownMenuContent>
                     </DropdownMenu>
@@ -290,15 +292,15 @@ export function InvestmentList({
       <AlertDialog open={!!deleteId} onOpenChange={() => setDeleteId(null)}>
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>¿Eliminar inversión?</AlertDialogTitle>
+            <AlertDialogTitle>{t('investments.deleteConfirm')}</AlertDialogTitle>
             <AlertDialogDescription>
-              Esta acción no se puede deshacer. La inversión y todos sus pagos registrados serán eliminados permanentemente.
+              {t('investments.deleteDesc')}
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel>Cancelar</AlertDialogCancel>
+            <AlertDialogCancel>{t('common.cancel')}</AlertDialogCancel>
             <AlertDialogAction onClick={handleConfirmDelete} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
-              Eliminar
+              {t('common.delete')}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>

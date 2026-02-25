@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef } from 'react';
+import { useLanguage } from '@/contexts/LanguageContext';
 import { Wallet, TrendingUp, PiggyBank, CalendarClock, Target, Heart, Search as SearchIcon, Plus } from 'lucide-react';
 import { ErrorBoundary } from '@/components/ErrorBoundary';
 import { ErrorState } from '@/components/ui/error-state';
@@ -40,6 +41,7 @@ import { View } from '@/types/investment';
 import { Opportunity } from '@/types/opportunity';
 
 const Index = () => {
+  const { t } = useLanguage();
   const [currentView, setCurrentView] = useState<View>('dashboard');
   const [selectedOpportunity, setSelectedOpportunity] = useState<Opportunity | null>(null);
   const [upgradeModalOpen, setUpgradeModalOpen] = useState(false);
@@ -95,8 +97,8 @@ const Index = () => {
   useEffect(() => {
     if (!isLoading && hasUrgentAlerts) {
       const urgentCount = alerts.filter(a => a.severity === 'danger').length;
-      toast.warning(`Tienes ${urgentCount} alerta${urgentCount !== 1 ? 's' : ''} urgente${urgentCount !== 1 ? 's' : ''}`, {
-        description: 'Revisa las notificaciones para más detalles',
+      toast.warning(`${t('dashboard.urgentAlerts').replace('{n}', String(urgentCount))}`, {
+        description: t('dashboard.checkNotifications'),
         duration: 5000,
       });
     }
@@ -135,8 +137,8 @@ const Index = () => {
               <>
                 <div className="mb-8 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
                   <div>
-                    <h1 className="text-3xl font-bold">Inicio</h1>
-                    <p className="text-muted-foreground">Resumen de tus inversiones inmobiliarias</p>
+                    <h1 className="text-3xl font-bold">{t('nav.dashboard')}</h1>
+                    <p className="text-muted-foreground">{t('dashboard.subtitle')}</p>
                   </div>
                   <div className="flex flex-wrap gap-2">
                     {investments.length > 0 && (
@@ -149,18 +151,18 @@ const Index = () => {
                   <ShareableCard ref={shareableCardRef} totalInvested={summary.totalInvested} totalReturns={summary.totalReturns} averageReturn={summary.averageReturn} />
                 </div>
                 <div className="mb-8 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-                  <KPICard title="Capital Invertido" value={formatCurrency(summary.totalInvested)} subtitle={`${investments.length} proyectos`} icon={Wallet} helpContent={HELP_CONTENT.dashboard.totalInvested} />
-                  <KPICard title="Retornos Recibidos" value={formatCurrency(summary.totalReturns)} icon={TrendingUp} trend={summary.totalInvested > 0 ? { value: (summary.totalReturns / summary.totalInvested) * 100, isPositive: true } : undefined} helpContent="Suma de todos los pagos recibidos: intereses, dividendos y devoluciones de capital." />
-                  <KPICard title="Retornos Esperados" value={formatCurrency(summary.expectedReturns)} subtitle="Basado en rendimientos estimados" icon={Target} helpContent={HELP_CONTENT.dashboard.projectedProfit} />
-                  <KPICard title="Rentabilidad Media Anual" value={`${summary.averageReturn.toFixed(1)}%`} subtitle={`${summary.activeInvestments} inversiones activas`} icon={PiggyBank} helpContent={HELP_CONTENT.dashboard.expectedReturn} />
+                  <KPICard title={t('dashboard.kpi.invested')} value={formatCurrency(summary.totalInvested)} subtitle={`${investments.length} ${t('dashboard.kpi.projects')}`} icon={Wallet} helpContent={HELP_CONTENT.dashboard.totalInvested} />
+                  <KPICard title={t('dashboard.kpi.returns')} value={formatCurrency(summary.totalReturns)} icon={TrendingUp} trend={summary.totalInvested > 0 ? { value: (summary.totalReturns / summary.totalInvested) * 100, isPositive: true } : undefined} helpContent={t('dashboard.kpi.returnsHelp')} />
+                  <KPICard title={t('dashboard.kpi.expected')} value={formatCurrency(summary.expectedReturns)} subtitle={t('dashboard.kpi.expectedSubtitle')} icon={Target} helpContent={HELP_CONTENT.dashboard.projectedProfit} />
+                  <KPICard title={t('dashboard.kpi.performance')} value={`${summary.averageReturn.toFixed(1)}%`} subtitle={`${summary.activeInvestments} ${t('dashboard.kpi.activeInvestments')}`} icon={PiggyBank} helpContent={HELP_CONTENT.dashboard.expectedReturn} />
                 </div>
                 <div className="mb-8 grid gap-6 lg:grid-cols-2">
-                  <Card><CardHeader><CardTitle className="flex items-center gap-2">Distribución por Plataforma<HelpTooltip content={HELP_CONTENT.dashboard.platformDistribution} /></CardTitle></CardHeader><CardContent><PlatformDistributionChart investments={investments} /></CardContent></Card>
-                  <Card><CardHeader><CardTitle>Evolución Temporal</CardTitle></CardHeader><CardContent><InvestmentTimelineChart investments={investments} /></CardContent></Card>
+                  <Card><CardHeader><CardTitle className="flex items-center gap-2">{t('dashboard.charts.distribution')}<HelpTooltip content={HELP_CONTENT.dashboard.platformDistribution} /></CardTitle></CardHeader><CardContent><PlatformDistributionChart investments={investments} /></CardContent></Card>
+                  <Card><CardHeader><CardTitle>{t('dashboard.charts.timeline')}</CardTitle></CardHeader><CardContent><InvestmentTimelineChart investments={investments} /></CardContent></Card>
                 </div>
                 <div className="grid gap-6 lg:grid-cols-2">
-                  <Card><CardHeader><CardTitle>Comparativa de Rendimientos</CardTitle></CardHeader><CardContent><ReturnComparisonChart investments={investments} /></CardContent></Card>
-                  <Card><CardHeader><CardTitle className="flex items-center gap-2"><CalendarClock className="h-5 w-5" />Próximos Vencimientos<HelpTooltip content={HELP_CONTENT.dashboard.maturityTimeline} /></CardTitle></CardHeader><CardContent><UpcomingMaturityList investments={investments} /></CardContent></Card>
+                  <Card><CardHeader><CardTitle>{t('dashboard.charts.comparison')}</CardTitle></CardHeader><CardContent><ReturnComparisonChart investments={investments} /></CardContent></Card>
+                  <Card><CardHeader><CardTitle className="flex items-center gap-2"><CalendarClock className="h-5 w-5" />{t('dashboard.upcomingTitle')}<HelpTooltip content={HELP_CONTENT.dashboard.maturityTimeline} /></CardTitle></CardHeader><CardContent><UpcomingMaturityList investments={investments} /></CardContent></Card>
                 </div>
               </>
             )}
@@ -171,8 +173,8 @@ const Index = () => {
           <div className="p-6 lg:p-8">
             <div className="mb-8 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
               <div>
-                <h1 className="text-3xl font-bold">Inversiones</h1>
-                <p className="text-muted-foreground">Gestiona todas tus inversiones{!isPro && ` (${investments.length}/3)`}</p>
+                <h1 className="text-3xl font-bold">{t('investments.title')}</h1>
+                <p className="text-muted-foreground">{t('investments.subtitle')}{!isPro && ` (${investments.length}/3)`}</p>
               </div>
               <div className="flex flex-wrap gap-2">
                 <ImportExport investments={investments} onImport={importInvestments} exportData={exportInvestments} isPro={isPro} onProRequired={() => openUpgradeModal('unlimited_imports')} importsThisMonth={0} />
@@ -191,8 +193,8 @@ const Index = () => {
               <>
                 <div className="mb-8 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
                   <div>
-                    <h1 className="text-3xl font-bold">Oportunidades de Inversión</h1>
-                    <p className="text-muted-foreground">Descubre y analiza nuevas oportunidades</p>
+                    <h1 className="text-3xl font-bold">{t('opportunities.title')}</h1>
+                    <p className="text-muted-foreground">{t('opportunities.subtitle')}</p>
                   </div>
                   <div className="flex flex-wrap gap-2">
                     <ScrapeButton onScrape={scrape} isScraping={isScraping} lastScrapedAt={lastScrapedAt} error={scrapeError} requiresSetup={requiresFirecrawlSetup} />
@@ -200,10 +202,10 @@ const Index = () => {
                   </div>
                 </div>
                 <div className="mb-6 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-                  <KPICard title="Total Oportunidades" value={opportunitiesSummary.total.toString()} subtitle={`${opportunitiesSummary.open} abiertas`} icon={SearchIcon} />
-                  <KPICard title="Favoritas" value={opportunitiesSummary.favorites.toString()} icon={Heart} />
-                  <KPICard title="Rentabilidad Media" value={`${opportunitiesSummary.averageReturn.toFixed(1)}%`} subtitle="De oportunidades abiertas" icon={TrendingUp} />
-                  <KPICard title="Plataformas" value={Object.keys(opportunitiesSummary.byPlatform).length.toString()} subtitle="Con oportunidades" icon={Target} />
+                  <KPICard title={t('opportunities.kpi.total')} value={opportunitiesSummary.total.toString()} subtitle={`${opportunitiesSummary.open} ${t('opportunities.kpi.open')}`} icon={SearchIcon} />
+                  <KPICard title={t('opportunities.kpi.favorites')} value={opportunitiesSummary.favorites.toString()} icon={Heart} />
+                  <KPICard title={t('opportunities.kpi.avgReturn')} value={`${opportunitiesSummary.averageReturn.toFixed(1)}%`} subtitle={t('opportunities.kpi.avgReturnSubtitle')} icon={TrendingUp} />
+                  <KPICard title={t('opportunities.kpi.platforms')} value={Object.keys(opportunitiesSummary.byPlatform).length.toString()} subtitle={t('opportunities.kpi.platformsSubtitle')} icon={Target} />
                 </div>
                 <OpportunityFilters filters={filters} onFiltersChange={setFilters} sortConfig={sortConfig} onSortChange={setSortConfig} resultCount={opportunities.length} />
                 <OpportunityList opportunities={opportunities} isLoading={opportunitiesLoading} onToggleFavorite={toggleFavorite} onSelect={setSelectedOpportunity} />
@@ -217,8 +219,8 @@ const Index = () => {
         return (
           <div className="p-6 lg:p-8">
             <div className="mb-8">
-              <h1 className="text-3xl font-bold">Mis Plataformas</h1>
-              <p className="text-muted-foreground">Plataformas de crowdfunding donde estás registrado</p>
+              <h1 className="text-3xl font-bold">{t('platforms.title')}</h1>
+              <p className="text-muted-foreground">{t('platforms.subtitle')}</p>
             </div>
             <PlatformList />
           </div>
@@ -227,8 +229,8 @@ const Index = () => {
         return (
           <div className="p-6 lg:p-8">
             <div className="mb-8">
-              <h1 className="text-3xl font-bold">Fiscalidad</h1>
-              <p className="text-muted-foreground">Gestión fiscal de tus inversiones (España)</p>
+              <h1 className="text-3xl font-bold">{t('tax.title')}</h1>
+              <p className="text-muted-foreground">{t('tax.subtitle')}</p>
             </div>
             <TaxDashboard />
           </div>
@@ -241,8 +243,8 @@ const Index = () => {
         return (
           <div className="p-6 lg:p-8">
             <div className="mb-8">
-              <h1 className="text-3xl font-bold">Panel de Administración</h1>
-              <p className="text-muted-foreground">Visualiza las inversiones de todos los usuarios</p>
+              <h1 className="text-3xl font-bold">{t('admin.title')}</h1>
+              <p className="text-muted-foreground">{t('admin.subtitle')}</p>
             </div>
             <AdminPanel />
           </div>

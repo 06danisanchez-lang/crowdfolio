@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { useLanguage } from '@/contexts/LanguageContext';
 import { format, parseISO } from 'date-fns';
 import { es } from 'date-fns/locale';
 import { Plus, Trash2, CalendarIcon } from 'lucide-react';
@@ -40,6 +41,7 @@ interface InvestmentDetailProps {
 }
 
 export function InvestmentDetail({ investment, onClose, onAddPayment, onDeletePayment }: InvestmentDetailProps) {
+  const { t } = useLanguage();
   const [showAddPayment, setShowAddPayment] = useState(false);
   const [paymentDate, setPaymentDate] = useState<Date>(new Date());
   const [paymentAmount, setPaymentAmount] = useState('');
@@ -99,11 +101,11 @@ export function InvestmentDetail({ investment, onClose, onAddPayment, onDeletePa
           {/* Investment Details */}
           <div className="grid grid-cols-2 gap-4">
             <div className="space-y-1">
-              <p className="text-sm text-muted-foreground">Plataforma</p>
+              <p className="text-sm text-muted-foreground">{t('investments.detail.platform')}</p>
               <p className="font-medium">{getPlatformLabel(investment.platform, investment.customPlatformName)}</p>
             </div>
             <div className="space-y-1">
-              <p className="text-sm text-muted-foreground">Estado</p>
+              <p className="text-sm text-muted-foreground">{t('common.status')}</p>
               <Badge className={cn(
                 investment.status === 'active' && 'bg-status-active text-white',
                 investment.status === 'pending' && 'bg-status-pending text-white',
@@ -114,46 +116,46 @@ export function InvestmentDetail({ investment, onClose, onAddPayment, onDeletePa
               </Badge>
             </div>
             <div className="space-y-1">
-              <p className="text-sm text-muted-foreground">Monto Invertido</p>
+              <p className="text-sm text-muted-foreground">{t('investments.detail.invested')}</p>
               <p className="font-medium">{formatCurrency(investment.amount)}</p>
             </div>
             <div className="space-y-1">
-              <p className="text-sm text-muted-foreground">Rentabilidad Anual</p>
+              <p className="text-sm text-muted-foreground">{t('investments.detail.annualReturn')}</p>
               <p className="font-medium">{investment.expectedReturn.toFixed(1)}%</p>
             </div>
             <div className="space-y-1">
-              <p className="text-sm text-muted-foreground">Duración Estimada</p>
-              <p className="font-medium">{durationYears.toFixed(1)} años</p>
+              <p className="text-sm text-muted-foreground">{t('investments.detail.duration')}</p>
+              <p className="font-medium">{durationYears.toFixed(1)} {t('investments.detail.years')}</p>
             </div>
             <div className="space-y-1">
-              <p className="text-sm text-muted-foreground">Rentabilidad Total</p>
+              <p className="text-sm text-muted-foreground">{t('investments.detail.totalReturn')}</p>
               <p className="font-medium">{totalReturnPercent.toFixed(1)}%</p>
             </div>
             <div className="space-y-1">
-              <p className="text-sm text-muted-foreground">Fecha de Inversión</p>
+              <p className="text-sm text-muted-foreground">{t('investments.detail.investmentDate')}</p>
               <p className="font-medium">{format(parseISO(investment.investmentDate), 'dd MMM yyyy', { locale: es })}</p>
             </div>
             <div className="space-y-1">
-              <p className="text-sm text-muted-foreground">Vencimiento</p>
+              <p className="text-sm text-muted-foreground">{t('investments.detail.maturity')}</p>
               <p className="font-medium">
                 {investment.expectedEndDate 
                   ? format(parseISO(investment.expectedEndDate), 'dd MMM yyyy', { locale: es })
-                  : 'No especificado'}
+                  : t('investments.detail.notSpecified')}
               </p>
             </div>
           </div>
 
           {/* Returns Summary */}
           <div className="rounded-lg bg-muted/50 p-4">
-            <h4 className="mb-3 font-semibold">Resumen de Retornos</h4>
+            <h4 className="mb-3 font-semibold">{t('investments.detail.returnsSummary')}</h4>
             <div className="grid grid-cols-3 gap-4 text-center">
               <div>
                 <p className="text-2xl font-bold text-status-active">{formatCurrency(totalPayments)}</p>
-                <p className="text-xs text-muted-foreground">Recibido</p>
+                <p className="text-xs text-muted-foreground">{t('investments.detail.received')}</p>
               </div>
               <div>
                 <p className="text-2xl font-bold text-primary">{formatCurrency(expectedTotal)}</p>
-                <p className="text-xs text-muted-foreground">Esperado</p>
+                <p className="text-xs text-muted-foreground">{t('investments.detail.expected')}</p>
               </div>
               <div>
                 <p className={cn(
@@ -162,7 +164,7 @@ export function InvestmentDetail({ investment, onClose, onAddPayment, onDeletePa
                 )}>
                   {actualReturn.toFixed(1)}%
                 </p>
-                <p className="text-xs text-muted-foreground">Rendimiento Real</p>
+                <p className="text-xs text-muted-foreground">{t('investments.detail.realReturn')}</p>
               </div>
             </div>
           </div>
@@ -170,10 +172,10 @@ export function InvestmentDetail({ investment, onClose, onAddPayment, onDeletePa
           {/* Payments List */}
           <div>
             <div className="mb-3 flex items-center justify-between">
-              <h4 className="font-semibold">Pagos Recibidos</h4>
+              <h4 className="font-semibold">{t('investments.detail.payments')}</h4>
               <Button size="sm" variant="outline" onClick={() => setShowAddPayment(true)}>
                 <Plus className="mr-2 h-4 w-4" />
-                Añadir Pago
+                {t('investments.detail.addPayment')}
               </Button>
             </div>
 
@@ -197,7 +199,7 @@ export function InvestmentDetail({ investment, onClose, onAddPayment, onDeletePa
                   </Popover>
                   <Input
                     type="number"
-                    placeholder="Monto"
+                    placeholder={t('investments.detail.amount')}
                     value={paymentAmount}
                     onChange={(e) => setPaymentAmount(e.target.value)}
                   />
@@ -206,17 +208,17 @@ export function InvestmentDetail({ investment, onClose, onAddPayment, onDeletePa
                       <SelectValue />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="dividend">Dividendo</SelectItem>
-                      <SelectItem value="principal">Principal</SelectItem>
-                      <SelectItem value="interest">Intereses</SelectItem>
+                      <SelectItem value="dividend">{t('investments.detail.dividend')}</SelectItem>
+                      <SelectItem value="principal">{t('investments.detail.principal')}</SelectItem>
+                      <SelectItem value="interest">{t('investments.detail.interest')}</SelectItem>
                     </SelectContent>
                   </Select>
                   <div className="flex gap-2">
                     <Button onClick={handleAddPayment} disabled={!paymentAmount}>
-                      Añadir
+                      {t('common.add')}
                     </Button>
                     <Button variant="ghost" onClick={() => setShowAddPayment(false)}>
-                      Cancelar
+                      {t('common.cancel')}
                     </Button>
                   </div>
                 </div>
@@ -225,7 +227,7 @@ export function InvestmentDetail({ investment, onClose, onAddPayment, onDeletePa
 
             {investment.payments.length === 0 ? (
               <p className="py-4 text-center text-muted-foreground">
-                No hay pagos registrados
+                {t('investments.detail.noPayments')}
               </p>
             ) : (
               <div className="space-y-2">
@@ -264,7 +266,7 @@ export function InvestmentDetail({ investment, onClose, onAddPayment, onDeletePa
           {/* Notes */}
           {investment.notes && (
             <div>
-              <h4 className="mb-2 font-semibold">Notas</h4>
+              <h4 className="mb-2 font-semibold">{t('common.notes')}</h4>
               <p className="text-muted-foreground">{investment.notes}</p>
             </div>
           )}

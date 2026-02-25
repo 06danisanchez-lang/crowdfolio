@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { useLanguage } from '@/contexts/LanguageContext';
 import { Plus } from 'lucide-react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -65,6 +66,7 @@ interface OpportunityFormProps {
 }
 
 export function OpportunityForm({ onSubmit, initialData, trigger }: OpportunityFormProps) {
+  const { t } = useLanguage();
   const [open, setOpen] = useState(false);
 
   const form = useForm<OpportunityFormData>({
@@ -115,18 +117,18 @@ export function OpportunityForm({ onSubmit, initialData, trigger }: OpportunityF
   return (
     <Dialog open={open} onOpenChange={setOpen}>
       <DialogTrigger asChild>
-        {trigger || (
+      {trigger || (
           <Button variant="outline" className="gap-2">
             <Plus className="h-4 w-4" />
-            Añadir Manual
+            {t('opportunities.addManual')}
           </Button>
         )}
       </DialogTrigger>
       <DialogContent className="max-h-[90vh] overflow-y-auto sm:max-w-lg">
         <DialogHeader>
-          <DialogTitle>Añadir Oportunidad</DialogTitle>
+          <DialogTitle>{t('opportunities.addTitle')}</DialogTitle>
           <DialogDescription>
-            Añade manualmente una oportunidad de inversión
+            {t('opportunities.addDesc')}
           </DialogDescription>
         </DialogHeader>
 
@@ -138,7 +140,7 @@ export function OpportunityForm({ onSubmit, initialData, trigger }: OpportunityF
                 name="platform"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>Plataforma</FormLabel>
+                    <FormLabel>{t('common.platform')}</FormLabel>
                     <Select onValueChange={field.onChange} value={field.value}>
                       <FormControl>
                         <SelectTrigger>
@@ -163,7 +165,7 @@ export function OpportunityForm({ onSubmit, initialData, trigger }: OpportunityF
                 name="projectType"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>Tipo de Proyecto</FormLabel>
+                    <FormLabel>{t('opportunities.form.projectType')}</FormLabel>
                     <Select onValueChange={field.onChange} value={field.value}>
                       <FormControl>
                         <SelectTrigger>
@@ -189,9 +191,9 @@ export function OpportunityForm({ onSubmit, initialData, trigger }: OpportunityF
               name="projectName"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>Nombre del Proyecto</FormLabel>
-                  <FormControl>
-                    <Input placeholder="Ej: Residencial Marina Bay" {...field} />
+                <FormLabel>{t('investments.form.project')}</FormLabel>
+                <FormControl>
+                  <Input placeholder={t('opportunities.form.projectPlaceholder')} {...field} />
                   </FormControl>
                   <FormMessage />
                 </FormItem>
@@ -203,9 +205,9 @@ export function OpportunityForm({ onSubmit, initialData, trigger }: OpportunityF
               name="location"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>Ubicación</FormLabel>
-                  <FormControl>
-                    <Input placeholder="Ej: Madrid, España" {...field} />
+                <FormLabel>{t('opportunities.form.location')}</FormLabel>
+                <FormControl>
+                  <Input placeholder={t('opportunities.form.locationPlaceholder')} {...field} />
                   </FormControl>
                   <FormMessage />
                 </FormItem>
@@ -218,7 +220,7 @@ export function OpportunityForm({ onSubmit, initialData, trigger }: OpportunityF
                 name="expectedReturn"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>Rentabilidad Esperada (%)</FormLabel>
+                    <FormLabel>{t('opportunities.form.expectedReturn')}</FormLabel>
                     <FormControl>
                       <Input type="number" step="0.1" {...field} />
                     </FormControl>
@@ -232,7 +234,7 @@ export function OpportunityForm({ onSubmit, initialData, trigger }: OpportunityF
                 name="term"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>Plazo (meses)</FormLabel>
+                    <FormLabel>{t('opportunities.form.term')}</FormLabel>
                     <FormControl>
                       <Input type="number" {...field} />
                     </FormControl>
@@ -248,7 +250,7 @@ export function OpportunityForm({ onSubmit, initialData, trigger }: OpportunityF
                 name="minInvestment"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>Inversión Mín. (€)</FormLabel>
+                    <FormLabel>{t('opportunities.form.minInvestment')}</FormLabel>
                     <FormControl>
                       <Input type="number" {...field} />
                     </FormControl>
@@ -262,7 +264,7 @@ export function OpportunityForm({ onSubmit, initialData, trigger }: OpportunityF
                 name="targetAmount"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>Objetivo (€)</FormLabel>
+                    <FormLabel>{t('opportunities.form.target')}</FormLabel>
                     <FormControl>
                       <Input type="number" {...field} />
                     </FormControl>
@@ -276,7 +278,7 @@ export function OpportunityForm({ onSubmit, initialData, trigger }: OpportunityF
                 name="currentAmount"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>Recaudado (€)</FormLabel>
+                    <FormLabel>{t('opportunities.form.raised')}</FormLabel>
                     <FormControl>
                       <Input type="number" {...field} />
                     </FormControl>
@@ -292,7 +294,7 @@ export function OpportunityForm({ onSubmit, initialData, trigger }: OpportunityF
                 name="status"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>Estado</FormLabel>
+                    <FormLabel>{t('common.status')}</FormLabel>
                     <Select onValueChange={field.onChange} value={field.value}>
                       <FormControl>
                         <SelectTrigger>
@@ -317,7 +319,7 @@ export function OpportunityForm({ onSubmit, initialData, trigger }: OpportunityF
                 name="riskLevel"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>Nivel de Riesgo</FormLabel>
+                    <FormLabel>{t('opportunities.form.riskLevel')}</FormLabel>
                     <Select onValueChange={field.onChange} value={field.value}>
                       <FormControl>
                         <SelectTrigger>
@@ -343,7 +345,7 @@ export function OpportunityForm({ onSubmit, initialData, trigger }: OpportunityF
               name="url"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>URL del Proyecto (opcional)</FormLabel>
+                  <FormLabel>{t('opportunities.form.url')}</FormLabel>
                   <FormControl>
                     <Input type="url" placeholder="https://..." {...field} />
                   </FormControl>
@@ -357,14 +359,14 @@ export function OpportunityForm({ onSubmit, initialData, trigger }: OpportunityF
               name="description"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>Descripción (opcional)</FormLabel>
-                  <FormControl>
-                    <Textarea 
-                      placeholder="Breve descripción del proyecto..." 
-                      className="resize-none"
-                      rows={3}
-                      {...field} 
-                    />
+                <FormLabel>{t('opportunities.form.description')}</FormLabel>
+                <FormControl>
+                  <Textarea 
+                    placeholder={t('opportunities.form.descriptionPlaceholder')} 
+                    className="resize-none"
+                    rows={3}
+                    {...field} 
+                  />
                   </FormControl>
                   <FormMessage />
                 </FormItem>
@@ -373,9 +375,9 @@ export function OpportunityForm({ onSubmit, initialData, trigger }: OpportunityF
 
             <div className="flex justify-end gap-2">
               <Button type="button" variant="outline" onClick={() => setOpen(false)}>
-                Cancelar
+                {t('common.cancel')}
               </Button>
-              <Button type="submit">Añadir Oportunidad</Button>
+              <Button type="submit">{t('opportunities.addBtn')}</Button>
             </div>
           </form>
         </Form>

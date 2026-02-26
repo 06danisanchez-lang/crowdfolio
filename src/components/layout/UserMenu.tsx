@@ -56,11 +56,9 @@ export function UserMenu({ onViewChange, onSignOut, onCloseSidebar }: UserMenuPr
           {darkMode ? <Sun className="mr-2 h-4 w-4" /> : <Moon className="mr-2 h-4 w-4" />}
           {darkMode ? t('usermenu.lightMode') : t('usermenu.darkMode')}
         </DropdownMenuItem>
-        <DropdownMenuItem asChild>
-          <div className="flex items-center px-2 py-1.5">
-            <LanguageToggle />
-          </div>
-        </DropdownMenuItem>
+        <div className="flex items-center px-2 py-1.5 text-sm cursor-default select-none rounded-sm outline-none">
+          <LanguageToggle />
+        </div>
         <DropdownMenuSeparator />
         <DropdownMenuItem className="text-destructive focus:text-destructive" onClick={onSignOut}>
           <LogOut className="mr-2 h-4 w-4" />

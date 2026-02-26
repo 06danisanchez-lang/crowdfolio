@@ -133,6 +133,14 @@ export const translations: Record<Lang, Record<string, string>> = {
     'dashboard.chart.timeline': 'Evolución Temporal',
     'dashboard.chart.comparison': 'Comparativa de Rendimientos',
     'dashboard.chart.maturity': 'Próximos Vencimientos',
+    'dashboard.urgentAlerts': 'Tienes {n} alertas urgentes',
+    'dashboard.checkNotifications': 'Revisa tus notificaciones',
+    'dashboard.kpi.projects': 'proyectos',
+    'dashboard.kpi.returnsHelp': 'Retornos cobrados hasta la fecha',
+    'dashboard.kpi.expected': 'Retornos Esperados',
+    'dashboard.kpi.expectedSubtitle': 'Basado en rendimientos estimados',
+    'dashboard.kpi.activeInvestments': 'inversiones activas',
+    'dashboard.upcomingTitle': 'Próximos Vencimientos',
 
     // Investments
     'investments.title': 'Inversiones',

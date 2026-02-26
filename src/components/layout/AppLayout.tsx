@@ -25,6 +25,7 @@ import { useSubscription } from '@/contexts/SubscriptionContext';
 import { UpgradeModal } from '@/components/subscription/UpgradeModal';
 import crowdfolioLogo from '@/assets/crowdfolio-logo.png';
 import { useLanguage } from '@/contexts/LanguageContext';
+import { LanguageToggle } from '@/components/ui/LanguageToggle';
 
 interface AppLayoutProps {
   children: React.ReactNode;
@@ -77,7 +78,8 @@ export function AppLayout({
         <div className="flex items-center gap-2">
           <img src={crowdfolioLogo} alt="Crowdfolio" className="h-16" />
         </div>
-        <div className="flex items-center gap-1">
+        <div className="flex items-center gap-2">
+          <LanguageToggle />
           <Button
             variant={isPro ? "outline" : "default"}
             size="sm"
@@ -160,7 +162,10 @@ export function AppLayout({
           </nav>
 
           <Separator />
-          <div className="p-4 shrink-0">
+          <div className="p-4 shrink-0 space-y-2">
+            <div className="px-3 py-1">
+              <LanguageToggle />
+            </div>
             <UserMenu
               onViewChange={onViewChange}
               onSignOut={handleSignOut}

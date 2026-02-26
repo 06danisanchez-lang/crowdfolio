@@ -157,11 +157,11 @@ const Index = () => {
                   <KPICard title={t('dashboard.kpi.performance')} value={`${summary.averageReturn.toFixed(1)}%`} subtitle={`${summary.activeInvestments} ${t('dashboard.kpi.activeInvestments')}`} icon={PiggyBank} helpContent={HELP_CONTENT.dashboard.expectedReturn} />
                 </div>
                 <div className="mb-8 grid gap-6 lg:grid-cols-2">
-                  <Card><CardHeader><CardTitle className="flex items-center gap-2">{t('dashboard.charts.distribution')}<HelpTooltip content={HELP_CONTENT.dashboard.platformDistribution} /></CardTitle></CardHeader><CardContent><PlatformDistributionChart investments={investments} /></CardContent></Card>
-                  <Card><CardHeader><CardTitle>{t('dashboard.charts.timeline')}</CardTitle></CardHeader><CardContent><InvestmentTimelineChart investments={investments} /></CardContent></Card>
+                  <Card><CardHeader><CardTitle className="flex items-center gap-2">{t('dashboard.chart.distribution')}<HelpTooltip content={HELP_CONTENT.dashboard.platformDistribution} /></CardTitle></CardHeader><CardContent><PlatformDistributionChart investments={investments} /></CardContent></Card>
+                  <Card><CardHeader><CardTitle>{t('dashboard.chart.timeline')}</CardTitle></CardHeader><CardContent><InvestmentTimelineChart investments={investments} /></CardContent></Card>
                 </div>
                 <div className="grid gap-6 lg:grid-cols-2">
-                  <Card><CardHeader><CardTitle>{t('dashboard.charts.comparison')}</CardTitle></CardHeader><CardContent><ReturnComparisonChart investments={investments} /></CardContent></Card>
+                  <Card><CardHeader><CardTitle>{t('dashboard.chart.comparison')}</CardTitle></CardHeader><CardContent><ReturnComparisonChart investments={investments} /></CardContent></Card>
                   <Card><CardHeader><CardTitle className="flex items-center gap-2"><CalendarClock className="h-5 w-5" />{t('dashboard.upcomingTitle')}<HelpTooltip content={HELP_CONTENT.dashboard.maturityTimeline} /></CardTitle></CardHeader><CardContent><UpcomingMaturityList investments={investments} /></CardContent></Card>
                 </div>
               </>

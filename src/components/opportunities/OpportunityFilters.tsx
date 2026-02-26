@@ -53,7 +53,7 @@ export function OpportunityFilters({
         <div className="relative flex-1">
           <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
           <Input
-            placeholder={t('opportunities.searchPlaceholder')}
+            placeholder={t('opportunities.filter.search')}
             value={filters.search || ''}
             onChange={(e) => onFiltersChange({ ...filters, search: e.target.value || undefined })}
             className="pl-9"
@@ -69,10 +69,10 @@ export function OpportunityFilters({
           })}
         >
           <SelectTrigger className="w-full sm:w-[180px]">
-            <SelectValue placeholder={t('common.platform')} />
+            <SelectValue placeholder={t('opportunities.filter.allPlatforms')} />
           </SelectTrigger>
           <SelectContent>
-            <SelectItem value="all">{t('opportunities.allPlatforms')}</SelectItem>
+            <SelectItem value="all">{t('opportunities.filter.allPlatforms')}</SelectItem>
             {PLATFORMS.filter(p => p.value !== 'other' && p.value !== 'crowdcube').map(platform => (
               <SelectItem key={platform.value} value={platform.value}>
                 {platform.label}
@@ -86,13 +86,13 @@ export function OpportunityFilters({
           <PopoverTrigger asChild>
             <Button variant="outline" className="gap-2">
               <ArrowUpDown className="h-4 w-4" />
-              <span>{t('opportunities.sort')}</span>
+              <span>{t('opportunities.filter.sort')}</span>
             </Button>
           </PopoverTrigger>
           <PopoverContent ref={setSortContainer} align="end" disableAnimations className="w-56">
             <div className="space-y-3">
               <div className="flex items-center justify-between">
-                <div className="text-sm font-medium">{t('opportunities.sortBy')}</div>
+                <div className="text-sm font-medium">{t('opportunities.filter.sortBy')}</div>
                 <Button variant="ghost" size="sm" className="h-6 w-6 p-0" onClick={() => setSortOpen(false)}>
                   <X className="h-4 w-4" />
                 </Button>
@@ -108,11 +108,11 @@ export function OpportunityFilters({
                   <SelectValue />
                 </SelectTrigger>
                   <SelectContent container={sortContainer}>
-                    <SelectItem value="expectedReturn">{t('opportunities.sortReturn')}</SelectItem>
-                    <SelectItem value="term">{t('opportunities.sortTerm')}</SelectItem>
-                    <SelectItem value="fundingProgress">{t('opportunities.sortProgress')}</SelectItem>
-                    <SelectItem value="minInvestment">{t('opportunities.sortMinInvestment')}</SelectItem>
-                    <SelectItem value="createdAt">{t('opportunities.sortDate')}</SelectItem>
+                    <SelectItem value="expectedReturn">{t('opportunities.filter.sortReturn')}</SelectItem>
+                    <SelectItem value="term">{t('opportunities.filter.sortTerm')}</SelectItem>
+                    <SelectItem value="fundingProgress">{t('opportunities.filter.sortProgress')}</SelectItem>
+                    <SelectItem value="minInvestment">{t('opportunities.filter.sortMinInvestment')}</SelectItem>
+                    <SelectItem value="createdAt">{t('opportunities.filter.sortDate')}</SelectItem>
                   </SelectContent>
               </Select>
               <Select
@@ -126,8 +126,8 @@ export function OpportunityFilters({
                   <SelectValue />
                 </SelectTrigger>
                   <SelectContent container={sortContainer}>
-                    <SelectItem value="desc">{t('opportunities.sortDesc')}</SelectItem>
-                    <SelectItem value="asc">{t('opportunities.sortAsc')}</SelectItem>
+                    <SelectItem value="desc">{t('opportunities.filter.sortDesc')}</SelectItem>
+                    <SelectItem value="asc">{t('opportunities.filter.sortAsc')}</SelectItem>
                   </SelectContent>
               </Select>
             </div>
@@ -139,7 +139,7 @@ export function OpportunityFilters({
           <PopoverTrigger asChild>
             <Button variant="outline" className="gap-2">
               <SlidersHorizontal className="h-4 w-4" />
-              <span>{t('opportunities.filters')}</span>
+              <span>{t('opportunities.filter.filters')}</span>
               {hasActiveFilters && (
                 <span className="flex h-5 w-5 items-center justify-center rounded-full bg-primary text-xs text-primary-foreground">
                   !
@@ -150,7 +150,7 @@ export function OpportunityFilters({
           <PopoverContent ref={setFiltersContainer} align="end" disableAnimations className="w-72">
             <div className="space-y-4">
               <div className="flex items-center justify-between">
-                <div className="text-sm font-medium">{t('opportunities.advancedFilters')}</div>
+                <div className="text-sm font-medium">{t('opportunities.filter.advanced')}</div>
                 <Button variant="ghost" size="sm" className="h-6 w-6 p-0" onClick={() => setFiltersOpen(false)}>
                   <X className="h-4 w-4" />
                 </Button>
@@ -158,7 +158,7 @@ export function OpportunityFilters({
               
               {/* Min return */}
               <div className="space-y-2">
-                <Label className="text-xs text-muted-foreground">{t('opportunities.minReturn')}</Label>
+                <Label className="text-xs text-muted-foreground">{t('opportunities.filter.minReturn')}</Label>
                 <Input
                   type="number"
                   placeholder="Ej: 8"
@@ -172,7 +172,7 @@ export function OpportunityFilters({
 
               {/* Max term */}
               <div className="space-y-2">
-                <Label className="text-xs text-muted-foreground">{t('opportunities.maxTerm')}</Label>
+                <Label className="text-xs text-muted-foreground">{t('opportunities.filter.maxTerm')}</Label>
                 <Input
                   type="number"
                   placeholder="Ej: 24"
@@ -186,7 +186,7 @@ export function OpportunityFilters({
 
               {/* Project type */}
               <div className="space-y-2">
-                <Label className="text-xs text-muted-foreground">{t('opportunities.projectType')}</Label>
+                <Label className="text-xs text-muted-foreground">{t('opportunities.filter.projectType')}</Label>
                 <Select
                   value={filters.projectType || 'all'}
                   onValueChange={(value) => onFiltersChange({ 
@@ -198,7 +198,7 @@ export function OpportunityFilters({
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent container={filtersContainer}>
-                    <SelectItem value="all">{t('opportunities.allTypes')}</SelectItem>
+                    <SelectItem value="all">{t('opportunities.filter.allTypes')}</SelectItem>
                     {PROJECT_TYPES.map(type => (
                       <SelectItem key={type.value} value={type.value}>
                         {type.label}
@@ -210,7 +210,7 @@ export function OpportunityFilters({
 
               {/* Risk level */}
               <div className="space-y-2">
-                <Label className="text-xs text-muted-foreground">{t('opportunities.riskLevel')}</Label>
+                <Label className="text-xs text-muted-foreground">{t('opportunities.filter.riskLevel')}</Label>
                 <Select
                   value={filters.riskLevel || 'all'}
                   onValueChange={(value) => onFiltersChange({ 
@@ -222,7 +222,7 @@ export function OpportunityFilters({
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent container={filtersContainer}>
-                    <SelectItem value="all">{t('opportunities.allLevels')}</SelectItem>
+                    <SelectItem value="all">{t('opportunities.filter.allLevels')}</SelectItem>
                     {RISK_LEVELS.map(level => (
                       <SelectItem key={level.value} value={level.value}>
                         {level.label}
@@ -246,7 +246,7 @@ export function OpportunityFilters({
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent container={filtersContainer}>
-                    <SelectItem value="all">{t('opportunities.allStatuses')}</SelectItem>
+                    <SelectItem value="all">{t('opportunities.filter.allStatus')}</SelectItem>
                     {OPPORTUNITY_STATUS_OPTIONS.map(status => (
                       <SelectItem key={status.value} value={status.value}>
                         {status.label}
@@ -258,7 +258,7 @@ export function OpportunityFilters({
 
               {/* Favorites only */}
               <div className="flex items-center justify-between">
-                <Label className="text-sm">{t('opportunities.onlyFavorites')}</Label>
+                <Label className="text-sm">{t('opportunities.filter.favoritesOnly')}</Label>
                 <Switch
                   checked={filters.favoritesOnly || false}
                   onCheckedChange={(checked) => onFiltersChange({ 
@@ -275,12 +275,12 @@ export function OpportunityFilters({
       {/* Results count and clear filters */}
       <div className="flex items-center justify-between text-sm">
         <span className="text-muted-foreground">
-          {resultCount} {resultCount === 1 ? t('opportunities.singularResult') : t('opportunities.pluralResult')}
+          {resultCount} {resultCount === 1 ? t('opportunities.filter.count1') : t('opportunities.filter.count')}
         </span>
         {hasActiveFilters && (
           <Button variant="ghost" size="sm" onClick={clearFilters} className="h-auto p-0">
             <X className="mr-1 h-3 w-3" />
-            {t('opportunities.clearFilters')}
+            {t('opportunities.filter.clearFilters')}
           </Button>
         )}
       </div>

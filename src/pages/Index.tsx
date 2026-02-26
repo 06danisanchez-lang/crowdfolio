@@ -204,8 +204,8 @@ const Index = () => {
                 <div className="mb-6 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
                   <KPICard title={t('opportunities.kpi.total')} value={opportunitiesSummary.total.toString()} subtitle={`${opportunitiesSummary.open} ${t('opportunities.kpi.open')}`} icon={SearchIcon} />
                   <KPICard title={t('opportunities.kpi.favorites')} value={opportunitiesSummary.favorites.toString()} icon={Heart} />
-                  <KPICard title={t('opportunities.kpi.avgReturn')} value={`${opportunitiesSummary.averageReturn.toFixed(1)}%`} subtitle={t('opportunities.kpi.avgReturnSubtitle')} icon={TrendingUp} />
-                  <KPICard title={t('opportunities.kpi.platforms')} value={Object.keys(opportunitiesSummary.byPlatform).length.toString()} subtitle={t('opportunities.kpi.platformsSubtitle')} icon={Target} />
+                  <KPICard title={t('opportunities.kpi.avgReturn')} value={`${opportunitiesSummary.averageReturn.toFixed(1)}%`} subtitle={t('opportunities.kpi.avgReturn.sub')} icon={TrendingUp} />
+                  <KPICard title={t('opportunities.kpi.platforms')} value={Object.keys(opportunitiesSummary.byPlatform).length.toString()} subtitle={t('opportunities.kpi.platforms.sub')} icon={Target} />
                 </div>
                 <OpportunityFilters filters={filters} onFiltersChange={setFilters} sortConfig={sortConfig} onSortChange={setSortConfig} resultCount={opportunities.length} />
                 <OpportunityList opportunities={opportunities} isLoading={opportunitiesLoading} onToggleFavorite={toggleFavorite} onSelect={setSelectedOpportunity} />

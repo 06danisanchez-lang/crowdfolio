@@ -244,7 +244,7 @@ export const translations: Record<Lang, Record<string, string>> = {
     'opportunities.empty.title': 'No hay oportunidades',
     'opportunities.empty.desc': 'Usa el botón de scraping para buscar nuevas oportunidades de inversión en las plataformas de crowdfunding, o añade una manualmente.',
     'opportunities.empty.cta': 'Pulsa "Buscar Oportunidades" para comenzar',
-    'opportunities.filter.search': 'Buscar por nombre, ubicación...',
+    'opportunities.filter.search': 'Buscar oportunidades...',
     'opportunities.filter.allPlatforms': 'Todas las plataformas',
     'opportunities.filter.sort': 'Ordenar',
     'opportunities.filter.sortBy': 'Ordenar por',

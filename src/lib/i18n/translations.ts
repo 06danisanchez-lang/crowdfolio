@@ -133,6 +133,14 @@ export const translations: Record<Lang, Record<string, string>> = {
     'dashboard.chart.timeline': 'Evolución Temporal',
     'dashboard.chart.comparison': 'Comparativa de Rendimientos',
     'dashboard.chart.maturity': 'Próximos Vencimientos',
+    'dashboard.urgentAlerts': 'Tienes {n} alertas urgentes',
+    'dashboard.checkNotifications': 'Revisa tus notificaciones',
+    'dashboard.kpi.projects': 'proyectos',
+    'dashboard.kpi.returnsHelp': 'Retornos cobrados hasta la fecha',
+    'dashboard.kpi.expected': 'Retornos Esperados',
+    'dashboard.kpi.expectedSubtitle': 'Basado en rendimientos estimados',
+    'dashboard.kpi.activeInvestments': 'inversiones activas',
+    'dashboard.upcomingTitle': 'Próximos Vencimientos',
 
     // Investments
     'investments.title': 'Inversiones',
@@ -525,6 +533,14 @@ export const translations: Record<Lang, Record<string, string>> = {
     'dashboard.chart.timeline': 'Timeline Evolution',
     'dashboard.chart.comparison': 'Return Comparison',
     'dashboard.chart.maturity': 'Upcoming Maturities',
+    'dashboard.urgentAlerts': 'You have {n} urgent alerts',
+    'dashboard.checkNotifications': 'Check your notifications',
+    'dashboard.kpi.projects': 'projects',
+    'dashboard.kpi.returnsHelp': 'Returns collected to date',
+    'dashboard.kpi.expected': 'Expected Returns',
+    'dashboard.kpi.expectedSubtitle': 'Based on estimated returns',
+    'dashboard.kpi.activeInvestments': 'active investments',
+    'dashboard.upcomingTitle': 'Upcoming Maturities',
 
     // Investments
     'investments.title': 'Investments',

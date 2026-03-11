@@ -833,8 +833,9 @@ export const translations: Record<Lang, Record<string, string>> = {
     'subscription.free.f2': 'Manual investment tracking',
     'subscription.free.f3': 'Portfolio and performance overview',
     'subscription.free.f4': 'Import from PDF or image with AI (1/month)',
-    'subscription.free.f5': 'Opportunity browsing',
-    'subscription.free.f6': 'Indicative tax overview',
+    'subscription.free.f5': 'Read-only opportunity browsing',
+    'subscription.free.f6': 'Alerts on specific opportunities',
+    'subscription.free.f7': 'Indicative tax overview',
 
     // Plan copy — Pro features
     'subscription.pro.f1': 'Unlimited investments',
@@ -865,7 +866,13 @@ export const translations: Record<Lang, Record<string, string>> = {
     'subscription.dashboard.freeDesc': 'With Pro you can track unlimited investments, create custom alerts and access a tax report prepared for filing.',
     'subscription.dashboard.ctaBtn': "See what's in Pro",
 
-    // Alerts — Free upgrade banner
+    // Alerts — section copy
+    'subscription.alerts.simpleTitle': 'Opportunity alerts',
+    'subscription.alerts.criteriaTitle': 'Custom alerts',
+    'subscription.alerts.simpleEmpty': 'Activate an alert from any specific opportunity',
+    'subscription.alerts.criteriaEmpty': 'No custom alerts configured',
+    'subscription.alerts.toggleOn': 'Alert activated',
+    'subscription.alerts.toggleOff': 'Alert deactivated',
     'subscription.alerts.freeNote': 'Custom alerts are a Pro feature',
     'subscription.alerts.upgradeDesc': 'Create alerts with your own criteria: platform, return, term and more',
     'subscription.alerts.upgradeCta': 'Create custom alerts',

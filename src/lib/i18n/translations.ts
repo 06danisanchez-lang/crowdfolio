@@ -368,9 +368,51 @@ export const translations: Record<Lang, Record<string, string>> = {
     'subscription.noCommitment': 'Cancela cuando quieras. Sin compromisos.',
     'subscription.f1': 'Inversiones ilimitadas',
     'subscription.f2': 'Importaciones ilimitadas',
-    'subscription.f3': 'Alertas configurables',
-    'subscription.f4': 'Exportar resumen IRPF',
-    'subscription.f5': 'Soporte prioritario',
+    'subscription.f3': 'Alertas personalizadas según tus criterios',
+    'subscription.f4': 'Informe fiscal preparado para declarar',
+    'subscription.f5': 'Exporta tu informe fiscal en Excel o PDF',
+
+    // Plan copy — Free features
+    'subscription.free.f1': 'Hasta 3 inversiones activas',
+    'subscription.free.f2': 'Registro manual de inversiones',
+    'subscription.free.f3': 'Visualización de cartera y evolución',
+    'subscription.free.f4': 'Importa desde PDF o imagen con IA (1 al mes)',
+    'subscription.free.f5': 'Exploración de oportunidades',
+    'subscription.free.f6': 'Vista fiscal orientativa',
+
+    // Plan copy — Pro features
+    'subscription.pro.f1': 'Inversiones ilimitadas',
+    'subscription.pro.f2': 'Importa desde PDF o imagen sin introducir los datos a mano',
+    'subscription.pro.f3': 'Alertas personalizadas según tus criterios',
+    'subscription.pro.f4': 'Informe fiscal preparado para declarar',
+    'subscription.pro.f5': 'Exporta tu informe fiscal en Excel o PDF',
+
+    // Contextual CTAs
+    'subscription.cta.investments': 'Desbloquea inversiones ilimitadas',
+    'subscription.cta.imports': 'Importa sin límites y ahorra tiempo',
+    'subscription.cta.alerts': 'Crea alertas personalizadas',
+    'subscription.cta.tax': 'Accede a un informe fiscal preparado para declarar',
+    'subscription.cta.taxExport': 'Accede a un informe fiscal preparado para declarar',
+    'subscription.cta.default': 'Desbloquea Crowdfolio Pro',
+
+    // Tax module — Free vs Pro banner
+    'subscription.tax.freeNote': 'Estás viendo una vista fiscal orientativa',
+    'subscription.tax.proNote': 'Con Pro accedes a un informe preparado para declarar, exportable en Excel y PDF',
+    'subscription.tax.upgradeCta': 'Accede a un informe fiscal preparado para declarar',
+
+    // Import counter
+    'subscription.import.used': 'Has usado tu importación mensual',
+    'subscription.import.remaining': 'Tienes 1 importación disponible este mes',
+    'subscription.import.upgradeDesc': 'Con Pro tienes importaciones ilimitadas desde imagen o PDF con IA',
+
+    // Dashboard Free CTA
+    'subscription.dashboard.freeDesc': 'Con Pro puedes registrar inversiones sin límite, crear alertas personalizadas y acceder a un informe fiscal preparado para declarar.',
+    'subscription.dashboard.ctaBtn': 'Ver qué incluye Pro',
+
+    // Alerts — Free upgrade banner
+    'subscription.alerts.freeNote': 'Las alertas personalizadas son una función de Pro',
+    'subscription.alerts.upgradeDesc': 'Crea alertas con tus propios criterios: plataforma, rentabilidad, plazo y más',
+    'subscription.alerts.upgradeCta': 'Crea alertas personalizadas',
     'subscription.billing.title': 'Tu Plan',
     'subscription.billing.desc': 'Gestiona tu suscripción y facturación',
     'subscription.billing.freePlan': 'Plan Gratis',

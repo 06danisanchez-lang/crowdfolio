@@ -101,7 +101,7 @@ export function UpgradeModal({ open, onOpenChange, feature = 'default' }: Upgrad
                       : 'text-muted-foreground hover:text-foreground'
                   }`}
                 >
-                  {t('billing.yearly')}
+                  {t('subscription.yearly')}
                   <Badge variant="secondary" className="ml-1.5 text-xs">
                     -17%
                   </Badge>

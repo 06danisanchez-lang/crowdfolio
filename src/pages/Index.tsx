@@ -6,6 +6,7 @@ import { ErrorState } from '@/components/ui/error-state';
 import { useInvestments } from '@/hooks/useInvestments';
 import { useAlerts } from '@/hooks/useAlerts';
 import { useOpportunities } from '@/hooks/useOpportunities';
+import { useOpportunityAlerts } from '@/hooks/useOpportunityAlerts';
 import { useSubscription } from '@/contexts/SubscriptionContext';
 import { AppLayout } from '@/components/layout/AppLayout';
 import { KPICard } from '@/components/dashboard/KPICard';
@@ -87,6 +88,30 @@ const Index = () => {
   } = useOpportunities();
 
   const { alerts, alertCount, hasUrgentAlerts } = useAlerts(investments);
+
+  const {
+    alerts: opportunityAlerts,
+    createSimpleAlert,
+    deleteSimpleAlertForOpportunity,
+    getSimpleAlertForOpportunity,
+  } = useOpportunityAlerts();
+
+  // Map of opportunityId → true for quick lookup
+  const isAlertedMap: Record<string, boolean> = Object.fromEntries(
+    opportunityAlerts
+      .filter(a => a.opportunityId)
+      .map(a => [a.opportunityId!, true])
+  );
+
+  const handleToggleOpportunityAlert = (opportunityId: string) => {
+    const existing = getSimpleAlertForOpportunity(opportunityId);
+    if (existing) {
+      deleteSimpleAlertForOpportunity(opportunityId);
+    } else {
+      const opp = allOpportunities.find(o => o.id === opportunityId);
+      if (opp) createSimpleAlert(opportunityId, opp.projectName);
+    }
+  };
 
   const openUpgradeModal = (feature: string) => {
     setUpgradeFeature(feature);
@@ -223,9 +248,9 @@ const Index = () => {
                   <KPICard title={t('opportunities.kpi.platforms')} value={Object.keys(opportunitiesSummary.byPlatform).length.toString()} subtitle={t('opportunities.kpi.platforms.sub')} icon={Target} />
                 </div>
                 <OpportunityFilters filters={filters} onFiltersChange={setFilters} sortConfig={sortConfig} onSortChange={setSortConfig} resultCount={opportunities.length} />
-                <OpportunityList opportunities={opportunities} isLoading={opportunitiesLoading} onToggleFavorite={toggleFavorite} onSelect={setSelectedOpportunity} />
+                <OpportunityList opportunities={opportunities} isLoading={opportunitiesLoading} onToggleFavorite={toggleFavorite} onSelect={setSelectedOpportunity} isAlertedMap={isAlertedMap} onToggleAlert={handleToggleOpportunityAlert} />
                 <div className="mt-8"><AlertSettings isPro={isPro} onProRequired={() => openUpgradeModal('alerts')} /></div>
-                <OpportunityDetail opportunity={selectedOpportunity} onClose={() => setSelectedOpportunity(null)} onToggleFavorite={toggleFavorite} onDelete={deleteOpportunity} onUpdate={updateOpportunity} />
+                <OpportunityDetail opportunity={selectedOpportunity} onClose={() => setSelectedOpportunity(null)} onToggleFavorite={toggleFavorite} onDelete={deleteOpportunity} onUpdate={updateOpportunity} isAlerted={selectedOpportunity ? (isAlertedMap[selectedOpportunity.id] ?? false) : false} onToggleAlert={handleToggleOpportunityAlert} />
               </>
             )}
           </div>

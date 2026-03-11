@@ -8,7 +8,8 @@ import {
   Building2,
   Calendar,
   AlertCircle,
-  Wallet
+  Wallet,
+  Bell
 } from 'lucide-react';
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from '@/components/ui/sheet';
 import { Button } from '@/components/ui/button';
@@ -35,6 +36,8 @@ interface OpportunityDetailProps {
   onDelete: (id: string) => void;
   onUpdate: (id: string, updates: Partial<Opportunity>) => void;
   onConvertToInvestment?: (opportunity: Opportunity) => void;
+  isAlerted?: boolean;
+  onToggleAlert?: (id: string) => void;
 }
 
 export function OpportunityDetail({ 
@@ -43,7 +46,9 @@ export function OpportunityDetail({
   onToggleFavorite, 
   onDelete,
   onUpdate,
-  onConvertToInvestment
+  onConvertToInvestment,
+  isAlerted,
+  onToggleAlert,
 }: OpportunityDetailProps) {
   const [notes, setNotes] = useState(opportunity?.notes || '');
 
@@ -247,6 +252,22 @@ export function OpportunityDetail({
             )}
 
             <div className="flex gap-2">
+              {/* Alert toggle — available to all users */}
+              {onToggleAlert && (
+                <Button
+                  variant="outline"
+                  className="flex-1"
+                  onClick={() => onToggleAlert(opportunity.id)}
+                >
+                  <Bell 
+                    className={cn(
+                      "mr-2 h-4 w-4",
+                      isAlerted && "fill-primary text-primary"
+                    )} 
+                  />
+                  {isAlerted ? 'Desactivar alerta' : 'Activar alerta'}
+                </Button>
+              )}
               <Button
                 variant="outline"
                 className="flex-1"

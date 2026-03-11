@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { Bell, Lock, Plus, Sparkles } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Separator } from '@/components/ui/separator';
 import { Skeleton } from '@/components/ui/skeleton';
 import { AlertCard } from './AlertCard';
 import { AlertForm } from './AlertForm';
@@ -30,6 +31,10 @@ export function AlertSettings({ isPro = false, onProRequired }: AlertSettingsPro
   const [formOpen, setFormOpen] = useState(false);
   const [editingAlert, setEditingAlert] = useState<OpportunityAlert | undefined>();
   const [deleteConfirmId, setDeleteConfirmId] = useState<string | null>(null);
+
+  // Split alerts into the two categories
+  const simpleAlerts = alerts.filter(a => !!a.opportunityId);
+  const criteriaAlerts = alerts.filter(a => !a.opportunityId);
 
   const handleCreateClick = () => {
     if (!isPro) {
@@ -69,7 +74,7 @@ export function AlertSettings({ isPro = false, onProRequired }: AlertSettingsPro
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
             <Bell className="h-5 w-5" />
-            Mis Alertas
+            {t('subscription.alerts.simpleTitle')}
           </CardTitle>
         </CardHeader>
         <CardContent className="space-y-3">
@@ -84,59 +89,100 @@ export function AlertSettings({ isPro = false, onProRequired }: AlertSettingsPro
     <>
       <Card>
         <CardHeader>
-          <div className="flex items-center justify-between">
-            <div>
-              <CardTitle className="flex items-center gap-2">
-                <Bell className="h-5 w-5" />
-                Mis Alertas de Oportunidades
-              </CardTitle>
-              <CardDescription>
-                {isPro
-                  ? 'Recibe notificaciones cuando se publiquen proyectos que coincidan con tus criterios'
-                  : t('subscription.alerts.freeNote')}
-              </CardDescription>
-            </div>
-            <Button onClick={handleCreateClick} size="sm" variant={isPro ? 'default' : 'outline'}>
-              {isPro ? <Plus className="h-4 w-4 mr-1" /> : <Lock className="h-4 w-4 mr-1" />}
-              Nueva Alerta
-            </Button>
-          </div>
+          <CardTitle className="flex items-center gap-2">
+            <Bell className="h-5 w-5" />
+            Alertas
+          </CardTitle>
         </CardHeader>
-        <CardContent>
-          {/* Free-user upgrade banner */}
-          {!isPro && (
-            <div className="mb-4 rounded-lg border bg-muted/40 p-4 flex flex-col sm:flex-row items-start sm:items-center gap-3">
-              <div className="flex-1">
-                <p className="text-sm font-medium">{t('subscription.alerts.freeNote')}</p>
-                <p className="text-sm text-muted-foreground">{t('subscription.alerts.upgradeDesc')}</p>
+        <CardContent className="space-y-6">
+
+          {/* ── Section A: Simple alerts (Free + Pro) ────────────────────────── */}
+          <div>
+            <h3 className="text-sm font-semibold mb-1">{t('subscription.alerts.simpleTitle')}</h3>
+            <p className="text-xs text-muted-foreground mb-3">
+              {t('subscription.alerts.simpleEmpty')}
+            </p>
+
+            {simpleAlerts.length === 0 ? (
+              <div className="text-center py-6 rounded-lg border-2 border-dashed text-muted-foreground">
+                <Bell className="h-8 w-8 mx-auto mb-2 opacity-40" />
+                <p className="text-sm">{t('subscription.alerts.simpleEmpty')}</p>
               </div>
-              <Button size="sm" onClick={onProRequired} className="shrink-0">
-                {t('subscription.alerts.upgradeCta')}
+            ) : (
+              <div className="space-y-3">
+                {simpleAlerts.map((alert) => (
+                  <AlertCard
+                    key={alert.id}
+                    alert={alert}
+                    onToggle={toggleAlert}
+                    onDelete={(id) => setDeleteConfirmId(id)}
+                  />
+                ))}
+              </div>
+            )}
+          </div>
+
+          <Separator />
+
+          {/* ── Section B: Criteria alerts (Pro only) ────────────────────────── */}
+          <div>
+            <div className="flex items-center justify-between mb-3">
+              <div>
+                <h3 className="text-sm font-semibold">{t('subscription.alerts.criteriaTitle')}</h3>
+                {isPro && (
+                  <p className="text-xs text-muted-foreground mt-0.5">
+                    {t('subscription.alerts.criteriaEmpty')}
+                  </p>
+                )}
+              </div>
+              <Button
+                onClick={handleCreateClick}
+                size="sm"
+                variant={isPro ? 'default' : 'outline'}
+              >
+                {isPro
+                  ? <><Plus className="h-4 w-4 mr-1" />Nueva alerta</>
+                  : <><Lock className="h-4 w-4 mr-1" />Nueva alerta</>
+                }
               </Button>
             </div>
-          )}
 
-          {alerts.length === 0 ? (
-            <div className="text-center py-8 text-muted-foreground">
-              <Sparkles className="h-12 w-12 mx-auto mb-3 opacity-50" />
-              <p className="font-medium mb-1">Sin alertas configuradas</p>
-              {isPro && (
-                <p className="text-sm">Crea tu primera alerta para recibir notificaciones personalizadas</p>
-              )}
-            </div>
-          ) : (
-            <div className="space-y-3">
-              {alerts.map((alert) => (
-                <AlertCard
-                  key={alert.id}
-                  alert={alert}
-                  onEdit={handleEditClick}
-                  onDelete={isPro ? (id) => setDeleteConfirmId(id) : undefined}
-                  onToggle={isPro ? toggleAlert : undefined}
-                />
-              ))}
-            </div>
-          )}
+            {/* Free upgrade banner */}
+            {!isPro && (
+              <div className="mb-4 rounded-lg border bg-muted/40 p-4 flex flex-col sm:flex-row items-start sm:items-center gap-3">
+                <div className="flex-1">
+                  <p className="text-sm font-medium">{t('subscription.alerts.freeNote')}</p>
+                  <p className="text-sm text-muted-foreground">{t('subscription.alerts.upgradeDesc')}</p>
+                </div>
+                <Button size="sm" onClick={onProRequired} className="shrink-0">
+                  {t('subscription.alerts.upgradeCta')}
+                </Button>
+              </div>
+            )}
+
+            {criteriaAlerts.length === 0 ? (
+              <div className="text-center py-6 rounded-lg border-2 border-dashed text-muted-foreground">
+                <Sparkles className="h-8 w-8 mx-auto mb-2 opacity-40" />
+                <p className="text-sm">
+                  {isPro
+                    ? 'Sin alertas personalizadas. Crea tu primera alerta.'
+                    : t('subscription.alerts.freeNote')}
+                </p>
+              </div>
+            ) : (
+              <div className="space-y-3">
+                {criteriaAlerts.map((alert) => (
+                  <AlertCard
+                    key={alert.id}
+                    alert={alert}
+                    onEdit={isPro ? handleEditClick : undefined}
+                    onDelete={isPro ? (id) => setDeleteConfirmId(id) : undefined}
+                    onToggle={isPro ? toggleAlert : undefined}
+                  />
+                ))}
+              </div>
+            )}
+          </div>
         </CardContent>
       </Card>
 

@@ -1,4 +1,4 @@
-import { Heart, ExternalLink, MapPin, Clock, TrendingUp, Building2 } from 'lucide-react';
+import { Heart, ExternalLink, MapPin, Clock, TrendingUp, Building2, Bell } from 'lucide-react';
 import { Card, CardContent, CardHeader } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -11,9 +11,11 @@ interface OpportunityCardProps {
   opportunity: Opportunity;
   onToggleFavorite: (id: string) => void;
   onSelect: (opportunity: Opportunity) => void;
+  isAlerted?: boolean;
+  onToggleAlert?: (id: string) => void;
 }
 
-export function OpportunityCard({ opportunity, onToggleFavorite, onSelect }: OpportunityCardProps) {
+export function OpportunityCard({ opportunity, onToggleFavorite, onSelect, isAlerted, onToggleAlert }: OpportunityCardProps) {
   const platform = PLATFORMS.find(p => p.value === opportunity.platform);
   const projectType = PROJECT_TYPES.find(t => t.value === opportunity.projectType);
   const riskLevel = RISK_LEVELS.find(r => r.value === opportunity.riskLevel);
@@ -68,25 +70,48 @@ export function OpportunityCard({ opportunity, onToggleFavorite, onSelect }: Opp
           </Badge>
         )}
 
-        {/* Favorite button */}
-        <Button
-          variant="ghost"
-          size="icon"
-          className="absolute bottom-3 right-3 bg-background/80 backdrop-blur hover:bg-background"
-          onClick={(e) => {
-            e.stopPropagation();
-            onToggleFavorite(opportunity.id);
-          }}
-        >
-          <Heart 
-            className={cn(
-              "h-4 w-4 transition-colors",
-              opportunity.isFavorite 
-                ? "fill-red-500 text-red-500" 
-                : "text-muted-foreground"
-            )} 
-          />
-        </Button>
+        {/* Action buttons: Bell + Heart */}
+        <div className="absolute bottom-3 right-3 flex gap-1">
+          {onToggleAlert && (
+            <Button
+              variant="ghost"
+              size="icon"
+              className="bg-background/80 backdrop-blur hover:bg-background h-8 w-8"
+              onClick={(e) => {
+                e.stopPropagation();
+                onToggleAlert(opportunity.id);
+              }}
+              title={isAlerted ? 'Desactivar alerta' : 'Activar alerta'}
+            >
+              <Bell 
+                className={cn(
+                  "h-4 w-4 transition-colors",
+                  isAlerted 
+                    ? "fill-primary text-primary" 
+                    : "text-muted-foreground"
+                )} 
+              />
+            </Button>
+          )}
+          <Button
+            variant="ghost"
+            size="icon"
+            className="bg-background/80 backdrop-blur hover:bg-background h-8 w-8"
+            onClick={(e) => {
+              e.stopPropagation();
+              onToggleFavorite(opportunity.id);
+            }}
+          >
+            <Heart 
+              className={cn(
+                "h-4 w-4 transition-colors",
+                opportunity.isFavorite 
+                  ? "fill-red-500 text-red-500" 
+                  : "text-muted-foreground"
+              )} 
+            />
+          </Button>
+        </div>
       </div>
 
       <CardHeader className="pb-2">

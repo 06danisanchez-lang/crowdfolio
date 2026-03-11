@@ -1,182 +1,100 @@
 
-## Current State
+# Fix: Build Error in translations.ts
 
-The `opportunity_alerts` table has NO `opportunity_id` column — confirmed from the schema. All existing alerts are criteria-based (platforms, min_return, etc.). The `AlertCard` component builds and renders criteria badges (platform labels, return ranges, term, risk levels) — it will show irrelevant/empty content for a simple alert unless adapted.
+## Root Cause (Confirmed)
 
-Current Free plan keys in `translations.ts`:
-- `free.f1`–`free.f6` — f5 = "Exploración de oportunidades", f6 = "Vista fiscal orientativa"
-- The user wants BOTH "Exploración de oportunidades en modo lectura" AND a new "Alertas sobre oportunidades concretas" key. So we need to add f7 and renumber/shift, keeping f5 = opportunities browsing, adding f6 = simple alerts, and shifting fiscal to f7 (or inserting a new slot).
+The file `src/lib/i18n/translations.ts` has a structural break at **lines 540-541**. The `es` block closes normally at line 540 (`},`), but then line 541 has `};` which **closes the entire `translations` object prematurely**. The entire `en` block (lines 542–1079) is therefore floating outside the object, causing ~150+ TypeScript syntax errors.
 
-## 3 User Adjustments
-
-1. **Keep both "Exploración de oportunidades" AND add simple alerts** → Free plan needs 7 features. Add `subscription.free.f6` = "Alertas sobre oportunidades concretas" / "Alerts on specific opportunities", shift current f6 fiscal → f7.
-
-2. **Simple alert has no criteria** → `opportunity_id` column is nullable. A simple alert insert sets `opportunity_id`, leaves all criteria columns null/empty arrays, and the name is derived from `opportunity.projectName`. No form/validator required.
-
-3. **`AlertCard` for simple vs criteria alerts** → When `alert.opportunityId` is set, render a simplified card: show the project name, the Bell icon, a toggle, and a delete button — but NO criteria badges, NO platform row, NO edit button (simple alerts can't be edited into criteria alerts).
-
-## Files to Change: 9
-
----
-
-### 1. DB Migration
-```sql
-ALTER TABLE public.opportunity_alerts
-  ADD COLUMN opportunity_id uuid REFERENCES public.opportunities(id) ON DELETE CASCADE;
 ```
-No RLS change needed — existing policies cover new column.
-
----
-
-### 2. `src/types/opportunityAlert.ts`
-- Add `opportunityId?: string` to `OpportunityAlert`
-- Add `opportunityId?: string` to `OpportunityAlertFormData`
-
----
-
-### 3. `src/hooks/useOpportunityAlerts.ts`
-- In the mapper: add `opportunityId: row.opportunity_id ?? undefined`
-- Add `createSimpleAlert(opportunityId: string, projectName: string): Promise<boolean>` — inserts with `opportunity_id` set, `name = projectName`, `enabled = true`, all criteria as empty/null
-- Add `deleteSimpleAlertForOpportunity(opportunityId: string): Promise<boolean>` — deletes where `opportunity_id = opportunityId`
-- Add derived getter exposed from hook: `getSimpleAlertForOpportunity(opportunityId: string)` = `alerts.find(a => a.opportunityId === opportunityId)`
-
----
-
-### 4. `src/components/opportunities/AlertCard.tsx`
-Add `isSimple?: boolean` prop (or derive it from `!!alert.opportunityId`).
-
-When `isSimple`:
-- Render: Bell icon + project name + enabled/disabled badge + Switch toggle + Trash2 delete button
-- Hide: platform row, all criteria badges, edit button (Edit2)
-- Description text under name: "Alerta sobre esta oportunidad" / uses the alert name directly
-
-When NOT `isSimple` (criteria alert — existing behavior):
-- Unchanged
-
-Change `onEdit` and `onDelete` to optional:
-```ts
-onEdit?: (alert: OpportunityAlert) => void;
-onDelete?: (id: string) => void;
-onToggle?: (id: string, enabled: boolean) => void;
-```
-(Already partially optional from the last implementation — confirm and make consistent.)
-
----
-
-### 5. `src/components/opportunities/OpportunityCard.tsx`
-Add props:
-```ts
-isAlerted?: boolean;
-onToggleAlert?: (id: string) => void;
-```
-Add a Bell button next to the Heart button (bottom-right of card image area):
-- `Bell` filled (text-primary) when `isAlerted`, muted when not
-- `onClick`: `e.stopPropagation()` + `onToggleAlert?.(opportunity.id)`
-- Available regardless of `isPro` (Free users can use this)
-
----
-
-### 6. `src/components/opportunities/OpportunityDetail.tsx`
-Add props:
-```ts
-isAlerted?: boolean;
-onToggleAlert?: (id: string) => void;
-```
-Add a toggle button in the actions row (near the Heart button), showing Bell icon + label "Activar alerta" / "Desactivar alerta" depending on `isAlerted`.
-
----
-
-### 7. `src/components/opportunities/AlertSettings.tsx`
-Refactor into two sections inside the same card:
-
-**Section A — "Alertas sobre oportunidades"**
-- Shows `alerts.filter(a => a.opportunityId)` — simple alerts
-- Available to Free + Pro: no gate
-- No "crear" button here (creation is from the card/detail directly)
-- Empty state: "Activa una alerta desde cualquier oportunidad concreta"
-- Each rendered with `<AlertCard isSimple onToggle={toggleAlert} onDelete={(id) => setDeleteConfirmId(id)} />`
-
-**Section B — "Alertas personalizadas"** (after a `<Separator />`)
-- Shows `alerts.filter(a => !a.opportunityId)` — criteria alerts
-- Header with "Nueva alerta" button → blocked for Free → opens upgrade modal
-- Free upgrade banner: existing `freeNote`/`upgradeDesc`/`upgradeCta` keys
-- Empty state for Pro: existing "Sin alertas configuradas" text
-
-The `AlertForm` and delete confirm dialog stay as before (Pro only, criteria alerts only).
-
----
-
-### 8. `src/components/opportunities/OpportunityList.tsx`
-Add pass-through props:
-```ts
-isAlertedMap?: Record<string, boolean>;
-onToggleAlert?: (id: string) => void;
-```
-Pass to each `<OpportunityCard>`:
-```tsx
-isAlerted={isAlertedMap?.[opportunity.id] ?? false}
-onToggleAlert={onToggleAlert}
+// CURRENT BROKEN STRUCTURE:
+export const translations = {
+  es: {
+    ...                    ← line 540: closes es
+  },
+};                         ← line 541: PREMATURE close of whole object ← BUG
+    // en keys floating outside... ← lines 542-1079: SYNTAX ERRORS
 ```
 
----
-
-### 9. `src/pages/Index.tsx`
-In the `opportunities` case:
-- Import and call `useOpportunityAlerts()`: destructure `alerts`, `createSimpleAlert`, `deleteSimpleAlertForOpportunity`, `getSimpleAlertForOpportunity`
-- Build `isAlertedMap`: `Object.fromEntries(alerts.filter(a => a.opportunityId).map(a => [a.opportunityId!, true]))`
-- `onToggleAlert` handler:
-  ```ts
-  const handleToggleOpportunityAlert = (opportunityId: string) => {
-    const existing = getSimpleAlertForOpportunity(opportunityId);
-    const opp = allOpportunities.find(o => o.id === opportunityId);
-    if (existing) deleteSimpleAlertForOpportunity(opportunityId);
-    else if (opp) createSimpleAlert(opportunityId, opp.projectName);
-  };
-  ```
-- Pass `isAlertedMap` and `onToggleAlert` to `<OpportunityList>` and `<OpportunityDetail>`
-
----
-
-### 10. `src/lib/i18n/translations.ts`
-**ES block:**
-- Keep `subscription.free.f5`: `'Exploración de oportunidades en modo lectura'` (restore the "en modo lectura" phrasing — currently just "Exploración de oportunidades")
-- Add `subscription.free.f6`: `'Alertas sobre oportunidades concretas'`
-- Rename current `f6` (fiscal) → `subscription.free.f7`: `'Vista fiscal orientativa'`
-
-**EN block:**
-- Keep `subscription.free.f5`: `'Read-only opportunity browsing'`
-- Add `subscription.free.f6`: `'Alerts on specific opportunities'`
-- Rename current `f6` → `subscription.free.f7`: `'Indicative tax overview'`
-
-**Add alert section copy — ES:**
 ```
-'subscription.alerts.simpleTitle': 'Alertas sobre oportunidades'
-'subscription.alerts.criteriaTitle': 'Alertas personalizadas'
-'subscription.alerts.simpleEmpty': 'Activa una alerta desde cualquier oportunidad concreta'
-'subscription.alerts.criteriaEmpty': 'Sin alertas personalizadas configuradas'
-'subscription.alerts.toggleOn': 'Alerta activada'
-'subscription.alerts.toggleOff': 'Alerta desactivada'
+// CORRECT STRUCTURE:
+export const translations = {
+  es: {
+    ...
+  },
+  en: {                    ← needs to open here
+    ...
+  },
+};                         ← closes at line 1079 (already correct)
 ```
-**EN equivalents added.**
 
-Update `PricingTable.tsx` to use `f7` for the fiscal row (since f6 shifts to alerts), and add f6 to the free features array.
+## The Fix: 2 Line Edit
 
----
+**In `src/lib/i18n/translations.ts`, lines 540–543:**
 
-## Summary
+Replace:
+```
+    'subscription.cancelAnytime': 'Cancela cuando quieras. Sin compromisos.',
+  },
+};
+    // Header / Landing nav
+    'header.signIn': 'Sign In',
+```
+
+With:
+```
+    'subscription.cancelAnytime': 'Cancela cuando quieras. Sin compromisos.',
+  },
+  en: {
+    // Header / Landing nav
+    'header.signIn': 'Sign In',
+```
+
+That's it. The `en:` opening brace is missing — adding it fixes all 150+ syntax errors in one change.
+
+**Line 1079 is already correct** — the last two lines are `  },\n};` which correctly close `en` and the whole object.
+
+## Secondary Cleanup: Duplicate Keys in `es` Block
+
+There are duplicate keys in the `es` block (the "missing keys" section added at lines 395–539 has some keys already defined at lines 122–393). Examples:
+- `dashboard.subtitle` (defined at line 124 AND line 402)
+- `dashboard.kpi.invested` (line 125 AND line 403)
+- `platforms.title` (line 281 AND line 510)
+- `subscription.yourPro` (line 346 AND line 535)
+
+**TypeScript does NOT error on duplicate object keys** (last one wins silently), so these don't cause build errors. They will be cleaned up as part of this fix by removing the redundant second definitions at lines 395–539. The earlier definitions (lines 122–393) are the canonical ones and will be kept.
+
+## Step-by-Step Changes
+
+### File: `src/lib/i18n/translations.ts`
+
+**Change 1** — Fix the structural break (lines 540–543):
+- Remove the premature `};` on line 541
+- Add `en: {` to open the English block
+
+**Change 2** — Remove duplicate `es` keys (lines 395–539, the "Missing keys for components" section):
+- These are all redundant re-definitions of keys already declared above them in the `es` block
+- Removing them leaves the `es` object clean with one canonical definition per key
+
+**Change 3** — The `en` block already has matching keys for all the ones added in the "missing keys" section (lines 932–1079), so the `en` block is complete and correct as-is.
+
+## After This Fix: Continue with SettingsView + ProfileView
+
+Once the build is green, translate the 2 remaining pending components:
+
+### `src/components/settings/SettingsView.tsx`
+- Import `useLanguage`
+- Replace all hardcoded strings with `t('settings.*')`, `t('errors.*')`, `t('toast.*')` keys (all keys already exist in the dictionary)
+
+### `src/components/profile/ProfileView.tsx`
+- Import `useLanguage`  
+- Replace all hardcoded strings with `t('profile.*')` keys (all already in dictionary)
+
+## Files Changed
 
 | File | Change |
-|---|---|
-| DB migration | Add `opportunity_id` nullable FK to `opportunity_alerts` |
-| `src/types/opportunityAlert.ts` | Add `opportunityId?` to both interfaces |
-| `src/hooks/useOpportunityAlerts.ts` | Map `opportunity_id`, add `createSimpleAlert`, `deleteSimpleAlertForOpportunity`, `getSimpleAlertForOpportunity` |
-| `src/components/opportunities/AlertCard.tsx` | Conditional simple/criteria rendering; hide criteria fields for simple |
-| `src/components/opportunities/OpportunityCard.tsx` | Add Bell toggle button for simple alerts |
-| `src/components/opportunities/OpportunityDetail.tsx` | Add Bell toggle in actions |
-| `src/components/opportunities/AlertSettings.tsx` | Split into simple (all users) + criteria (Pro) sections |
-| `src/components/opportunities/OpportunityList.tsx` | Pass `isAlertedMap`/`onToggleAlert` through to cards |
-| `src/pages/Index.tsx` | Wire `useOpportunityAlerts`, build isAlertedMap, handle toggle logic |
-| `src/lib/i18n/translations.ts` | Add f6/f7 keys (ES+EN), restore "en modo lectura", add alert section copy |
-| `src/components/subscription/PricingTable.tsx` | Add f6+f7 to free features array |
+|------|--------|
+| `src/lib/i18n/translations.ts` | Fix structural break (add `en: {`), remove duplicate `es` keys |
+| `src/components/settings/SettingsView.tsx` | Add `useLanguage`, replace strings with `t()` |
+| `src/components/profile/ProfileView.tsx` | Add `useLanguage`, replace strings with `t()` |
 
-Zero new dependencies. One DB migration (non-breaking, nullable column).
+**Zero new files. Zero new dependencies.**

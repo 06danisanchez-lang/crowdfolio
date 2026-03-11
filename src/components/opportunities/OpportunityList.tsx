@@ -9,13 +9,17 @@ interface OpportunityListProps {
   isLoading?: boolean;
   onToggleFavorite: (id: string) => void;
   onSelect: (opportunity: Opportunity) => void;
+  isAlertedMap?: Record<string, boolean>;
+  onToggleAlert?: (id: string) => void;
 }
 
 export function OpportunityList({ 
   opportunities, 
   isLoading, 
   onToggleFavorite, 
-  onSelect 
+  onSelect,
+  isAlertedMap,
+  onToggleAlert,
 }: OpportunityListProps) {
   const { t } = useLanguage();
   if (isLoading) {
@@ -59,6 +63,8 @@ export function OpportunityList({
           opportunity={opportunity}
           onToggleFavorite={onToggleFavorite}
           onSelect={onSelect}
+          isAlerted={isAlertedMap?.[opportunity.id] ?? false}
+          onToggleAlert={onToggleAlert}
         />
       ))}
     </div>

@@ -6,6 +6,7 @@ export interface OpportunityAlert {
   userId: string;
   name: string;
   enabled: boolean;
+  opportunityId?: string;
   minReturn?: number;
   maxReturn?: number;
   platforms: Platform[];
@@ -21,6 +22,7 @@ export interface OpportunityAlert {
 export interface OpportunityAlertFormData {
   name: string;
   enabled: boolean;
+  opportunityId?: string;
   minReturn?: number;
   maxReturn?: number;
   platforms: Platform[];

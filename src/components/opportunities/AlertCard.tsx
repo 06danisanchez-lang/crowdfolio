@@ -9,12 +9,14 @@ import { PROJECT_TYPES, RISK_LEVELS } from '@/types/opportunity';
 
 interface AlertCardProps {
   alert: OpportunityAlert;
-  onEdit: (alert: OpportunityAlert) => void;
-  onDelete: (id: string) => void;
-  onToggle: (id: string, enabled: boolean) => void;
+  onEdit?: (alert: OpportunityAlert) => void;
+  onDelete?: (id: string) => void;
+  onToggle?: (id: string, enabled: boolean) => void;
 }
 
 export function AlertCard({ alert, onEdit, onDelete, onToggle }: AlertCardProps) {
+  const isSimple = !!alert.opportunityId;
+
   const getPlatformLabels = () => {
     if (alert.platforms.length === 0) return 'Todas las plataformas';
     return alert.platforms
@@ -36,6 +38,51 @@ export function AlertCard({ alert, onEdit, onDelete, onToggle }: AlertCardProps)
       .join(', ');
   };
 
+  // ── Simple alert (linked to a specific opportunity) ──────────────────────────
+  if (isSimple) {
+    return (
+      <Card className={`transition-opacity ${!alert.enabled ? 'opacity-60' : ''}`}>
+        <CardContent className="p-4">
+          <div className="flex items-center justify-between gap-4">
+            <div className="flex items-center gap-3 flex-1 min-w-0">
+              <div className="p-2 rounded-full bg-primary/10 text-primary shrink-0">
+                <Bell className="h-4 w-4" />
+              </div>
+              <div className="flex-1 min-w-0">
+                <div className="flex items-center gap-2">
+                  <h4 className="font-medium truncate">{alert.name}</h4>
+                  <Badge variant={alert.enabled ? 'default' : 'secondary'} className="shrink-0 text-xs">
+                    {alert.enabled ? 'Activa' : 'Pausada'}
+                  </Badge>
+                </div>
+                <p className="text-xs text-muted-foreground mt-0.5">Alerta sobre esta oportunidad</p>
+              </div>
+            </div>
+            <div className="flex items-center gap-2 shrink-0">
+              {onToggle && (
+                <Switch
+                  checked={alert.enabled}
+                  onCheckedChange={(checked) => onToggle(alert.id, checked)}
+                />
+              )}
+              {onDelete && (
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  onClick={() => onDelete(alert.id)}
+                  className="text-destructive hover:text-destructive"
+                >
+                  <Trash2 className="h-4 w-4" />
+                </Button>
+              )}
+            </div>
+          </div>
+        </CardContent>
+      </Card>
+    );
+  }
+
+  // ── Criteria alert (Pro) ──────────────────────────────────────────────────────
   const criteria: string[] = [];
 
   if (alert.minReturn !== undefined || alert.maxReturn !== undefined) {
@@ -95,21 +142,27 @@ export function AlertCard({ alert, onEdit, onDelete, onToggle }: AlertCardProps)
             </div>
           </div>
           <div className="flex items-center gap-2 shrink-0">
-            <Switch
-              checked={alert.enabled}
-              onCheckedChange={(checked) => onToggle(alert.id, checked)}
-            />
-            <Button variant="ghost" size="icon" onClick={() => onEdit(alert)}>
-              <Edit2 className="h-4 w-4" />
-            </Button>
-            <Button
-              variant="ghost"
-              size="icon"
-              onClick={() => onDelete(alert.id)}
-              className="text-destructive hover:text-destructive"
-            >
-              <Trash2 className="h-4 w-4" />
-            </Button>
+            {onToggle && (
+              <Switch
+                checked={alert.enabled}
+                onCheckedChange={(checked) => onToggle(alert.id, checked)}
+              />
+            )}
+            {onEdit && (
+              <Button variant="ghost" size="icon" onClick={() => onEdit(alert)}>
+                <Edit2 className="h-4 w-4" />
+              </Button>
+            )}
+            {onDelete && (
+              <Button
+                variant="ghost"
+                size="icon"
+                onClick={() => onDelete(alert.id)}
+                className="text-destructive hover:text-destructive"
+              >
+                <Trash2 className="h-4 w-4" />
+              </Button>
+            )}
           </div>
         </div>
       </CardContent>

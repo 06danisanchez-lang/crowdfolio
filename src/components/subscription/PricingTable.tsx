@@ -111,8 +111,8 @@ export function PricingTable() {
         <Card className={cn(!isPro && 'border-primary ring-1 ring-primary')}>
           <CardHeader>
             <div className="flex items-center justify-between">
-              <CardTitle>{t('subscription.free.f1').startsWith('Hasta') || t('subscription.free.f1').startsWith('Up to') ? 'Free' : 'Free'}</CardTitle>
-              {!isPro && <Badge>{t('subscription.billing.freePlan') === t('subscription.billing.freePlan') ? 'Tu plan actual' : 'Your current plan'}</Badge>}
+              <CardTitle>Free</CardTitle>
+              {!isPro && <Badge>{t('subscription.billing.freePlan')}</Badge>}
             </div>
             <CardDescription>
               {t('subscription.free.f3')}

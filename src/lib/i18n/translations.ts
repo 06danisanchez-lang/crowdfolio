@@ -817,9 +817,51 @@ export const translations: Record<Lang, Record<string, string>> = {
     'subscription.noCommitment': 'Cancel anytime. No commitments.',
     'subscription.f1': 'Unlimited investments',
     'subscription.f2': 'Unlimited imports',
-    'subscription.f3': 'Configurable alerts',
-    'subscription.f4': 'Export IRPF summary',
-    'subscription.f5': 'Priority support',
+    'subscription.f3': 'Custom alerts based on your criteria',
+    'subscription.f4': 'Tax report prepared for filing',
+    'subscription.f5': 'Export your tax report in Excel or PDF',
+
+    // Plan copy — Free features
+    'subscription.free.f1': 'Up to 3 active investments',
+    'subscription.free.f2': 'Manual investment tracking',
+    'subscription.free.f3': 'Portfolio and performance overview',
+    'subscription.free.f4': 'Import from PDF or image with AI (1/month)',
+    'subscription.free.f5': 'Opportunity browsing',
+    'subscription.free.f6': 'Indicative tax overview',
+
+    // Plan copy — Pro features
+    'subscription.pro.f1': 'Unlimited investments',
+    'subscription.pro.f2': 'Import from PDF or image — no manual data entry',
+    'subscription.pro.f3': 'Custom alerts based on your criteria',
+    'subscription.pro.f4': 'Tax report prepared for filing',
+    'subscription.pro.f5': 'Export your tax report in Excel or PDF',
+
+    // Contextual CTAs
+    'subscription.cta.investments': 'Unlock unlimited investments',
+    'subscription.cta.imports': 'Import without limits and save time',
+    'subscription.cta.alerts': 'Create custom alerts',
+    'subscription.cta.tax': 'Access a tax report prepared for filing',
+    'subscription.cta.taxExport': 'Access a tax report prepared for filing',
+    'subscription.cta.default': 'Unlock Crowdfolio Pro',
+
+    // Tax module — Free vs Pro banner
+    'subscription.tax.freeNote': 'You are seeing an indicative tax overview',
+    'subscription.tax.proNote': 'With Pro you get a full report prepared for filing, exportable in Excel and PDF',
+    'subscription.tax.upgradeCta': 'Access a tax report prepared for filing',
+
+    // Import counter
+    'subscription.import.used': "You've used your monthly import",
+    'subscription.import.remaining': 'You have 1 import available this month',
+    'subscription.import.upgradeDesc': 'With Pro you get unlimited imports from image or PDF with AI',
+
+    // Dashboard Free CTA
+    'subscription.dashboard.freeDesc': 'With Pro you can track unlimited investments, create custom alerts and access a tax report prepared for filing.',
+    'subscription.dashboard.ctaBtn': "See what's in Pro",
+
+    // Alerts — Free upgrade banner
+    'subscription.alerts.freeNote': 'Custom alerts are a Pro feature',
+    'subscription.alerts.upgradeDesc': 'Create alerts with your own criteria: platform, return, term and more',
+    'subscription.alerts.upgradeCta': 'Create custom alerts',
     'subscription.billing.title': 'Your Plan',
     'subscription.billing.desc': 'Manage your subscription and billing',
     'subscription.billing.freePlan': 'Free Plan',

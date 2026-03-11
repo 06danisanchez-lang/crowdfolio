@@ -377,8 +377,9 @@ export const translations: Record<Lang, Record<string, string>> = {
     'subscription.free.f2': 'Registro manual de inversiones',
     'subscription.free.f3': 'Visualización de cartera y evolución',
     'subscription.free.f4': 'Importa desde PDF o imagen con IA (1 al mes)',
-    'subscription.free.f5': 'Exploración de oportunidades',
-    'subscription.free.f6': 'Vista fiscal orientativa',
+    'subscription.free.f5': 'Exploración de oportunidades en modo lectura',
+    'subscription.free.f6': 'Alertas sobre oportunidades concretas',
+    'subscription.free.f7': 'Vista fiscal orientativa',
 
     // Plan copy — Pro features
     'subscription.pro.f1': 'Inversiones ilimitadas',
@@ -409,7 +410,13 @@ export const translations: Record<Lang, Record<string, string>> = {
     'subscription.dashboard.freeDesc': 'Con Pro puedes registrar inversiones sin límite, crear alertas personalizadas y acceder a un informe fiscal preparado para declarar.',
     'subscription.dashboard.ctaBtn': 'Ver qué incluye Pro',
 
-    // Alerts — Free upgrade banner
+    // Alerts — section copy
+    'subscription.alerts.simpleTitle': 'Alertas sobre oportunidades',
+    'subscription.alerts.criteriaTitle': 'Alertas personalizadas',
+    'subscription.alerts.simpleEmpty': 'Activa una alerta desde cualquier oportunidad concreta',
+    'subscription.alerts.criteriaEmpty': 'Sin alertas personalizadas configuradas',
+    'subscription.alerts.toggleOn': 'Alerta activada',
+    'subscription.alerts.toggleOff': 'Alerta desactivada',
     'subscription.alerts.freeNote': 'Las alertas personalizadas son una función de Pro',
     'subscription.alerts.upgradeDesc': 'Crea alertas con tus propios criterios: plataforma, rentabilidad, plazo y más',
     'subscription.alerts.upgradeCta': 'Crea alertas personalizadas',

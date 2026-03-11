@@ -27,6 +27,7 @@ export function PricingTable() {
     t('subscription.free.f4'),
     t('subscription.free.f5'),
     t('subscription.free.f6'),
+    t('subscription.free.f7'),
   ];
 
   const proFeatures = [

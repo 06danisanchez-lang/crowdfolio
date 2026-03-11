@@ -48,7 +48,7 @@ const Index = () => {
   const [upgradeFeature, setUpgradeFeature] = useState('default');
   const shareableCardRef = useRef<HTMLDivElement>(null);
   
-  const { isPro, subscription } = useSubscription();
+  const { isPro, isLoading: subLoading, importCountThisMonth } = useSubscription();
   
   const {
     investments,

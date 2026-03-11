@@ -16,6 +16,7 @@ interface SubscriptionContextType {
   subscription: SubscriptionState;
   isLoading: boolean;
   isPro: boolean;
+  importCountThisMonth: number;
   refreshSubscription: () => Promise<void>;
   openCheckout: (plan: 'monthly' | 'yearly') => Promise<void>;
   openCustomerPortal: () => Promise<void>;
@@ -34,10 +35,12 @@ export function SubscriptionProvider({ children }: { children: ReactNode }) {
   const { user, session } = useAuth();
   const [subscription, setSubscription] = useState<SubscriptionState>(defaultSubscription);
   const [isLoading, setIsLoading] = useState(true);
+  const [importCountThisMonth, setImportCountThisMonth] = useState(0);
 
   const refreshSubscription = useCallback(async () => {
     if (!session?.access_token) {
       setSubscription(defaultSubscription);
+      setImportCountThisMonth(0);
       setIsLoading(false);
       return;
     }
@@ -49,18 +52,30 @@ export function SubscriptionProvider({ children }: { children: ReactNode }) {
         resolved = true;
         console.warn('[Subscription] Check timeout after 8s - falling back to free plan');
         setSubscription(defaultSubscription);
+        setImportCountThisMonth(0);
         setIsLoading(false);
       }
     }, SUB_TIMEOUT_MS);
 
     try {
-      const { data, error } = await supabase.functions.invoke('check-subscription', {
-        headers: { Authorization: `Bearer ${session.access_token}` },
-      });
+      const [subResponse, importResponse] = await Promise.all([
+        supabase.functions.invoke('check-subscription', {
+          headers: { Authorization: `Bearer ${session.access_token}` },
+        }),
+        user?.id
+          ? supabase
+              .from('subscriptions')
+              .select('import_count_this_month, import_reset_date')
+              .eq('user_id', user.id)
+              .maybeSingle()
+          : Promise.resolve({ data: null, error: null }),
+      ]);
 
       clearTimeout(timeoutId);
-      if (resolved) return; // timeout already fired
+      if (resolved) return;
       resolved = true;
+
+      const { data, error } = subResponse;
 
       if (error) {
         console.error('Error checking subscription:', error);
@@ -73,6 +88,19 @@ export function SubscriptionProvider({ children }: { children: ReactNode }) {
           productId: data.product_id || null,
         });
       }
+
+      // Handle import counter with monthly reset check
+      if (importResponse.data) {
+        const { import_count_this_month, import_reset_date } = importResponse.data;
+        const resetDate = new Date(import_reset_date);
+        const now = new Date();
+        const isSameMonth =
+          resetDate.getFullYear() === now.getFullYear() &&
+          resetDate.getMonth() === now.getMonth();
+        setImportCountThisMonth(isSameMonth ? import_count_this_month : 0);
+      } else {
+        setImportCountThisMonth(0);
+      }
     } catch (error) {
       clearTimeout(timeoutId);
       if (resolved) return;
@@ -80,12 +108,13 @@ export function SubscriptionProvider({ children }: { children: ReactNode }) {
 
       console.error('Error refreshing subscription:', error);
       setSubscription(defaultSubscription);
+      setImportCountThisMonth(0);
     } finally {
       if (resolved) {
         setIsLoading(false);
       }
     }
-  }, [session?.access_token]);
+  }, [session?.access_token, user?.id]);
 
   // Refresh on mount and when user/session changes
   useEffect(() => {
@@ -93,6 +122,7 @@ export function SubscriptionProvider({ children }: { children: ReactNode }) {
       refreshSubscription();
     } else {
       setSubscription(defaultSubscription);
+      setImportCountThisMonth(0);
       setIsLoading(false);
     }
   }, [user, refreshSubscription]);
@@ -199,6 +229,7 @@ export function SubscriptionProvider({ children }: { children: ReactNode }) {
         subscription,
         isLoading,
         isPro: isPro(subscription.plan),
+        importCountThisMonth,
         refreshSubscription,
         openCheckout,
         openCustomerPortal,

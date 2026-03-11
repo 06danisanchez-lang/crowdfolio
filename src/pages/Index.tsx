@@ -247,7 +247,7 @@ const Index = () => {
               <h1 className="text-3xl font-bold">{t('tax.title')}</h1>
               <p className="text-muted-foreground">{t('tax.subtitle')}</p>
             </div>
-            <TaxDashboard />
+            <TaxDashboard isPro={isPro} onProRequired={() => openUpgradeModal('export_irpf')} />
           </div>
         );
       case 'profile':

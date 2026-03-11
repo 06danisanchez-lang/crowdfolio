@@ -1,0 +1,1 @@
+ALTER TABLE public.opportunity_alerts ADD COLUMN opportunity_id uuid REFERENCES public.opportunities(id) ON DELETE CASCADE;

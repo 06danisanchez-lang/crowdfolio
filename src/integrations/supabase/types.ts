@@ -235,6 +235,7 @@ export type Database = {
           max_term: number | null
           min_return: number | null
           name: string
+          opportunity_id: string | null
           platforms: string[] | null
           project_types: string[] | null
           risk_levels: string[] | null
@@ -251,6 +252,7 @@ export type Database = {
           max_term?: number | null
           min_return?: number | null
           name: string
+          opportunity_id?: string | null
           platforms?: string[] | null
           project_types?: string[] | null
           risk_levels?: string[] | null
@@ -267,13 +269,22 @@ export type Database = {
           max_term?: number | null
           min_return?: number | null
           name?: string
+          opportunity_id?: string | null
           platforms?: string[] | null
           project_types?: string[] | null
           risk_levels?: string[] | null
           updated_at?: string
           user_id?: string
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "opportunity_alerts_opportunity_id_fkey"
+            columns: ["opportunity_id"]
+            isOneToOne: false
+            referencedRelation: "opportunities"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       payments: {
         Row: {

@@ -192,7 +192,7 @@ const Index = () => {
                 <p className="text-muted-foreground">{t('investments.subtitle')}{!isPro && ` (${investments.length}/3)`}</p>
               </div>
               <div className="flex flex-wrap gap-2">
-                <ImportExport investments={investments} onImport={importInvestments} exportData={exportInvestments} isPro={isPro} onProRequired={() => openUpgradeModal('unlimited_imports')} importsThisMonth={0} />
+                <ImportExport investments={investments} onImport={importInvestments} exportData={exportInvestments} isPro={isPro} onProRequired={() => openUpgradeModal('unlimited_imports')} importsThisMonth={importCountThisMonth} />
                 <InvestmentForm onSubmit={addInvestment} investmentCount={investments.length} isPro={isPro} onProRequired={() => openUpgradeModal('unlimited_investments')} />
               </div>
             </div>

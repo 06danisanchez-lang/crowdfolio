@@ -1,11 +1,12 @@
 import { useState } from 'react';
-import { Bell, Plus, Sparkles } from 'lucide-react';
+import { Bell, Lock, Plus, Sparkles } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Skeleton } from '@/components/ui/skeleton';
 import { AlertCard } from './AlertCard';
 import { AlertForm } from './AlertForm';
 import { useOpportunityAlerts } from '@/hooks/useOpportunityAlerts';
+import { useLanguage } from '@/contexts/LanguageContext';
 import { OpportunityAlert, OpportunityAlertFormData } from '@/types/opportunityAlert';
 import {
   AlertDialog,
@@ -18,18 +19,32 @@ import {
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
 
-export function AlertSettings() {
+interface AlertSettingsProps {
+  isPro?: boolean;
+  onProRequired?: () => void;
+}
+
+export function AlertSettings({ isPro = false, onProRequired }: AlertSettingsProps) {
   const { alerts, isLoading, createAlert, updateAlert, deleteAlert, toggleAlert } = useOpportunityAlerts();
+  const { t } = useLanguage();
   const [formOpen, setFormOpen] = useState(false);
   const [editingAlert, setEditingAlert] = useState<OpportunityAlert | undefined>();
   const [deleteConfirmId, setDeleteConfirmId] = useState<string | null>(null);
 
   const handleCreateClick = () => {
+    if (!isPro) {
+      onProRequired?.();
+      return;
+    }
     setEditingAlert(undefined);
     setFormOpen(true);
   };
 
   const handleEditClick = (alert: OpportunityAlert) => {
+    if (!isPro) {
+      onProRequired?.();
+      return;
+    }
     setEditingAlert(alert);
     setFormOpen(true);
   };
@@ -76,21 +91,38 @@ export function AlertSettings() {
                 Mis Alertas de Oportunidades
               </CardTitle>
               <CardDescription>
-                Recibe notificaciones cuando se publiquen proyectos que coincidan con tus criterios
+                {isPro
+                  ? 'Recibe notificaciones cuando se publiquen proyectos que coincidan con tus criterios'
+                  : t('subscription.alerts.freeNote')}
               </CardDescription>
             </div>
-            <Button onClick={handleCreateClick} size="sm">
-              <Plus className="h-4 w-4 mr-1" />
+            <Button onClick={handleCreateClick} size="sm" variant={isPro ? 'default' : 'outline'}>
+              {isPro ? <Plus className="h-4 w-4 mr-1" /> : <Lock className="h-4 w-4 mr-1" />}
               Nueva Alerta
             </Button>
           </div>
         </CardHeader>
         <CardContent>
+          {/* Free-user upgrade banner */}
+          {!isPro && (
+            <div className="mb-4 rounded-lg border bg-muted/40 p-4 flex flex-col sm:flex-row items-start sm:items-center gap-3">
+              <div className="flex-1">
+                <p className="text-sm font-medium">{t('subscription.alerts.freeNote')}</p>
+                <p className="text-sm text-muted-foreground">{t('subscription.alerts.upgradeDesc')}</p>
+              </div>
+              <Button size="sm" onClick={onProRequired} className="shrink-0">
+                {t('subscription.alerts.upgradeCta')}
+              </Button>
+            </div>
+          )}
+
           {alerts.length === 0 ? (
             <div className="text-center py-8 text-muted-foreground">
               <Sparkles className="h-12 w-12 mx-auto mb-3 opacity-50" />
               <p className="font-medium mb-1">Sin alertas configuradas</p>
-              <p className="text-sm">Crea tu primera alerta para recibir notificaciones personalizadas</p>
+              {isPro && (
+                <p className="text-sm">Crea tu primera alerta para recibir notificaciones personalizadas</p>
+              )}
             </div>
           ) : (
             <div className="space-y-3">
@@ -99,8 +131,8 @@ export function AlertSettings() {
                   key={alert.id}
                   alert={alert}
                   onEdit={handleEditClick}
-                  onDelete={(id) => setDeleteConfirmId(id)}
-                  onToggle={toggleAlert}
+                  onDelete={isPro ? (id) => setDeleteConfirmId(id) : undefined}
+                  onToggle={isPro ? toggleAlert : undefined}
                 />
               ))}
             </div>
@@ -108,12 +140,14 @@ export function AlertSettings() {
         </CardContent>
       </Card>
 
-      <AlertForm
-        open={formOpen}
-        onOpenChange={setFormOpen}
-        alert={editingAlert}
-        onSubmit={handleFormSubmit}
-      />
+      {isPro && (
+        <AlertForm
+          open={formOpen}
+          onOpenChange={setFormOpen}
+          alert={editingAlert}
+          onSubmit={handleFormSubmit}
+        />
+      )}
 
       <AlertDialog open={!!deleteConfirmId} onOpenChange={() => setDeleteConfirmId(null)}>
         <AlertDialogContent>

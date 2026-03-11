@@ -20,27 +20,31 @@ interface UpgradeModalProps {
   feature?: string;
 }
 
-const FEATURE_MESSAGES: Record<string, string> = {
-  export_irpf: 'Exporta tu resumen fiscal IRPF en Excel y PDF para tu declaración de la renta.',
-  unlimited_investments: 'Registra todas tus inversiones sin límites.',
-  unlimited_imports: 'Importa inversiones desde archivos sin restricciones mensuales.',
-  alerts: 'Configura alertas personalizadas para tus inversiones.',
-  default: 'Desbloquea todas las funcionalidades premium de Crowdfolio.',
-};
-
-const PRO_FEATURES = [
-  'Inversiones ilimitadas',
-  'Importaciones ilimitadas',
-  'Alertas configurables',
-  'Exportar resumen IRPF',
-  'Soporte prioritario',
-];
-
 export function UpgradeModal({ open, onOpenChange, feature = 'default' }: UpgradeModalProps) {
   const { t } = useLanguage();
   const { openCheckout, isPro } = useSubscription();
   const [isLoading, setIsLoading] = useState<'monthly' | 'yearly' | null>(null);
   const [selectedPlan, setSelectedPlan] = useState<'monthly' | 'yearly'>('yearly');
+
+  // Declared inside component so they react to language changes
+  const proFeatures = [
+    t('subscription.pro.f1'),
+    t('subscription.pro.f2'),
+    t('subscription.pro.f3'),
+    t('subscription.pro.f4'),
+    t('subscription.pro.f5'),
+  ];
+
+  const featureCtaMap: Record<string, string> = {
+    export_irpf: t('subscription.cta.taxExport'),
+    unlimited_investments: t('subscription.cta.investments'),
+    unlimited_imports: t('subscription.cta.imports'),
+    alerts: t('subscription.cta.alerts'),
+    tax: t('subscription.cta.tax'),
+    default: t('subscription.cta.default'),
+  };
+
+  const ctaLabel = featureCtaMap[feature] || t('subscription.cta.default');
 
   const handleCheckout = async (plan: 'monthly' | 'yearly') => {
     setIsLoading(plan);
@@ -59,18 +63,18 @@ export function UpgradeModal({ open, onOpenChange, feature = 'default' }: Upgrad
     }
   };
 
-  const featureMessage = FEATURE_MESSAGES[feature] || FEATURE_MESSAGES.default;
-
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="sm:max-w-md">
         <DialogHeader>
           <div className="flex items-center gap-2">
             <Crown className="h-6 w-6 text-primary" />
-            <DialogTitle>{isPro ? t('subscription.yourPro') : t('subscription.upgradeTitle')}</DialogTitle>
+            <DialogTitle>
+              {isPro ? t('subscription.yourPro') : ctaLabel}
+            </DialogTitle>
           </div>
           <DialogDescription className="pt-2">
-            {isPro ? t('subscription.activePerks') : featureMessage}
+            {isPro ? t('subscription.activeBenefits') : t('subscription.noCommitment')}
           </DialogDescription>
         </DialogHeader>
 
@@ -87,7 +91,7 @@ export function UpgradeModal({ open, onOpenChange, feature = 'default' }: Upgrad
                       : 'text-muted-foreground hover:text-foreground'
                   }`}
                 >
-                  {t('billing.monthly')}
+                  {t('subscription.monthly')}
                 </button>
                 <button
                   onClick={() => setSelectedPlan('yearly')}
@@ -97,7 +101,7 @@ export function UpgradeModal({ open, onOpenChange, feature = 'default' }: Upgrad
                       : 'text-muted-foreground hover:text-foreground'
                   }`}
                 >
-                  {t('billing.yearly')}
+                  {t('subscription.yearly')}
                   <Badge variant="secondary" className="ml-1.5 text-xs">
                     -17%
                   </Badge>
@@ -111,7 +115,7 @@ export function UpgradeModal({ open, onOpenChange, feature = 'default' }: Upgrad
                     {formatPrice(STRIPE_PRICES[selectedPlan].amount)}
                   </span>
                   <span className="text-muted-foreground">
-                    /{selectedPlan === 'monthly' ? t('billing.perMonth') : t('billing.perYear')}
+                    /{selectedPlan === 'monthly' ? t('subscription.perMonth') : t('subscription.perYear')}
                   </span>
                 </div>
                 {selectedPlan === 'yearly' && (
@@ -126,9 +130,9 @@ export function UpgradeModal({ open, onOpenChange, feature = 'default' }: Upgrad
 
           {/* Features List */}
           <ul className="space-y-2">
-            {PRO_FEATURES.map((feat) => (
+            {proFeatures.map((feat) => (
               <li key={feat} className="flex items-center gap-2 text-sm">
-                <Check className="h-4 w-4 text-primary" />
+                <Check className="h-4 w-4 shrink-0 text-primary" />
                 {feat}
               </li>
             ))}
@@ -136,8 +140,7 @@ export function UpgradeModal({ open, onOpenChange, feature = 'default' }: Upgrad
 
           {!isPro && (
             <>
-              {/* CTA Button */}
-                <Button
+              <Button
                 className="w-full"
                 size="lg"
                 onClick={() => handleCheckout(selectedPlan)}
@@ -148,11 +151,11 @@ export function UpgradeModal({ open, onOpenChange, feature = 'default' }: Upgrad
                 ) : (
                   <Crown className="mr-2 h-4 w-4" />
                 )}
-                {t('subscription.startPro')}
+                {ctaLabel}
               </Button>
 
               <p className="text-center text-xs text-muted-foreground">
-                {t('subscription.cancelAnytime')}
+                {t('subscription.noCommitment')}
               </p>
             </>
           )}

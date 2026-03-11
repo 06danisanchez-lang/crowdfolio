@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from 'react';
 import { useLanguage } from '@/contexts/LanguageContext';
-import { Wallet, TrendingUp, PiggyBank, CalendarClock, Target, Heart, Search as SearchIcon, Plus } from 'lucide-react';
+import { Wallet, TrendingUp, PiggyBank, CalendarClock, Target, Heart, Search as SearchIcon, Plus, Crown } from 'lucide-react';
 import { ErrorBoundary } from '@/components/ErrorBoundary';
 import { ErrorState } from '@/components/ui/error-state';
 import { useInvestments } from '@/hooks/useInvestments';
@@ -48,7 +48,7 @@ const Index = () => {
   const [upgradeFeature, setUpgradeFeature] = useState('default');
   const shareableCardRef = useRef<HTMLDivElement>(null);
   
-  const { isPro, subscription } = useSubscription();
+  const { isPro, isLoading: subLoading, importCountThisMonth } = useSubscription();
   
   const {
     investments,
@@ -150,6 +150,21 @@ const Index = () => {
                 <div className="fixed -left-[9999px] -top-[9999px]" aria-hidden="true">
                   <ShareableCard ref={shareableCardRef} totalInvested={summary.totalInvested} totalReturns={summary.totalReturns} averageReturn={summary.averageReturn} />
                 </div>
+                {!isPro && (
+                  <div className="mb-6 rounded-lg border bg-muted/30 p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                    <div>
+                      <p className="text-sm font-semibold">Crowdfolio Pro</p>
+                      <p className="text-sm text-muted-foreground">{t('subscription.dashboard.freeDesc')}</p>
+                    </div>
+                    <button
+                      onClick={() => openUpgradeModal('default')}
+                      className="shrink-0 inline-flex items-center gap-2 rounded-md border border-primary bg-primary px-3 py-1.5 text-sm font-medium text-primary-foreground transition-colors hover:bg-primary/90"
+                    >
+                      <Crown className="h-4 w-4" />
+                      {t('subscription.dashboard.ctaBtn')}
+                    </button>
+                  </div>
+                )}
                 <div className="mb-8 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
                   <KPICard title={t('dashboard.kpi.invested')} value={formatCurrency(summary.totalInvested)} subtitle={`${investments.length} ${t('dashboard.kpi.projects')}`} icon={Wallet} helpContent={HELP_CONTENT.dashboard.totalInvested} />
                   <KPICard title={t('dashboard.kpi.returns')} value={formatCurrency(summary.totalReturns)} icon={TrendingUp} trend={summary.totalInvested > 0 ? { value: (summary.totalReturns / summary.totalInvested) * 100, isPositive: true } : undefined} helpContent={t('dashboard.kpi.returnsHelp')} />
@@ -177,7 +192,7 @@ const Index = () => {
                 <p className="text-muted-foreground">{t('investments.subtitle')}{!isPro && ` (${investments.length}/3)`}</p>
               </div>
               <div className="flex flex-wrap gap-2">
-                <ImportExport investments={investments} onImport={importInvestments} exportData={exportInvestments} isPro={isPro} onProRequired={() => openUpgradeModal('unlimited_imports')} importsThisMonth={0} />
+                <ImportExport investments={investments} onImport={importInvestments} exportData={exportInvestments} isPro={isPro} onProRequired={() => openUpgradeModal('unlimited_imports')} importsThisMonth={importCountThisMonth} />
                 <InvestmentForm onSubmit={addInvestment} investmentCount={investments.length} isPro={isPro} onProRequired={() => openUpgradeModal('unlimited_investments')} />
               </div>
             </div>
@@ -209,7 +224,7 @@ const Index = () => {
                 </div>
                 <OpportunityFilters filters={filters} onFiltersChange={setFilters} sortConfig={sortConfig} onSortChange={setSortConfig} resultCount={opportunities.length} />
                 <OpportunityList opportunities={opportunities} isLoading={opportunitiesLoading} onToggleFavorite={toggleFavorite} onSelect={setSelectedOpportunity} />
-                <div className="mt-8"><AlertSettings /></div>
+                <div className="mt-8"><AlertSettings isPro={isPro} onProRequired={() => openUpgradeModal('alerts')} /></div>
                 <OpportunityDetail opportunity={selectedOpportunity} onClose={() => setSelectedOpportunity(null)} onToggleFavorite={toggleFavorite} onDelete={deleteOpportunity} onUpdate={updateOpportunity} />
               </>
             )}
@@ -232,7 +247,7 @@ const Index = () => {
               <h1 className="text-3xl font-bold">{t('tax.title')}</h1>
               <p className="text-muted-foreground">{t('tax.subtitle')}</p>
             </div>
-            <TaxDashboard />
+            <TaxDashboard isPro={isPro} onProRequired={() => openUpgradeModal('export_irpf')} />
           </div>
         );
       case 'profile':

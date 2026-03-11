@@ -6,38 +6,43 @@ import { Badge } from '@/components/ui/badge';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { useSubscription } from '@/contexts/SubscriptionContext';
 import { useAuth } from '@/contexts/AuthContext';
+import { useLanguage } from '@/contexts/LanguageContext';
 import { STRIPE_PRICES, formatPrice } from '@/lib/stripe/config';
 import { toast } from '@/hooks/use-toast';
 import { cn } from '@/lib/utils';
 
-const FREE_FEATURES = [
-  'Añade hasta 3 inversiones',
-  'Consulta tu cartera y su evolución',
-  'Explora oportunidades de inversión',
-];
-
-const PRO_FEATURES = [
-  { title: 'Inversiones ilimitadas', desc: 'añade todas las inversiones que tengas, sin límite' },
-  { title: 'Alertas configurables', desc: 'recibe avisos sobre vencimientos y eventos importantes' },
-  { title: 'Informe fiscal automático', desc: 'descarga un resumen con los datos necesarios para tu declaración' },
-];
-
 export function PricingTable() {
   const { subscription, isPro, openCheckout, openCustomerPortal } = useSubscription();
   const { user } = useAuth();
+  const { t } = useLanguage();
   const navigate = useNavigate();
   const [isLoading, setIsLoading] = useState<'monthly' | 'yearly' | 'portal' | null>(null);
   const [billingPeriod, setBillingPeriod] = useState<'monthly' | 'yearly'>('yearly');
 
+  // Declared inside component so they react to language changes
+  const freeFeatures = [
+    t('subscription.free.f1'),
+    t('subscription.free.f2'),
+    t('subscription.free.f3'),
+    t('subscription.free.f4'),
+    t('subscription.free.f5'),
+    t('subscription.free.f6'),
+  ];
+
+  const proFeatures = [
+    t('subscription.pro.f1'),
+    t('subscription.pro.f2'),
+    t('subscription.pro.f3'),
+    t('subscription.pro.f4'),
+    t('subscription.pro.f5'),
+  ];
+
   const handleCheckout = async (plan: 'monthly' | 'yearly') => {
-    // Si no está autenticado, guardar intención y redirigir a login
     if (!user) {
       sessionStorage.setItem('pending_checkout_plan', plan);
       navigate(`/auth?checkout=${plan}`);
       return;
     }
-
-    // Si está autenticado, proceder con checkout normal
     setIsLoading(plan);
     try {
       await openCheckout(plan);
@@ -69,7 +74,6 @@ export function PricingTable() {
     }
   };
 
-
   return (
     <div className="space-y-8">
       {/* Billing Toggle */}
@@ -84,7 +88,7 @@ export function PricingTable() {
                 : 'text-muted-foreground hover:text-foreground'
             )}
           >
-            Mensual
+            {t('subscription.monthly')}
           </button>
           <button
             onClick={() => setBillingPeriod('yearly')}
@@ -95,7 +99,7 @@ export function PricingTable() {
                 : 'text-muted-foreground hover:text-foreground'
             )}
           >
-            Anual
+            {t('subscription.yearly')}
             <Badge variant="secondary" className="ml-1.5">-17%</Badge>
           </button>
         </div>
@@ -107,19 +111,21 @@ export function PricingTable() {
         <Card className={cn(!isPro && 'border-primary ring-1 ring-primary')}>
           <CardHeader>
             <div className="flex items-center justify-between">
-              <CardTitle>Gratis</CardTitle>
-              {!isPro && <Badge>Tu plan actual</Badge>}
+              <CardTitle>Free</CardTitle>
+              {!isPro && <Badge>{t('subscription.billing.freePlan')}</Badge>}
             </div>
-            <CardDescription>Para empezar a gestionar tus inversiones</CardDescription>
+            <CardDescription>
+              {t('subscription.free.f3')}
+            </CardDescription>
           </CardHeader>
           <CardContent className="space-y-6">
             <div className="flex items-baseline gap-1">
               <span className="text-4xl font-bold">0€</span>
-              <span className="text-muted-foreground">/mes</span>
+              <span className="text-muted-foreground">/{t('subscription.perMonth')}</span>
             </div>
 
             <ul className="space-y-3">
-              {FREE_FEATURES.map((feature) => (
+              {freeFeatures.map((feature) => (
                 <li key={feature} className="flex items-center gap-2">
                   <Check className="h-5 w-5 shrink-0 text-primary" />
                   <span className="text-sm">{feature}</span>
@@ -129,7 +135,7 @@ export function PricingTable() {
 
             {!isPro && (
               <Button variant="outline" className="w-full" disabled>
-                Plan actual
+                {t('subscription.billing.freePlan')}
               </Button>
             )}
           </CardContent>
@@ -154,9 +160,9 @@ export function PricingTable() {
                 <Crown className="h-5 w-5 text-primary" />
                 <CardTitle>Pro</CardTitle>
               </div>
-              {isPro && <Badge>Tu plan actual</Badge>}
+              {isPro && <Badge>{t('subscription.yourPro')}</Badge>}
             </div>
-            <CardDescription>Todo lo que necesitas para inversores serios</CardDescription>
+            <CardDescription>{t('subscription.pro.f4')}</CardDescription>
           </CardHeader>
           <CardContent className="space-y-6">
             <div className="flex items-baseline gap-1">
@@ -164,7 +170,7 @@ export function PricingTable() {
                 {formatPrice(STRIPE_PRICES[billingPeriod].amount)}
               </span>
               <span className="text-muted-foreground">
-                /{billingPeriod === 'monthly' ? 'mes' : 'año'}
+                /{billingPeriod === 'monthly' ? t('subscription.perMonth') : t('subscription.perYear')}
               </span>
             </div>
             {billingPeriod === 'yearly' && (
@@ -173,15 +179,13 @@ export function PricingTable() {
                 {STRIPE_PRICES.yearly.savings}
               </p>
             )}
-            <p className="text-xs text-muted-foreground">Cancela cuando quieras · Sin permanencia</p>
+            <p className="text-xs text-muted-foreground">{t('subscription.noCommitment')}</p>
 
             <ul className="space-y-3">
-              {PRO_FEATURES.map((feature) => (
-                <li key={feature.title} className="flex items-start gap-2">
+              {proFeatures.map((feature) => (
+                <li key={feature} className="flex items-start gap-2">
                   <Check className="mt-0.5 h-5 w-5 shrink-0 text-primary" />
-                  <span className="text-sm">
-                    <strong>{feature.title}:</strong> {feature.desc}
-                  </span>
+                  <span className="text-sm">{feature}</span>
                 </li>
               ))}
             </ul>
@@ -194,7 +198,7 @@ export function PricingTable() {
                 disabled={isLoading === 'portal'}
               >
                 {isLoading === 'portal' && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                Gestionar suscripción
+                {t('subscription.billing.manage')}
               </Button>
             ) : (
               <Button
@@ -207,7 +211,7 @@ export function PricingTable() {
                 ) : (
                   <Crown className="mr-2 h-4 w-4" />
                 )}
-                Pasar a Pro
+                {t('subscription.cta.default')}
               </Button>
             )}
           </CardContent>
@@ -217,7 +221,7 @@ export function PricingTable() {
       {/* Subscription Info */}
       {isPro && subscription.subscriptionEnd && (
         <p className="text-center text-sm text-muted-foreground">
-          Tu suscripción se renueva el{' '}
+          {t('subscription.billing.renewsOn')}{' '}
           {new Date(subscription.subscriptionEnd).toLocaleDateString('es-ES', {
             day: 'numeric',
             month: 'long',

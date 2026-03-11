@@ -224,7 +224,7 @@ const Index = () => {
                 </div>
                 <OpportunityFilters filters={filters} onFiltersChange={setFilters} sortConfig={sortConfig} onSortChange={setSortConfig} resultCount={opportunities.length} />
                 <OpportunityList opportunities={opportunities} isLoading={opportunitiesLoading} onToggleFavorite={toggleFavorite} onSelect={setSelectedOpportunity} />
-                <div className="mt-8"><AlertSettings /></div>
+                <div className="mt-8"><AlertSettings isPro={isPro} onProRequired={() => openUpgradeModal('alerts')} /></div>
                 <OpportunityDetail opportunity={selectedOpportunity} onClose={() => setSelectedOpportunity(null)} onToggleFavorite={toggleFavorite} onDelete={deleteOpportunity} onUpdate={updateOpportunity} />
               </>
             )}

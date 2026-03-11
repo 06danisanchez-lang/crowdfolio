@@ -91,7 +91,7 @@ export function UpgradeModal({ open, onOpenChange, feature = 'default' }: Upgrad
                       : 'text-muted-foreground hover:text-foreground'
                   }`}
                 >
-                  {t('billing.monthly')}
+                  {t('subscription.monthly')}
                 </button>
                 <button
                   onClick={() => setSelectedPlan('yearly')}

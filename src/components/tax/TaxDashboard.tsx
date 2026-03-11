@@ -1,7 +1,8 @@
 import { useState } from 'react';
-import { Receipt, Calculator, ArrowLeftRight } from 'lucide-react';
+import { Receipt, Calculator, ArrowLeftRight, Crown } from 'lucide-react';
 import { useTaxSummary } from '@/hooks/useTaxSummary';
 import { useTaxExpenses } from '@/hooks/useTaxExpenses';
+import { useLanguage } from '@/contexts/LanguageContext';
 import { TaxSummaryCards } from './TaxSummaryCards';
 import { TaxBreakdownTable } from './TaxBreakdownTable';
 import { TaxProjectionCard } from './TaxProjectionCard';
@@ -16,12 +17,19 @@ import { SuggestedExpenses } from './SuggestedExpenses';
 import { TaxEmptyState } from './TaxEmptyState';
 import { TaxExpenseCategory } from '@/types/tax';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { Button } from '@/components/ui/button';
 
-export function TaxDashboard() {
+interface TaxDashboardProps {
+  isPro?: boolean;
+  onProRequired?: () => void;
+}
+
+export function TaxDashboard({ isPro = false, onProRequired }: TaxDashboardProps) {
   const [selectedYear, setSelectedYear] = useState(2025);
   const [expenseFormOpen, setExpenseFormOpen] = useState(false);
   const [prefillCategory, setPrefillCategory] = useState<TaxExpenseCategory | undefined>();
   const [prefillDescription, setPrefillDescription] = useState<string | undefined>();
+  const { t } = useLanguage();
   
   const { summary, projection, isLoading, availableYears } = useTaxSummary(selectedYear);
   const { 
@@ -72,6 +80,20 @@ export function TaxDashboard() {
           />
         </div>
 
+        {/* Free vs Pro banner — shown even in empty state */}
+        {!isPro && (
+          <div className="rounded-lg border bg-muted/30 p-4 flex flex-col sm:flex-row items-start sm:items-center gap-3">
+            <div className="flex-1">
+              <p className="text-sm font-medium">{t('subscription.tax.freeNote')}</p>
+              <p className="text-sm text-muted-foreground">{t('subscription.tax.proNote')}</p>
+            </div>
+            <Button size="sm" variant="outline" onClick={onProRequired} className="shrink-0">
+              <Crown className="mr-2 h-4 w-4" />
+              {t('subscription.tax.upgradeCta')}
+            </Button>
+          </div>
+        )}
+
         {/* Empty State */}
         <TaxEmptyState year={selectedYear} />
       </div>
@@ -89,7 +111,7 @@ export function TaxDashboard() {
           </p>
         </div>
         <div className="flex items-center gap-3">
-          <TaxExportButton summary={summary} expenses={expenses} />
+          <TaxExportButton summary={summary} expenses={expenses} isPro={isPro} onProRequired={onProRequired} />
           <TaxYearSelector
             selectedYear={selectedYear}
             onYearChange={setSelectedYear}
@@ -97,6 +119,20 @@ export function TaxDashboard() {
           />
         </div>
       </div>
+
+      {/* Free vs Pro banner */}
+      {!isPro && (
+        <div className="rounded-lg border bg-muted/30 p-4 flex flex-col sm:flex-row items-start sm:items-center gap-3">
+          <div className="flex-1">
+            <p className="text-sm font-medium">{t('subscription.tax.freeNote')}</p>
+            <p className="text-sm text-muted-foreground">{t('subscription.tax.proNote')}</p>
+          </div>
+          <Button size="sm" variant="outline" onClick={onProRequired} className="shrink-0">
+            <Crown className="mr-2 h-4 w-4" />
+            {t('subscription.tax.upgradeCta')}
+          </Button>
+        </div>
+      )}
 
       {/* KPI Summary Cards */}
       <TaxSummaryCards summary={summary} />

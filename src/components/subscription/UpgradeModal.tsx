@@ -115,7 +115,7 @@ export function UpgradeModal({ open, onOpenChange, feature = 'default' }: Upgrad
                     {formatPrice(STRIPE_PRICES[selectedPlan].amount)}
                   </span>
                   <span className="text-muted-foreground">
-                    /{selectedPlan === 'monthly' ? t('billing.perMonth') : t('billing.perYear')}
+                    /{selectedPlan === 'monthly' ? t('subscription.perMonth') : t('subscription.perYear')}
                   </span>
                 </div>
                 {selectedPlan === 'yearly' && (

@@ -89,6 +89,30 @@ const Index = () => {
 
   const { alerts, alertCount, hasUrgentAlerts } = useAlerts(investments);
 
+  const {
+    alerts: opportunityAlerts,
+    createSimpleAlert,
+    deleteSimpleAlertForOpportunity,
+    getSimpleAlertForOpportunity,
+  } = useOpportunityAlerts();
+
+  // Map of opportunityId → true for quick lookup
+  const isAlertedMap: Record<string, boolean> = Object.fromEntries(
+    opportunityAlerts
+      .filter(a => a.opportunityId)
+      .map(a => [a.opportunityId!, true])
+  );
+
+  const handleToggleOpportunityAlert = (opportunityId: string) => {
+    const existing = getSimpleAlertForOpportunity(opportunityId);
+    if (existing) {
+      deleteSimpleAlertForOpportunity(opportunityId);
+    } else {
+      const opp = allOpportunities.find(o => o.id === opportunityId);
+      if (opp) createSimpleAlert(opportunityId, opp.projectName);
+    }
+  };
+
   const openUpgradeModal = (feature: string) => {
     setUpgradeFeature(feature);
     setUpgradeModalOpen(true);

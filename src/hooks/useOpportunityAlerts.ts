@@ -43,13 +43,21 @@ export function useOpportunityAlerts() {
       if (dbError) throw dbError;
 
       const mappedAlerts: OpportunityAlert[] = (data || []).map((row) => ({
-        id: row.id, userId: row.user_id, name: row.name, enabled: row.enabled,
-        minReturn: row.min_return ?? undefined, maxReturn: row.max_return ?? undefined,
+        id: row.id,
+        userId: row.user_id,
+        name: row.name,
+        enabled: row.enabled,
+        opportunityId: (row as any).opportunity_id ?? undefined,
+        minReturn: row.min_return ?? undefined,
+        maxReturn: row.max_return ?? undefined,
         platforms: (row.platforms || []) as OpportunityAlert['platforms'],
         projectTypes: (row.project_types || []) as OpportunityAlert['projectTypes'],
         riskLevels: (row.risk_levels || []) as OpportunityAlert['riskLevels'],
-        maxTerm: row.max_term ?? undefined, maxMinInvestment: row.max_min_investment ?? undefined,
-        locations: row.locations || [], createdAt: row.created_at, updatedAt: row.updated_at,
+        maxTerm: row.max_term ?? undefined,
+        maxMinInvestment: row.max_min_investment ?? undefined,
+        locations: row.locations || [],
+        createdAt: row.created_at,
+        updatedAt: row.updated_at,
       }));
       setAlerts(mappedAlerts);
     } catch (err) {
@@ -75,12 +83,19 @@ export function useOpportunityAlerts() {
     if (!user) return false;
     try {
       const { error } = await supabase.from('opportunity_alerts').insert({
-        user_id: user.id, name: formData.name, enabled: formData.enabled,
-        min_return: formData.minReturn ?? null, max_return: formData.maxReturn ?? null,
-        platforms: formData.platforms, project_types: formData.projectTypes,
-        risk_levels: formData.riskLevels, max_term: formData.maxTerm ?? null,
-        max_min_investment: formData.maxMinInvestment ?? null, locations: formData.locations,
-      });
+        user_id: user.id,
+        name: formData.name,
+        enabled: formData.enabled,
+        opportunity_id: formData.opportunityId ?? null,
+        min_return: formData.minReturn ?? null,
+        max_return: formData.maxReturn ?? null,
+        platforms: formData.platforms,
+        project_types: formData.projectTypes,
+        risk_levels: formData.riskLevels,
+        max_term: formData.maxTerm ?? null,
+        max_min_investment: formData.maxMinInvestment ?? null,
+        locations: formData.locations,
+      } as any);
       if (error) throw error;
       toast.success('Alerta creada correctamente');
       await fetchAlerts();
@@ -96,11 +111,16 @@ export function useOpportunityAlerts() {
     if (!user) return false;
     try {
       const { error } = await supabase.from('opportunity_alerts').update({
-        name: formData.name, enabled: formData.enabled,
-        min_return: formData.minReturn ?? null, max_return: formData.maxReturn ?? null,
-        platforms: formData.platforms, project_types: formData.projectTypes,
-        risk_levels: formData.riskLevels, max_term: formData.maxTerm ?? null,
-        max_min_investment: formData.maxMinInvestment ?? null, locations: formData.locations,
+        name: formData.name,
+        enabled: formData.enabled,
+        min_return: formData.minReturn ?? null,
+        max_return: formData.maxReturn ?? null,
+        platforms: formData.platforms,
+        project_types: formData.projectTypes,
+        risk_levels: formData.riskLevels,
+        max_term: formData.maxTerm ?? null,
+        max_min_investment: formData.maxMinInvestment ?? null,
+        locations: formData.locations,
       }).eq('id', id).eq('user_id', user.id);
       if (error) throw error;
       toast.success('Alerta actualizada correctamente');
@@ -143,9 +163,65 @@ export function useOpportunityAlerts() {
     }
   };
 
+  /** Creates a simple (non-criteria) alert linked to a specific opportunity */
+  const createSimpleAlert = async (opportunityId: string, projectName: string): Promise<boolean> => {
+    if (!user) return false;
+    try {
+      const { error } = await supabase.from('opportunity_alerts').insert({
+        user_id: user.id,
+        name: projectName,
+        enabled: true,
+        opportunity_id: opportunityId,
+        platforms: [],
+        project_types: [],
+        risk_levels: [],
+        locations: [],
+      } as any);
+      if (error) throw error;
+      toast.success('Alerta activada para esta oportunidad');
+      await fetchAlerts();
+      return true;
+    } catch (error) {
+      console.error('Error creating simple alert:', error);
+      toast.error('Error al activar la alerta');
+      return false;
+    }
+  };
+
+  /** Deletes the simple alert linked to a specific opportunity */
+  const deleteSimpleAlertForOpportunity = async (opportunityId: string): Promise<boolean> => {
+    if (!user) return false;
+    const existing = alerts.find(a => a.opportunityId === opportunityId);
+    if (!existing) return false;
+    try {
+      const { error } = await supabase.from('opportunity_alerts').delete().eq('id', existing.id).eq('user_id', user.id);
+      if (error) throw error;
+      toast.success('Alerta desactivada');
+      await fetchAlerts();
+      return true;
+    } catch (error) {
+      console.error('Error deleting simple alert:', error);
+      toast.error('Error al desactivar la alerta');
+      return false;
+    }
+  };
+
+  /** Returns the simple alert for a given opportunity, if it exists */
+  const getSimpleAlertForOpportunity = (opportunityId: string): OpportunityAlert | undefined => {
+    return alerts.find(a => a.opportunityId === opportunityId);
+  };
+
   return {
-    alerts, isLoading, error,
-    createAlert, updateAlert, deleteAlert, toggleAlert,
+    alerts,
+    isLoading,
+    error,
+    createAlert,
+    updateAlert,
+    deleteAlert,
+    toggleAlert,
+    createSimpleAlert,
+    deleteSimpleAlertForOpportunity,
+    getSimpleAlertForOpportunity,
     refetch: fetchAlerts,
   };
 }

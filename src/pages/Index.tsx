@@ -150,6 +150,21 @@ const Index = () => {
                 <div className="fixed -left-[9999px] -top-[9999px]" aria-hidden="true">
                   <ShareableCard ref={shareableCardRef} totalInvested={summary.totalInvested} totalReturns={summary.totalReturns} averageReturn={summary.averageReturn} />
                 </div>
+                {!isPro && (
+                  <div className="mb-6 rounded-lg border bg-muted/30 p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                    <div>
+                      <p className="text-sm font-semibold">Crowdfolio Pro</p>
+                      <p className="text-sm text-muted-foreground">{t('subscription.dashboard.freeDesc')}</p>
+                    </div>
+                    <button
+                      onClick={() => openUpgradeModal('default')}
+                      className="shrink-0 inline-flex items-center gap-2 rounded-md border border-primary bg-primary px-3 py-1.5 text-sm font-medium text-primary-foreground transition-colors hover:bg-primary/90"
+                    >
+                      <Crown className="h-4 w-4" />
+                      {t('subscription.dashboard.ctaBtn')}
+                    </button>
+                  </div>
+                )}
                 <div className="mb-8 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
                   <KPICard title={t('dashboard.kpi.invested')} value={formatCurrency(summary.totalInvested)} subtitle={`${investments.length} ${t('dashboard.kpi.projects')}`} icon={Wallet} helpContent={HELP_CONTENT.dashboard.totalInvested} />
                   <KPICard title={t('dashboard.kpi.returns')} value={formatCurrency(summary.totalReturns)} icon={TrendingUp} trend={summary.totalInvested > 0 ? { value: (summary.totalReturns / summary.totalInvested) * 100, isPositive: true } : undefined} helpContent={t('dashboard.kpi.returnsHelp')} />

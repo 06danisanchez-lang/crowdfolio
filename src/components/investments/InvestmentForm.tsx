@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
@@ -40,6 +40,9 @@ import { cn } from '@/lib/utils';
 import { ImageUploader } from './ImageUploader';
 import { useInvestmentExtraction, ExtractedInvestmentData, FileType } from '@/hooks/useInvestmentExtraction';
 import { Badge } from '@/components/ui/badge';
+import { useAuth } from '@/contexts/AuthContext';
+import { useInvestmentDraft } from '@/hooks/useInvestmentDraft';
+import { useLanguage } from '@/contexts/LanguageContext';
 
 const investmentSchema = z.object({
   platform: z.enum(['urbanitae', 'housers', 'estateguru', 'crowdcube', 'brickstarter', 'wecity', 'other'] as const),
@@ -78,6 +81,16 @@ export function InvestmentForm({
   const [entryMode, setEntryMode] = useState<EntryMode>(initialData ? 'manual' : 'select');
   const [extractedFields, setExtractedFields] = useState<Set<string>>(new Set());
   const [highAmountWarning, setHighAmountWarning] = useState<number | null>(null);
+
+  // Draft persistence — only for new investments (not edit)
+  const { user } = useAuth();
+  const { t } = useLanguage();
+  const draft = useInvestmentDraft(!initialData ? user?.id : undefined);
+
+  const [draftExists, setDraftExists] = useState(false);
+  const [draftRestored, setDraftRestored] = useState(false);
+  // Prevents draft from overwriting AI-extracted data or re-running restore
+  const draftLoadedRef = useRef(false);
   
   const { isExtracting, extractFromFile, clearExtractedData } = useInvestmentExtraction();
 
@@ -115,25 +128,93 @@ export function InvestmentForm({
 
   const watchPlatform = form.watch('platform');
 
-  // Reset state when dialog closes
+  // Auto-save draft via form.watch(callback) subscription.
+  // Only active in manual mode for new investments.
+  useEffect(() => {
+    if (entryMode !== 'manual' || !!initialData) return;
+
+    const { unsubscribe } = form.watch((values) => {
+      const date = values.investmentDate instanceof Date ? values.investmentDate : null;
+      if (!date) return;
+
+      const end = values.expectedEndDate instanceof Date
+        ? values.expectedEndDate
+        : undefined;
+
+      draft.save({
+        platform:           (values.platform as string) ?? 'urbanitae',
+        customPlatformName: values.customPlatformName,
+        projectName:        values.projectName,
+        amount:             values.amount,
+        expectedReturn:     values.expectedReturn,
+        status:             (values.status as string) ?? 'active',
+        notes:              values.notes,
+        investmentDate:     date.toISOString(),
+        expectedEndDate:    end?.toISOString(),
+      });
+    });
+
+    return () => unsubscribe();
+    // draft.save is stable; entryMode and initialData are the real deps
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [entryMode, initialData]);
+
+  // One-shot draft restore when entering manual mode (new investments only).
+  useEffect(() => {
+    if (entryMode !== 'manual' || !!initialData || draftLoadedRef.current) return;
+    draftLoadedRef.current = true;
+
+    const saved = draft.load();
+    if (!saved) return;
+
+    form.reset({
+      platform:           saved.formValues.platform as Platform,
+      customPlatformName: saved.formValues.customPlatformName,
+      projectName:        saved.formValues.projectName ?? '',
+      amount:             saved.formValues.amount ?? 0,
+      expectedReturn:     saved.formValues.expectedReturn ?? 10,
+      status:             saved.formValues.status as InvestmentStatus,
+      notes:              saved.formValues.notes,
+      investmentDate:     new Date(saved.formValues.investmentDate),
+      expectedEndDate:    saved.formValues.expectedEndDate
+        ? new Date(saved.formValues.expectedEndDate)
+        : undefined,
+    });
+
+    setDraftExists(true);
+    setDraftRestored(true);
+    // draft.load is stable
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [entryMode, initialData]);
+
+  // Reset state when dialog closes.
+  // For new investments we intentionally skip form.reset() so the draft survives close/reopen.
   useEffect(() => {
     if (!open) {
       setEntryMode(initialData ? 'manual' : 'select');
       setExtractedFields(new Set());
       setHighAmountWarning(null);
       clearExtractedData();
-      if (!initialData) {
+      if (initialData) {
         form.reset({
-          platform: 'urbanitae',
-          status: 'active',
-          expectedReturn: 10,
-          investmentDate: new Date(),
+          platform: initialData.platform,
+          customPlatformName: initialData.customPlatformName,
+          projectName: initialData.projectName,
+          amount: initialData.amount,
+          investmentDate: new Date(initialData.investmentDate),
+          expectedEndDate: initialData.expectedEndDate ? new Date(initialData.expectedEndDate) : undefined,
+          expectedReturn: initialData.expectedReturn,
+          status: initialData.status,
+          notes: initialData.notes,
         });
       }
+      // new investment: intentionally NO form.reset() — draft survives close/reopen
     }
   }, [open, initialData, form, clearExtractedData]);
 
   const handleFileSelect = async (base64: string, fileType: FileType) => {
+    // Mark draft as loaded so restore doesn't overwrite AI-extracted data
+    draftLoadedRef.current = true;
     const result = await extractFromFile(base64, fileType);
     
     if (result.success && result.data) {
@@ -160,7 +241,6 @@ export function InvestmentForm({
     if (data.amount) {
       form.setValue('amount', data.amount);
       fieldsSet.add('amount');
-      // Show warning if amount seems too high for a personal investment
       if (data.amount > 50000) {
         setHighAmountWarning(data.amount);
       }
@@ -201,8 +281,28 @@ export function InvestmentForm({
       investmentDate: data.investmentDate.toISOString(),
       expectedEndDate: data.expectedEndDate?.toISOString(),
     });
+
+    // Clear draft after successful submission
+    draft.clear();
+    setDraftExists(false);
+    setDraftRestored(false);
+    draftLoadedRef.current = false;
+
     setOpen(false);
     form.reset();
+  };
+
+  const handleDiscardDraft = () => {
+    draft.clear();
+    setDraftExists(false);
+    setDraftRestored(false);
+    draftLoadedRef.current = false;
+    form.reset({
+      platform: 'urbanitae',
+      status: 'active',
+      expectedReturn: 10,
+      investmentDate: new Date(),
+    });
   };
 
   const isFieldExtracted = (fieldName: string) => extractedFields.has(fieldName);
@@ -262,6 +362,24 @@ export function InvestmentForm({
   const renderForm = () => (
     <Form {...form}>
       <form onSubmit={form.handleSubmit(handleSubmit)} className="space-y-4">
+        {/* Draft restored banner */}
+        {draftExists && draftRestored && (
+          <div className="flex items-center justify-between p-3 rounded-lg bg-muted/50 border text-sm">
+            <span className="text-muted-foreground">
+              {t('investments.form.draft.restored')}
+            </span>
+            <Button
+              type="button"
+              variant="ghost"
+              size="sm"
+              className="text-destructive hover:text-destructive h-auto py-1 px-2"
+              onClick={handleDiscardDraft}
+            >
+              {t('investments.form.draft.discard')}
+            </Button>
+          </div>
+        )}
+
         {extractedFields.size > 0 && (
           <div className="flex items-center gap-2 p-3 rounded-lg bg-primary/10 border border-primary/20">
             <Sparkles className="h-4 w-4 text-primary shrink-0" />
@@ -353,7 +471,6 @@ export function InvestmentForm({
                     onChange={(e) => {
                       const value = parseFloat(e.target.value) || 0;
                       field.onChange(value);
-                      // Clear warning if user modifies the amount
                       if (highAmountWarning && value !== highAmountWarning) {
                         setHighAmountWarning(null);
                       }

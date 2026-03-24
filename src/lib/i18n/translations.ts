@@ -186,6 +186,8 @@ export const translations: Record<Lang, Record<string, string>> = {
     'investments.form.save.new': 'Crear Inversión',
     'investments.form.save.edit': 'Guardar Cambios',
     'investments.form.highAmount': 'El importe ({amount}€) parece alto. ¿Es tu inversión personal o el total del proyecto?',
+    'investments.form.draft.restored': 'Borrador restaurado',
+    'investments.form.draft.discard': 'Descartar borrador',
 
     // Investment Detail
     'investDetail.platform': 'Plataforma',
@@ -642,6 +644,8 @@ export const translations: Record<Lang, Record<string, string>> = {
     'investments.form.save.new': 'Create Investment',
     'investments.form.save.edit': 'Save Changes',
     'investments.form.highAmount': 'The amount ({amount}€) seems high. Is it your personal investment or the total project?',
+    'investments.form.draft.restored': 'Draft restored',
+    'investments.form.draft.discard': 'Discard draft',
 
     // Investment Detail
     'investDetail.platform': 'Platform',

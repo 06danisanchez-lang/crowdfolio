@@ -1,12 +1,10 @@
 import { useState, useEffect, useRef } from 'react';
 import { useLanguage } from '@/contexts/LanguageContext';
-import { Wallet, TrendingUp, PiggyBank, CalendarClock, Target, Heart, Search as SearchIcon, Plus, Crown } from 'lucide-react';
+import { Wallet, TrendingUp, PiggyBank, CalendarClock, Target, Plus, Crown } from 'lucide-react';
 import { ErrorBoundary } from '@/components/ErrorBoundary';
 import { ErrorState } from '@/components/ui/error-state';
 import { useInvestments } from '@/hooks/useInvestments';
 import { useAlerts } from '@/hooks/useAlerts';
-import { useOpportunities } from '@/hooks/useOpportunities';
-import { useOpportunityAlerts } from '@/hooks/useOpportunityAlerts';
 import { useSubscription } from '@/contexts/SubscriptionContext';
 import { AppLayout } from '@/components/layout/AppLayout';
 import { KPICard } from '@/components/dashboard/KPICard';
@@ -17,12 +15,6 @@ import { UpcomingMaturityList } from '@/components/dashboard/UpcomingMaturityLis
 import { InvestmentList } from '@/components/investments/InvestmentList';
 import { InvestmentForm } from '@/components/investments/InvestmentForm';
 import { ImportExport } from '@/components/investments/ImportExport';
-import { OpportunityList } from '@/components/opportunities/OpportunityList';
-import { OpportunityFilters } from '@/components/opportunities/OpportunityFilters';
-import { OpportunityForm } from '@/components/opportunities/OpportunityForm';
-import { OpportunityDetail } from '@/components/opportunities/OpportunityDetail';
-import { ScrapeButton } from '@/components/opportunities/ScrapeButton';
-import { AlertSettings } from '@/components/opportunities/AlertSettings';
 import { PlatformList } from '@/components/platforms/PlatformList';
 import { TaxDashboard } from '@/components/tax/TaxDashboard';
 import { ShareableCard } from '@/components/dashboard/ShareableCard';
@@ -39,12 +31,10 @@ import { HELP_CONTENT } from '@/lib/help/tooltipContent';
 import { toast } from 'sonner';
 import { Skeleton } from '@/components/ui/skeleton';
 import { View } from '@/types/investment';
-import { Opportunity } from '@/types/opportunity';
 
 const Index = () => {
   const { t } = useLanguage();
   const [currentView, setCurrentView] = useState<View>('dashboard');
-  const [selectedOpportunity, setSelectedOpportunity] = useState<Opportunity | null>(null);
   const [upgradeModalOpen, setUpgradeModalOpen] = useState(false);
   const [upgradeFeature, setUpgradeFeature] = useState('default');
   const shareableCardRef = useRef<HTMLDivElement>(null);
@@ -65,53 +55,7 @@ const Index = () => {
     exportInvestments,
   } = useInvestments();
 
-  const {
-    opportunities,
-    allOpportunities,
-    isLoading: opportunitiesLoading,
-    error: opportunitiesError,
-    isScraping,
-    lastScrapedAt,
-    scrapeError,
-    requiresFirecrawlSetup,
-    filters,
-    setFilters,
-    sortConfig,
-    setSortConfig,
-    summary: opportunitiesSummary,
-    scrape,
-    addOpportunity,
-    updateOpportunity,
-    deleteOpportunity,
-    toggleFavorite,
-    refetch: refetchOpportunities,
-  } = useOpportunities();
-
   const { alerts, alertCount, hasUrgentAlerts } = useAlerts(investments);
-
-  const {
-    alerts: opportunityAlerts,
-    createSimpleAlert,
-    deleteSimpleAlertForOpportunity,
-    getSimpleAlertForOpportunity,
-  } = useOpportunityAlerts();
-
-  // Map of opportunityId → true for quick lookup
-  const isAlertedMap: Record<string, boolean> = Object.fromEntries(
-    opportunityAlerts
-      .filter(a => a.opportunityId)
-      .map(a => [a.opportunityId!, true])
-  );
-
-  const handleToggleOpportunityAlert = (opportunityId: string) => {
-    const existing = getSimpleAlertForOpportunity(opportunityId);
-    if (existing) {
-      deleteSimpleAlertForOpportunity(opportunityId);
-    } else {
-      const opp = allOpportunities.find(o => o.id === opportunityId);
-      if (opp) createSimpleAlert(opportunityId, opp.projectName);
-    }
-  };
 
   const openUpgradeModal = (feature: string) => {
     setUpgradeFeature(feature);
@@ -222,37 +166,6 @@ const Index = () => {
               </div>
             </div>
             <InvestmentList investments={investments} onUpdate={updateInvestment} onDelete={deleteInvestment} onAddPayment={addPayment} onDeletePayment={deletePayment} />
-          </div>
-        );
-      case 'opportunities':
-        return (
-          <div className="p-6 lg:p-8">
-            {opportunitiesError ? (
-              <ErrorState message={opportunitiesError} onRetry={refetchOpportunities} />
-            ) : (
-              <>
-                <div className="mb-8 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-                  <div>
-                    <h1 className="text-3xl font-bold">{t('opportunities.title')}</h1>
-                    <p className="text-muted-foreground">{t('opportunities.subtitle')}</p>
-                  </div>
-                  <div className="flex flex-wrap gap-2">
-                    <ScrapeButton onScrape={scrape} isScraping={isScraping} lastScrapedAt={lastScrapedAt} error={scrapeError} requiresSetup={requiresFirecrawlSetup} />
-                    <OpportunityForm onSubmit={addOpportunity} />
-                  </div>
-                </div>
-                <div className="mb-6 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-                  <KPICard title={t('opportunities.kpi.total')} value={opportunitiesSummary.total.toString()} subtitle={`${opportunitiesSummary.open} ${t('opportunities.kpi.open')}`} icon={SearchIcon} />
-                  <KPICard title={t('opportunities.kpi.favorites')} value={opportunitiesSummary.favorites.toString()} icon={Heart} />
-                  <KPICard title={t('opportunities.kpi.avgReturn')} value={`${opportunitiesSummary.averageReturn.toFixed(1)}%`} subtitle={t('opportunities.kpi.avgReturn.sub')} icon={TrendingUp} />
-                  <KPICard title={t('opportunities.kpi.platforms')} value={Object.keys(opportunitiesSummary.byPlatform).length.toString()} subtitle={t('opportunities.kpi.platforms.sub')} icon={Target} />
-                </div>
-                <OpportunityFilters filters={filters} onFiltersChange={setFilters} sortConfig={sortConfig} onSortChange={setSortConfig} resultCount={opportunities.length} />
-                <OpportunityList opportunities={opportunities} isLoading={opportunitiesLoading} onToggleFavorite={toggleFavorite} onSelect={setSelectedOpportunity} isAlertedMap={isAlertedMap} onToggleAlert={handleToggleOpportunityAlert} />
-                <div className="mt-8"><AlertSettings isPro={isPro} onProRequired={() => openUpgradeModal('alerts')} /></div>
-                <OpportunityDetail opportunity={selectedOpportunity} onClose={() => setSelectedOpportunity(null)} onToggleFavorite={toggleFavorite} onDelete={deleteOpportunity} onUpdate={updateOpportunity} isAlerted={selectedOpportunity ? (isAlertedMap[selectedOpportunity.id] ?? false) : false} onToggleAlert={handleToggleOpportunityAlert} />
-              </>
-            )}
           </div>
         );
       case 'platforms':

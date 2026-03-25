@@ -1,4 +1,4 @@
-import { Bell, Check, CheckCheck, Search } from 'lucide-react';
+import { Bell, CheckCheck } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import {
   Popover,
@@ -12,30 +12,12 @@ import { useNotifications, Notification } from '@/hooks/useNotifications';
 import { formatDistanceToNow } from 'date-fns';
 import { es } from 'date-fns/locale';
 
-interface NotificationBellProps {
-  onOpportunitiesClick?: () => void;
-}
-
-export function NotificationBell({ onOpportunitiesClick }: NotificationBellProps) {
+export function NotificationBell() {
   const { notifications, unreadCount, markAsRead, markAllAsRead, isLoading } = useNotifications();
 
   const handleNotificationClick = (notification: Notification) => {
     if (!notification.read) {
       markAsRead(notification.id);
-    }
-    
-    // If it's an opportunity notification, navigate to opportunities
-    if (notification.type === 'new_opportunity' && onOpportunitiesClick) {
-      onOpportunitiesClick();
-    }
-  };
-
-  const getNotificationIcon = (type: string) => {
-    switch (type) {
-      case 'new_opportunity':
-        return <Search className="h-4 w-4 text-primary" />;
-      default:
-        return <Bell className="h-4 w-4 text-muted-foreground" />;
     }
   };
 
@@ -94,7 +76,7 @@ export function NotificationBell({ onOpportunitiesClick }: NotificationBellProps
                   onClick={() => handleNotificationClick(notification)}
                 >
                   <div className="mt-0.5">
-                    {getNotificationIcon(notification.type)}
+                    <Bell className="h-4 w-4 text-muted-foreground" />
                   </div>
                   <div className="flex-1 space-y-1">
                     <div className="flex items-start justify-between gap-2">

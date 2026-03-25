@@ -458,7 +458,7 @@ export const translations: Record<Lang, Record<string, string>> = {
     'hero.subheadline': 'Centralize and control all your investments from a single dashboard.',
     'hero.bullet1': 'Automatic tax report for all your investments',
     'hero.bullet2': 'Centralize all your crowdfunding platforms',
-    'hero.bullet3': 'Access to new investment opportunities',
+    'hero.bullet3': 'Prepare your tax return with real data from your investments',
     'hero.ctaPrimary': 'Create a free account',
     'hero.ctaSecondary': 'View pricing',
     'hero.trustLine': 'No credit card · Set up in 2 minutes · Cancel anytime',
@@ -486,7 +486,7 @@ export const translations: Record<Lang, Record<string, string>> = {
     'features.f4.title': 'Return Analysis',
     'features.f4.desc': 'Calculate IRR, annualized return and return projections for each investment.',
     'features.f5.title': 'Maturity Alerts',
-    'features.f5.desc': 'Receive notifications about maturities, new opportunities and changes in your investments.',
+    'features.f5.desc': 'Receive notifications about maturities and changes in your investments.',
     'features.f6.title': 'Secure Data',
     'features.f6.desc': 'Your information is protected with bank-level encryption and automatic backups.',
 
@@ -533,7 +533,6 @@ export const translations: Record<Lang, Record<string, string>> = {
     // Nav (app interior)
     'nav.dashboard': 'Home',
     'nav.investments': 'Investments',
-    'nav.opportunities': 'Opportunities',
     'nav.platforms': 'Platforms',
     'nav.tax': 'Tax',
     'nav.admin': 'Administration',

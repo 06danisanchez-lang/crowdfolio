@@ -12,7 +12,6 @@ import { cn } from '@/lib/utils';
 
 import dashboardImg from '@/assets/screenshots/dashboard.jpg';
 import investmentsImg from '@/assets/screenshots/investments.jpg';
-import opportunitiesImg from '@/assets/screenshots/opportunities.jpg';
 import taxImg from '@/assets/screenshots/tax.jpg';
 
 const screenshots = [
@@ -25,11 +24,6 @@ const screenshots = [
     src: investmentsImg,
     label: 'Gestión de inversiones',
     description: 'Lista completa de todos tus proyectos',
-  },
-  {
-    src: opportunitiesImg,
-    label: 'Oportunidades',
-    description: 'Descubre nuevas oportunidades de inversión',
   },
   {
     src: taxImg,

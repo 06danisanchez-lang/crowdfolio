@@ -13,7 +13,7 @@ export const translations: Record<Lang, Record<string, string>> = {
     'hero.subheadline': 'Centraliza y controla todas tus inversiones desde un único panel.',
     'hero.bullet1': 'Informe fiscal automático de todas tus inversiones',
     'hero.bullet2': 'Centralización de todas tus plataformas de crowdfunding',
-    'hero.bullet3': 'Acceso a nuevas oportunidades de inversión',
+    'hero.bullet3': 'Prepara tu declaración de la renta con datos reales de tus inversiones',
     'hero.ctaPrimary': 'Crea una cuenta gratis',
     'hero.ctaSecondary': 'Ver precios',
     'hero.trustLine': 'Sin tarjeta de crédito · Configura en 2 minutos · Cancela cuando quieras',
@@ -41,7 +41,7 @@ export const translations: Record<Lang, Record<string, string>> = {
     'features.f4.title': 'Análisis de Rentabilidad',
     'features.f4.desc': 'Calcula TIR, rendimiento anualizado y proyecciones de retorno para cada inversión.',
     'features.f5.title': 'Alertas de Vencimientos',
-    'features.f5.desc': 'Recibe notificaciones sobre vencimientos, nuevas oportunidades y cambios en tus inversiones.',
+    'features.f5.desc': 'Recibe notificaciones sobre vencimientos y cambios en el estado de tus inversiones.',
     'features.f6.title': 'Datos Seguros',
     'features.f6.desc': 'Tu información está protegida con cifrado de nivel bancario y backups automáticos.',
 
@@ -88,7 +88,6 @@ export const translations: Record<Lang, Record<string, string>> = {
     // Nav (app interior)
     'nav.dashboard': 'Inicio',
     'nav.investments': 'Inversiones',
-    'nav.opportunities': 'Oportunidades',
     'nav.platforms': 'Plataformas',
     'nav.tax': 'Fiscalidad',
     'nav.admin': 'Administración',
@@ -379,21 +378,19 @@ export const translations: Record<Lang, Record<string, string>> = {
     'subscription.free.f2': 'Registro manual de inversiones',
     'subscription.free.f3': 'Visualización de cartera y evolución',
     'subscription.free.f4': 'Importa desde PDF o imagen con IA (1 al mes)',
-    'subscription.free.f5': 'Exploración de oportunidades en modo lectura',
-    'subscription.free.f6': 'Alertas sobre oportunidades concretas',
-    'subscription.free.f7': 'Vista fiscal orientativa',
+    'subscription.free.f5': 'Alertas de vencimientos de inversiones',
+    'subscription.free.f6': 'Vista fiscal orientativa de tu cartera',
 
     // Plan copy — Pro features
     'subscription.pro.f1': 'Inversiones ilimitadas',
     'subscription.pro.f2': 'Importa desde PDF o imagen sin introducir los datos a mano',
-    'subscription.pro.f3': 'Alertas personalizadas según tus criterios',
+    'subscription.pro.f3': 'Informe fiscal detallado por tipo de renta',
     'subscription.pro.f4': 'Informe fiscal preparado para declarar',
     'subscription.pro.f5': 'Exporta tu informe fiscal en Excel o PDF',
 
     // Contextual CTAs
     'subscription.cta.investments': 'Desbloquea inversiones ilimitadas',
     'subscription.cta.imports': 'Importa sin límites y ahorra tiempo',
-    'subscription.cta.alerts': 'Crea alertas personalizadas',
     'subscription.cta.tax': 'Accede a un informe fiscal preparado para declarar',
     'subscription.cta.taxExport': 'Accede a un informe fiscal preparado para declarar',
     'subscription.cta.default': 'Desbloquea Crowdfolio Pro',
@@ -409,19 +406,9 @@ export const translations: Record<Lang, Record<string, string>> = {
     'subscription.import.upgradeDesc': 'Con Pro tienes importaciones ilimitadas desde imagen o PDF con IA',
 
     // Dashboard Free CTA
-    'subscription.dashboard.freeDesc': 'Con Pro puedes registrar inversiones sin límite, crear alertas personalizadas y acceder a un informe fiscal preparado para declarar.',
+    'subscription.dashboard.freeDesc': 'Con Pro puedes registrar inversiones sin límite e importar desde imagen o PDF con IA, además de acceder a un informe fiscal preparado para declarar.',
     'subscription.dashboard.ctaBtn': 'Ver qué incluye Pro',
 
-    // Alerts — section copy
-    'subscription.alerts.simpleTitle': 'Alertas sobre oportunidades',
-    'subscription.alerts.criteriaTitle': 'Alertas personalizadas',
-    'subscription.alerts.simpleEmpty': 'Activa una alerta desde cualquier oportunidad concreta',
-    'subscription.alerts.criteriaEmpty': 'Sin alertas personalizadas configuradas',
-    'subscription.alerts.toggleOn': 'Alerta activada',
-    'subscription.alerts.toggleOff': 'Alerta desactivada',
-    'subscription.alerts.freeNote': 'Las alertas personalizadas son una función de Pro',
-    'subscription.alerts.upgradeDesc': 'Crea alertas con tus propios criterios: plataforma, rentabilidad, plazo y más',
-    'subscription.alerts.upgradeCta': 'Crea alertas personalizadas',
     'subscription.billing.title': 'Tu Plan',
     'subscription.billing.desc': 'Gestiona tu suscripción y facturación',
     'subscription.billing.freePlan': 'Plan Gratis',
@@ -471,7 +458,7 @@ export const translations: Record<Lang, Record<string, string>> = {
     'hero.subheadline': 'Centralize and control all your investments from a single dashboard.',
     'hero.bullet1': 'Automatic tax report for all your investments',
     'hero.bullet2': 'Centralize all your crowdfunding platforms',
-    'hero.bullet3': 'Access to new investment opportunities',
+    'hero.bullet3': 'Prepare your tax return with real data from your investments',
     'hero.ctaPrimary': 'Create a free account',
     'hero.ctaSecondary': 'View pricing',
     'hero.trustLine': 'No credit card · Set up in 2 minutes · Cancel anytime',
@@ -499,7 +486,7 @@ export const translations: Record<Lang, Record<string, string>> = {
     'features.f4.title': 'Return Analysis',
     'features.f4.desc': 'Calculate IRR, annualized return and return projections for each investment.',
     'features.f5.title': 'Maturity Alerts',
-    'features.f5.desc': 'Receive notifications about maturities, new opportunities and changes in your investments.',
+    'features.f5.desc': 'Receive notifications about maturities and changes in your investments.',
     'features.f6.title': 'Secure Data',
     'features.f6.desc': 'Your information is protected with bank-level encryption and automatic backups.',
 
@@ -546,7 +533,6 @@ export const translations: Record<Lang, Record<string, string>> = {
     // Nav (app interior)
     'nav.dashboard': 'Home',
     'nav.investments': 'Investments',
-    'nav.opportunities': 'Opportunities',
     'nav.platforms': 'Platforms',
     'nav.tax': 'Tax',
     'nav.admin': 'Administration',
@@ -837,21 +823,19 @@ export const translations: Record<Lang, Record<string, string>> = {
     'subscription.free.f2': 'Manual investment tracking',
     'subscription.free.f3': 'Portfolio and performance overview',
     'subscription.free.f4': 'Import from PDF or image with AI (1/month)',
-    'subscription.free.f5': 'Read-only opportunity browsing',
-    'subscription.free.f6': 'Alerts on specific opportunities',
-    'subscription.free.f7': 'Indicative tax overview',
+    'subscription.free.f5': 'Investment maturity alerts',
+    'subscription.free.f6': 'Indicative tax overview of your portfolio',
 
     // Plan copy — Pro features
     'subscription.pro.f1': 'Unlimited investments',
     'subscription.pro.f2': 'Import from PDF or image — no manual data entry',
-    'subscription.pro.f3': 'Custom alerts based on your criteria',
+    'subscription.pro.f3': 'Detailed tax report by income type',
     'subscription.pro.f4': 'Tax report prepared for filing',
     'subscription.pro.f5': 'Export your tax report in Excel or PDF',
 
     // Contextual CTAs
     'subscription.cta.investments': 'Unlock unlimited investments',
     'subscription.cta.imports': 'Import without limits and save time',
-    'subscription.cta.alerts': 'Create custom alerts',
     'subscription.cta.tax': 'Access a tax report prepared for filing',
     'subscription.cta.taxExport': 'Access a tax report prepared for filing',
     'subscription.cta.default': 'Unlock Crowdfolio Pro',
@@ -867,19 +851,9 @@ export const translations: Record<Lang, Record<string, string>> = {
     'subscription.import.upgradeDesc': 'With Pro you get unlimited imports from image or PDF with AI',
 
     // Dashboard Free CTA
-    'subscription.dashboard.freeDesc': 'With Pro you can track unlimited investments, create custom alerts and access a tax report prepared for filing.',
+    'subscription.dashboard.freeDesc': 'With Pro you can track unlimited investments and import from image or PDF with AI, plus access a tax report prepared for filing.',
     'subscription.dashboard.ctaBtn': "See what's in Pro",
 
-    // Alerts — section copy
-    'subscription.alerts.simpleTitle': 'Opportunity alerts',
-    'subscription.alerts.criteriaTitle': 'Custom alerts',
-    'subscription.alerts.simpleEmpty': 'Activate an alert from any specific opportunity',
-    'subscription.alerts.criteriaEmpty': 'No custom alerts configured',
-    'subscription.alerts.toggleOn': 'Alert activated',
-    'subscription.alerts.toggleOff': 'Alert deactivated',
-    'subscription.alerts.freeNote': 'Custom alerts are a Pro feature',
-    'subscription.alerts.upgradeDesc': 'Create alerts with your own criteria: platform, return, term and more',
-    'subscription.alerts.upgradeCta': 'Create custom alerts',
     'subscription.billing.title': 'Your Plan',
     'subscription.billing.desc': 'Manage your subscription and billing',
     'subscription.billing.freePlan': 'Free Plan',

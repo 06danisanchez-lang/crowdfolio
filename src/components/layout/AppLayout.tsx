@@ -62,7 +62,6 @@ export function AppLayout({
   const navItems = [
     { id: 'dashboard' as View, label: t('nav.dashboard'), icon: LayoutDashboard },
     { id: 'investments' as View, label: t('nav.investments'), icon: Wallet },
-    { id: 'opportunities' as View, label: t('nav.opportunities'), icon: Search },
     { id: 'platforms' as View, label: t('nav.platforms'), icon: Building2 },
     { id: 'tax' as View, label: t('nav.tax'), icon: Receipt },
   ];
@@ -87,7 +86,7 @@ export function AppLayout({
             <Crown className="h-4 w-4" />
             {isPro ? t('nav.alreadyPro') : t('nav.upgradePro')}
           </Button>
-          <NotificationBell onOpportunitiesClick={() => onViewChange('opportunities')} />
+          <NotificationBell />
           <AlertsPanel 
             alerts={alerts} 
             alertCount={alertCount} 
@@ -138,7 +137,7 @@ export function AppLayout({
               {isPro ? t('nav.alreadyPro') : t('nav.upgradePro')}
             </button>
             <div className="flex items-center gap-2 pt-2">
-              <NotificationBell onOpportunitiesClick={() => onViewChange('opportunities')} />
+              <NotificationBell />
               <AlertsPanel 
                 alerts={alerts} 
                 alertCount={alertCount} 

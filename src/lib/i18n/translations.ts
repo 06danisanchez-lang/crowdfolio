@@ -823,21 +823,19 @@ export const translations: Record<Lang, Record<string, string>> = {
     'subscription.free.f2': 'Manual investment tracking',
     'subscription.free.f3': 'Portfolio and performance overview',
     'subscription.free.f4': 'Import from PDF or image with AI (1/month)',
-    'subscription.free.f5': 'Read-only opportunity browsing',
-    'subscription.free.f6': 'Alerts on specific opportunities',
-    'subscription.free.f7': 'Indicative tax overview',
+    'subscription.free.f5': 'Investment maturity alerts',
+    'subscription.free.f6': 'Indicative tax overview of your portfolio',
 
     // Plan copy — Pro features
     'subscription.pro.f1': 'Unlimited investments',
     'subscription.pro.f2': 'Import from PDF or image — no manual data entry',
-    'subscription.pro.f3': 'Custom alerts based on your criteria',
+    'subscription.pro.f3': 'Detailed tax report by income type',
     'subscription.pro.f4': 'Tax report prepared for filing',
     'subscription.pro.f5': 'Export your tax report in Excel or PDF',
 
     // Contextual CTAs
     'subscription.cta.investments': 'Unlock unlimited investments',
     'subscription.cta.imports': 'Import without limits and save time',
-    'subscription.cta.alerts': 'Create custom alerts',
     'subscription.cta.tax': 'Access a tax report prepared for filing',
     'subscription.cta.taxExport': 'Access a tax report prepared for filing',
     'subscription.cta.default': 'Unlock Crowdfolio Pro',
@@ -853,19 +851,9 @@ export const translations: Record<Lang, Record<string, string>> = {
     'subscription.import.upgradeDesc': 'With Pro you get unlimited imports from image or PDF with AI',
 
     // Dashboard Free CTA
-    'subscription.dashboard.freeDesc': 'With Pro you can track unlimited investments, create custom alerts and access a tax report prepared for filing.',
+    'subscription.dashboard.freeDesc': 'With Pro you can track unlimited investments and import from image or PDF with AI, plus access a tax report prepared for filing.',
     'subscription.dashboard.ctaBtn': "See what's in Pro",
 
-    // Alerts — section copy
-    'subscription.alerts.simpleTitle': 'Opportunity alerts',
-    'subscription.alerts.criteriaTitle': 'Custom alerts',
-    'subscription.alerts.simpleEmpty': 'Activate an alert from any specific opportunity',
-    'subscription.alerts.criteriaEmpty': 'No custom alerts configured',
-    'subscription.alerts.toggleOn': 'Alert activated',
-    'subscription.alerts.toggleOff': 'Alert deactivated',
-    'subscription.alerts.freeNote': 'Custom alerts are a Pro feature',
-    'subscription.alerts.upgradeDesc': 'Create alerts with your own criteria: platform, return, term and more',
-    'subscription.alerts.upgradeCta': 'Create custom alerts',
     'subscription.billing.title': 'Your Plan',
     'subscription.billing.desc': 'Manage your subscription and billing',
     'subscription.billing.freePlan': 'Free Plan',

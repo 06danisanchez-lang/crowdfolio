@@ -378,21 +378,19 @@ export const translations: Record<Lang, Record<string, string>> = {
     'subscription.free.f2': 'Registro manual de inversiones',
     'subscription.free.f3': 'Visualización de cartera y evolución',
     'subscription.free.f4': 'Importa desde PDF o imagen con IA (1 al mes)',
-    'subscription.free.f5': 'Exploración de oportunidades en modo lectura',
-    'subscription.free.f6': 'Alertas sobre oportunidades concretas',
-    'subscription.free.f7': 'Vista fiscal orientativa',
+    'subscription.free.f5': 'Alertas de vencimientos de inversiones',
+    'subscription.free.f6': 'Vista fiscal orientativa de tu cartera',
 
     // Plan copy — Pro features
     'subscription.pro.f1': 'Inversiones ilimitadas',
     'subscription.pro.f2': 'Importa desde PDF o imagen sin introducir los datos a mano',
-    'subscription.pro.f3': 'Alertas personalizadas según tus criterios',
+    'subscription.pro.f3': 'Informe fiscal detallado por tipo de renta',
     'subscription.pro.f4': 'Informe fiscal preparado para declarar',
     'subscription.pro.f5': 'Exporta tu informe fiscal en Excel o PDF',
 
     // Contextual CTAs
     'subscription.cta.investments': 'Desbloquea inversiones ilimitadas',
     'subscription.cta.imports': 'Importa sin límites y ahorra tiempo',
-    'subscription.cta.alerts': 'Crea alertas personalizadas',
     'subscription.cta.tax': 'Accede a un informe fiscal preparado para declarar',
     'subscription.cta.taxExport': 'Accede a un informe fiscal preparado para declarar',
     'subscription.cta.default': 'Desbloquea Crowdfolio Pro',
@@ -408,19 +406,9 @@ export const translations: Record<Lang, Record<string, string>> = {
     'subscription.import.upgradeDesc': 'Con Pro tienes importaciones ilimitadas desde imagen o PDF con IA',
 
     // Dashboard Free CTA
-    'subscription.dashboard.freeDesc': 'Con Pro puedes registrar inversiones sin límite, crear alertas personalizadas y acceder a un informe fiscal preparado para declarar.',
+    'subscription.dashboard.freeDesc': 'Con Pro puedes registrar inversiones sin límite e importar desde imagen o PDF con IA, además de acceder a un informe fiscal preparado para declarar.',
     'subscription.dashboard.ctaBtn': 'Ver qué incluye Pro',
 
-    // Alerts — section copy
-    'subscription.alerts.simpleTitle': 'Alertas sobre oportunidades',
-    'subscription.alerts.criteriaTitle': 'Alertas personalizadas',
-    'subscription.alerts.simpleEmpty': 'Activa una alerta desde cualquier oportunidad concreta',
-    'subscription.alerts.criteriaEmpty': 'Sin alertas personalizadas configuradas',
-    'subscription.alerts.toggleOn': 'Alerta activada',
-    'subscription.alerts.toggleOff': 'Alerta desactivada',
-    'subscription.alerts.freeNote': 'Las alertas personalizadas son una función de Pro',
-    'subscription.alerts.upgradeDesc': 'Crea alertas con tus propios criterios: plataforma, rentabilidad, plazo y más',
-    'subscription.alerts.upgradeCta': 'Crea alertas personalizadas',
     'subscription.billing.title': 'Tu Plan',
     'subscription.billing.desc': 'Gestiona tu suscripción y facturación',
     'subscription.billing.freePlan': 'Plan Gratis',

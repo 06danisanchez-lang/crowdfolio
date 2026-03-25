@@ -39,17 +39,6 @@ export const HELP_CONTENT = {
     projection: 'Estimación de tu resultado fiscal a final de año basada en inversiones activas.',
   },
 
-  // Opportunities
-  opportunities: {
-    scraping: 'Busca automáticamente nuevas oportunidades en las plataformas de crowdfunding.',
-    riskLevel: 'Nivel de riesgo estimado según el tipo de proyecto y garantías ofrecidas.',
-    term: 'Plazo estimado de la inversión en meses.',
-    minInvestment: 'Importe mínimo para participar en el proyecto.',
-    fundingProgress: 'Porcentaje del objetivo de financiación ya cubierto.',
-    expectedReturn: 'Rentabilidad anual esperada anunciada por la plataforma.',
-    projectType: 'Tipo de proyecto: residencial, comercial, suelo, etc.',
-  },
-
   // Assets
   assets: {
     assetType: 'LENDING: Préstamo (recibes intereses). EQUITY: Participación (recibes dividendos y/o plusvalía).',
@@ -60,7 +49,7 @@ export const HELP_CONTENT = {
 
   // General
   general: {
-    notifications: 'Alertas sobre nuevas oportunidades, vencimientos próximos y avisos fiscales.',
+    notifications: 'Alertas sobre vencimientos de inversiones, cambios de estado y avisos fiscales.',
     subscription: 'Plan actual y funcionalidades disponibles.',
   },
 };

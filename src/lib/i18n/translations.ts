@@ -13,7 +13,7 @@ export const translations: Record<Lang, Record<string, string>> = {
     'hero.subheadline': 'Centraliza y controla todas tus inversiones desde un único panel.',
     'hero.bullet1': 'Informe fiscal automático de todas tus inversiones',
     'hero.bullet2': 'Centralización de todas tus plataformas de crowdfunding',
-    'hero.bullet3': 'Acceso a nuevas oportunidades de inversión',
+    'hero.bullet3': 'Prepara tu declaración de la renta con datos reales de tus inversiones',
     'hero.ctaPrimary': 'Crea una cuenta gratis',
     'hero.ctaSecondary': 'Ver precios',
     'hero.trustLine': 'Sin tarjeta de crédito · Configura en 2 minutos · Cancela cuando quieras',
@@ -41,7 +41,7 @@ export const translations: Record<Lang, Record<string, string>> = {
     'features.f4.title': 'Análisis de Rentabilidad',
     'features.f4.desc': 'Calcula TIR, rendimiento anualizado y proyecciones de retorno para cada inversión.',
     'features.f5.title': 'Alertas de Vencimientos',
-    'features.f5.desc': 'Recibe notificaciones sobre vencimientos, nuevas oportunidades y cambios en tus inversiones.',
+    'features.f5.desc': 'Recibe notificaciones sobre vencimientos y cambios en el estado de tus inversiones.',
     'features.f6.title': 'Datos Seguros',
     'features.f6.desc': 'Tu información está protegida con cifrado de nivel bancario y backups automáticos.',
 
@@ -88,7 +88,6 @@ export const translations: Record<Lang, Record<string, string>> = {
     // Nav (app interior)
     'nav.dashboard': 'Inicio',
     'nav.investments': 'Inversiones',
-    'nav.opportunities': 'Oportunidades',
     'nav.platforms': 'Plataformas',
     'nav.tax': 'Fiscalidad',
     'nav.admin': 'Administración',

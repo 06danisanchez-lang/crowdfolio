@@ -39,7 +39,6 @@ export function UpgradeModal({ open, onOpenChange, feature = 'default' }: Upgrad
     export_irpf: t('subscription.cta.taxExport'),
     unlimited_investments: t('subscription.cta.investments'),
     unlimited_imports: t('subscription.cta.imports'),
-    alerts: t('subscription.cta.alerts'),
     tax: t('subscription.cta.tax'),
     default: t('subscription.cta.default'),
   };

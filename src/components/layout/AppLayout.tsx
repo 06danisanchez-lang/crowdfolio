@@ -4,7 +4,6 @@ import {
   LayoutDashboard, 
   Wallet, 
   Menu,
-  Search,
   Receipt,
   Shield,
   Building2,

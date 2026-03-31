@@ -164,7 +164,6 @@ export default function AdminUserDetailSheet({ user, open, onOpenChange, onUserD
                     </div>
                   </TableCell>
                   <TableCell className="font-medium">{formatCurrency(inv.amount)}</TableCell>
-                  <TableCell><AssetTypeBadge type={inv.assetType} /></TableCell>
                   <TableCell><StatusBadge status={inv.status} /></TableCell>
                 </TableRow>
               ))}

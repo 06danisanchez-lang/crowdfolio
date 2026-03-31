@@ -37,15 +37,6 @@ function formatCurrency(value: number) {
   return new Intl.NumberFormat('es-ES', { style: 'currency', currency: 'EUR' }).format(value);
 }
 
-function AssetTypeBadge({ type }: { type: 'LENDING' | 'EQUITY' | null }) {
-  if (type === 'LENDING') {
-    return <Badge variant="outline" className="border-blue-500/30 text-blue-600">Lending</Badge>;
-  }
-  if (type === 'EQUITY') {
-    return <Badge variant="outline" className="border-purple-500/30 text-purple-600">Equity</Badge>;
-  }
-  return <Badge variant="secondary">Legacy</Badge>;
-}
 
 function StatusBadge({ status }: { status: string }) {
   const isActive = status === 'active';
@@ -151,7 +142,6 @@ export default function AdminUserDetailSheet({ user, open, onOpenChange, onUserD
               <TableRow>
                 <TableHead>Proyecto</TableHead>
                 <TableHead>Monto</TableHead>
-                <TableHead>Tipo</TableHead>
                 <TableHead>Estado</TableHead>
               </TableRow>
             </TableHeader>
@@ -165,7 +155,6 @@ export default function AdminUserDetailSheet({ user, open, onOpenChange, onUserD
                     </div>
                   </TableCell>
                   <TableCell className="font-medium">{formatCurrency(inv.amount)}</TableCell>
-                  <TableCell><AssetTypeBadge type={inv.assetType} /></TableCell>
                   <TableCell><StatusBadge status={inv.status} /></TableCell>
                 </TableRow>
               ))}
@@ -192,7 +181,7 @@ export default function AdminUserDetailSheet({ user, open, onOpenChange, onUserD
               <AlertDialogTitle>¿Eliminar este usuario?</AlertDialogTitle>
               <AlertDialogDescription>
                 Vas a eliminar a <strong>{user.email || user.fullName}</strong> y todos sus datos
-                (inversiones, activos, transacciones, perfil, suscripción…).
+                (inversiones, perfil, suscripción…).
                 <br /><br />
                 <strong>Esta acción es irreversible.</strong>
               </AlertDialogDescription>

@@ -39,14 +39,6 @@ export const HELP_CONTENT = {
     projection: 'Estimación de tu resultado fiscal a final de año basada en inversiones activas.',
   },
 
-  // Assets
-  assets: {
-    assetType: 'LENDING: Préstamo (recibes intereses). EQUITY: Participación (recibes dividendos y/o plusvalía).',
-    countryCode: 'País donde está ubicado el proyecto. Afecta al tratamiento fiscal.',
-    acquisitionCost: 'Coste total de adquisición incluyendo comisiones de entrada.',
-    transactions: 'Registro de todos los movimientos: intereses, dividendos, ventas o pérdidas.',
-  },
-
   // General
   general: {
     notifications: 'Alertas sobre vencimientos de inversiones, cambios de estado y avisos fiscales.',

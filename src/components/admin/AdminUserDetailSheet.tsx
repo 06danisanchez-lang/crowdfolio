@@ -151,7 +151,6 @@ export default function AdminUserDetailSheet({ user, open, onOpenChange, onUserD
               <TableRow>
                 <TableHead>Proyecto</TableHead>
                 <TableHead>Monto</TableHead>
-                <TableHead>Tipo</TableHead>
                 <TableHead>Estado</TableHead>
               </TableRow>
             </TableHeader>

@@ -37,15 +37,6 @@ function formatCurrency(value: number) {
   return new Intl.NumberFormat('es-ES', { style: 'currency', currency: 'EUR' }).format(value);
 }
 
-function AssetTypeBadge({ type }: { type: 'LENDING' | 'EQUITY' | null }) {
-  if (type === 'LENDING') {
-    return <Badge variant="outline" className="border-blue-500/30 text-blue-600">Lending</Badge>;
-  }
-  if (type === 'EQUITY') {
-    return <Badge variant="outline" className="border-purple-500/30 text-purple-600">Equity</Badge>;
-  }
-  return <Badge variant="secondary">Legacy</Badge>;
-}
 
 function StatusBadge({ status }: { status: string }) {
   const isActive = status === 'active';

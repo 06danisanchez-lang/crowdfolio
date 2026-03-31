@@ -162,7 +162,7 @@ export function TaxDashboard({ isPro = false, onProRequired }: TaxDashboardProps
         </TabsContent>
 
         <TabsContent value="buckets" className="space-y-4">
-          {/* TODO: Integrate with useTaxCalculation hook when ready */}
+          
           <TaxBucketsCard taxResult={null} />
           <CompensationBreakdown taxResult={null} />
         </TabsContent>

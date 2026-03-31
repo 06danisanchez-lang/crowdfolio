@@ -1,4 +1,3 @@
-import { TaxCalculationResult } from '@/types/taxCalculation';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Progress } from '@/components/ui/progress';
 import { ArrowDown, ArrowUp, Info, AlertTriangle, CheckCircle2 } from 'lucide-react';
@@ -6,7 +5,7 @@ import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/comp
 import { cn } from '@/lib/utils';
 
 interface CompensationBreakdownProps {
-  taxResult: TaxCalculationResult | null;
+  taxResult: null;
 }
 
 export function CompensationBreakdown({ taxResult }: CompensationBreakdownProps) {

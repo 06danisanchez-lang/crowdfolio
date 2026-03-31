@@ -190,7 +190,7 @@ export default function AdminUserDetailSheet({ user, open, onOpenChange, onUserD
               <AlertDialogTitle>¿Eliminar este usuario?</AlertDialogTitle>
               <AlertDialogDescription>
                 Vas a eliminar a <strong>{user.email || user.fullName}</strong> y todos sus datos
-                (inversiones, activos, transacciones, perfil, suscripción…).
+                (inversiones, perfil, suscripción…).
                 <br /><br />
                 <strong>Esta acción es irreversible.</strong>
               </AlertDialogDescription>

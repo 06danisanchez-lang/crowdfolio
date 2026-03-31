@@ -1,4 +1,3 @@
-import { TaxCalculationResult } from '@/types/taxCalculation';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Progress } from '@/components/ui/progress';
@@ -7,7 +6,7 @@ import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/comp
 import { cn } from '@/lib/utils';
 
 interface TaxBucketsCardProps {
-  taxResult: TaxCalculationResult | null;
+  taxResult: null;
 }
 
 export function TaxBucketsCard({ taxResult }: TaxBucketsCardProps) {

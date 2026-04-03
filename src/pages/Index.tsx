@@ -15,7 +15,7 @@ import { UpcomingMaturityList } from '@/components/dashboard/UpcomingMaturityLis
 import { InvestmentList } from '@/components/investments/InvestmentList';
 import { InvestmentForm } from '@/components/investments/InvestmentForm';
 import { ImportExport } from '@/components/investments/ImportExport';
-import { PlatformList } from '@/components/platforms/PlatformList';
+
 import { TaxDashboard } from '@/components/tax/TaxDashboard';
 import { ShareableCard } from '@/components/dashboard/ShareableCard';
 import { ShareSuccessButton } from '@/components/dashboard/ShareSuccessButton';
@@ -166,16 +166,6 @@ const Index = () => {
               </div>
             </div>
             <InvestmentList investments={investments} onUpdate={updateInvestment} onDelete={deleteInvestment} onAddPayment={addPayment} onDeletePayment={deletePayment} />
-          </div>
-        );
-      case 'platforms':
-        return (
-          <div className="p-6 lg:p-8">
-            <div className="mb-8">
-              <h1 className="text-3xl font-bold">{t('platforms.title')}</h1>
-              <p className="text-muted-foreground">{t('platforms.subtitle')}</p>
-            </div>
-            <PlatformList />
           </div>
         );
       case 'tax':

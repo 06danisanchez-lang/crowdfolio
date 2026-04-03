@@ -6,7 +6,6 @@ import {
   Menu,
   Receipt,
   Shield,
-  Building2,
   Crown
 } from 'lucide-react';
 import { useNavigate, Link } from 'react-router-dom';
@@ -62,7 +61,6 @@ export function AppLayout({
   const navItems = [
     { id: 'dashboard' as View, label: t('nav.dashboard'), icon: LayoutDashboard },
     { id: 'investments' as View, label: t('nav.investments'), icon: Wallet },
-    { id: 'platforms' as View, label: t('nav.platforms'), icon: Building2 },
     { id: 'tax' as View, label: t('nav.tax'), icon: Receipt },
   ];
 

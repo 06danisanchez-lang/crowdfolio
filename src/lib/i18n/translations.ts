@@ -88,7 +88,7 @@ export const translations: Record<Lang, Record<string, string>> = {
     // Nav (app interior)
     'nav.dashboard': 'Inicio',
     'nav.investments': 'Inversiones',
-    'nav.platforms': 'Plataformas',
+    
     'nav.tax': 'Fiscalidad',
     'nav.admin': 'Administración',
     'nav.upgradePro': 'Hazte Pro',
@@ -234,31 +234,6 @@ export const translations: Record<Lang, Record<string, string>> = {
 
 
 
-    // Platforms
-    'platforms.title': 'Mis Plataformas',
-    'platforms.subtitle': 'Plataformas de crowdfunding donde estás registrado',
-    'platforms.addBtn': 'Añadir Plataforma',
-    'platforms.empty.title': 'No tienes plataformas registradas',
-    'platforms.empty.desc': 'Añade las plataformas de crowdfunding donde estás dado de alta',
-    'platforms.empty.btn': 'Añadir Primera Plataforma',
-    'platforms.deleteConfirm': '¿Eliminar plataforma?',
-    'platforms.deleteDesc': 'Esta acción no se puede deshacer. La plataforma será eliminada de tu repositorio.',
-    'platforms.form.title.new': 'Añadir Plataforma',
-    'platforms.form.title.edit': 'Editar Plataforma',
-    'platforms.form.name': 'Nombre *',
-    'platforms.form.country': 'País',
-    'platforms.form.type': 'Tipo',
-    'platforms.form.website': 'Website',
-    'platforms.form.regDate': 'Fecha de registro',
-    'platforms.form.status': 'Estado',
-    'platforms.form.username': 'Usuario (opcional)',
-    'platforms.form.username.placeholder': 'Tu nombre de usuario',
-    'platforms.form.withholding': 'Retención por defecto (%)',
-    'platforms.form.notes': 'Notas',
-    'platforms.form.notes.placeholder': 'Notas sobre esta plataforma...',
-    'platforms.form.saving': 'Guardando...',
-    'platforms.form.save.new': 'Añadir Plataforma',
-    'platforms.form.save.edit': 'Guardar Cambios',
 
     // Tax
     'tax.title': 'Fiscalidad',
@@ -474,7 +449,7 @@ export const translations: Record<Lang, Record<string, string>> = {
     // Nav (app interior)
     'nav.dashboard': 'Home',
     'nav.investments': 'Investments',
-    'nav.platforms': 'Platforms',
+    
     'nav.tax': 'Tax',
     'nav.admin': 'Administration',
     'nav.upgradePro': 'Go Pro',
@@ -620,31 +595,6 @@ export const translations: Record<Lang, Record<string, string>> = {
 
 
 
-    // Platforms
-    'platforms.title': 'My Platforms',
-    'platforms.subtitle': 'Crowdfunding platforms where you are registered',
-    'platforms.addBtn': 'Add Platform',
-    'platforms.empty.title': 'No platforms registered',
-    'platforms.empty.desc': 'Add the crowdfunding platforms where you are registered',
-    'platforms.empty.btn': 'Add First Platform',
-    'platforms.deleteConfirm': 'Delete platform?',
-    'platforms.deleteDesc': 'This action cannot be undone. The platform will be removed from your repository.',
-    'platforms.form.title.new': 'Add Platform',
-    'platforms.form.title.edit': 'Edit Platform',
-    'platforms.form.name': 'Name *',
-    'platforms.form.country': 'Country',
-    'platforms.form.type': 'Type',
-    'platforms.form.website': 'Website',
-    'platforms.form.regDate': 'Registration date',
-    'platforms.form.status': 'Status',
-    'platforms.form.username': 'Username (optional)',
-    'platforms.form.username.placeholder': 'Your username',
-    'platforms.form.withholding': 'Default withholding (%)',
-    'platforms.form.notes': 'Notes',
-    'platforms.form.notes.placeholder': 'Notes about this platform...',
-    'platforms.form.saving': 'Saving...',
-    'platforms.form.save.new': 'Add Platform',
-    'platforms.form.save.edit': 'Save Changes',
 
     // Tax
     'tax.title': 'Tax',

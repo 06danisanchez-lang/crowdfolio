@@ -449,7 +449,7 @@ export const translations: Record<Lang, Record<string, string>> = {
     // Nav (app interior)
     'nav.dashboard': 'Home',
     'nav.investments': 'Investments',
-    'nav.platforms': 'Platforms',
+    
     'nav.tax': 'Tax',
     'nav.admin': 'Administration',
     'nav.upgradePro': 'Go Pro',

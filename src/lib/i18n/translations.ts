@@ -407,14 +407,14 @@ export const translations: Record<Lang, Record<string, string>> = {
     'features.f6.desc': 'Your information is protected with bank-level encryption and automatic backups.',
 
     // How it works
-    'how.sectionBadge': 'How it works',
-    'how.sectionTitle': 'Get started in 3 simple steps',
-    'how.step1.title': 'Create your account',
-    'how.step1.desc': 'Sign up for free in less than 1 minute.',
-    'how.step2.title': 'Add investments',
-    'how.step2.desc': 'Import or manually record your projects.',
-    'how.step3.title': 'Analyze and optimize',
-    'how.step3.desc': 'Visualize returns and make better decisions.',
+    'how.sectionBadge': 'What Crowdfolio offers',
+    'how.sectionTitle': 'Control your investments and tax reporting from one place',
+    'how.step1.title': 'Centralize your investments',
+    'how.step1.desc': 'Bring all your crowdfunding investments into a single dashboard, even if you use multiple platforms.',
+    'how.step2.title': 'Visualize your portfolio',
+    'how.step2.desc': 'Check your portfolio\'s overall status with aggregated data on performance, allocation and maturities.',
+    'how.step3.title': 'Unified tax report',
+    'how.step3.desc': 'Get a single tax report that consolidates information from all your investments and makes tax filing easier.',
 
     // CTA
     'cta.headline': 'Ready to take control of your investments?',

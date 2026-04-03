@@ -15,7 +15,7 @@ import { UpcomingMaturityList } from '@/components/dashboard/UpcomingMaturityLis
 import { InvestmentList } from '@/components/investments/InvestmentList';
 import { InvestmentForm } from '@/components/investments/InvestmentForm';
 import { ImportExport } from '@/components/investments/ImportExport';
-import { PlatformList } from '@/components/platforms/PlatformList';
+
 import { TaxDashboard } from '@/components/tax/TaxDashboard';
 import { ShareableCard } from '@/components/dashboard/ShareableCard';
 import { ShareSuccessButton } from '@/components/dashboard/ShareSuccessButton';

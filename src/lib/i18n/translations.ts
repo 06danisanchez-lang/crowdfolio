@@ -595,31 +595,6 @@ export const translations: Record<Lang, Record<string, string>> = {
 
 
 
-    // Platforms
-    'platforms.title': 'My Platforms',
-    'platforms.subtitle': 'Crowdfunding platforms where you are registered',
-    'platforms.addBtn': 'Add Platform',
-    'platforms.empty.title': 'No platforms registered',
-    'platforms.empty.desc': 'Add the crowdfunding platforms where you are registered',
-    'platforms.empty.btn': 'Add First Platform',
-    'platforms.deleteConfirm': 'Delete platform?',
-    'platforms.deleteDesc': 'This action cannot be undone. The platform will be removed from your repository.',
-    'platforms.form.title.new': 'Add Platform',
-    'platforms.form.title.edit': 'Edit Platform',
-    'platforms.form.name': 'Name *',
-    'platforms.form.country': 'Country',
-    'platforms.form.type': 'Type',
-    'platforms.form.website': 'Website',
-    'platforms.form.regDate': 'Registration date',
-    'platforms.form.status': 'Status',
-    'platforms.form.username': 'Username (optional)',
-    'platforms.form.username.placeholder': 'Your username',
-    'platforms.form.withholding': 'Default withholding (%)',
-    'platforms.form.notes': 'Notes',
-    'platforms.form.notes.placeholder': 'Notes about this platform...',
-    'platforms.form.saving': 'Saving...',
-    'platforms.form.save.new': 'Add Platform',
-    'platforms.form.save.edit': 'Save Changes',
 
     // Tax
     'tax.title': 'Tax',

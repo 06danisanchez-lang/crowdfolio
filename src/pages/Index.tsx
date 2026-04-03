@@ -168,16 +168,6 @@ const Index = () => {
             <InvestmentList investments={investments} onUpdate={updateInvestment} onDelete={deleteInvestment} onAddPayment={addPayment} onDeletePayment={deletePayment} />
           </div>
         );
-      case 'platforms':
-        return (
-          <div className="p-6 lg:p-8">
-            <div className="mb-8">
-              <h1 className="text-3xl font-bold">{t('platforms.title')}</h1>
-              <p className="text-muted-foreground">{t('platforms.subtitle')}</p>
-            </div>
-            <PlatformList />
-          </div>
-        );
       case 'tax':
         return (
           <div className="p-6 lg:p-8">

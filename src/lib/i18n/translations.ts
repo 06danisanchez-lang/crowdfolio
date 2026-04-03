@@ -46,14 +46,14 @@ export const translations: Record<Lang, Record<string, string>> = {
     'features.f6.desc': 'Tu información está protegida con cifrado de nivel bancario y backups automáticos.',
 
     // How it works
-    'how.sectionBadge': 'Cómo funciona',
-    'how.sectionTitle': 'Empieza en 3 simples pasos',
-    'how.step1.title': 'Crea tu cuenta',
-    'how.step1.desc': 'Regístrate gratis en menos de 1 minuto.',
-    'how.step2.title': 'Añade inversiones',
-    'how.step2.desc': 'Importa o registra manualmente tus proyectos.',
-    'how.step3.title': 'Analiza y optimiza',
-    'how.step3.desc': 'Visualiza rendimientos y toma mejores decisiones.',
+    'how.sectionBadge': 'Qué te ofrece Crowdfolio',
+    'how.sectionTitle': 'Controla tus inversiones y su fiscalidad desde un solo lugar',
+    'how.step1.title': 'Centraliza tus inversiones',
+    'how.step1.desc': 'Reúne todas tus inversiones de crowdfunding en un único panel, aunque operes en varias plataformas.',
+    'how.step2.title': 'Visualiza tu cartera',
+    'how.step2.desc': 'Consulta el estado global de tu cartera con datos agregados sobre rendimiento, distribución y vencimientos.',
+    'how.step3.title': 'Informe fiscal unificado',
+    'how.step3.desc': 'Obtén un único informe fiscal que consolida la información de todas tus inversiones y te facilita la declaración.',
 
     // CTA
     'cta.headline': '¿Listo para tomar el control de tus inversiones?',
@@ -407,14 +407,14 @@ export const translations: Record<Lang, Record<string, string>> = {
     'features.f6.desc': 'Your information is protected with bank-level encryption and automatic backups.',
 
     // How it works
-    'how.sectionBadge': 'How it works',
-    'how.sectionTitle': 'Get started in 3 simple steps',
-    'how.step1.title': 'Create your account',
-    'how.step1.desc': 'Sign up for free in less than 1 minute.',
-    'how.step2.title': 'Add investments',
-    'how.step2.desc': 'Import or manually record your projects.',
-    'how.step3.title': 'Analyze and optimize',
-    'how.step3.desc': 'Visualize returns and make better decisions.',
+    'how.sectionBadge': 'What Crowdfolio offers',
+    'how.sectionTitle': 'Control your investments and tax reporting from one place',
+    'how.step1.title': 'Centralize your investments',
+    'how.step1.desc': 'Bring all your crowdfunding investments into a single dashboard, even if you use multiple platforms.',
+    'how.step2.title': 'Visualize your portfolio',
+    'how.step2.desc': 'Check your portfolio\'s overall status with aggregated data on performance, allocation and maturities.',
+    'how.step3.title': 'Unified tax report',
+    'how.step3.desc': 'Get a single tax report that consolidates information from all your investments and makes tax filing easier.',
 
     // CTA
     'cta.headline': 'Ready to take control of your investments?',

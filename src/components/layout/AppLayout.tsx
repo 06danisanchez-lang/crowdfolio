@@ -6,7 +6,6 @@ import {
   Menu,
   Receipt,
   Shield,
-  Building2,
   Crown
 } from 'lucide-react';
 import { useNavigate, Link } from 'react-router-dom';

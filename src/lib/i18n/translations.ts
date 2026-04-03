@@ -234,31 +234,6 @@ export const translations: Record<Lang, Record<string, string>> = {
 
 
 
-    // Platforms
-    'platforms.title': 'Mis Plataformas',
-    'platforms.subtitle': 'Plataformas de crowdfunding donde estás registrado',
-    'platforms.addBtn': 'Añadir Plataforma',
-    'platforms.empty.title': 'No tienes plataformas registradas',
-    'platforms.empty.desc': 'Añade las plataformas de crowdfunding donde estás dado de alta',
-    'platforms.empty.btn': 'Añadir Primera Plataforma',
-    'platforms.deleteConfirm': '¿Eliminar plataforma?',
-    'platforms.deleteDesc': 'Esta acción no se puede deshacer. La plataforma será eliminada de tu repositorio.',
-    'platforms.form.title.new': 'Añadir Plataforma',
-    'platforms.form.title.edit': 'Editar Plataforma',
-    'platforms.form.name': 'Nombre *',
-    'platforms.form.country': 'País',
-    'platforms.form.type': 'Tipo',
-    'platforms.form.website': 'Website',
-    'platforms.form.regDate': 'Fecha de registro',
-    'platforms.form.status': 'Estado',
-    'platforms.form.username': 'Usuario (opcional)',
-    'platforms.form.username.placeholder': 'Tu nombre de usuario',
-    'platforms.form.withholding': 'Retención por defecto (%)',
-    'platforms.form.notes': 'Notas',
-    'platforms.form.notes.placeholder': 'Notas sobre esta plataforma...',
-    'platforms.form.saving': 'Guardando...',
-    'platforms.form.save.new': 'Añadir Plataforma',
-    'platforms.form.save.edit': 'Guardar Cambios',
 
     // Tax
     'tax.title': 'Fiscalidad',

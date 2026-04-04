@@ -1,32 +1,37 @@
 
 
-## Actualización de copy de los 3 pilares
+## Actualización del HERO — claves `hero.*` en translations.ts
 
 **Archivo único a editar:** `src/lib/i18n/translations.ts`
 
-### 16 claves a modificar
+### 12 claves a modificar (5 ES + 7 EN)
 
-**ES (8 claves):**
-1. `how.sectionBadge` → `Qué te ofrece Crowdfolio`
-2. `how.sectionTitle` → `Controla tus inversiones y su fiscalidad desde un solo lugar`
-3. `how.step1.title` → `Centraliza tus inversiones`
-4. `how.step1.desc` → `Reúne todas tus inversiones de crowdfunding en un único panel, aunque operes en varias plataformas.`
-5. `how.step2.title` → `Visualiza tu cartera`
-6. `how.step2.desc` → `Consulta el estado global de tu cartera con datos agregados sobre rendimiento, distribución y vencimientos.`
-7. `how.step3.title` → `Informe fiscal unificado`
-8. `how.step3.desc` → `Obtén un único informe fiscal que consolida la información de todas tus inversiones y te facilita la declaración.`
+**ES (5 claves que cambian de valor):**
 
-**EN (8 claves):**
-9. `how.sectionBadge` → `What Crowdfolio offers`
-10. `how.sectionTitle` → `Control your investments and tax reporting from one place`
-11. `how.step1.title` → `Centralize your investments`
-12. `how.step1.desc` → `Bring all your crowdfunding investments into a single dashboard, even if you use multiple platforms.`
-13. `how.step2.title` → `Visualize your portfolio`
-14. `how.step2.desc` → `Check your portfolio's overall status with aggregated data on performance, allocation and maturities.`
-15. `how.step3.title` → `Unified tax report`
-16. `how.step3.desc` → `Get a single tax report that consolidates information from all your investments and makes tax filing easier.`
+| Clave | Antes | Después |
+|---|---|---|
+| `hero.badge` | Gestión inteligente de inversiones | Control total de tus inversiones |
+| `hero.subheadline` | Centraliza y controla todas tus inversiones desde un único panel. | Centraliza tus inversiones, visualiza tu cartera y obtén un informe fiscal unificado desde un único panel. |
+| `hero.bullet1` | Informe fiscal automático de todas tus inversiones | Centraliza tus inversiones en un único panel |
+| `hero.bullet2` | Centralización de todas tus plataformas de crowdfunding | Visualiza tu cartera con una visión global y clara |
+| `hero.bullet3` | Prepara tu declaración de la renta con datos reales de tus inversiones | Obtén un informe fiscal unificado de todas tus inversiones |
+
+(`hero.headline1` y `hero.headline2` en ES no cambian.)
+
+**EN (7 claves que cambian de valor):**
+
+| Clave | Antes | Después |
+|---|---|---|
+| `hero.badge` | Smart investment management | Full control of your investments |
+| `hero.headline1` | Your entire | Your entire crowdfunding portfolio |
+| `hero.headline2` | portfolio in one place. | in one place. |
+| `hero.subheadline` | Centralize and control all your investments from a single dashboard. | Centralize your investments, visualize your portfolio, and get a unified tax report from a single dashboard. |
+| `hero.bullet1` | Automatic tax report for all your investments | Centralize your investments in a single dashboard |
+| `hero.bullet2` | Centralize all your crowdfunding platforms | Visualize your portfolio with a clear overall view |
+| `hero.bullet3` | Prepare your tax return with real data from your investments | Get a unified tax report for all your investments |
 
 ### No se toca
+- `HeroSection.tsx`
 - `HowItWorks.tsx`
 - Ningún otro archivo, bloque ni clave
 

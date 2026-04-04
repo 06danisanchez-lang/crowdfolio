@@ -7,13 +7,13 @@ export const translations: Record<Lang, Record<string, string>> = {
     'header.getStarted': 'Empezar Gratis',
 
     // Hero
-    'hero.badge': 'Gestión inteligente de inversiones',
+    'hero.badge': 'Control total de tus inversiones',
     'hero.headline1': 'Toda tu cartera de',
     'hero.headline2': 'en un solo lugar.',
-    'hero.subheadline': 'Centraliza y controla todas tus inversiones desde un único panel.',
-    'hero.bullet1': 'Informe fiscal automático de todas tus inversiones',
-    'hero.bullet2': 'Centralización de todas tus plataformas de crowdfunding',
-    'hero.bullet3': 'Prepara tu declaración de la renta con datos reales de tus inversiones',
+    'hero.subheadline': 'Centraliza tus inversiones, visualiza tu cartera y obtén un informe fiscal unificado desde un único panel.',
+    'hero.bullet1': 'Centraliza tus inversiones en un único panel',
+    'hero.bullet2': 'Visualiza tu cartera con una visión global y clara',
+    'hero.bullet3': 'Obtén un informe fiscal unificado de todas tus inversiones',
     'hero.ctaPrimary': 'Crea una cuenta gratis',
     'hero.ctaSecondary': 'Ver precios',
     'hero.trustLine': 'Sin tarjeta de crédito · Configura en 2 minutos · Cancela cuando quieras',

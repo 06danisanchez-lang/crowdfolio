@@ -6,7 +6,8 @@ import {
   Menu,
   Receipt,
   Shield,
-  Crown
+  Crown,
+  CalendarPlus
 } from 'lucide-react';
 import { useNavigate, Link } from 'react-router-dom';
 import { LEGAL_ROUTES } from '@/lib/legal/routes';
@@ -61,6 +62,7 @@ export function AppLayout({
   const navItems = [
     { id: 'dashboard' as View, label: t('nav.dashboard'), icon: LayoutDashboard },
     { id: 'investments' as View, label: t('nav.investments'), icon: Wallet },
+    { id: 'future-investments' as View, label: t('nav.futureInvestments'), icon: CalendarPlus },
     { id: 'tax' as View, label: t('nav.tax'), icon: Receipt },
   ];
 

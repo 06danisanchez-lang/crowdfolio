@@ -17,6 +17,7 @@ import { InvestmentForm } from '@/components/investments/InvestmentForm';
 import { ImportExport } from '@/components/investments/ImportExport';
 
 import { TaxDashboard } from '@/components/tax/TaxDashboard';
+import { FutureInvestmentList } from '@/components/future-investments/FutureInvestmentList';
 import { ShareableCard } from '@/components/dashboard/ShareableCard';
 import { ShareSuccessButton } from '@/components/dashboard/ShareSuccessButton';
 import { BillingSettings } from '@/components/subscription/BillingSettings';
@@ -166,6 +167,16 @@ const Index = () => {
               </div>
             </div>
             <InvestmentList investments={investments} onUpdate={updateInvestment} onDelete={deleteInvestment} onAddPayment={addPayment} onDeletePayment={deletePayment} />
+          </div>
+        );
+      case 'future-investments':
+        return (
+          <div className="p-6 lg:p-8">
+            <div className="mb-8">
+              <h1 className="text-3xl font-bold">{t('future.title')}</h1>
+              <p className="text-muted-foreground">{t('future.subtitle')}</p>
+            </div>
+            <FutureInvestmentList />
           </div>
         );
       case 'tax':

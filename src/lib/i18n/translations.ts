@@ -88,7 +88,7 @@ export const translations: Record<Lang, Record<string, string>> = {
     // Nav (app interior)
     'nav.dashboard': 'Inicio',
     'nav.investments': 'Inversiones',
-    
+    'nav.futureInvestments': 'Inversiones futuras',
     'nav.tax': 'Fiscalidad',
     'nav.admin': 'Administración',
     'nav.upgradePro': 'Hazte Pro',
@@ -361,6 +361,33 @@ export const translations: Record<Lang, Record<string, string>> = {
     'admin.title': 'Panel de Administración',
     'admin.subtitle': 'Visualiza las inversiones de todos los usuarios',
 
+    // Future Investments
+    'future.title': 'Inversiones futuras',
+    'future.subtitle': 'Inversiones que planeas realizar próximamente',
+    'future.addBtn': 'Nueva inversión futura',
+    'future.emptyTitle': 'Sin inversiones futuras',
+    'future.emptyDesc': 'Guarda aquí las inversiones que quieras seguir de cerca antes de invertir.',
+    'future.convertBtn': 'Inversión realizada',
+    'future.deleteConfirm': '¿Eliminar inversión futura?',
+    'future.deleteDesc': 'Se eliminará esta inversión futura permanentemente.',
+    'future.viewSource': 'Ver oportunidad',
+    'future.estimated': 'estimados',
+    'future.annualReturn': 'rentabilidad anual',
+    'future.noDate': 'Sin fecha',
+    'future.alreadyOpen': 'Ya abierta',
+    'future.opensToday': 'Abre hoy',
+    'future.opensTomorrow': 'Abre mañana',
+    'future.opensIn': 'Abre en',
+    'future.days': 'días',
+    'future.weeks': 'semanas',
+    'future.months': 'meses',
+    'future.form.title': 'Nueva inversión futura',
+    'future.form.estimatedAmount': 'Importe previsto (€)',
+    'future.form.estimatedReturn': 'Rentabilidad estimada (%)',
+    'future.form.openDate': 'Fecha prevista de apertura',
+    'future.form.sourceUrl': 'Enlace de la oportunidad',
+    'future.form.save': 'Guardar inversión futura',
+
   },
   en: {
     // Header / Landing nav
@@ -449,7 +476,7 @@ export const translations: Record<Lang, Record<string, string>> = {
     // Nav (app interior)
     'nav.dashboard': 'Home',
     'nav.investments': 'Investments',
-    
+    'nav.futureInvestments': 'Future investments',
     'nav.tax': 'Tax',
     'nav.admin': 'Administration',
     'nav.upgradePro': 'Go Pro',
@@ -721,6 +748,33 @@ export const translations: Record<Lang, Record<string, string>> = {
     // Admin
     'admin.title': 'Administration Panel',
     'admin.subtitle': 'View investments from all users',
+
+    // Future Investments
+    'future.title': 'Future investments',
+    'future.subtitle': 'Investments you plan to make soon',
+    'future.addBtn': 'New future investment',
+    'future.emptyTitle': 'No future investments',
+    'future.emptyDesc': 'Save here the investments you want to track before investing.',
+    'future.convertBtn': 'Mark as invested',
+    'future.deleteConfirm': 'Delete future investment?',
+    'future.deleteDesc': 'This future investment will be permanently deleted.',
+    'future.viewSource': 'View opportunity',
+    'future.estimated': 'estimated',
+    'future.annualReturn': 'annual return',
+    'future.noDate': 'No date',
+    'future.alreadyOpen': 'Already open',
+    'future.opensToday': 'Opens today',
+    'future.opensTomorrow': 'Opens tomorrow',
+    'future.opensIn': 'Opens in',
+    'future.days': 'days',
+    'future.weeks': 'weeks',
+    'future.months': 'months',
+    'future.form.title': 'New future investment',
+    'future.form.estimatedAmount': 'Estimated amount (€)',
+    'future.form.estimatedReturn': 'Estimated return (%)',
+    'future.form.openDate': 'Expected opening date',
+    'future.form.sourceUrl': 'Opportunity link',
+    'future.form.save': 'Save future investment',
 
   },
 };

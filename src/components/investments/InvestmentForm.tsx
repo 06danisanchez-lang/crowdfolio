@@ -54,19 +54,36 @@ const investmentSchema = z.object({
   expectedReturn: z.number().min(0, 'El rendimiento debe ser mayor o igual a 0'),
   status: z.enum(['active', 'pending', 'completed', 'defaulted'] as const),
   notes: z.string().optional(),
+  sourceUrl: z.string().optional(),
+});
+
+const futureInvestmentSchema = z.object({
+  platform: z.enum(['urbanitae', 'housers', 'estateguru', 'crowdcube', 'brickstarter', 'wecity', 'other'] as const),
+  customPlatformName: z.string().optional(),
+  projectName: z.string().min(1, 'El nombre del proyecto es requerido'),
+  amount: z.number().nullable().optional(),
+  investmentDate: z.date().optional(),
+  expectedEndDate: z.date().optional(),
+  expectedReturn: z.number().nullable().optional(),
+  status: z.enum(['active', 'pending', 'completed', 'defaulted'] as const).optional(),
+  notes: z.string().optional(),
+  sourceUrl: z.string().optional(),
 });
 
 type InvestmentFormData = z.infer<typeof investmentSchema>;
 
 type EntryMode = 'select' | 'image' | 'manual';
 
+export type InvestmentFormMode = 'real' | 'future';
+
 interface InvestmentFormProps {
-  onSubmit: (data: Omit<Investment, 'id' | 'createdAt' | 'updatedAt' | 'payments'>) => void;
+  onSubmit: (data: any) => void;
   initialData?: Investment;
   trigger?: React.ReactNode;
   investmentCount?: number;
   isPro?: boolean;
   onProRequired?: () => void;
+  mode?: InvestmentFormMode;
 }
 
 export function InvestmentForm({ 
@@ -75,26 +92,27 @@ export function InvestmentForm({
   trigger,
   investmentCount = 0,
   isPro = true,
-  onProRequired
+  onProRequired,
+  mode = 'real'
 }: InvestmentFormProps) {
+  const isFuture = mode === 'future';
   const [open, setOpen] = useState(false);
-  const [entryMode, setEntryMode] = useState<EntryMode>(initialData ? 'manual' : 'select');
+  const [entryMode, setEntryMode] = useState<EntryMode>(initialData || isFuture ? 'manual' : 'select');
   const [extractedFields, setExtractedFields] = useState<Set<string>>(new Set());
   const [highAmountWarning, setHighAmountWarning] = useState<number | null>(null);
 
-  // Draft persistence — only for new investments (not edit)
+  // Draft persistence — only for new real investments (not edit, not future)
   const { user } = useAuth();
   const { t } = useLanguage();
-  const draft = useInvestmentDraft(!initialData ? user?.id : undefined);
+  const draft = useInvestmentDraft(!initialData && !isFuture ? user?.id : undefined);
 
   const [draftExists, setDraftExists] = useState(false);
   const [draftRestored, setDraftRestored] = useState(false);
-  // Prevents draft from overwriting AI-extracted data or re-running restore
   const draftLoadedRef = useRef(false);
   
   const { isExtracting, extractFromFile, clearExtractedData } = useInvestmentExtraction();
 
-  const canAddInvestment = isPro || investmentCount < 3 || !!initialData;
+  const canAddInvestment = isFuture || isPro || investmentCount < 3 || !!initialData;
 
   const handleOpenChange = (newOpen: boolean) => {
     if (newOpen && !canAddInvestment) {
@@ -104,26 +122,30 @@ export function InvestmentForm({
     setOpen(newOpen);
   };
 
-  const form = useForm<InvestmentFormData>({
-    resolver: zodResolver(investmentSchema),
+  const form = useForm<any>({
+    resolver: zodResolver(isFuture ? futureInvestmentSchema : investmentSchema),
     defaultValues: initialData
       ? {
           platform: initialData.platform,
           customPlatformName: initialData.customPlatformName,
           projectName: initialData.projectName,
-          amount: initialData.amount,
-          investmentDate: new Date(initialData.investmentDate),
+          amount: initialData.amount || undefined,
+          investmentDate: initialData.investmentDate ? new Date(initialData.investmentDate) : undefined,
           expectedEndDate: initialData.expectedEndDate ? new Date(initialData.expectedEndDate) : undefined,
-          expectedReturn: initialData.expectedReturn,
+          expectedReturn: initialData.expectedReturn || undefined,
           status: initialData.status,
           notes: initialData.notes,
         }
-      : {
-          platform: 'urbanitae',
-          status: 'active',
-          expectedReturn: 10,
-          investmentDate: new Date(),
-        },
+      : isFuture
+        ? {
+            platform: 'urbanitae',
+          }
+        : {
+            platform: 'urbanitae',
+            status: 'active',
+            expectedReturn: 10,
+            investmentDate: new Date(),
+          },
   });
 
   const watchPlatform = form.watch('platform');
@@ -131,7 +153,7 @@ export function InvestmentForm({
   // Auto-save draft via form.watch(callback) subscription.
   // Only active in manual mode for new investments.
   useEffect(() => {
-    if (entryMode !== 'manual' || !!initialData) return;
+    if (isFuture || entryMode !== 'manual' || !!initialData) return;
 
     const { unsubscribe } = form.watch((values) => {
       const date = values.investmentDate instanceof Date ? values.investmentDate : null;
@@ -161,7 +183,7 @@ export function InvestmentForm({
 
   // One-shot draft restore when entering manual mode (new investments only).
   useEffect(() => {
-    if (entryMode !== 'manual' || !!initialData || draftLoadedRef.current) return;
+    if (isFuture || entryMode !== 'manual' || !!initialData || draftLoadedRef.current) return;
     draftLoadedRef.current = true;
 
     const saved = draft.load();
@@ -191,7 +213,7 @@ export function InvestmentForm({
   // For new investments we intentionally skip form.reset() so the draft survives close/reopen.
   useEffect(() => {
     if (!open) {
-      setEntryMode(initialData ? 'manual' : 'select');
+      setEntryMode(initialData || isFuture ? 'manual' : 'select');
       setExtractedFields(new Set());
       setHighAmountWarning(null);
       clearExtractedData();
@@ -269,24 +291,40 @@ export function InvestmentForm({
     setExtractedFields(fieldsSet);
   };
 
-  const handleSubmit = (data: InvestmentFormData) => {
-    onSubmit({
-      platform: data.platform,
-      customPlatformName: data.customPlatformName,
-      projectName: data.projectName,
-      amount: data.amount,
-      expectedReturn: data.expectedReturn,
-      status: data.status,
-      notes: data.notes,
-      investmentDate: data.investmentDate.toISOString(),
-      expectedEndDate: data.expectedEndDate?.toISOString(),
-    });
+  const handleSubmit = (data: any) => {
+    if (isFuture) {
+      onSubmit({
+        platform: data.platform,
+        customPlatformName: data.customPlatformName,
+        projectName: data.projectName,
+        amount: data.amount || null,
+        expectedReturn: data.expectedReturn || null,
+        investmentDate: data.investmentDate?.toISOString(),
+        expectedEndDate: data.expectedEndDate?.toISOString(),
+        sourceUrl: data.sourceUrl,
+        notes: data.notes,
+      });
+    } else {
+      onSubmit({
+        platform: data.platform,
+        customPlatformName: data.customPlatformName,
+        projectName: data.projectName,
+        amount: data.amount,
+        expectedReturn: data.expectedReturn,
+        status: data.status,
+        notes: data.notes,
+        investmentDate: data.investmentDate.toISOString(),
+        expectedEndDate: data.expectedEndDate?.toISOString(),
+      });
+    }
 
-    // Clear draft after successful submission
-    draft.clear();
-    setDraftExists(false);
-    setDraftRestored(false);
-    draftLoadedRef.current = false;
+    // Clear draft after successful submission (only for real mode)
+    if (!isFuture) {
+      draft.clear();
+      setDraftExists(false);
+      setDraftRestored(false);
+      draftLoadedRef.current = false;
+    }
 
     setOpen(false);
     form.reset();
@@ -460,24 +498,25 @@ export function InvestmentForm({
             render={({ field }) => (
               <FormItem>
                 <FormLabel className="flex items-center gap-2">
-                  Monto (€)
-                  {isFieldExtracted('amount') && <Badge variant="secondary" className="text-xs">IA</Badge>}
+                  {isFuture ? t('future.form.estimatedAmount') : 'Monto (€)'}
+                  {!isFuture && isFieldExtracted('amount') && <Badge variant="secondary" className="text-xs">IA</Badge>}
                 </FormLabel>
                 <FormControl>
                   <Input
                     type="number"
-                    placeholder="1000"
+                    placeholder={isFuture ? '' : '1000'}
                     {...field}
                     onChange={(e) => {
-                      const value = parseFloat(e.target.value) || 0;
+                      const value = e.target.value === '' ? (isFuture ? null : 0) : parseFloat(e.target.value);
                       field.onChange(value);
-                      if (highAmountWarning && value !== highAmountWarning) {
+                      if (!isFuture && highAmountWarning && value !== highAmountWarning) {
                         setHighAmountWarning(null);
                       }
                     }}
+                    value={field.value ?? ''}
                   />
                 </FormControl>
-                {highAmountWarning && (
+                {!isFuture && highAmountWarning && (
                   <div className="flex items-start gap-2 p-2 rounded-md bg-amber-500/10 border border-amber-500/30 text-amber-700 dark:text-amber-400">
                     <AlertTriangle className="h-4 w-4 shrink-0 mt-0.5" />
                     <span className="text-xs">
@@ -496,16 +535,17 @@ export function InvestmentForm({
             render={({ field }) => (
               <FormItem>
                 <FormLabel className="flex items-center gap-2">
-                  Rentabilidad Anual (%)
-                  {isFieldExtracted('expectedReturn') && <Badge variant="secondary" className="text-xs">IA</Badge>}
+                  {isFuture ? t('future.form.estimatedReturn') : 'Rentabilidad Anual (%)'}
+                  {!isFuture && isFieldExtracted('expectedReturn') && <Badge variant="secondary" className="text-xs">IA</Badge>}
                 </FormLabel>
                 <FormControl>
                   <Input
                     type="number"
                     step="0.1"
-                    placeholder="10"
+                    placeholder={isFuture ? '' : '10'}
                     {...field}
-                    onChange={(e) => field.onChange(parseFloat(e.target.value) || 0)}
+                    onChange={(e) => field.onChange(e.target.value === '' ? (isFuture ? null : 0) : parseFloat(e.target.value))}
+                    value={field.value ?? ''}
                   />
                 </FormControl>
                 <FormMessage />
@@ -521,8 +561,8 @@ export function InvestmentForm({
             render={({ field }) => (
               <FormItem className="flex flex-col">
                 <FormLabel className="flex items-center gap-2">
-                  Fecha de Inversión
-                  {isFieldExtracted('investmentDate') && <Badge variant="secondary" className="text-xs">IA</Badge>}
+                  {isFuture ? t('future.form.openDate') : 'Fecha de Inversión'}
+                  {!isFuture && isFieldExtracted('investmentDate') && <Badge variant="secondary" className="text-xs">IA</Badge>}
                 </FormLabel>
                 <Popover>
                   <PopoverTrigger asChild>
@@ -600,33 +640,51 @@ export function InvestmentForm({
           />
         </div>
 
-        <FormField
-          control={form.control}
-          name="status"
-          render={({ field }) => (
-            <FormItem>
-              <FormLabel className="flex items-center gap-2">
-                Estado
-                {isFieldExtracted('status') && <Badge variant="secondary" className="text-xs">IA</Badge>}
-              </FormLabel>
-              <Select onValueChange={field.onChange} value={field.value}>
+        {!isFuture && (
+          <FormField
+            control={form.control}
+            name="status"
+            render={({ field }) => (
+              <FormItem>
+                <FormLabel className="flex items-center gap-2">
+                  Estado
+                  {isFieldExtracted('status') && <Badge variant="secondary" className="text-xs">IA</Badge>}
+                </FormLabel>
+                <Select onValueChange={field.onChange} value={field.value}>
+                  <FormControl>
+                    <SelectTrigger>
+                      <SelectValue placeholder="Selecciona un estado" />
+                    </SelectTrigger>
+                  </FormControl>
+                  <SelectContent>
+                    {STATUS_OPTIONS.map((status) => (
+                      <SelectItem key={status.value} value={status.value}>
+                        {status.label}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                <FormMessage />
+              </FormItem>
+            )}
+          />
+        )}
+
+        {isFuture && (
+          <FormField
+            control={form.control}
+            name="sourceUrl"
+            render={({ field }) => (
+              <FormItem>
+                <FormLabel>{t('future.form.sourceUrl')}</FormLabel>
                 <FormControl>
-                  <SelectTrigger>
-                    <SelectValue placeholder="Selecciona un estado" />
-                  </SelectTrigger>
+                  <Input type="url" placeholder="https://..." {...field} value={field.value ?? ''} />
                 </FormControl>
-                <SelectContent>
-                  {STATUS_OPTIONS.map((status) => (
-                    <SelectItem key={status.value} value={status.value}>
-                      {status.label}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-              <FormMessage />
-            </FormItem>
-          )}
-        />
+                <FormMessage />
+              </FormItem>
+            )}
+          />
+        )}
 
         <FormField
           control={form.control}
@@ -635,11 +693,11 @@ export function InvestmentForm({
             <FormItem>
               <FormLabel className="flex items-center gap-2">
                 Notas
-                {isFieldExtracted('notes') && <Badge variant="secondary" className="text-xs">IA</Badge>}
+                {!isFuture && isFieldExtracted('notes') && <Badge variant="secondary" className="text-xs">IA</Badge>}
               </FormLabel>
               <FormControl>
                 <Textarea
-                  placeholder="Notas adicionales sobre la inversión..."
+                  placeholder="Notas adicionales..."
                   {...field}
                 />
               </FormControl>
@@ -650,10 +708,12 @@ export function InvestmentForm({
 
         <div className="flex justify-end gap-2 pt-4">
           <Button type="button" variant="outline" onClick={() => setOpen(false)}>
-            Cancelar
+            {t('common.cancel')}
           </Button>
           <Button type="submit">
-            {initialData ? 'Guardar Cambios' : 'Crear Inversión'}
+            {isFuture
+              ? t('future.form.save')
+              : initialData ? t('investments.form.save.edit') : t('investments.form.save.new')}
           </Button>
         </div>
       </form>
@@ -681,13 +741,15 @@ export function InvestmentForm({
       <DialogContent className="max-h-[90vh] overflow-y-auto sm:max-w-[500px]">
         <DialogHeader>
           <DialogTitle>
-            {initialData ? 'Editar Inversión' : 'Nueva Inversión'}
+            {isFuture
+              ? t('future.form.title')
+              : initialData ? t('investments.form.title.edit') : t('investments.form.title.new')}
           </DialogTitle>
         </DialogHeader>
         
-        {entryMode === 'select' && renderModeSelector()}
-        {entryMode === 'image' && renderImageUpload()}
-        {entryMode === 'manual' && renderForm()}
+        {!isFuture && entryMode === 'select' && renderModeSelector()}
+        {!isFuture && entryMode === 'image' && renderImageUpload()}
+        {(isFuture || entryMode === 'manual') && renderForm()}
       </DialogContent>
     </Dialog>
   );

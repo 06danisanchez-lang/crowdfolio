@@ -183,7 +183,7 @@ export function InvestmentForm({
 
   // One-shot draft restore when entering manual mode (new investments only).
   useEffect(() => {
-    if (entryMode !== 'manual' || !!initialData || draftLoadedRef.current) return;
+    if (isFuture || entryMode !== 'manual' || !!initialData || draftLoadedRef.current) return;
     draftLoadedRef.current = true;
 
     const saved = draft.load();

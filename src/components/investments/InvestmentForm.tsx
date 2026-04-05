@@ -122,26 +122,30 @@ export function InvestmentForm({
     setOpen(newOpen);
   };
 
-  const form = useForm<InvestmentFormData>({
-    resolver: zodResolver(investmentSchema),
+  const form = useForm<any>({
+    resolver: zodResolver(isFuture ? futureInvestmentSchema : investmentSchema),
     defaultValues: initialData
       ? {
           platform: initialData.platform,
           customPlatformName: initialData.customPlatformName,
           projectName: initialData.projectName,
-          amount: initialData.amount,
-          investmentDate: new Date(initialData.investmentDate),
+          amount: initialData.amount || undefined,
+          investmentDate: initialData.investmentDate ? new Date(initialData.investmentDate) : undefined,
           expectedEndDate: initialData.expectedEndDate ? new Date(initialData.expectedEndDate) : undefined,
-          expectedReturn: initialData.expectedReturn,
+          expectedReturn: initialData.expectedReturn || undefined,
           status: initialData.status,
           notes: initialData.notes,
         }
-      : {
-          platform: 'urbanitae',
-          status: 'active',
-          expectedReturn: 10,
-          investmentDate: new Date(),
-        },
+      : isFuture
+        ? {
+            platform: 'urbanitae',
+          }
+        : {
+            platform: 'urbanitae',
+            status: 'active',
+            expectedReturn: 10,
+            investmentDate: new Date(),
+          },
   });
 
   const watchPlatform = form.watch('platform');

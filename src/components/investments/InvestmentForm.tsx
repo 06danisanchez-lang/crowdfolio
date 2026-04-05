@@ -153,7 +153,7 @@ export function InvestmentForm({
   // Auto-save draft via form.watch(callback) subscription.
   // Only active in manual mode for new investments.
   useEffect(() => {
-    if (entryMode !== 'manual' || !!initialData) return;
+    if (isFuture || entryMode !== 'manual' || !!initialData) return;
 
     const { unsubscribe } = form.watch((values) => {
       const date = values.investmentDate instanceof Date ? values.investmentDate : null;

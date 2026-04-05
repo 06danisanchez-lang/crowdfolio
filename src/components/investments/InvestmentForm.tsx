@@ -498,8 +498,8 @@ export function InvestmentForm({
             render={({ field }) => (
               <FormItem>
                 <FormLabel className="flex items-center gap-2">
-                  Monto (€)
-                  {isFieldExtracted('amount') && <Badge variant="secondary" className="text-xs">IA</Badge>}
+                  {isFuture ? t('future.form.estimatedAmount') : 'Monto (€)'}
+                  {!isFuture && isFieldExtracted('amount') && <Badge variant="secondary" className="text-xs">IA</Badge>}
                 </FormLabel>
                 <FormControl>
                   <Input
@@ -515,7 +515,7 @@ export function InvestmentForm({
                     }}
                   />
                 </FormControl>
-                {highAmountWarning && (
+                {!isFuture && highAmountWarning && (
                   <div className="flex items-start gap-2 p-2 rounded-md bg-amber-500/10 border border-amber-500/30 text-amber-700 dark:text-amber-400">
                     <AlertTriangle className="h-4 w-4 shrink-0 mt-0.5" />
                     <span className="text-xs">

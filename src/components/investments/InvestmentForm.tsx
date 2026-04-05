@@ -54,19 +54,36 @@ const investmentSchema = z.object({
   expectedReturn: z.number().min(0, 'El rendimiento debe ser mayor o igual a 0'),
   status: z.enum(['active', 'pending', 'completed', 'defaulted'] as const),
   notes: z.string().optional(),
+  sourceUrl: z.string().optional(),
+});
+
+const futureInvestmentSchema = z.object({
+  platform: z.enum(['urbanitae', 'housers', 'estateguru', 'crowdcube', 'brickstarter', 'wecity', 'other'] as const),
+  customPlatformName: z.string().optional(),
+  projectName: z.string().min(1, 'El nombre del proyecto es requerido'),
+  amount: z.number().nullable().optional(),
+  investmentDate: z.date().optional(),
+  expectedEndDate: z.date().optional(),
+  expectedReturn: z.number().nullable().optional(),
+  status: z.enum(['active', 'pending', 'completed', 'defaulted'] as const).optional(),
+  notes: z.string().optional(),
+  sourceUrl: z.string().optional(),
 });
 
 type InvestmentFormData = z.infer<typeof investmentSchema>;
 
 type EntryMode = 'select' | 'image' | 'manual';
 
+export type InvestmentFormMode = 'real' | 'future';
+
 interface InvestmentFormProps {
-  onSubmit: (data: Omit<Investment, 'id' | 'createdAt' | 'updatedAt' | 'payments'>) => void;
+  onSubmit: (data: any) => void;
   initialData?: Investment;
   trigger?: React.ReactNode;
   investmentCount?: number;
   isPro?: boolean;
   onProRequired?: () => void;
+  mode?: InvestmentFormMode;
 }
 
 export function InvestmentForm({ 

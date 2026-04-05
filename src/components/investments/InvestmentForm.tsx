@@ -535,16 +535,17 @@ export function InvestmentForm({
             render={({ field }) => (
               <FormItem>
                 <FormLabel className="flex items-center gap-2">
-                  Rentabilidad Anual (%)
-                  {isFieldExtracted('expectedReturn') && <Badge variant="secondary" className="text-xs">IA</Badge>}
+                  {isFuture ? t('future.form.estimatedReturn') : 'Rentabilidad Anual (%)'}
+                  {!isFuture && isFieldExtracted('expectedReturn') && <Badge variant="secondary" className="text-xs">IA</Badge>}
                 </FormLabel>
                 <FormControl>
                   <Input
                     type="number"
                     step="0.1"
-                    placeholder="10"
+                    placeholder={isFuture ? '' : '10'}
                     {...field}
-                    onChange={(e) => field.onChange(parseFloat(e.target.value) || 0)}
+                    onChange={(e) => field.onChange(e.target.value === '' ? (isFuture ? null : 0) : parseFloat(e.target.value))}
+                    value={field.value ?? ''}
                   />
                 </FormControl>
                 <FormMessage />
@@ -560,8 +561,8 @@ export function InvestmentForm({
             render={({ field }) => (
               <FormItem className="flex flex-col">
                 <FormLabel className="flex items-center gap-2">
-                  Fecha de Inversión
-                  {isFieldExtracted('investmentDate') && <Badge variant="secondary" className="text-xs">IA</Badge>}
+                  {isFuture ? t('future.form.openDate') : 'Fecha de Inversión'}
+                  {!isFuture && isFieldExtracted('investmentDate') && <Badge variant="secondary" className="text-xs">IA</Badge>}
                 </FormLabel>
                 <Popover>
                   <PopoverTrigger asChild>

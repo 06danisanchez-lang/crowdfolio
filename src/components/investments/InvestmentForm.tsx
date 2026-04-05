@@ -640,33 +640,51 @@ export function InvestmentForm({
           />
         </div>
 
-        <FormField
-          control={form.control}
-          name="status"
-          render={({ field }) => (
-            <FormItem>
-              <FormLabel className="flex items-center gap-2">
-                Estado
-                {isFieldExtracted('status') && <Badge variant="secondary" className="text-xs">IA</Badge>}
-              </FormLabel>
-              <Select onValueChange={field.onChange} value={field.value}>
+        {!isFuture && (
+          <FormField
+            control={form.control}
+            name="status"
+            render={({ field }) => (
+              <FormItem>
+                <FormLabel className="flex items-center gap-2">
+                  Estado
+                  {isFieldExtracted('status') && <Badge variant="secondary" className="text-xs">IA</Badge>}
+                </FormLabel>
+                <Select onValueChange={field.onChange} value={field.value}>
+                  <FormControl>
+                    <SelectTrigger>
+                      <SelectValue placeholder="Selecciona un estado" />
+                    </SelectTrigger>
+                  </FormControl>
+                  <SelectContent>
+                    {STATUS_OPTIONS.map((status) => (
+                      <SelectItem key={status.value} value={status.value}>
+                        {status.label}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                <FormMessage />
+              </FormItem>
+            )}
+          />
+        )}
+
+        {isFuture && (
+          <FormField
+            control={form.control}
+            name="sourceUrl"
+            render={({ field }) => (
+              <FormItem>
+                <FormLabel>{t('future.form.sourceUrl')}</FormLabel>
                 <FormControl>
-                  <SelectTrigger>
-                    <SelectValue placeholder="Selecciona un estado" />
-                  </SelectTrigger>
+                  <Input type="url" placeholder="https://..." {...field} value={field.value ?? ''} />
                 </FormControl>
-                <SelectContent>
-                  {STATUS_OPTIONS.map((status) => (
-                    <SelectItem key={status.value} value={status.value}>
-                      {status.label}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-              <FormMessage />
-            </FormItem>
-          )}
-        />
+                <FormMessage />
+              </FormItem>
+            )}
+          />
+        )}
 
         <FormField
           control={form.control}
@@ -675,11 +693,11 @@ export function InvestmentForm({
             <FormItem>
               <FormLabel className="flex items-center gap-2">
                 Notas
-                {isFieldExtracted('notes') && <Badge variant="secondary" className="text-xs">IA</Badge>}
+                {!isFuture && isFieldExtracted('notes') && <Badge variant="secondary" className="text-xs">IA</Badge>}
               </FormLabel>
               <FormControl>
                 <Textarea
-                  placeholder="Notas adicionales sobre la inversión..."
+                  placeholder="Notas adicionales..."
                   {...field}
                 />
               </FormControl>
@@ -690,10 +708,12 @@ export function InvestmentForm({
 
         <div className="flex justify-end gap-2 pt-4">
           <Button type="button" variant="outline" onClick={() => setOpen(false)}>
-            Cancelar
+            {t('common.cancel')}
           </Button>
           <Button type="submit">
-            {initialData ? 'Guardar Cambios' : 'Crear Inversión'}
+            {isFuture
+              ? t('future.form.save')
+              : initialData ? t('investments.form.save.edit') : t('investments.form.save.new')}
           </Button>
         </div>
       </form>

@@ -65,6 +65,54 @@ export type Database = {
         }
         Relationships: []
       }
+      future_investments: {
+        Row: {
+          created_at: string
+          custom_platform_name: string | null
+          estimated_amount: number | null
+          estimated_end_date: string | null
+          estimated_open_date: string | null
+          expected_return: number | null
+          id: string
+          notes: string | null
+          platform: string
+          project_name: string
+          source_url: string | null
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          custom_platform_name?: string | null
+          estimated_amount?: number | null
+          estimated_end_date?: string | null
+          estimated_open_date?: string | null
+          expected_return?: number | null
+          id?: string
+          notes?: string | null
+          platform: string
+          project_name: string
+          source_url?: string | null
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          custom_platform_name?: string | null
+          estimated_amount?: number | null
+          estimated_end_date?: string | null
+          estimated_open_date?: string | null
+          expected_return?: number | null
+          id?: string
+          notes?: string | null
+          platform?: string
+          project_name?: string
+          source_url?: string | null
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       investments: {
         Row: {
           amount: number

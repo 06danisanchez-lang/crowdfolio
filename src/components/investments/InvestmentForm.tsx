@@ -741,13 +741,15 @@ export function InvestmentForm({
       <DialogContent className="max-h-[90vh] overflow-y-auto sm:max-w-[500px]">
         <DialogHeader>
           <DialogTitle>
-            {initialData ? 'Editar Inversión' : 'Nueva Inversión'}
+            {isFuture
+              ? t('future.form.title')
+              : initialData ? t('investments.form.title.edit') : t('investments.form.title.new')}
           </DialogTitle>
         </DialogHeader>
         
-        {entryMode === 'select' && renderModeSelector()}
-        {entryMode === 'image' && renderImageUpload()}
-        {entryMode === 'manual' && renderForm()}
+        {!isFuture && entryMode === 'select' && renderModeSelector()}
+        {!isFuture && entryMode === 'image' && renderImageUpload()}
+        {(isFuture || entryMode === 'manual') && renderForm()}
       </DialogContent>
     </Dialog>
   );

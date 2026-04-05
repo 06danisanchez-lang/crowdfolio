@@ -92,26 +92,27 @@ export function InvestmentForm({
   trigger,
   investmentCount = 0,
   isPro = true,
-  onProRequired
+  onProRequired,
+  mode = 'real'
 }: InvestmentFormProps) {
+  const isFuture = mode === 'future';
   const [open, setOpen] = useState(false);
-  const [entryMode, setEntryMode] = useState<EntryMode>(initialData ? 'manual' : 'select');
+  const [entryMode, setEntryMode] = useState<EntryMode>(initialData || isFuture ? 'manual' : 'select');
   const [extractedFields, setExtractedFields] = useState<Set<string>>(new Set());
   const [highAmountWarning, setHighAmountWarning] = useState<number | null>(null);
 
-  // Draft persistence — only for new investments (not edit)
+  // Draft persistence — only for new real investments (not edit, not future)
   const { user } = useAuth();
   const { t } = useLanguage();
-  const draft = useInvestmentDraft(!initialData ? user?.id : undefined);
+  const draft = useInvestmentDraft(!initialData && !isFuture ? user?.id : undefined);
 
   const [draftExists, setDraftExists] = useState(false);
   const [draftRestored, setDraftRestored] = useState(false);
-  // Prevents draft from overwriting AI-extracted data or re-running restore
   const draftLoadedRef = useRef(false);
   
   const { isExtracting, extractFromFile, clearExtractedData } = useInvestmentExtraction();
 
-  const canAddInvestment = isPro || investmentCount < 3 || !!initialData;
+  const canAddInvestment = isFuture || isPro || investmentCount < 3 || !!initialData;
 
   const handleOpenChange = (newOpen: boolean) => {
     if (newOpen && !canAddInvestment) {

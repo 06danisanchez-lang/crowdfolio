@@ -17,6 +17,7 @@ import { InvestmentForm } from '@/components/investments/InvestmentForm';
 import { ImportExport } from '@/components/investments/ImportExport';
 
 import { TaxDashboard } from '@/components/tax/TaxDashboard';
+import { FutureInvestmentList } from '@/components/future-investments/FutureInvestmentList';
 import { ShareableCard } from '@/components/dashboard/ShareableCard';
 import { ShareSuccessButton } from '@/components/dashboard/ShareSuccessButton';
 import { BillingSettings } from '@/components/subscription/BillingSettings';

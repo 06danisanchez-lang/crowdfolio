@@ -213,7 +213,7 @@ export function InvestmentForm({
   // For new investments we intentionally skip form.reset() so the draft survives close/reopen.
   useEffect(() => {
     if (!open) {
-      setEntryMode(initialData ? 'manual' : 'select');
+      setEntryMode(initialData || isFuture ? 'manual' : 'select');
       setExtractedFields(new Set());
       setHighAmountWarning(null);
       clearExtractedData();
@@ -291,24 +291,40 @@ export function InvestmentForm({
     setExtractedFields(fieldsSet);
   };
 
-  const handleSubmit = (data: InvestmentFormData) => {
-    onSubmit({
-      platform: data.platform,
-      customPlatformName: data.customPlatformName,
-      projectName: data.projectName,
-      amount: data.amount,
-      expectedReturn: data.expectedReturn,
-      status: data.status,
-      notes: data.notes,
-      investmentDate: data.investmentDate.toISOString(),
-      expectedEndDate: data.expectedEndDate?.toISOString(),
-    });
+  const handleSubmit = (data: any) => {
+    if (isFuture) {
+      onSubmit({
+        platform: data.platform,
+        customPlatformName: data.customPlatformName,
+        projectName: data.projectName,
+        amount: data.amount || null,
+        expectedReturn: data.expectedReturn || null,
+        investmentDate: data.investmentDate?.toISOString(),
+        expectedEndDate: data.expectedEndDate?.toISOString(),
+        sourceUrl: data.sourceUrl,
+        notes: data.notes,
+      });
+    } else {
+      onSubmit({
+        platform: data.platform,
+        customPlatformName: data.customPlatformName,
+        projectName: data.projectName,
+        amount: data.amount,
+        expectedReturn: data.expectedReturn,
+        status: data.status,
+        notes: data.notes,
+        investmentDate: data.investmentDate.toISOString(),
+        expectedEndDate: data.expectedEndDate?.toISOString(),
+      });
+    }
 
-    // Clear draft after successful submission
-    draft.clear();
-    setDraftExists(false);
-    setDraftRestored(false);
-    draftLoadedRef.current = false;
+    // Clear draft after successful submission (only for real mode)
+    if (!isFuture) {
+      draft.clear();
+      setDraftExists(false);
+      setDraftRestored(false);
+      draftLoadedRef.current = false;
+    }
 
     setOpen(false);
     form.reset();

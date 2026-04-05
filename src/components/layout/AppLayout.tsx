@@ -13,10 +13,8 @@ import { useNavigate, Link } from 'react-router-dom';
 import { LEGAL_ROUTES } from '@/lib/legal/routes';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
-import { AlertsPanel } from '@/components/dashboard/AlertsPanel';
 import { NotificationBell } from '@/components/layout/NotificationBell';
 import { UserMenu } from '@/components/layout/UserMenu';
-import { Alert } from '@/hooks/useAlerts';
 import { View } from '@/types/investment';
 import { useAuth } from '@/contexts/AuthContext';
 import { Separator } from '@/components/ui/separator';
@@ -30,18 +28,12 @@ interface AppLayoutProps {
   children: React.ReactNode;
   currentView: View;
   onViewChange: (view: View) => void;
-  alerts?: Alert[];
-  alertCount?: number;
-  hasUrgentAlerts?: boolean;
 }
 
 export function AppLayout({ 
   children, 
   currentView, 
-  onViewChange,
-  alerts = [],
-  alertCount = 0,
-  hasUrgentAlerts = false
+  onViewChange
 }: AppLayoutProps) {
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [upgradeOpen, setUpgradeOpen] = useState(false);
@@ -87,11 +79,6 @@ export function AppLayout({
             {isPro ? t('nav.alreadyPro') : t('nav.upgradePro')}
           </Button>
           <NotificationBell />
-          <AlertsPanel 
-            alerts={alerts} 
-            alertCount={alertCount} 
-            hasUrgentAlerts={hasUrgentAlerts} 
-          />
         </div>
       </header>
 
@@ -138,12 +125,6 @@ export function AppLayout({
             </button>
             <div className="flex items-center gap-2 pt-2">
               <NotificationBell />
-              <AlertsPanel 
-                alerts={alerts} 
-                alertCount={alertCount} 
-                hasUrgentAlerts={hasUrgentAlerts}
-                variant="full"
-              />
             </div>
             {isAdmin && (
               <button

@@ -4,7 +4,7 @@ import { Wallet, TrendingUp, PiggyBank, CalendarClock, Target, Plus, Crown } fro
 import { ErrorBoundary } from '@/components/ErrorBoundary';
 import { ErrorState } from '@/components/ui/error-state';
 import { useInvestments } from '@/hooks/useInvestments';
-import { useAlerts } from '@/hooks/useAlerts';
+
 import { useSubscription } from '@/contexts/SubscriptionContext';
 import { AppLayout } from '@/components/layout/AppLayout';
 import { KPICard } from '@/components/dashboard/KPICard';
@@ -56,23 +56,10 @@ const Index = () => {
     exportInvestments,
   } = useInvestments();
 
-  const { alerts, alertCount, hasUrgentAlerts } = useAlerts(investments);
-
   const openUpgradeModal = (feature: string) => {
     setUpgradeFeature(feature);
     setUpgradeModalOpen(true);
   };
-
-  // Show toast notification on initial load if there are urgent alerts
-  useEffect(() => {
-    if (!isLoading && hasUrgentAlerts) {
-      const urgentCount = alerts.filter(a => a.severity === 'danger').length;
-      toast.warning(`${t('dashboard.urgentAlerts').replace('{n}', String(urgentCount))}`, {
-        description: t('dashboard.checkNotifications'),
-        duration: 5000,
-      });
-    }
-  }, [isLoading, hasUrgentAlerts, alerts]);
 
   const formatCurrency = (value: number) => {
     return new Intl.NumberFormat('es-ES', {
@@ -212,9 +199,6 @@ const Index = () => {
     <AppLayout 
       currentView={currentView} 
       onViewChange={setCurrentView}
-      alerts={alerts}
-      alertCount={alertCount}
-      hasUrgentAlerts={hasUrgentAlerts}
     >
       <ErrorBoundary fallbackMessage="Ha ocurrido un error inesperado.">
       <div key={currentView}>

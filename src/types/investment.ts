@@ -7,7 +7,7 @@ export type Platform =
   | 'wecity'
   | 'other';
 
-export type View = 'dashboard' | 'investments' | 'tax' | 'settings' | 'profile' | 'admin';
+export type View = 'dashboard' | 'investments' | 'future-investments' | 'tax' | 'settings' | 'profile' | 'admin';
 
 export type InvestmentStatus = 'active' | 'pending' | 'completed' | 'defaulted';
 

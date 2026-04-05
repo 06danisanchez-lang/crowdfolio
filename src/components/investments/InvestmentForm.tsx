@@ -504,15 +504,16 @@ export function InvestmentForm({
                 <FormControl>
                   <Input
                     type="number"
-                    placeholder="1000"
+                    placeholder={isFuture ? '' : '1000'}
                     {...field}
                     onChange={(e) => {
-                      const value = parseFloat(e.target.value) || 0;
+                      const value = e.target.value === '' ? (isFuture ? null : 0) : parseFloat(e.target.value);
                       field.onChange(value);
-                      if (highAmountWarning && value !== highAmountWarning) {
+                      if (!isFuture && highAmountWarning && value !== highAmountWarning) {
                         setHighAmountWarning(null);
                       }
                     }}
+                    value={field.value ?? ''}
                   />
                 </FormControl>
                 {!isFuture && highAmountWarning && (

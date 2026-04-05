@@ -1,40 +1,88 @@
 
 
-## Actualización del HERO — claves `hero.*` en translations.ts
+## Confirmaciones solicitadas
 
-**Archivo único a editar:** `src/lib/i18n/translations.ts`
+### 1. Partes de `InvestmentForm.tsx` desactivadas en `mode: 'future'`
 
-### 12 claves a modificar (5 ES + 7 EN)
+Revisado el código línea por línea. En modo `future` se desactivarán:
 
-**ES (5 claves que cambian de valor):**
-
-| Clave | Antes | Después |
+| Funcionalidad | Líneas | Comportamiento en mode future |
 |---|---|---|
-| `hero.badge` | Gestión inteligente de inversiones | Control total de tus inversiones |
-| `hero.subheadline` | Centraliza y controla todas tus inversiones desde un único panel. | Centraliza tus inversiones, visualiza tu cartera y obtén un informe fiscal unificado desde un único panel. |
-| `hero.bullet1` | Informe fiscal automático de todas tus inversiones | Centraliza tus inversiones en un único panel |
-| `hero.bullet2` | Centralización de todas tus plataformas de crowdfunding | Visualiza tu cartera con una visión global y clara |
-| `hero.bullet3` | Prepara tu declaración de la renta con datos reales de tus inversiones | Obtén un informe fiscal unificado de todas tus inversiones |
+| **Selector de modo de entrada** (select/image/manual) | 81, 310-338, 688-690 | Se salta directamente a `manual`. `entryMode` se inicializa como `'manual'`. No se renderiza `renderModeSelector()` ni `renderImageUpload()`. |
+| **AI extraction** (ImageUploader + applyExtractedData) | 41, 95, 215-270, 340-359 | No se importa ni ejecuta. `extractedFields` queda vacío, los badges "IA" no aparecen. |
+| **Draft persistence** | 44, 88, 131-160, 162-188, 284-289, 295-306, 366-381 | Se desactiva. El `useInvestmentDraft` se inicializa con `undefined` como userId. No se auto-guarda ni restaura borrador. No se muestra el banner "Borrador restaurado". |
+| **Campo `status`** | 603-629 | Se oculta. Las inversiones futuras no tienen status. |
+| **High amount warning** | 83, 244-246, 474, 480-487 | Se desactiva (no aplica a importes estimados). |
+| **Pro/investment count gate** | 97-105, 667-678 | Se desactiva en modo future (no cuenta contra el límite de inversiones reales). |
 
-(`hero.headline1` y `hero.headline2` en ES no cambian.)
+Se **añade** en modo future:
+- Campo `source_url` (Input tipo URL)
+- Labels distintos vía i18n: "Importe previsto", "Fecha prevista de apertura", "Rentabilidad estimada"
+- Schema alternativo con `amount` y `expectedReturn` como `z.number().nullable().optional()`
 
-**EN (7 claves que cambian de valor):**
+### 2. Soporte de `initialData` para conversión
 
-| Clave | Antes | Después |
+El formulario **ya soporta** `initialData` (líneas 63-69, 109-126). Recibe un objeto `Investment` y precarga todos los campos vía `defaultValues`.
+
+**Ajuste necesario:** El tipo de `initialData` es `Investment`, pero al convertir desde una inversión futura el objeto será de tipo `FutureInvestment`. Se necesita un mapeo previo antes de pasarlo:
+
+```
+FutureInvestment → Partial<Investment>
+  platform → platform
+  project_name → projectName
+  estimated_amount → amount (puede ser null → undefined)
+  expected_return → expectedReturn (puede ser null → undefined)
+  estimated_open_date → investmentDate
+  estimated_end_date → expectedEndDate
+  notes → notes
+```
+
+Este mapeo se hará dentro de `FutureInvestmentList.tsx` al abrir el formulario de conversión. No hace falta tocar `InvestmentForm` para esto — basta con construir un objeto `Investment` parcial compatible con la interfaz existente.
+
+Se ampliará ligeramente la prop `initialData` para aceptar `Partial<Investment>` (o se construirá un objeto `Investment` completo con defaults para los campos faltantes como `id`, `createdAt`, `status`).
+
+### 3. Orden y manejo de errores en `convertToReal`
+
+Flujo exacto dentro de `useFutureInvestments.convertToReal()`:
+
+```text
+1. INSERT into investments (inversión real)
+   → si falla: throw error, no se toca nada. La futura permanece intacta.
+
+2. DELETE from future_investments (borrar futura)
+   → si falla: la inversión real YA existe.
+     Se muestra toast de éxito parcial:
+     "Inversión creada correctamente. No se pudo eliminar la inversión futura automáticamente."
+     La futura queda visible para que el usuario la borre manualmente.
+     No se lanza error bloqueante.
+
+3. Si ambos OK: toast de éxito, refetch de ambas listas.
+```
+
+Este orden (INSERT primero, DELETE después) es deliberado: es preferible tener un duplicado temporal (futura + real) que perder datos (borrar futura sin haber creado la real).
+
+### 4. Lista final cerrada de archivos
+
+**Migración SQL (1):**
+- Crear tabla `future_investments` con RLS + trigger `updated_at`
+
+**Archivos a crear (3):**
+
+| # | Archivo | Descripción |
 |---|---|---|
-| `hero.badge` | Smart investment management | Full control of your investments |
-| `hero.headline1` | Your entire | Your entire crowdfunding portfolio |
-| `hero.headline2` | portfolio in one place. | in one place. |
-| `hero.subheadline` | Centralize and control all your investments from a single dashboard. | Centralize your investments, visualize your portfolio, and get a unified tax report from a single dashboard. |
-| `hero.bullet1` | Automatic tax report for all your investments | Centralize your investments in a single dashboard |
-| `hero.bullet2` | Centralize all your crowdfunding platforms | Visualize your portfolio with a clear overall view |
-| `hero.bullet3` | Prepare your tax return with real data from your investments | Get a unified tax report for all your investments |
+| 1 | `src/types/futureInvestment.ts` | Tipo `FutureInvestment` |
+| 2 | `src/hooks/useFutureInvestments.ts` | CRUD + `convertToReal` |
+| 3 | `src/components/future-investments/FutureInvestmentList.tsx` | Vista completa: lista, crear (abre InvestmentForm en mode future), convertir, eliminar, badges de proximidad inline |
 
-### No se toca
-- `HeroSection.tsx`
-- `HowItWorks.tsx`
-- Ningún otro archivo, bloque ni clave
+**Archivos a editar (5):**
 
-### Post-edición
-- Verificación de compilación con `npx tsc --noEmit`
+| # | Archivo | Cambio |
+|---|---|---|
+| 1 | `src/types/investment.ts` | Añadir `'future-investments'` a `View` |
+| 2 | `src/components/investments/InvestmentForm.tsx` | Añadir prop `mode`, schema condicional, ocultar/mostrar campos, labels dinámicos, campo `source_url` |
+| 3 | `src/components/layout/AppLayout.tsx` | Nuevo nav item |
+| 4 | `src/pages/Index.tsx` | Nuevo case en `renderCurrentView()` |
+| 5 | `src/lib/i18n/translations.ts` | Claves i18n nuevas (ES + EN) |
+
+**Total: 1 migración + 3 nuevos + 5 editados = 9 operaciones.**
 

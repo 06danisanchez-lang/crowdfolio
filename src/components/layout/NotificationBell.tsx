@@ -18,7 +18,7 @@ interface NotificationBellProps {
 }
 
 export function NotificationBell({ futureInvestments }: NotificationBellProps) {
-  const { language, t } = useLanguage();
+  const { lang } = useLanguage();
   const [, forceUpdate] = useState(0);
 
   const { reminders, activeCount, dismiss } = useFutureReminders(

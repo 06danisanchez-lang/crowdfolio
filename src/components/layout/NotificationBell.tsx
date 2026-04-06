@@ -23,7 +23,7 @@ export function NotificationBell({ futureInvestments }: NotificationBellProps) {
 
   const { reminders, activeCount, dismiss } = useFutureReminders(
     futureInvestments,
-    language
+    lang
   );
 
   // Listen for dismiss events to force re-render
@@ -63,7 +63,7 @@ export function NotificationBell({ futureInvestments }: NotificationBellProps) {
       <PopoverContent className="w-80 p-0" align="end">
         <div className="flex items-center justify-between border-b px-4 py-3">
           <h3 className="font-semibold text-sm">
-            {language === 'es' ? 'Recordatorios' : 'Reminders'}
+            {lang === 'es' ? 'Recordatorios' : 'Reminders'}
           </h3>
         </div>
         
@@ -72,7 +72,7 @@ export function NotificationBell({ futureInvestments }: NotificationBellProps) {
             <div className="p-8 text-center">
               <CalendarClock className="mx-auto h-8 w-8 text-muted-foreground/50" />
               <p className="mt-2 text-sm text-muted-foreground">
-                {language === 'es' ? 'No hay recordatorios' : 'No reminders'}
+                {lang === 'es' ? 'No hay recordatorios' : 'No reminders'}
               </p>
             </div>
           ) : (

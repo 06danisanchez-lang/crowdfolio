@@ -1,45 +1,62 @@
 
 
-## Simplificar navegación: eliminar Alertas como módulo separado
+## Notificaciones de inversiones futuras — 3 puntos cerrados
 
-### Diagnóstico actual
+### 1. Regla para "Ya abierta"
 
-La navegación (`AppLayout.tsx`) ya muestra 4 items: Dashboard, Inversiones, Inversiones futuras, Fiscalidad. No hay un nav item "Alertas" en el sidebar.
+La fase "ya abierta" se muestra durante **48 horas** desde la fecha/hora de apertura. Pasadas 48h, el recordatorio desaparece automáticamente de la campana sin intervención del usuario.
 
-Sin embargo, `AlertsPanel` (el panel lateral tipo Sheet con campana) sigue presente en **3 lugares**:
-1. **Mobile header** (línea 90-94) — icono campana con badge
-2. **Sidebar desktop** (líneas 139-146) — botón "Alertas" full-width con badge
-3. **`NotificationBell`** junto a AlertsPanel en ambos sitios
+Justificación: 24h es poco si el usuario no abre la app a diario; 48h da margen sin acumular ruido.
 
-Estos paneles muestran alertas derivadas de inversiones reales (vencimientos, pagos esperados) vía `useAlerts`. Son independientes de "Inversiones futuras".
+### 2. Umbrales temporales exactos
 
-### Cambios propuestos
+**Inversión con fecha + hora exacta:**
 
-**Archivo: `src/components/layout/AppLayout.tsx`**
+| Fase | Condición | Mensaje |
+|---|---|---|
+| 7d | 2 días < restante ≤ 7 días | "Abre en X días" |
+| 2d | 1 hora < restante ≤ 2 días | "Abre en X días" / "Abre mañana" |
+| 1h | 0 < restante ≤ 1 hora | "Abre en menos de 1 hora" |
+| open | 0 ≥ restante > -48h | "Ya abierta" |
+| (nada) | restante ≤ -48h | Sin recordatorio |
 
-1. **Eliminar `AlertsPanel`** del sidebar desktop (líneas 139-146) y del mobile header (líneas 90-94)
-2. **Eliminar imports** de `AlertsPanel` y `Alert` type
-3. **Eliminar props** `alerts`, `alertCount`, `hasUrgentAlerts` de `AppLayoutProps`
-4. Mantener `NotificationBell` (es un componente separado para notificaciones del sistema, no alertas de inversión)
+**Inversión con solo fecha (sin hora):**
 
-**Archivo: `src/pages/Index.tsx`**
+Se trata como si la hora fuera 00:00 del día indicado.
 
-1. **Eliminar** el `useAlerts` hook call y las props `alerts`, `alertCount`, `hasUrgentAlerts` pasadas a `AppLayout`
-2. **Eliminar** el `useEffect` de toast de alertas urgentes (líneas 67-75)
-3. Eliminar import de `useAlerts`
+| Fase | Condición | Mensaje |
+|---|---|---|
+| 7d | 2 días < restante ≤ 7 días | "Abre en X días" |
+| 2d | 0 < restante ≤ 2 días | "Abre en X días" / "Abre mañana" |
+| today | día actual = día de apertura | "Abre hoy" |
+| open | fecha pasada, dentro de 48h | "Ya abierta" |
+| (nada) | fecha pasada > 48h | Sin recordatorio |
 
-**No se tocan:**
-- `AlertsPanel.tsx` ni `useAlerts.ts` (se dejan por si se reutilizan en el futuro, pero se desconectan del layout)
-- `FutureInvestmentList.tsx` (ya tiene lógica de proximidad integrada)
-- Ningún otro archivo
+La fase "1h" no existe para inversiones sin hora. En su lugar se usa "Abre hoy".
 
-### Resultado
+Solo se muestra **una fase por inversión**: la más actual.
 
-Navegación lateral limpia con 4 items:
-- Inicio (Dashboard)
-- Inversiones
-- Inversiones futuras
-- Fiscalidad
+### 3. NotificationBell.tsx — reescritura interna
 
-Los avisos de proximidad viven dentro de "Inversiones futuras" como badges inline (ya implementado). No hay panel de alertas separado en la UI.
+Se **mantiene el contenedor visual** (Popover + ScrollArea + campana con badge) pero se **reescribe toda la lógica interna**:
+
+- Se elimina la dependencia de `useNotifications` (que consulta tabla `notifications` en BD).
+- Se sustituye por `useFutureReminders` (derivado en cliente desde `futureInvestments`).
+- Se elimina `markAsRead` / `markAllAsRead` → se reemplaza por `dismiss(futureInvestmentId)`.
+- Se simplifica el renderizado de cada item: nombre de proyecto + mensaje de fase + botón descartar.
+
+En la práctica es un componente nuevo con la misma cáscara visual. No hay riesgo de adaptación frágil porque no se reutiliza lógica del sistema anterior.
+
+### Plan de implementación
+
+**Crear (1):**
+- `src/hooks/useFutureReminders.ts` — calcula fases, filtra descartados (localStorage), expone `reminders[]`, `activeCount`, `dismiss()`.
+
+**Editar (2):**
+- `src/components/layout/NotificationBell.tsx` — reescribir interior con `useFutureReminders`, mantener shell visual.
+- `src/components/layout/AppLayout.tsx` — mover campana del sidebar a header bar en `<main>` (desktop).
+
+**No se tocan:** `useNotifications.ts`, `FutureInvestmentList.tsx`, ninguna migración, ningún otro archivo.
+
+**Total: 1 nuevo + 2 editados.**
 

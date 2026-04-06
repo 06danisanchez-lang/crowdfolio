@@ -23,6 +23,7 @@ import { UpgradeModal } from '@/components/subscription/UpgradeModal';
 import crowdfolioLogo from '@/assets/crowdfolio-logo.png';
 import { useLanguage } from '@/contexts/LanguageContext';
 import { LanguageToggle } from '@/components/ui/LanguageToggle';
+import { useFutureInvestments } from '@/hooks/useFutureInvestments';
 
 interface AppLayoutProps {
   children: React.ReactNode;
@@ -42,6 +43,7 @@ export function AppLayout({
   const navigate = useNavigate();
   const mainRef = useRef<HTMLElement>(null);
   const { t } = useLanguage();
+  const { futureInvestments } = useFutureInvestments();
 
   useEffect(() => {
     mainRef.current?.scrollTo(0, 0);
@@ -78,7 +80,7 @@ export function AppLayout({
             <Crown className="h-4 w-4" />
             {isPro ? t('nav.alreadyPro') : t('nav.upgradePro')}
           </Button>
-          <NotificationBell />
+          <NotificationBell futureInvestments={futureInvestments} />
         </div>
       </header>
 
@@ -123,9 +125,6 @@ export function AppLayout({
               <Crown className="h-4 w-4" />
               {isPro ? t('nav.alreadyPro') : t('nav.upgradePro')}
             </button>
-            <div className="flex items-center gap-2 pt-2">
-              <NotificationBell />
-            </div>
             {isAdmin && (
               <button
                 onClick={() => {
@@ -163,6 +162,11 @@ export function AppLayout({
 
         {/* Main Content */}
         <main ref={mainRef} className="flex-1 overflow-auto">
+          {/* Desktop top bar with notification bell */}
+          <div className="hidden lg:flex items-center justify-end border-b bg-card px-6 py-2">
+            <NotificationBell futureInvestments={futureInvestments} />
+          </div>
+
           {children}
           <footer className="border-t py-4 px-6 mt-8">
             <div className="flex flex-wrap justify-center gap-4 text-xs text-muted-foreground">

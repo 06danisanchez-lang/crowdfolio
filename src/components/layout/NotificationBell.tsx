@@ -1,4 +1,5 @@
-import { Bell, CheckCheck } from 'lucide-react';
+import { useState, useEffect, useCallback } from 'react';
+import { Bell, X, CalendarClock } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import {
   Popover,
@@ -8,17 +9,40 @@ import {
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Badge } from '@/components/ui/badge';
 import { cn } from '@/lib/utils';
-import { useNotifications, Notification } from '@/hooks/useNotifications';
-import { formatDistanceToNow } from 'date-fns';
-import { es } from 'date-fns/locale';
+import { useFutureReminders, FutureReminder } from '@/hooks/useFutureReminders';
+import { FutureInvestment } from '@/types/futureInvestment';
+import { useLanguage } from '@/contexts/LanguageContext';
 
-export function NotificationBell() {
-  const { notifications, unreadCount, markAsRead, markAllAsRead, isLoading } = useNotifications();
+interface NotificationBellProps {
+  futureInvestments: FutureInvestment[];
+}
 
-  const handleNotificationClick = (notification: Notification) => {
-    if (!notification.read) {
-      markAsRead(notification.id);
-    }
+export function NotificationBell({ futureInvestments }: NotificationBellProps) {
+  const { language, t } = useLanguage();
+  const [, forceUpdate] = useState(0);
+
+  const { reminders, activeCount, dismiss } = useFutureReminders(
+    futureInvestments,
+    language
+  );
+
+  // Listen for dismiss events to force re-render
+  useEffect(() => {
+    const handler = () => forceUpdate(n => n + 1);
+    window.addEventListener('reminders-updated', handler);
+    return () => window.removeEventListener('reminders-updated', handler);
+  }, []);
+
+  const handleDismiss = useCallback((e: React.MouseEvent, futureInvestmentId: string) => {
+    e.stopPropagation();
+    dismiss(futureInvestmentId);
+  }, [dismiss]);
+
+  const phaseIcon = (phase: string) => {
+    if (phase === 'open') return '🟢';
+    if (phase === '1h' || phase === 'today') return '🔴';
+    if (phase === '2d') return '🟠';
+    return '🔵';
   };
 
   return (
@@ -26,81 +50,58 @@ export function NotificationBell() {
       <PopoverTrigger asChild>
         <Button variant="ghost" size="icon" className="relative">
           <Bell className="h-5 w-5" />
-          {unreadCount > 0 && (
+          {activeCount > 0 && (
             <Badge 
               variant="destructive" 
               className="absolute -right-1 -top-1 h-5 w-5 rounded-full p-0 text-xs flex items-center justify-center"
             >
-              {unreadCount > 9 ? '9+' : unreadCount}
+              {activeCount > 9 ? '9+' : activeCount}
             </Badge>
           )}
         </Button>
       </PopoverTrigger>
       <PopoverContent className="w-80 p-0" align="end">
         <div className="flex items-center justify-between border-b px-4 py-3">
-          <h3 className="font-semibold">Notificaciones</h3>
-          {unreadCount > 0 && (
-            <Button
-              variant="ghost"
-              size="sm"
-              className="h-auto py-1 px-2 text-xs"
-              onClick={markAllAsRead}
-            >
-              <CheckCheck className="mr-1 h-3 w-3" />
-              Marcar todas
-            </Button>
-          )}
+          <h3 className="font-semibold text-sm">
+            {language === 'es' ? 'Recordatorios' : 'Reminders'}
+          </h3>
         </div>
         
         <ScrollArea className="max-h-80">
-          {isLoading ? (
-            <div className="p-4 text-center text-sm text-muted-foreground">
-              Cargando...
-            </div>
-          ) : notifications.length === 0 ? (
+          {activeCount === 0 ? (
             <div className="p-8 text-center">
-              <Bell className="mx-auto h-8 w-8 text-muted-foreground/50" />
+              <CalendarClock className="mx-auto h-8 w-8 text-muted-foreground/50" />
               <p className="mt-2 text-sm text-muted-foreground">
-                No tienes notificaciones
+                {language === 'es' ? 'No hay recordatorios' : 'No reminders'}
               </p>
             </div>
           ) : (
             <div className="divide-y">
-              {notifications.map((notification) => (
-                <button
-                  key={notification.id}
-                  className={cn(
-                    "flex w-full gap-3 p-4 text-left transition-colors hover:bg-muted/50",
-                    !notification.read && "bg-primary/5"
-                  )}
-                  onClick={() => handleNotificationClick(notification)}
+              {reminders.map((reminder) => (
+                <div
+                  key={reminder.futureInvestmentId}
+                  className="flex w-full items-start gap-3 p-4"
                 >
-                  <div className="mt-0.5">
-                    <Bell className="h-4 w-4 text-muted-foreground" />
-                  </div>
-                  <div className="flex-1 space-y-1">
-                    <div className="flex items-start justify-between gap-2">
-                      <p className={cn(
-                        "text-sm",
-                        !notification.read && "font-medium"
-                      )}>
-                        {notification.title}
-                      </p>
-                      {!notification.read && (
-                        <div className="mt-1.5 h-2 w-2 shrink-0 rounded-full bg-primary" />
-                      )}
-                    </div>
-                    <p className="text-xs text-muted-foreground line-clamp-2">
-                      {notification.message}
+                  <span className="mt-0.5 text-base shrink-0">
+                    {phaseIcon(reminder.phase)}
+                  </span>
+                  <div className="flex-1 min-w-0 space-y-0.5">
+                    <p className="text-sm font-medium truncate">
+                      {reminder.projectName}
                     </p>
-                    <p className="text-xs text-muted-foreground/70">
-                      {formatDistanceToNow(new Date(notification.created_at), {
-                        addSuffix: true,
-                        locale: es,
-                      })}
+                    <p className="text-xs text-muted-foreground">
+                      {reminder.message}
                     </p>
                   </div>
-                </button>
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    className="h-6 w-6 shrink-0"
+                    onClick={(e) => handleDismiss(e, reminder.futureInvestmentId)}
+                  >
+                    <X className="h-3.5 w-3.5" />
+                  </Button>
+                </div>
               ))}
             </div>
           )}

@@ -17,21 +17,13 @@ type TestimonialItem = {
 export default function TestimonialCarousel() {
   const [activeIndex, setActiveIndex] = useState(0);
   const { ref, isVisible } = useScrollAnimation({ threshold: 0.2 });
-  const { lang, t } = useLanguage();
+  const { t } = useLanguage();
 
-  const testimonialsEs: TestimonialItem[] = [
-    { name: 'Carlos M.', role: 'Inversor particular', avatar: 'CM', content: 'Por fin puedo ver todas mis inversiones en un solo sitio. La parte fiscal me ahorra horas cada año.', rating: 5 },
-    { name: 'Laura S.', role: 'Inversora desde 2019', avatar: 'LS', content: 'Las alertas de vencimiento son geniales. Nunca más olvidaré renovar o retirar fondos.', rating: 5 },
-    { name: 'Miguel A.', role: 'Portfolio de 15+ proyectos', avatar: 'MA', content: 'El dashboard me da una visión clara de mi diversificación. Muy recomendable.', rating: 5 },
+  const testimonials: TestimonialItem[] = [
+    { name: t('testimonials.t1.name'), role: t('testimonials.t1.role'), avatar: 'CM', content: t('testimonials.t1.content'), rating: 5 },
+    { name: t('testimonials.t2.name'), role: t('testimonials.t2.role'), avatar: 'LS', content: t('testimonials.t2.content'), rating: 5 },
+    { name: t('testimonials.t3.name'), role: t('testimonials.t3.role'), avatar: 'MA', content: t('testimonials.t3.content'), rating: 5 },
   ];
-
-  const testimonialsEn: TestimonialItem[] = [
-    { name: 'Carlos M.', role: 'Individual investor', avatar: 'CM', content: 'I can finally see all my investments in one place. The tax section saves me hours every year.', rating: 5 },
-    { name: 'Laura S.', role: 'Investor since 2019', avatar: 'LS', content: 'The maturity alerts are great. I will never forget to renew or withdraw funds again.', rating: 5 },
-    { name: 'Miguel A.', role: 'Portfolio of 15+ projects', avatar: 'MA', content: 'The dashboard gives me a clear view of my diversification. Highly recommended.', rating: 5 },
-  ];
-
-  const testimonials = lang === 'en' ? testimonialsEn : testimonialsEs;
 
   const goToPrev = () => {
     setActiveIndex((prev) => (prev === 0 ? testimonials.length - 1 : prev - 1));

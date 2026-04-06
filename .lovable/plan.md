@@ -1,62 +1,66 @@
 
 
-## Notificaciones de inversiones futuras — 3 puntos cerrados
+## Plan: Actualizar pilares en toda la parte pública
 
-### 1. Regla para "Ya abierta"
+### Archivo 1: `src/lib/i18n/translations.ts`
 
-La fase "ya abierta" se muestra durante **48 horas** desde la fecha/hora de apertura. Pasadas 48h, el recordatorio desaparece automáticamente de la campana sin intervención del usuario.
+**20 valores a modificar** (10 claves × 2 idiomas):
 
-Justificación: 24h es poco si el usuario no abre la app a diario; 48h da margen sin acumular ruido.
+**ES:**
 
-### 2. Umbrales temporales exactos
-
-**Inversión con fecha + hora exacta:**
-
-| Fase | Condición | Mensaje |
+| Línea | Clave | Valor nuevo |
 |---|---|---|
-| 7d | 2 días < restante ≤ 7 días | "Abre en X días" |
-| 2d | 1 hora < restante ≤ 2 días | "Abre en X días" / "Abre mañana" |
-| 1h | 0 < restante ≤ 1 hora | "Abre en menos de 1 hora" |
-| open | 0 ≥ restante > -48h | "Ya abierta" |
-| (nada) | restante ≤ -48h | Sin recordatorio |
+| 13 | `hero.subheadline` | Centraliza tus inversiones y visualiza tu cartera en un único panel, planifica tus inversiones futuras y obtén un informe fiscal unificado. |
+| 14 | `hero.bullet1` | Centraliza tus inversiones y visualiza tu cartera en un único panel |
+| 15 | `hero.bullet2` | Planifica tus inversiones futuras y recibe avisos antes de que abran |
+| 43 | `features.f5.title` | Avisos de apertura |
+| 44 | `features.f5.desc` | Recibe recordatorios antes de que tus inversiones futuras se abran. |
+| 51 | `how.step1.title` | Centraliza y visualiza tu cartera |
+| 52 | `how.step1.desc` | Reúne todas tus inversiones en un único panel con datos agregados de rendimiento, distribución y vencimientos. |
+| 53 | `how.step2.title` | Planifica inversiones futuras |
+| 54 | `how.step2.desc` | Guarda las inversiones que te interesan y recibe avisos antes de que abran para llegar a tiempo. |
+| 83 | `testimonials.t2.content` | Los avisos de apertura son geniales. Ahora llego a tiempo a inversiones que antes se me escapaban. |
+| 297 | `subscription.free.f5` | Avisos de apertura de inversiones futuras |
 
-**Inversión con solo fecha (sin hora):**
+**EN:**
 
-Se trata como si la hora fuera 00:00 del día indicado.
-
-| Fase | Condición | Mensaje |
+| Línea | Clave | Valor nuevo |
 |---|---|---|
-| 7d | 2 días < restante ≤ 7 días | "Abre en X días" |
-| 2d | 0 < restante ≤ 2 días | "Abre en X días" / "Abre mañana" |
-| today | día actual = día de apertura | "Abre hoy" |
-| open | fecha pasada, dentro de 48h | "Ya abierta" |
-| (nada) | fecha pasada > 48h | Sin recordatorio |
+| 401 | `hero.subheadline` | Centralize your investments and visualize your portfolio in a single dashboard, plan your future investments, and get a unified tax report. |
+| 402 | `hero.bullet1` | Centralize your investments and visualize your portfolio in a single dashboard |
+| 403 | `hero.bullet2` | Plan your future investments and get alerts before they open |
+| 431 | `features.f5.title` | Opening Alerts |
+| 432 | `features.f5.desc` | Get reminders before your future investments open. |
+| 439 | `how.step1.title` | Centralize and visualize your portfolio |
+| 440 | `how.step1.desc` | Bring all your investments into a single dashboard with aggregated data on performance, allocation and maturities. |
+| 441 | `how.step2.title` | Plan future investments |
+| 442 | `how.step2.desc` | Save the investments you're interested in and get alerts before they open so you can act in time. |
+| 471 | `testimonials.t2.content` | Opening alerts are great. Now I get to investments on time that I used to miss. |
+| 685 | `subscription.free.f5` | Future investment opening alerts |
 
-La fase "1h" no existe para inversiones sin hora. En su lugar se usa "Abre hoy".
+`hero.bullet3` y `how.step3.*` no cambian.
 
-Solo se muestra **una fase por inversión**: la más actual.
+---
 
-### 3. NotificationBell.tsx — reescritura interna
+### Archivo 2: `src/components/landing/TestimonialCarousel.tsx`
 
-Se **mantiene el contenedor visual** (Popover + ScrollArea + campana con badge) pero se **reescribe toda la lógica interna**:
+Eliminar los arrays hardcodeados `testimonialsEs` y `testimonialsEn` (líneas 22-32). Reemplazarlos por un único array que consume las claves i18n `testimonials.t1.*`, `testimonials.t2.*`, `testimonials.t3.*` via `t()`.
 
-- Se elimina la dependencia de `useNotifications` (que consulta tabla `notifications` en BD).
-- Se sustituye por `useFutureReminders` (derivado en cliente desde `futureInvestments`).
-- Se elimina `markAsRead` / `markAllAsRead` → se reemplaza por `dismiss(futureInvestmentId)`.
-- Se simplifica el renderizado de cada item: nombre de proyecto + mensaje de fase + botón descartar.
+Cambio mínimo: las líneas 22-34 se reescriben como:
 
-En la práctica es un componente nuevo con la misma cáscara visual. No hay riesgo de adaptación frágil porque no se reutiliza lógica del sistema anterior.
+```ts
+const testimonials: TestimonialItem[] = [
+  { name: t('testimonials.t1.name'), role: t('testimonials.t1.role'), avatar: 'CM', content: t('testimonials.t1.content'), rating: 5 },
+  { name: t('testimonials.t2.name'), role: t('testimonials.t2.role'), avatar: 'LS', content: t('testimonials.t2.content'), rating: 5 },
+  { name: t('testimonials.t3.name'), role: t('testimonials.t3.role'), avatar: 'MA', content: t('testimonials.t3.content'), rating: 5 },
+];
+```
 
-### Plan de implementación
+Se elimina la variable `lang` (ya no se necesita) y la línea `const testimonials = lang === 'en' ? ...`.
 
-**Crear (1):**
-- `src/hooks/useFutureReminders.ts` — calcula fases, filtra descartados (localStorage), expone `reminders[]`, `activeCount`, `dismiss()`.
+Nada más cambia en el componente. La estructura visual, el carrusel mobile y el grid desktop quedan intactos.
 
-**Editar (2):**
-- `src/components/layout/NotificationBell.tsx` — reescribir interior con `useFutureReminders`, mantener shell visual.
-- `src/components/layout/AppLayout.tsx` — mover campana del sidebar a header bar en `<main>` (desktop).
+---
 
-**No se tocan:** `useNotifications.ts`, `FutureInvestmentList.tsx`, ninguna migración, ningún otro archivo.
-
-**Total: 1 nuevo + 2 editados.**
+### Total: 2 archivos editados, 0 archivos nuevos, 0 migraciones.
 

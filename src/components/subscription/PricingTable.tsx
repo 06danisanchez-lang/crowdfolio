@@ -26,7 +26,6 @@ export function PricingTable() {
     t('subscription.free.f3'),
     t('subscription.free.f4'),
     t('subscription.free.f5'),
-    t('subscription.free.f6'),
   ];
 
   const proFeatures = [
@@ -35,6 +34,7 @@ export function PricingTable() {
     t('subscription.pro.f3'),
     t('subscription.pro.f4'),
     t('subscription.pro.f5'),
+    t('subscription.pro.f6'),
   ];
 
   const handleCheckout = async (plan: 'monthly' | 'yearly') => {
@@ -115,7 +115,7 @@ export function PricingTable() {
               {!isPro && <Badge>{t('subscription.billing.freePlan')}</Badge>}
             </div>
             <CardDescription>
-              {t('subscription.free.f3')}
+              {t('subscription.free.f1')}
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-6">
@@ -162,7 +162,7 @@ export function PricingTable() {
               </div>
               {isPro && <Badge>{t('subscription.yourPro')}</Badge>}
             </div>
-            <CardDescription>{t('subscription.pro.f4')}</CardDescription>
+            <CardDescription>{t('subscription.pro.f5')}</CardDescription>
           </CardHeader>
           <CardContent className="space-y-6">
             <div className="flex items-baseline gap-1">

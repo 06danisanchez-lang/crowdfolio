@@ -1,132 +1,51 @@
 
 
-## Plan: Reorganizar Dashboard — Actual vs Histórico
+## Ajustes finales — Inversiones Futuras
 
-### Archivos a editar (6)
+### A. Estados finales derivados
 
-1. **`src/types/investment.ts`** — Añadir `activeSummary` y `historicalSummary` a `InvestmentSummary`
-2. **`src/hooks/useInvestments.ts`** — Calcular los 2 nuevos bloques en el `useMemo` del summary
-3. **`src/pages/Index.tsx`** — Reestructurar dashboard: 2 bloques KPI, toggle móvil, alertas inline, eliminar ReturnComparisonChart
-4. **`src/lib/i18n/translations.ts`** — Nuevas claves para secciones, KPIs, tabs, charts, alertas
-5. **`src/lib/help/tooltipContent.ts`** — Tooltips actualizados para separación actual/histórico
-6. **`src/components/dashboard/AlertsPanel.tsx`** — Variante `inline` para renderizar alertas sin Sheet
-
----
-
-### Naming final
-
-| Bloque | ES | EN |
+| Estado | Condición | Badge variant |
 |---|---|---|
-| Sección actual | Tu cartera hoy | Your portfolio today |
-| KPI 1 | Capital activo | Currently invested |
-| KPI 2 | Total estimado a recibir | Estimated total to receive |
-| KPI 3 | Beneficio esperado | Expected profit |
-| KPI 4 | Inversiones activas | Active investments |
-| Sección histórico | Tu histórico | Your history |
-| KPI 5 | Total invertido | Total invested |
-| KPI 6 | Total cobrado | Total collected |
-| KPI 7 | Beneficio realizado | Realized profit |
-| KPI 8 | Inversiones cerradas | Closed investments |
-| Tab actual | Actual | Current |
-| Tab histórico | Histórico | Historical |
+| Abre hoy | `days === 0` | destructive |
+| Abre pronto | `1 <= days <= 7` | default |
+| Pendiente | `days > 7` | secondary |
+| Sin fecha | `estimatedOpenDate` es null | outline |
+| Revisar | `days < 0` (fecha pasada) | destructive |
 
----
+"Revisar" sustituye a "Ya abierta". Semánticamente indica que la oportunidad requiere acción del usuario: invertir, descartar o actualizar la fecha.
 
-### Lógica de métricas
+Ordenación por urgencia:
+1. Abre hoy
+2. Revisar (fecha pasada, más reciente primero)
+3. Abre pronto (1-7d, ascendente)
+4. Pendiente (>7d, ascendente)
+5. Sin fecha
 
-#### Bloque "Tu cartera hoy"
+### B. Filtros finales
 
-- **Capital activo**: `sum(amount)` de TODAS las activas (no depende de endDate)
-- **Total estimado a recibir**: `sum(amount + calculateInvestmentTotalReturn())` SOLO de activas con `expectedEndDate` válida
-- **Beneficio esperado**: `sum(calculateInvestmentTotalReturn())` SOLO de activas con `expectedEndDate` válida
-- **Inversiones activas**: count de todas las activas
+Misma lista en desktop y móvil (en móvil como chips horizontales con scroll):
 
-KPI 2 y KPI 3 comparten exactamente el mismo alcance. Si hay exclusiones por falta de `expectedEndDate`, ambos muestran subtítulo `Sobre X de Y inversiones`.
+| Filtro | Muestra |
+|---|---|
+| Todas | Todo |
+| Abre hoy | `days === 0` |
+| Abre pronto | `1-7 días` |
+| Sin fecha | Sin `estimatedOpenDate` |
+| Revisar | `days < 0` |
 
-#### Bloque "Tu histórico"
+No añado filtro "Pendientes" separado. "Todas" ya las incluye, y un filtro para >7 días no es lo suficientemente accionable como para justificar un chip propio.
 
-- **Total invertido**: `sum(amount)` de TODAS las inversiones
-- **Total cobrado**: `sum(todos los payments)` de todas
-- **Beneficio realizado**: `sum(payments donde type=dividend|interest)` — excluye devoluciones de principal
-- **Inversiones cerradas**: count `status=completed`
+### C. Orden final móvil
 
-#### Tipos (`InvestmentSummary`)
+1. Header (título + botón añadir)
+2. 4 KPIs (grid 2x2)
+3. Filtros rápidos (chips scroll horizontal)
+4. Banner de atención (si hay items "Abre hoy" o "Revisar")
+5. Lista principal priorizada
 
-```ts
-activeSummary: {
-  capital: number;
-  estimatedTotal: number;    // solo activas con endDate
-  expectedProfit: number;    // solo activas con endDate
-  count: number;
-  withEndDateCount: number;  // para subtítulo de alcance
-};
-historicalSummary: {
-  totalInvested: number;
-  totalCollected: number;
-  realizedProfit: number;
-  completedCount: number;
-};
-```
+### D. Regla para Capital planificado
 
----
-
-### Estructura UI
-
-#### Desktop (arriba abajo)
-
-1. Header (título + ShareSuccessButton + InvestmentForm)
-2. Banner Pro (si Free)
-3. **"Tu cartera hoy"** — heading + 4 KPIs (grid 2x2 → lg:4)
-4. **"Tu histórico"** — heading + 4 KPIs (grid 2x2 → lg:4)
-5. **"Seguimiento"** — grid lg:2cols: AlertsPanel inline + UpcomingMaturityList
-6. **"Análisis"** — grid lg:2cols: PlatformDistributionChart + InvestmentTimelineChart
-
-#### Móvil (arriba abajo)
-
-1. Header
-2. Banner Pro
-3. Toggle segment [Actual | Histórico]
-4. 4 KPIs de la tab seleccionada (grid 2x2)
-5. Alertas (apiladas)
-6. Próximos vencimientos
-7. Distribución por plataforma
-8. Evolución temporal
-
-Toggle implementado con `useState` + `useIsMobile()`. En desktop se renderizan ambos bloques.
-
----
-
-### Eliminaciones y ajustes
-
-- **Eliminar** `ReturnComparisonChart` del dashboard (comparaba magnitudes incompatibles)
-- **Charts**: añadir subtítulos explícitos — "Capital total invertido" / "Acumulado histórico" — para dejar claro el alcance global
-- **Alertas inline**: nueva variante en AlertsPanel que renderiza directamente sin Sheet. Estado vacío con icono + texto si no hay alertas
-- **Tooltips**: actualizados para reflejar la separación y el alcance de cada métrica
-
----
-
-### Technical details
-
-**`src/hooks/useInvestments.ts`** — cálculo en useMemo:
-```ts
-const activeInvestments = investments.filter(inv => inv.status === 'active');
-const activeWithEndDate = activeInvestments.filter(inv => inv.expectedEndDate);
-
-const activeCapital = activeInvestments.reduce((s, i) => s + i.amount, 0);
-const expectedProfit = activeWithEndDate.reduce((s, i) => s + calculateInvestmentTotalReturn(i), 0);
-const estimatedTotal = activeWithEndDate.reduce((s, i) => s + i.amount, 0) + expectedProfit;
-
-const totalCollected = investments.reduce((s, i) => s + i.payments.reduce((ps, p) => ps + p.amount, 0), 0);
-const realizedProfit = investments.reduce((s, i) => s + i.payments.filter(p => p.type === 'dividend' || p.type === 'interest').reduce((ps, p) => ps + p.amount, 0), 0);
-```
-
-**`src/components/dashboard/AlertsPanel.tsx`** — add `variant?: 'sheet' | 'inline'` prop. When `inline`, render alerts list directly inside a Card without Sheet wrapper. Reuse existing alert item rendering.
-
-**`src/pages/Index.tsx`** — mobile toggle:
-```tsx
-const isMobile = useIsMobile();
-const [dashboardTab, setDashboardTab] = useState<'current' | 'historical'>('current');
-// In mobile: render toggle + conditional KPI block
-// In desktop: render both blocks
-```
+- Si **todas** las oportunidades tienen `estimatedAmount` → mostrar solo la cifra.
+- Si **alguna** no tiene `estimatedAmount` → subtítulo visible: `"Sobre X de Y oportunidades"` / `"Based on X of Y opportunities"`, donde X = las que tienen importe.
+- Si **ninguna** tiene `estimatedAmount` → mostrar `0 €` con subtítulo `"Sin importes registrados"` / `"No amounts recorded"`.
 

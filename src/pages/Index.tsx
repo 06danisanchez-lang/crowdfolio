@@ -343,11 +343,7 @@ const Index = () => {
         );
       case 'future-investments':
         return (
-          <div className="p-6 lg:p-8">
-            <div className="mb-8">
-              <h1 className="text-3xl font-bold">{t('future.title')}</h1>
-              <p className="text-muted-foreground">{t('future.subtitle')}</p>
-            </div>
+          <div className="p-4 sm:p-6 lg:p-8">
             <FutureInvestmentList />
           </div>
         );

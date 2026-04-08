@@ -386,7 +386,7 @@ export const translations: Record<Lang, Record<string, string>> = {
 
     // Future Investments
     'future.title': 'Inversiones futuras',
-    'future.subtitle': 'Inversiones que planeas realizar próximamente',
+    'future.subtitle': 'Tu pipeline de oportunidades de inversión',
     'future.addBtn': 'Nueva inversión futura',
     'future.emptyTitle': 'Sin inversiones futuras',
     'future.emptyDesc': 'Guarda aquí las inversiones que quieras seguir de cerca antes de invertir.',
@@ -410,6 +410,32 @@ export const translations: Record<Lang, Record<string, string>> = {
     'future.form.openDate': 'Fecha prevista de apertura',
     'future.form.sourceUrl': 'Enlace de la oportunidad',
     'future.form.save': 'Guardar inversión futura',
+    // Pipeline KPIs
+    'future.kpi.saved': 'Oportunidades guardadas',
+    'future.kpi.plannedCapital': 'Capital planificado',
+    'future.kpi.nextOpening': 'Próxima apertura',
+    'future.kpi.upcoming': 'Aperturas próximas',
+    'future.kpi.upcomingSubtitle': 'En los próximos 30 días',
+    'future.kpi.noUpcoming': 'Ninguna próximamente',
+    'future.kpi.noDate': 'Sin fecha prevista',
+    'future.kpi.noAmounts': 'Sin importes registrados',
+    'future.kpi.scopeSubtitle': 'Sobre {n} de {total} oportunidades',
+    // Pipeline filters
+    'future.filter.all': 'Todas',
+    'future.filter.today': 'Abre hoy',
+    'future.filter.soon': 'Abre pronto',
+    'future.filter.noDate': 'Sin fecha',
+    'future.filter.review': 'Revisar',
+    // Pipeline statuses
+    'future.status.opensToday': 'Abre hoy',
+    'future.status.opensSoon': 'Abre pronto',
+    'future.status.pending': 'Pendiente',
+    'future.status.noDate': 'Sin fecha',
+    'future.status.review': 'Revisar',
+    // Attention block
+    'future.attention.title': 'Requieren atención',
+    'future.attention.empty': 'Todo en orden',
+    'future.attention.urgentBanner': '{count} oportunidades requieren atención',
 
   },
   en: {
@@ -797,7 +823,7 @@ export const translations: Record<Lang, Record<string, string>> = {
 
     // Future Investments
     'future.title': 'Future investments',
-    'future.subtitle': 'Investments you plan to make soon',
+    'future.subtitle': 'Your investment opportunity pipeline',
     'future.addBtn': 'New future investment',
     'future.emptyTitle': 'No future investments',
     'future.emptyDesc': 'Save here the investments you want to track before investing.',
@@ -821,6 +847,32 @@ export const translations: Record<Lang, Record<string, string>> = {
     'future.form.openDate': 'Expected opening date',
     'future.form.sourceUrl': 'Opportunity link',
     'future.form.save': 'Save future investment',
+    // Pipeline KPIs
+    'future.kpi.saved': 'Saved opportunities',
+    'future.kpi.plannedCapital': 'Planned capital',
+    'future.kpi.nextOpening': 'Next opening',
+    'future.kpi.upcoming': 'Upcoming openings',
+    'future.kpi.upcomingSubtitle': 'In the next 30 days',
+    'future.kpi.noUpcoming': 'None upcoming',
+    'future.kpi.noDate': 'No date set',
+    'future.kpi.noAmounts': 'No amounts recorded',
+    'future.kpi.scopeSubtitle': 'Based on {n} of {total} opportunities',
+    // Pipeline filters
+    'future.filter.all': 'All',
+    'future.filter.today': 'Opens today',
+    'future.filter.soon': 'Opening soon',
+    'future.filter.noDate': 'No date',
+    'future.filter.review': 'Review',
+    // Pipeline statuses
+    'future.status.opensToday': 'Opens today',
+    'future.status.opensSoon': 'Opening soon',
+    'future.status.pending': 'Pending',
+    'future.status.noDate': 'No date',
+    'future.status.review': 'Review',
+    // Attention block
+    'future.attention.title': 'Need attention',
+    'future.attention.empty': 'All clear',
+    'future.attention.urgentBanner': '{count} opportunities need attention',
 
   },
 };

@@ -30,7 +30,7 @@ interface AlertsPanelProps {
   alertCount: number;
   hasUrgentAlerts: boolean;
   onViewInvestment?: (investmentId: string) => void;
-  variant?: 'icon' | 'full';
+  variant?: 'icon' | 'full' | 'inline';
 }
 
 const severityConfig: Record<AlertSeverity, { 
@@ -140,13 +140,69 @@ export function AlertsPanel({
       maturity: [],
       'expected-payment': [],
     };
-    
     alerts.forEach(alert => {
       groups[alert.type].push(alert);
     });
-    
     return groups;
   }, [alerts]);
+
+  const alertsContent = (
+    <>
+      {alertCount === 0 ? (
+        <div className="flex flex-col items-center justify-center py-8 text-center text-muted-foreground">
+          <Bell className="mb-3 h-10 w-10 opacity-20" />
+          <p className="text-sm font-medium">Todo al día</p>
+          <p className="text-xs">No hay alertas que requieran tu atención</p>
+        </div>
+      ) : (
+        <div className="space-y-4">
+          {groupedAlerts.overdue.length > 0 && (
+            <div>
+              <h4 className="mb-2 flex items-center gap-2 text-xs font-semibold uppercase tracking-wider text-destructive">
+                <AlertCircle className="h-3.5 w-3.5" />
+                Inversiones Vencidas ({groupedAlerts.overdue.length})
+              </h4>
+              <div className="space-y-2">
+                {groupedAlerts.overdue.map(alert => (
+                  <AlertItem key={alert.id} alert={alert} onViewInvestment={onViewInvestment} />
+                ))}
+              </div>
+            </div>
+          )}
+          {groupedAlerts.maturity.length > 0 && (
+            <div>
+              <h4 className="mb-2 flex items-center gap-2 text-xs font-semibold uppercase tracking-wider text-warning">
+                <CalendarClock className="h-3.5 w-3.5" />
+                Vencimientos Próximos ({groupedAlerts.maturity.length})
+              </h4>
+              <div className="space-y-2">
+                {groupedAlerts.maturity.map(alert => (
+                  <AlertItem key={alert.id} alert={alert} onViewInvestment={onViewInvestment} />
+                ))}
+              </div>
+            </div>
+          )}
+          {groupedAlerts['expected-payment'].length > 0 && (
+            <div>
+              <h4 className="mb-2 flex items-center gap-2 text-xs font-semibold uppercase tracking-wider text-primary">
+                <Wallet className="h-3.5 w-3.5" />
+                Pagos Esperados ({groupedAlerts['expected-payment'].length})
+              </h4>
+              <div className="space-y-2">
+                {groupedAlerts['expected-payment'].map(alert => (
+                  <AlertItem key={alert.id} alert={alert} onViewInvestment={onViewInvestment} />
+                ))}
+              </div>
+            </div>
+          )}
+        </div>
+      )}
+    </>
+  );
+
+  if (variant === 'inline') {
+    return alertsContent;
+  }
 
   return (
     <Sheet>
@@ -197,71 +253,10 @@ export function AlertsPanel({
             }
           </SheetDescription>
         </SheetHeader>
-        
         <ScrollArea className="mt-6 h-[calc(100vh-140px)]">
-          {alertCount === 0 ? (
-            <div className="flex flex-col items-center justify-center py-12 text-center text-muted-foreground">
-              <Bell className="mb-4 h-12 w-12 opacity-20" />
-              <p className="text-lg font-medium">Todo al día</p>
-              <p className="text-sm">No hay alertas que requieran tu atención</p>
-            </div>
-          ) : (
-            <div className="space-y-6 pr-4">
-              {groupedAlerts.overdue.length > 0 && (
-                <div>
-                  <h3 className="mb-3 flex items-center gap-2 text-sm font-semibold uppercase tracking-wider text-destructive">
-                    <AlertCircle className="h-4 w-4" />
-                    Inversiones Vencidas ({groupedAlerts.overdue.length})
-                  </h3>
-                  <div className="space-y-2">
-                    {groupedAlerts.overdue.map(alert => (
-                      <AlertItem 
-                        key={alert.id} 
-                        alert={alert} 
-                        onViewInvestment={onViewInvestment}
-                      />
-                    ))}
-                  </div>
-                </div>
-              )}
-              
-              {groupedAlerts.maturity.length > 0 && (
-                <div>
-                  <h3 className="mb-3 flex items-center gap-2 text-sm font-semibold uppercase tracking-wider text-warning">
-                    <CalendarClock className="h-4 w-4" />
-                    Vencimientos Próximos ({groupedAlerts.maturity.length})
-                  </h3>
-                  <div className="space-y-2">
-                    {groupedAlerts.maturity.map(alert => (
-                      <AlertItem 
-                        key={alert.id} 
-                        alert={alert} 
-                        onViewInvestment={onViewInvestment}
-                      />
-                    ))}
-                  </div>
-                </div>
-              )}
-              
-              {groupedAlerts['expected-payment'].length > 0 && (
-                <div>
-                  <h3 className="mb-3 flex items-center gap-2 text-sm font-semibold uppercase tracking-wider text-primary">
-                    <Wallet className="h-4 w-4" />
-                    Pagos Esperados ({groupedAlerts['expected-payment'].length})
-                  </h3>
-                  <div className="space-y-2">
-                    {groupedAlerts['expected-payment'].map(alert => (
-                      <AlertItem 
-                        key={alert.id} 
-                        alert={alert} 
-                        onViewInvestment={onViewInvestment}
-                      />
-                    ))}
-                  </div>
-                </div>
-              )}
-            </div>
-          )}
+          <div className="pr-4">
+            {alertsContent}
+          </div>
         </ScrollArea>
       </SheetContent>
     </Sheet>

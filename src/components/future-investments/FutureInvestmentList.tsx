@@ -2,9 +2,11 @@ import { useState } from 'react';
 import { useLanguage } from '@/contexts/LanguageContext';
 import { useFutureInvestments } from '@/hooks/useFutureInvestments';
 import { useInvestments } from '@/hooks/useInvestments';
+import { useSubscription } from '@/contexts/SubscriptionContext';
 import { FutureInvestment } from '@/types/futureInvestment';
 import { Investment, Platform, PLATFORMS } from '@/types/investment';
 import { InvestmentForm } from '@/components/investments/InvestmentForm';
+import { UpgradeModal } from '@/components/subscription/UpgradeModal';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -54,9 +56,12 @@ function mapFutureToPartialInvestment(fi: FutureInvestment): Partial<Investment>
 export function FutureInvestmentList() {
   const { t } = useLanguage();
   const { futureInvestments, isLoading, addFutureInvestment, deleteFutureInvestment, convertToReal } = useFutureInvestments();
-  const { addInvestment } = useInvestments();
+  const { investments, addInvestment } = useInvestments();
+  const { isPro } = useSubscription();
   const [deleteId, setDeleteId] = useState<string | null>(null);
   const [convertingId, setConvertingId] = useState<string | null>(null);
+  const [upgradeModalOpen, setUpgradeModalOpen] = useState(false);
+  const [upgradeFeature, setUpgradeFeature] = useState('default');
 
   const getPlatformLabel = (platform: Platform, customName?: string) => {
     if (platform === 'other' && customName) return customName;
@@ -75,6 +80,15 @@ export function FutureInvestmentList() {
       sourceUrl: data.sourceUrl,
       notes: data.notes,
     });
+  };
+
+  const handleConvertClick = (fiId: string) => {
+    if (!isPro && investments.length >= 3) {
+      setUpgradeFeature('unlimited_investments');
+      setUpgradeModalOpen(true);
+      return;
+    }
+    setConvertingId(fiId);
   };
 
   const handleConvertSubmit = async (data: any) => {
@@ -119,6 +133,12 @@ export function FutureInvestmentList() {
         <InvestmentForm
           mode="future"
           onSubmit={handleFutureSubmit}
+          investmentCount={futureInvestments.length}
+          isPro={isPro}
+          onProRequired={() => {
+            setUpgradeFeature('unlimited_future_investments');
+            setUpgradeModalOpen(true);
+          }}
           trigger={
             <Button>
               <Plus className="mr-2 h-4 w-4" />
@@ -179,20 +199,14 @@ export function FutureInvestmentList() {
                     )}
                   </div>
                   <div className="flex items-center gap-2 shrink-0">
-                    <InvestmentForm
-                      mode="real"
-                      initialData={mapFutureToPartialInvestment(fi) as Investment}
-                      onSubmit={(data) => {
-                        setConvertingId(fi.id);
-                        handleConvertSubmit(data);
-                      }}
-                      trigger={
-                        <Button variant="default" size="sm">
-                          <ArrowRightCircle className="mr-1.5 h-4 w-4" />
-                          {t('future.convertBtn')}
-                        </Button>
-                      }
-                    />
+                    <Button
+                      variant="default"
+                      size="sm"
+                      onClick={() => handleConvertClick(fi.id)}
+                    >
+                      <ArrowRightCircle className="mr-1.5 h-4 w-4" />
+                      {t('future.convertBtn')}
+                    </Button>
                     <Button
                       variant="ghost"
                       size="icon"
@@ -209,6 +223,22 @@ export function FutureInvestmentList() {
         })}
       </div>
 
+      {/* Convert dialog — only rendered when convertingId is set and item found */}
+      {convertingItem && (
+        <InvestmentForm
+          mode="real"
+          initialData={mapFutureToPartialInvestment(convertingItem) as Investment}
+          onSubmit={handleConvertSubmit}
+          investmentCount={investments.length}
+          isPro={isPro}
+          onProRequired={() => {
+            setUpgradeFeature('unlimited_investments');
+            setUpgradeModalOpen(true);
+          }}
+          trigger={<span className="hidden" />}
+        />
+      )}
+
       {/* Delete confirmation */}
       <AlertDialog open={!!deleteId} onOpenChange={(open) => !open && setDeleteId(null)}>
         <AlertDialogContent>
@@ -222,6 +252,13 @@ export function FutureInvestmentList() {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      {/* Upgrade Modal */}
+      <UpgradeModal
+        open={upgradeModalOpen}
+        onOpenChange={setUpgradeModalOpen}
+        feature={upgradeFeature}
+      />
     </div>
   );
 }

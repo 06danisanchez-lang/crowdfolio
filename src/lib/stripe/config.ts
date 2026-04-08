@@ -26,17 +26,15 @@ export type PlanType = 'free' | 'monthly' | 'yearly';
 export const PLAN_FEATURES = {
   free: {
     investments: 3,
+    futureInvestments: 3,
     importsPerMonth: 1,
-    alerts: 'read-only',
     taxExport: false,
-    support: 'community',
   },
   pro: {
     investments: Infinity,
+    futureInvestments: Infinity,
     importsPerMonth: Infinity,
-    alerts: 'configurable',
     taxExport: true,
-    support: 'priority',
   },
 } as const;
 

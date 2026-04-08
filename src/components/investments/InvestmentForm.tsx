@@ -112,7 +112,7 @@ export function InvestmentForm({
   
   const { isExtracting, extractFromFile, clearExtractedData } = useInvestmentExtraction();
 
-  const canAddInvestment = isFuture || isPro || investmentCount < 3 || !!initialData;
+  const canAddInvestment = isPro || investmentCount < 3 || !!initialData;
 
   const handleOpenChange = (newOpen: boolean) => {
     if (newOpen && !canAddInvestment) {

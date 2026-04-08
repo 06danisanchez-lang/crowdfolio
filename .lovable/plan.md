@@ -1,138 +1,132 @@
 
 
-## Plan: Actualizar lógica Free/Pro — 7 archivos
+## Plan: Reorganizar Dashboard — Actual vs Histórico
 
-### Archivos a editar
+### Archivos a editar (6)
 
-1. `src/lib/stripe/config.ts`
-2. `src/hooks/useSubscription.ts`
-3. `src/components/investments/InvestmentForm.tsx`
-4. `src/components/future-investments/FutureInvestmentList.tsx`
-5. `src/lib/i18n/translations.ts`
-6. `src/components/subscription/PricingTable.tsx`
-7. `src/components/subscription/UpgradeModal.tsx`
-
-`src/pages/Index.tsx` — solo si es necesario para compilar.
+1. **`src/types/investment.ts`** — Añadir `activeSummary` y `historicalSummary` a `InvestmentSummary`
+2. **`src/hooks/useInvestments.ts`** — Calcular los 2 nuevos bloques en el `useMemo` del summary
+3. **`src/pages/Index.tsx`** — Reestructurar dashboard: 2 bloques KPI, toggle móvil, alertas inline, eliminar ReturnComparisonChart
+4. **`src/lib/i18n/translations.ts`** — Nuevas claves para secciones, KPIs, tabs, charts, alertas
+5. **`src/lib/help/tooltipContent.ts`** — Tooltips actualizados para separación actual/histórico
+6. **`src/components/dashboard/AlertsPanel.tsx`** — Variante `inline` para renderizar alertas sin Sheet
 
 ---
 
-### 1. `src/lib/stripe/config.ts`
+### Naming final
 
-Reemplazar `PLAN_FEATURES` eliminando `alerts` y `support`, añadiendo `futureInvestments`:
-
-```ts
-export const PLAN_FEATURES = {
-  free: {
-    investments: 3,
-    futureInvestments: 3,
-    importsPerMonth: 1,
-    taxExport: false,
-  },
-  pro: {
-    investments: Infinity,
-    futureInvestments: Infinity,
-    importsPerMonth: Infinity,
-    taxExport: true,
-  },
-} as const;
-```
-
-### 2. `src/hooks/useSubscription.ts`
-
-- Eliminar `canConfigureAlerts` de interfaz y return.
-- Añadir `checkFutureInvestmentLimit(currentCount): boolean` — misma lógica que `checkInvestmentLimit` con `PLAN_FEATURES.free.futureInvestments`.
-- Actualizar interfaz `UseSubscriptionReturn`.
-
-### 3. `src/components/investments/InvestmentForm.tsx`
-
-Eliminar bypass `isFuture`:
-```ts
-// ANTES: isFuture || isPro || investmentCount < 3 || !!initialData
-// DESPUÉS:
-const canAddInvestment = isPro || investmentCount < 3 || !!initialData;
-```
-
-### 4. `src/components/future-investments/FutureInvestmentList.tsx`
-
-- Importar `useSubscription` del contexto y `UpgradeModal`.
-- Obtener `isPro`. Obtener `investments` de `useInvestments` (ya importado).
-- Estado local: `upgradeModalOpen` + `upgradeFeature`.
-- Pasar al `InvestmentForm` modo future: `investmentCount={futureInvestments.length}`, `isPro={isPro}`, `onProRequired` abriendo modal con `unlimited_future_investments`.
-- Conversión futura a real: si `!isPro && investments.length >= 3`, abrir modal con `unlimited_investments` en vez de proceder.
-- Renderizar `<UpgradeModal>` al final.
-- No dejar textos obsoletos de alertas personalizadas ni referencias antiguas a features eliminadas.
-
-### 5. `src/pages/Index.tsx`
-
-Sin cambios — `FutureInvestmentList` gestiona el gating internamente.
-
-### 6. `src/lib/i18n/translations.ts`
-
-**ES — Free** (`subscription.free.f1`–`f6`):
-- f1: `Hasta 3 inversiones activas`
-- f2: `Hasta 3 inversiones futuras`
-- f3: `1 importación con IA al mes`
-- f4: `Avisos de apertura de tus inversiones futuras`
-- f5: `Resumen fiscal indicativo`
-- f6: `''`
-
-**ES — Pro** (`subscription.pro.f1`–`f6`):
-- f1: `Inversiones activas ilimitadas`
-- f2: `Inversiones futuras ilimitadas`
-- f3: `Importaciones con IA ilimitadas`
-- f4: `Avisos de apertura sin límites`
-- f5: `Informe fiscal unificado`
-- f6: `Exportación del informe fiscal`
-
-**ES — Legacy** (`subscription.f1`–`f5`):
-- f1: `Inversiones ilimitadas`
-- f2: `Importaciones con IA ilimitadas`
-- f3: `Avisos de apertura sin límites`
-- f4: `Informe fiscal unificado`
-- f5: `Exportación del informe fiscal`
-
-**ES — Otros:**
-- `subscription.cta.investments`: `Desbloquea inversiones ilimitadas`
-- `subscription.cta.futureInvestments`: `Desbloquea inversiones futuras ilimitadas` (nueva)
-- `subscription.dashboard.freeDesc`: `Gestiona hasta 3 inversiones activas, 3 inversiones futuras y 1 importación con IA al mes.`
-- `subscription.billing.freeLimits`: `3 inversiones, 3 futuras, 1 importación/mes`
-
-**EN — Free** (`subscription.free.f1`–`f6`):
-- f1: `Up to 3 active investments` / f2: `Up to 3 future investments` / f3: `1 AI import per month` / f4: `Opening alerts for your future investments` / f5: `Indicative tax summary` / f6: `''`
-
-**EN — Pro** (`subscription.pro.f1`–`f6`):
-- f1: `Unlimited active investments` / f2: `Unlimited future investments` / f3: `Unlimited AI imports` / f4: `Unlimited opening alerts` / f5: `Unified tax report` / f6: `Tax report export`
-
-**EN — Legacy** (`subscription.f1`–`f5`):
-- f1: `Unlimited investments` / f2: `Unlimited AI imports` / f3: `Unlimited opening alerts` / f4: `Unified tax report` / f5: `Tax report export`
-
-**EN — Otros:**
-- `subscription.cta.investments`: `Unlock unlimited investments`
-- `subscription.cta.futureInvestments`: `Unlock unlimited future investments` (nueva)
-- `subscription.dashboard.freeDesc`: `Manage up to 3 active investments, 3 future investments, and 1 AI import per month.`
-- `subscription.billing.freeLimits`: `3 investments, 3 future investments, 1 import/month`
-
-No dejar claves rotas ni textos viejos de alertas personalizadas.
-
-### 7. `src/components/subscription/PricingTable.tsx`
-
-- `freeFeatures`: 5 items (f1–f5).
-- `proFeatures`: 6 items (f1–f6).
-- `CardDescription` Free: `t('subscription.free.f1')` en vez de `t('subscription.free.f3')`.
-- `CardDescription` Pro: `t('subscription.pro.f5')` en vez de `t('subscription.pro.f4')`.
-
-### 8. `src/components/subscription/UpgradeModal.tsx`
-
-- `proFeatures`: 6 items (f1–f6).
-- `featureCtaMap`: añadir `unlimited_future_investments: t('subscription.cta.futureInvestments')`.
+| Bloque | ES | EN |
+|---|---|---|
+| Sección actual | Tu cartera hoy | Your portfolio today |
+| KPI 1 | Capital activo | Currently invested |
+| KPI 2 | Total estimado a recibir | Estimated total to receive |
+| KPI 3 | Beneficio esperado | Expected profit |
+| KPI 4 | Inversiones activas | Active investments |
+| Sección histórico | Tu histórico | Your history |
+| KPI 5 | Total invertido | Total invested |
+| KPI 6 | Total cobrado | Total collected |
+| KPI 7 | Beneficio realizado | Realized profit |
+| KPI 8 | Inversiones cerradas | Closed investments |
+| Tab actual | Actual | Current |
+| Tab histórico | Histórico | Historical |
 
 ---
 
-### Resultado
+### Lógica de métricas
 
-- **7 archivos editados**, 0 nuevos, 0 migraciones.
-- Free: 3 activas, 3 futuras, 1 IA/mes compartida.
-- Pro: sin límites.
-- Copy alineado en pricing, upgrade modal y traducciones ES/EN.
-- Sin textos obsoletos de alertas personalizadas ni referencias antiguas a features eliminadas.
+#### Bloque "Tu cartera hoy"
+
+- **Capital activo**: `sum(amount)` de TODAS las activas (no depende de endDate)
+- **Total estimado a recibir**: `sum(amount + calculateInvestmentTotalReturn())` SOLO de activas con `expectedEndDate` válida
+- **Beneficio esperado**: `sum(calculateInvestmentTotalReturn())` SOLO de activas con `expectedEndDate` válida
+- **Inversiones activas**: count de todas las activas
+
+KPI 2 y KPI 3 comparten exactamente el mismo alcance. Si hay exclusiones por falta de `expectedEndDate`, ambos muestran subtítulo `Sobre X de Y inversiones`.
+
+#### Bloque "Tu histórico"
+
+- **Total invertido**: `sum(amount)` de TODAS las inversiones
+- **Total cobrado**: `sum(todos los payments)` de todas
+- **Beneficio realizado**: `sum(payments donde type=dividend|interest)` — excluye devoluciones de principal
+- **Inversiones cerradas**: count `status=completed`
+
+#### Tipos (`InvestmentSummary`)
+
+```ts
+activeSummary: {
+  capital: number;
+  estimatedTotal: number;    // solo activas con endDate
+  expectedProfit: number;    // solo activas con endDate
+  count: number;
+  withEndDateCount: number;  // para subtítulo de alcance
+};
+historicalSummary: {
+  totalInvested: number;
+  totalCollected: number;
+  realizedProfit: number;
+  completedCount: number;
+};
+```
+
+---
+
+### Estructura UI
+
+#### Desktop (arriba abajo)
+
+1. Header (título + ShareSuccessButton + InvestmentForm)
+2. Banner Pro (si Free)
+3. **"Tu cartera hoy"** — heading + 4 KPIs (grid 2x2 → lg:4)
+4. **"Tu histórico"** — heading + 4 KPIs (grid 2x2 → lg:4)
+5. **"Seguimiento"** — grid lg:2cols: AlertsPanel inline + UpcomingMaturityList
+6. **"Análisis"** — grid lg:2cols: PlatformDistributionChart + InvestmentTimelineChart
+
+#### Móvil (arriba abajo)
+
+1. Header
+2. Banner Pro
+3. Toggle segment [Actual | Histórico]
+4. 4 KPIs de la tab seleccionada (grid 2x2)
+5. Alertas (apiladas)
+6. Próximos vencimientos
+7. Distribución por plataforma
+8. Evolución temporal
+
+Toggle implementado con `useState` + `useIsMobile()`. En desktop se renderizan ambos bloques.
+
+---
+
+### Eliminaciones y ajustes
+
+- **Eliminar** `ReturnComparisonChart` del dashboard (comparaba magnitudes incompatibles)
+- **Charts**: añadir subtítulos explícitos — "Capital total invertido" / "Acumulado histórico" — para dejar claro el alcance global
+- **Alertas inline**: nueva variante en AlertsPanel que renderiza directamente sin Sheet. Estado vacío con icono + texto si no hay alertas
+- **Tooltips**: actualizados para reflejar la separación y el alcance de cada métrica
+
+---
+
+### Technical details
+
+**`src/hooks/useInvestments.ts`** — cálculo en useMemo:
+```ts
+const activeInvestments = investments.filter(inv => inv.status === 'active');
+const activeWithEndDate = activeInvestments.filter(inv => inv.expectedEndDate);
+
+const activeCapital = activeInvestments.reduce((s, i) => s + i.amount, 0);
+const expectedProfit = activeWithEndDate.reduce((s, i) => s + calculateInvestmentTotalReturn(i), 0);
+const estimatedTotal = activeWithEndDate.reduce((s, i) => s + i.amount, 0) + expectedProfit;
+
+const totalCollected = investments.reduce((s, i) => s + i.payments.reduce((ps, p) => ps + p.amount, 0), 0);
+const realizedProfit = investments.reduce((s, i) => s + i.payments.filter(p => p.type === 'dividend' || p.type === 'interest').reduce((ps, p) => ps + p.amount, 0), 0);
+```
+
+**`src/components/dashboard/AlertsPanel.tsx`** — add `variant?: 'sheet' | 'inline'` prop. When `inline`, render alerts list directly inside a Card without Sheet wrapper. Reuse existing alert item rendering.
+
+**`src/pages/Index.tsx`** — mobile toggle:
+```tsx
+const isMobile = useIsMobile();
+const [dashboardTab, setDashboardTab] = useState<'current' | 'historical'>('current');
+// In mobile: render toggle + conditional KPI block
+// In desktop: render both blocks
+```
 

@@ -44,6 +44,19 @@ export interface InvestmentSummary {
   averageReturn: number;
   byPlatform: Record<Platform, { invested: number; returns: number; count: number }>;
   byStatus: Record<InvestmentStatus, number>;
+  activeSummary: {
+    capital: number;
+    estimatedTotal: number;
+    expectedProfit: number;
+    count: number;
+    withEndDateCount: number;
+  };
+  historicalSummary: {
+    totalInvested: number;
+    totalCollected: number;
+    realizedProfit: number;
+    completedCount: number;
+  };
 }
 
 export const PLATFORMS: { value: Platform; label: string; color: string }[] = [

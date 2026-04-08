@@ -30,7 +30,7 @@ interface AlertsPanelProps {
   alertCount: number;
   hasUrgentAlerts: boolean;
   onViewInvestment?: (investmentId: string) => void;
-  variant?: 'icon' | 'full';
+  variant?: 'icon' | 'full' | 'inline';
 }
 
 const severityConfig: Record<AlertSeverity, { 

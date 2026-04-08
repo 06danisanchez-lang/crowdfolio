@@ -1,8 +1,18 @@
 // Centralized help content for contextual tooltips throughout the app
 
 export const HELP_CONTENT = {
-  // Dashboard KPIs
+  // Dashboard — Active portfolio
   dashboard: {
+    activeCapital: 'Capital actualmente comprometido en inversiones en curso.',
+    estimatedTotal: 'Capital invertido más beneficio estimado de tus inversiones activas con fecha de vencimiento.',
+    expectedProfit: 'Beneficio estimado pendiente de cobrar, calculado solo sobre inversiones activas con fecha de vencimiento.',
+    activeCount: 'Número de inversiones en estado "activo" (pendientes de recuperar el capital).',
+    // Historical
+    historicalInvested: 'Todo el capital que has invertido a lo largo del tiempo, incluyendo inversiones ya cerradas.',
+    totalCollected: 'Todos los pagos recibidos: intereses, dividendos y devoluciones de capital.',
+    realizedProfit: 'Rendimientos netos cobrados (intereses y dividendos). No incluye devoluciones de capital.',
+    completedCount: 'Inversiones que han finalizado su ciclo completo.',
+    // Legacy aliases kept for other pages
     totalInvested: 'Suma de todas tus inversiones activas en crowdfunding inmobiliario.',
     expectedReturn: 'Rendimiento medio ponderado esperado de tu cartera basado en la rentabilidad anunciada por cada proyecto.',
     projectedProfit: 'Beneficio total estimado si todas las inversiones terminan según lo previsto.',

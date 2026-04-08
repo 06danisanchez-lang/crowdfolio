@@ -203,25 +203,52 @@ export function useInvestments() {
     setInvestments([]);
   }, [user]);
 
-  const summary: InvestmentSummary = useMemo(() => ({
-    totalInvested: investments.reduce((sum, inv) => sum + inv.amount, 0),
-    totalReturns: investments.reduce((sum, inv) => sum + inv.payments.reduce((pSum, p) => pSum + p.amount, 0), 0),
-    expectedReturns: investments.reduce((sum, inv) => sum + calculateInvestmentTotalReturn(inv), 0),
-    activeInvestments: investments.filter(inv => inv.status === 'active').length,
-    completedInvestments: investments.filter(inv => inv.status === 'completed').length,
-    averageReturn: investments.length > 0 ? investments.reduce((sum, inv) => sum + inv.expectedReturn, 0) / investments.length : 0,
-    byPlatform: investments.reduce((acc, inv) => {
-      if (!acc[inv.platform]) acc[inv.platform] = { invested: 0, returns: 0, count: 0 };
-      acc[inv.platform].invested += inv.amount;
-      acc[inv.platform].returns += inv.payments.reduce((sum, p) => sum + p.amount, 0);
-      acc[inv.platform].count += 1;
-      return acc;
-    }, {} as Record<Platform, { invested: number; returns: number; count: number }>),
-    byStatus: investments.reduce((acc, inv) => {
-      acc[inv.status] = (acc[inv.status] || 0) + 1;
-      return acc;
-    }, {} as Record<InvestmentStatus, number>),
-  }), [investments]);
+  const summary: InvestmentSummary = useMemo(() => {
+    const activeInvestments = investments.filter(inv => inv.status === 'active');
+    const activeWithEndDate = activeInvestments.filter(inv => inv.expectedEndDate);
+
+    const activeCapital = activeInvestments.reduce((s, i) => s + i.amount, 0);
+    const expectedProfit = activeWithEndDate.reduce((s, i) => s + calculateInvestmentTotalReturn(i), 0);
+    const estimatedTotal = activeWithEndDate.reduce((s, i) => s + i.amount, 0) + expectedProfit;
+
+    const totalCollected = investments.reduce((s, i) => s + i.payments.reduce((ps, p) => ps + p.amount, 0), 0);
+    const realizedProfit = investments.reduce((s, i) => s + i.payments
+      .filter(p => p.type === 'dividend' || p.type === 'interest')
+      .reduce((ps, p) => ps + p.amount, 0), 0);
+
+    return {
+      totalInvested: investments.reduce((sum, inv) => sum + inv.amount, 0),
+      totalReturns: totalCollected,
+      expectedReturns: investments.reduce((sum, inv) => sum + calculateInvestmentTotalReturn(inv), 0),
+      activeInvestments: activeInvestments.length,
+      completedInvestments: investments.filter(inv => inv.status === 'completed').length,
+      averageReturn: investments.length > 0 ? investments.reduce((sum, inv) => sum + inv.expectedReturn, 0) / investments.length : 0,
+      byPlatform: investments.reduce((acc, inv) => {
+        if (!acc[inv.platform]) acc[inv.platform] = { invested: 0, returns: 0, count: 0 };
+        acc[inv.platform].invested += inv.amount;
+        acc[inv.platform].returns += inv.payments.reduce((sum, p) => sum + p.amount, 0);
+        acc[inv.platform].count += 1;
+        return acc;
+      }, {} as Record<Platform, { invested: number; returns: number; count: number }>),
+      byStatus: investments.reduce((acc, inv) => {
+        acc[inv.status] = (acc[inv.status] || 0) + 1;
+        return acc;
+      }, {} as Record<InvestmentStatus, number>),
+      activeSummary: {
+        capital: activeCapital,
+        estimatedTotal,
+        expectedProfit,
+        count: activeInvestments.length,
+        withEndDateCount: activeWithEndDate.length,
+      },
+      historicalSummary: {
+        totalInvested: investments.reduce((sum, inv) => sum + inv.amount, 0),
+        totalCollected,
+        realizedProfit,
+        completedCount: investments.filter(inv => inv.status === 'completed').length,
+      },
+    };
+  }, [investments]);
 
   return {
     investments, isLoading, error, summary,

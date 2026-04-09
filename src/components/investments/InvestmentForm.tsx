@@ -370,6 +370,27 @@ export function InvestmentForm({
           </div>
         )}
 
+        {/* Incomplete investment banner */}
+        {isDraft && completionStatus && !completionStatus.isComplete && (
+          <div className="flex items-start gap-2 p-3 rounded-lg bg-muted/50 border text-sm">
+            <AlertTriangle className="h-4 w-4 text-orange-500 mt-0.5 shrink-0" />
+            <div>
+              <p className="text-muted-foreground">{t('investments.incomplete.banner')}</p>
+              <p className="text-muted-foreground mt-1">
+                {t('investments.incomplete.missing')}: {completionStatus.missingFields.map(f => t(f)).join(', ')}
+              </p>
+            </div>
+          </div>
+        )}
+
+        {/* Forecast warning: portfolio_ready but not forecast_ready */}
+        {isDraft && completionStatus && completionStatus.isComplete && !completionStatus.isForecastReady && (
+          <div className="flex items-start gap-2 p-3 rounded-lg bg-muted/50 border text-sm">
+            <AlertTriangle className="h-4 w-4 text-muted-foreground mt-0.5 shrink-0" />
+            <p className="text-muted-foreground">{t('investments.incomplete.forecastWarning')}</p>
+          </div>
+        )}
+
         <FormField
           control={form.control}
           name="platform"

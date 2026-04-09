@@ -11,6 +11,12 @@ export type View = 'dashboard' | 'investments' | 'future-investments' | 'tax' | 
 
 export type InvestmentStatus = 'active' | 'pending' | 'completed' | 'defaulted';
 
+export type IncomeModel = 'bullet' | 'periodic_fixed' | 'amortizing' | 'variable_or_unknown';
+
+export type PaymentFrequency = 'monthly' | 'quarterly' | 'semiannual' | 'annual';
+
+export type PrincipalReturnType = 'at_maturity' | 'amortizing' | 'unknown';
+
 export interface Payment {
   id: string;
   date: string;
@@ -28,6 +34,9 @@ export interface Investment {
   investmentDate: string;
   expectedEndDate?: string;
   expectedReturn: number; // percentage
+  incomeModel: IncomeModel;
+  paymentFrequency?: PaymentFrequency;
+  principalReturnType?: PrincipalReturnType;
   status: InvestmentStatus;
   payments: Payment[];
   notes?: string;
@@ -78,6 +87,9 @@ export interface DraftInvestment {
   investmentDate?: string | null;
   expectedEndDate?: string;
   expectedReturn?: number | null;
+  incomeModel?: IncomeModel | null;
+  paymentFrequency?: PaymentFrequency | null;
+  principalReturnType?: PrincipalReturnType | null;
   status: InvestmentStatus;
   payments: Payment[];
   notes?: string;
@@ -85,9 +97,39 @@ export interface DraftInvestment {
   updatedAt: string;
 }
 
+export interface InvestmentScheduleEntry {
+  id?: string;
+  investmentId: string;
+  expectedDate: string;
+  expectedAmount: number;
+  type: 'interest' | 'principal' | 'mixed';
+  status?: 'pending' | 'matched' | 'missed' | 'skipped';
+  matchedPaymentId?: string | null;
+}
+
 export const STATUS_OPTIONS: { value: InvestmentStatus; label: string; color: string }[] = [
   { value: 'active', label: 'Activo', color: 'status-active' },
   { value: 'pending', label: 'Pendiente', color: 'status-pending' },
   { value: 'completed', label: 'Completado', color: 'status-completed' },
   { value: 'defaulted', label: 'Impago', color: 'status-defaulted' },
+];
+
+export const INCOME_MODEL_OPTIONS: { value: IncomeModel; labelKey: string }[] = [
+  { value: 'bullet', labelKey: 'investments.incomeModel.bullet' },
+  { value: 'periodic_fixed', labelKey: 'investments.incomeModel.periodicFixed' },
+  { value: 'amortizing', labelKey: 'investments.incomeModel.amortizing' },
+  { value: 'variable_or_unknown', labelKey: 'investments.incomeModel.variableOrUnknown' },
+];
+
+export const PAYMENT_FREQUENCY_OPTIONS: { value: PaymentFrequency; labelKey: string }[] = [
+  { value: 'monthly', labelKey: 'investments.frequency.monthly' },
+  { value: 'quarterly', labelKey: 'investments.frequency.quarterly' },
+  { value: 'semiannual', labelKey: 'investments.frequency.semiannual' },
+  { value: 'annual', labelKey: 'investments.frequency.annual' },
+];
+
+export const PRINCIPAL_RETURN_TYPE_OPTIONS: { value: PrincipalReturnType; labelKey: string }[] = [
+  { value: 'at_maturity', labelKey: 'investments.principalReturn.atMaturity' },
+  { value: 'amortizing', labelKey: 'investments.principalReturn.amortizing' },
+  { value: 'unknown', labelKey: 'investments.principalReturn.unknown' },
 ];

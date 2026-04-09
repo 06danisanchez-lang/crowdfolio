@@ -79,6 +79,8 @@ export function useTaxSummary(year: number) {
             projectName: inv.project_name,
             amount: inv.amount != null ? Number(inv.amount) : null,
             investmentDate: inv.investment_date,
+            incomeModel: (inv as any).income_model || 'bullet',
+            status: inv.status,
           }))
           .map((inv) => ({
             id: inv.id, platform: inv.platform as Investment['platform'],
@@ -86,6 +88,9 @@ export function useTaxSummary(year: number) {
             projectName: inv.project_name, amount: Number(inv.amount),
             investmentDate: inv.investment_date, expectedEndDate: inv.expected_end_date || undefined,
             expectedReturn: Number(inv.expected_return), status: inv.status as Investment['status'],
+            incomeModel: ((inv as any).income_model || 'bullet') as Investment['incomeModel'],
+            paymentFrequency: (inv as any).payment_frequency || undefined,
+            principalReturnType: (inv as any).principal_return_type || undefined,
             notes: inv.notes || undefined, payments: [],
             createdAt: inv.created_at, updatedAt: inv.updated_at,
           }));

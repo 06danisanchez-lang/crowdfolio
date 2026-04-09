@@ -220,12 +220,13 @@ export function InvestmentList({
                         amount: draft.amount ?? 0,
                         investmentDate: draft.investmentDate || '',
                         expectedReturn: draft.expectedReturn ?? 0,
+                        incomeModel: draft.incomeModel || 'bullet',
                         status: draft.status,
                         payments: draft.payments,
                         createdAt: draft.createdAt,
                         updatedAt: draft.updatedAt,
                         id: draft.id,
-                      }}
+                      } as Investment}
                       isDraft
                       onSubmit={(data) => onUpdate(draft.id, data)}
                       onSubmitDraft={allowDraftSave ? (data) => onUpdate(draft.id, data) : undefined}

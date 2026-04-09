@@ -4,7 +4,7 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import { format } from 'date-fns';
 import { CalendarIcon, Plus, AlertTriangle, Info } from 'lucide-react';
-import { Investment, Platform, InvestmentStatus, PLATFORMS, STATUS_OPTIONS } from '@/types/investment';
+import { Investment, Platform, InvestmentStatus, PLATFORMS, STATUS_OPTIONS, INCOME_MODEL_OPTIONS, PAYMENT_FREQUENCY_OPTIONS, PRINCIPAL_RETURN_TYPE_OPTIONS, IncomeModel } from '@/types/investment';
 import { getInvestmentCompletionStatus } from '@/lib/investment/completeness';
 
 export interface FutureInvestmentFormData {
@@ -62,6 +62,9 @@ const investmentSchema = z.object({
   investmentDate: z.date(),
   expectedEndDate: z.date().optional(),
   expectedReturn: z.number().min(0, 'El rendimiento debe ser mayor o igual a 0'),
+  incomeModel: z.enum(['bullet', 'periodic_fixed', 'amortizing', 'variable_or_unknown'] as const),
+  paymentFrequency: z.enum(['monthly', 'quarterly', 'semiannual', 'annual'] as const).optional(),
+  principalReturnType: z.enum(['at_maturity', 'amortizing', 'unknown'] as const).optional(),
   status: z.enum(['active', 'pending', 'completed', 'defaulted', 'draft'] as const),
   notes: z.string().optional(),
   sourceUrl: z.string().optional(),
@@ -75,6 +78,9 @@ const draftInvestmentSchema = z.object({
   investmentDate: z.date().optional(),
   expectedEndDate: z.date().optional(),
   expectedReturn: z.number().nullable().optional(),
+  incomeModel: z.enum(['bullet', 'periodic_fixed', 'amortizing', 'variable_or_unknown'] as const).optional(),
+  paymentFrequency: z.enum(['monthly', 'quarterly', 'semiannual', 'annual'] as const).optional(),
+  principalReturnType: z.enum(['at_maturity', 'amortizing', 'unknown'] as const).optional(),
   status: z.enum(['active', 'pending', 'completed', 'defaulted', 'draft'] as const).optional(),
   notes: z.string().optional(),
   sourceUrl: z.string().optional(),
@@ -159,6 +165,9 @@ export function InvestmentForm({
             ? (initialData.expectedEndDate instanceof Date ? initialData.expectedEndDate : new Date(initialData.expectedEndDate))
             : undefined,
           expectedReturn: initialData.expectedReturn || undefined,
+          incomeModel: 'incomeModel' in initialData ? initialData.incomeModel : 'bullet',
+          paymentFrequency: 'paymentFrequency' in initialData ? initialData.paymentFrequency : undefined,
+          principalReturnType: 'principalReturnType' in initialData ? initialData.principalReturnType : undefined,
           status: 'status' in initialData ? initialData.status : undefined,
           notes: initialData.notes,
           sourceUrl: 'sourceUrl' in initialData ? initialData.sourceUrl : undefined,
@@ -168,11 +177,13 @@ export function InvestmentForm({
         : {
             status: 'active',
             investmentDate: new Date(),
+            incomeModel: 'bullet',
           },
   });
 
   const [validationError, setValidationError] = useState<string[] | null>(null);
   const watchPlatform = form.watch('platform');
+  const watchIncomeModel = form.watch('incomeModel') as IncomeModel | undefined;
 
   // Clear validation error when form changes
   useEffect(() => {
@@ -289,6 +300,7 @@ export function InvestmentForm({
           amount: 'investments.field.amount',
           investmentDate: 'investments.field.investmentDate',
           expectedReturn: 'investments.field.expectedReturn',
+          incomeModel: 'investments.field.incomeModel',
           status: 'investments.field.status',
         };
         const missing = [...new Set(manualResult.error.issues.map(i => {
@@ -310,6 +322,9 @@ export function InvestmentForm({
         projectName: data.projectName,
         amount: data.amount,
         expectedReturn: data.expectedReturn,
+        incomeModel: data.incomeModel || 'bullet',
+        paymentFrequency: data.paymentFrequency || null,
+        principalReturnType: data.principalReturnType || null,
         status: finalStatus,
         notes: data.notes,
         investmentDate: data.investmentDate.toISOString(),
@@ -345,6 +360,9 @@ export function InvestmentForm({
         projectName: values.projectName,
         amount: values.amount ?? null,
         expectedReturn: values.expectedReturn ?? null,
+        incomeModel: values.incomeModel || null,
+        paymentFrequency: values.paymentFrequency || null,
+        principalReturnType: values.principalReturnType || null,
         status: 'draft',
         notes: values.notes,
         investmentDate: values.investmentDate?.toISOString() || null,
@@ -368,6 +386,7 @@ export function InvestmentForm({
       ? (initialData.investmentDate instanceof Date ? initialData.investmentDate.toISOString() : initialData.investmentDate as string)
       : null,
     expectedReturn: initialData.expectedReturn,
+    incomeModel: 'incomeModel' in initialData ? (initialData as any).incomeModel : null,
   }) : null;
 
   const showDraftButtons = !isFuture && (isDraft || onSubmitDraft);
@@ -493,6 +512,90 @@ export function InvestmentForm({
             </FormItem>
           )}
         />
+
+        {/* Income Model selectors — only for real investments */}
+        {!isFuture && (
+          <>
+            <FormField
+              control={form.control}
+              name="incomeModel"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>{t('investments.field.incomeModel')}</FormLabel>
+                  <Select onValueChange={field.onChange} value={field.value}>
+                    <FormControl>
+                      <SelectTrigger>
+                        <SelectValue placeholder={t('investments.incomeModel.placeholder')} />
+                      </SelectTrigger>
+                    </FormControl>
+                    <SelectContent>
+                      {INCOME_MODEL_OPTIONS.map((opt) => (
+                        <SelectItem key={opt.value} value={opt.value}>
+                          {t(opt.labelKey)}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+
+            {(watchIncomeModel === 'periodic_fixed' || watchIncomeModel === 'amortizing') && (
+              <FormField
+                control={form.control}
+                name="paymentFrequency"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>{t('investments.field.paymentFrequency')}</FormLabel>
+                    <Select onValueChange={field.onChange} value={field.value}>
+                      <FormControl>
+                        <SelectTrigger>
+                          <SelectValue placeholder={t('investments.frequency.placeholder')} />
+                        </SelectTrigger>
+                      </FormControl>
+                      <SelectContent>
+                        {PAYMENT_FREQUENCY_OPTIONS.map((opt) => (
+                          <SelectItem key={opt.value} value={opt.value}>
+                            {t(opt.labelKey)}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+            )}
+
+            {watchIncomeModel === 'amortizing' && (
+              <FormField
+                control={form.control}
+                name="principalReturnType"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>{t('investments.field.principalReturnType')}</FormLabel>
+                    <Select onValueChange={field.onChange} value={field.value || 'amortizing'}>
+                      <FormControl>
+                        <SelectTrigger>
+                          <SelectValue />
+                        </SelectTrigger>
+                      </FormControl>
+                      <SelectContent>
+                        {PRINCIPAL_RETURN_TYPE_OPTIONS.map((opt) => (
+                          <SelectItem key={opt.value} value={opt.value}>
+                            {t(opt.labelKey)}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+            )}
+          </>
+        )}
 
         <div className="grid grid-cols-2 gap-4">
           <FormField

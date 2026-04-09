@@ -1,9 +1,10 @@
 import { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
-import { Investment, InvestmentSummary, Platform, InvestmentStatus, Payment, DraftInvestment } from '@/types/investment';
+import { Investment, InvestmentSummary, Platform, InvestmentStatus, Payment, DraftInvestment, IncomeModel, PaymentFrequency, PrincipalReturnType } from '@/types/investment';
 import { calculateInvestmentTotalReturn } from '@/lib/investment/calculations';
 import { isInvestmentComplete, getInvestmentCompletionStatus } from '@/lib/investment/completeness';
+import { generateSchedule } from '@/lib/investment/scheduleGenerator';
 
 const FETCH_TIMEOUT_MS = 15_000;
 
@@ -17,6 +18,9 @@ interface RawInvestmentRow {
   investment_date: string | null;
   expected_end_date: string | null;
   expected_return: number | null;
+  income_model: string | null;
+  payment_frequency: string | null;
+  principal_return_type: string | null;
   status: string;
   notes: string | null;
   created_at: string;
@@ -27,6 +31,7 @@ interface RawInvestmentRow {
 export function useInvestments() {
   const { user } = useAuth();
   const [allRawInvestments, setAllRawInvestments] = useState<DraftInvestment[]>([]);
+  const [scheduleCountMap, setScheduleCountMap] = useState<Record<string, number>>({});
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const requestIdRef = useRef(0);
@@ -34,6 +39,7 @@ export function useInvestments() {
   const fetchInvestments = useCallback(async () => {
     if (!user) {
       setAllRawInvestments([]);
+      setScheduleCountMap({});
       setIsLoading(false);
       setError(null);
       return;
@@ -71,6 +77,20 @@ export function useInvestments() {
         paymentsData = data || [];
       }
 
+      // Fetch schedule counts per investment
+      let schedCounts: Record<string, number> = {};
+      if (investmentIds.length > 0) {
+        const { data: schedData } = await supabase
+          .from('investment_schedule')
+          .select('investment_id')
+          .in('investment_id', investmentIds);
+        if (schedData) {
+          for (const row of schedData) {
+            schedCounts[row.investment_id] = (schedCounts[row.investment_id] || 0) + 1;
+          }
+        }
+      }
+
       clearTimeout(timeoutId);
       if (requestIdRef.current !== currentId) return;
 
@@ -83,6 +103,9 @@ export function useInvestments() {
         investmentDate: inv.investment_date || undefined,
         expectedEndDate: inv.expected_end_date || undefined,
         expectedReturn: inv.expected_return != null ? Number(inv.expected_return) : undefined,
+        incomeModel: (inv.income_model as IncomeModel) || undefined,
+        paymentFrequency: (inv.payment_frequency as PaymentFrequency) || undefined,
+        principalReturnType: (inv.principal_return_type as PrincipalReturnType) || undefined,
         status: (inv.status as InvestmentStatus) || 'active',
         notes: inv.notes || undefined,
         createdAt: inv.created_at,
@@ -97,6 +120,7 @@ export function useInvestments() {
       }));
 
       setAllRawInvestments(mapped);
+      setScheduleCountMap(schedCounts);
     } catch (err) {
       clearTimeout(timeoutId);
       if (requestIdRef.current !== currentId) return;
@@ -126,9 +150,9 @@ export function useInvestments() {
         projectName: raw.projectName,
         amount: raw.amount,
         investmentDate: raw.investmentDate,
+        incomeModel: raw.incomeModel,
         status: raw.status,
       })) {
-        // Safe to cast — all required fields are present
         complete.push({
           id: raw.id,
           platform: raw.platform as Platform,
@@ -138,6 +162,9 @@ export function useInvestments() {
           investmentDate: raw.investmentDate as string,
           expectedEndDate: raw.expectedEndDate,
           expectedReturn: raw.expectedReturn ?? 0,
+          incomeModel: (raw.incomeModel as IncomeModel) || 'bullet',
+          paymentFrequency: raw.paymentFrequency || undefined,
+          principalReturnType: raw.principalReturnType || undefined,
           status: raw.status,
           payments: raw.payments,
           notes: raw.notes,
@@ -156,6 +183,43 @@ export function useInvestments() {
   const allInvestmentsCount = allRawInvestments.length;
   const incompleteCount = incompleteInvestments.length;
 
+  const saveScheduleForInvestment = useCallback(async (investmentId: string, investment: {
+    amount: number;
+    expectedReturn: number;
+    incomeModel: IncomeModel;
+    paymentFrequency?: PaymentFrequency | null;
+    principalReturnType?: PrincipalReturnType | null;
+    investmentDate: string;
+    expectedEndDate?: string;
+  }) => {
+    // Delete existing schedule
+    await supabase.from('investment_schedule').delete().eq('investment_id', investmentId);
+
+    if (!investment.expectedEndDate) return;
+
+    const entries = generateSchedule({
+      id: investmentId,
+      amount: investment.amount,
+      expectedReturn: investment.expectedReturn,
+      incomeModel: investment.incomeModel,
+      paymentFrequency: investment.paymentFrequency,
+      principalReturnType: investment.principalReturnType,
+      investmentDate: investment.investmentDate,
+      expectedEndDate: investment.expectedEndDate,
+    });
+
+    if (entries.length > 0) {
+      const rows = entries.map(e => ({
+        investment_id: e.investmentId,
+        expected_date: e.expectedDate,
+        expected_amount: e.expectedAmount,
+        type: e.type,
+        status: e.status || 'pending',
+      }));
+      await supabase.from('investment_schedule').insert(rows);
+    }
+  }, []);
+
   const addInvestment = useCallback(async (investment: Omit<Investment, 'id' | 'createdAt' | 'updatedAt' | 'payments'>): Promise<Investment | null> => {
     if (!user) return null;
     const { data, error } = await supabase.from('investments').insert({
@@ -165,21 +229,39 @@ export function useInvestments() {
       investment_date: investment.investmentDate,
       expected_end_date: investment.expectedEndDate || null,
       expected_return: investment.expectedReturn, status: investment.status,
+      income_model: investment.incomeModel || 'bullet',
+      payment_frequency: investment.paymentFrequency || null,
+      principal_return_type: investment.principalReturnType || 'at_maturity',
       notes: investment.notes || null,
     }).select().single();
     if (error) { console.error('Error adding investment:', error); return null; }
+
+    // Generate schedule if needed
+    await saveScheduleForInvestment(data.id, {
+      amount: investment.amount,
+      expectedReturn: investment.expectedReturn,
+      incomeModel: investment.incomeModel,
+      paymentFrequency: investment.paymentFrequency,
+      principalReturnType: investment.principalReturnType,
+      investmentDate: investment.investmentDate,
+      expectedEndDate: investment.expectedEndDate,
+    });
+
     const created: Investment = {
       id: data.id, platform: data.platform as Platform,
       customPlatformName: data.custom_platform_name || undefined,
       projectName: data.project_name!, amount: Number(data.amount),
       investmentDate: data.investment_date!, expectedEndDate: data.expected_end_date || undefined,
       expectedReturn: Number(data.expected_return), status: data.status as InvestmentStatus,
+      incomeModel: ((data as any).income_model || 'bullet') as IncomeModel,
+      paymentFrequency: (data as any).payment_frequency || undefined,
+      principalReturnType: (data as any).principal_return_type || undefined,
       notes: data.notes || undefined, createdAt: data.created_at, updatedAt: data.updated_at,
       payments: [],
     };
     await fetchInvestments();
     return created;
-  }, [user, fetchInvestments]);
+  }, [user, fetchInvestments, saveScheduleForInvestment]);
 
   // Add a draft/partial investment
   const addDraftInvestment = useCallback(async (draft: {
@@ -190,6 +272,9 @@ export function useInvestments() {
     investmentDate?: string | null;
     expectedEndDate?: string | null;
     expectedReturn?: number | null;
+    incomeModel?: string | null;
+    paymentFrequency?: string | null;
+    principalReturnType?: string | null;
     status?: string;
     notes?: string | null;
   }) => {
@@ -203,6 +288,9 @@ export function useInvestments() {
       investment_date: draft.investmentDate || null,
       expected_end_date: draft.expectedEndDate || null,
       expected_return: draft.expectedReturn ?? null,
+      income_model: draft.incomeModel || null,
+      payment_frequency: draft.paymentFrequency || null,
+      principal_return_type: draft.principalReturnType || null,
       status: draft.status || 'active',
       notes: draft.notes || null,
     }).select().single();
@@ -222,10 +310,32 @@ export function useInvestments() {
     if (updates.expectedReturn !== undefined) dbUpdates.expected_return = updates.expectedReturn ?? null;
     if (updates.status !== undefined) dbUpdates.status = updates.status;
     if (updates.notes !== undefined) dbUpdates.notes = updates.notes;
+    if (updates.incomeModel !== undefined) dbUpdates.income_model = updates.incomeModel || null;
+    if (updates.paymentFrequency !== undefined) dbUpdates.payment_frequency = updates.paymentFrequency || null;
+    if (updates.principalReturnType !== undefined) dbUpdates.principal_return_type = updates.principalReturnType || null;
     const { error } = await supabase.from('investments').update(dbUpdates).eq('id', id);
     if (error) { console.error('Error updating investment:', error); return; }
+
+    // Regenerate schedule if income model fields changed
+    if (updates.incomeModel || updates.paymentFrequency || updates.expectedReturn !== undefined || updates.expectedEndDate !== undefined) {
+      // Fetch the current full investment to regenerate
+      const current = allRawInvestments.find(inv => inv.id === id);
+      if (current) {
+        const merged = {
+          amount: updates.amount ?? current.amount ?? 0,
+          expectedReturn: updates.expectedReturn ?? current.expectedReturn ?? 0,
+          incomeModel: (updates.incomeModel ?? current.incomeModel ?? 'bullet') as IncomeModel,
+          paymentFrequency: (updates.paymentFrequency ?? current.paymentFrequency) as PaymentFrequency | null,
+          principalReturnType: (updates.principalReturnType ?? current.principalReturnType) as PrincipalReturnType | null,
+          investmentDate: updates.investmentDate ?? current.investmentDate ?? '',
+          expectedEndDate: updates.expectedEndDate ?? current.expectedEndDate,
+        };
+        await saveScheduleForInvestment(id, merged);
+      }
+    }
+
     await fetchInvestments();
-  }, [fetchInvestments]);
+  }, [fetchInvestments, allRawInvestments, saveScheduleForInvestment]);
 
   const deleteInvestment = useCallback(async (id: string) => {
     const { error } = await supabase.from('investments').delete().eq('id', id);
@@ -275,6 +385,9 @@ export function useInvestments() {
         investment_date: inv.investmentDate,
         expected_end_date: inv.expectedEndDate || null,
         expected_return: inv.expectedReturn, status: inv.status,
+        income_model: inv.incomeModel || 'bullet',
+        payment_frequency: inv.paymentFrequency || null,
+        principal_return_type: inv.principalReturnType || 'at_maturity',
         notes: inv.notes || null,
       }).select().single();
       if (error) { console.error('Error importing investment:', error); continue; }
@@ -300,15 +413,21 @@ export function useInvestments() {
 
   const summary: InvestmentSummary = useMemo(() => {
     const activeInvestments = investments.filter(inv => inv.status === 'active');
-    const forecastReady = activeInvestments.filter(inv => 
-      inv.expectedEndDate && getInvestmentCompletionStatus({
+    const forecastReady = activeInvestments.filter(inv => {
+      const status = getInvestmentCompletionStatus({
         platform: inv.platform,
         projectName: inv.projectName,
         amount: inv.amount,
         investmentDate: inv.investmentDate,
         expectedReturn: inv.expectedReturn,
-      }).isForecastReady
-    );
+        expectedEndDate: inv.expectedEndDate,
+        incomeModel: inv.incomeModel,
+        paymentFrequency: inv.paymentFrequency,
+        hasSchedule: (scheduleCountMap[inv.id] || 0) > 0,
+        status: inv.status,
+      });
+      return status.isForecastReady;
+    });
 
     const activeCapital = activeInvestments.reduce((s, i) => s + i.amount, 0);
     const expectedProfit = forecastReady.reduce((s, i) => s + calculateInvestmentTotalReturn(i), 0);
@@ -351,7 +470,7 @@ export function useInvestments() {
         completedCount: investments.filter(inv => inv.status === 'completed').length,
       },
     };
-  }, [investments]);
+  }, [investments, scheduleCountMap]);
 
   return {
     investments, incompleteInvestments, incompleteCount, allInvestmentsCount,

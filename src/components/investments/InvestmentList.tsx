@@ -9,9 +9,11 @@ import {
   Eye, 
   ArrowUpDown,
   Filter,
-  Search
+  Search,
+  AlertTriangle
 } from 'lucide-react';
-import { Investment, PLATFORMS, STATUS_OPTIONS, Platform, InvestmentStatus } from '@/types/investment';
+import { Investment, DraftInvestment, PLATFORMS, STATUS_OPTIONS, Platform, InvestmentStatus } from '@/types/investment';
+import { getInvestmentCompletionStatus } from '@/lib/investment/completeness';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
@@ -51,10 +53,12 @@ import { InvestmentDetail } from './InvestmentDetail';
 
 interface InvestmentListProps {
   investments: Investment[];
+  incompleteInvestments?: DraftInvestment[];
   onUpdate: (id: string, updates: Partial<Investment>) => void;
   onDelete: (id: string) => void;
   onAddPayment: (investmentId: string, payment: { date: string; amount: number; type: 'dividend' | 'principal' | 'interest'; notes?: string }) => void;
   onDeletePayment: (investmentId: string, paymentId: string) => void;
+  onSubmitDraft?: (data: any) => void;
 }
 
 type SortField = 'projectName' | 'amount' | 'investmentDate' | 'expectedReturn' | 'status';
@@ -62,10 +66,12 @@ type SortDirection = 'asc' | 'desc';
 
 export function InvestmentList({ 
   investments, 
+  incompleteInvestments = [],
   onUpdate, 
   onDelete,
   onAddPayment,
-  onDeletePayment
+  onDeletePayment,
+  onSubmitDraft
 }: InvestmentListProps) {
   const { t } = useLanguage();
   const [search, setSearch] = useState('');
@@ -150,8 +156,101 @@ export function InvestmentList({
     }
   };
 
+  const formatCurrency = (value: number) => {
+    return new Intl.NumberFormat('es-ES', {
+      style: 'currency',
+      currency: 'EUR',
+      minimumFractionDigits: 0,
+      maximumFractionDigits: 0,
+    }).format(value);
+  };
+
   return (
     <div className="space-y-4">
+      {/* Incomplete investments section */}
+      {incompleteInvestments.length > 0 && (
+        <div className="rounded-lg border border-orange-200 dark:border-orange-900/50 bg-orange-50/50 dark:bg-orange-950/20 p-4 space-y-3">
+          <div className="flex items-center gap-2">
+            <AlertTriangle className="h-4 w-4 text-orange-500" />
+            <h3 className="text-sm font-semibold">{t('investments.incomplete.title')}</h3>
+            <Badge variant="secondary" className="bg-orange-100 text-orange-700 dark:bg-orange-900/30 dark:text-orange-400">
+              {incompleteInvestments.length}
+            </Badge>
+          </div>
+          <div className="space-y-2">
+            {incompleteInvestments.map((draft) => {
+              const status = getInvestmentCompletionStatus({
+                platform: draft.platform,
+                projectName: draft.projectName,
+                amount: draft.amount,
+                investmentDate: draft.investmentDate,
+                expectedReturn: draft.expectedReturn,
+              });
+              return (
+                <div key={draft.id} className="flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-4 p-3 rounded-md bg-background border">
+                  <div className="flex-1 min-w-0">
+                    <p className="font-medium truncate">{draft.projectName || t('investments.incomplete.noName')}</p>
+                    <div className="flex flex-wrap gap-1 mt-1">
+                      {draft.platform && (
+                        <span className="text-xs text-muted-foreground">
+                          {getPlatformLabel(draft.platform as Platform, draft.customPlatformName)}
+                        </span>
+                      )}
+                      {draft.amount != null && draft.amount > 0 && (
+                        <span className="text-xs text-muted-foreground">
+                          · {formatCurrency(draft.amount)}
+                        </span>
+                      )}
+                    </div>
+                    <div className="flex flex-wrap gap-1 mt-1">
+                      {status.missingFields.map(field => (
+                        <Badge key={field} variant="outline" className="text-xs text-orange-600 border-orange-300 dark:text-orange-400 dark:border-orange-700">
+                          {t(field)}
+                        </Badge>
+                      ))}
+                    </div>
+                  </div>
+                  <div className="flex gap-2 shrink-0">
+                    <InvestmentForm
+                      initialData={{
+                        ...draft,
+                        platform: draft.platform as Platform,
+                        projectName: draft.projectName || '',
+                        amount: draft.amount ?? 0,
+                        investmentDate: draft.investmentDate || '',
+                        expectedReturn: draft.expectedReturn ?? 0,
+                        status: draft.status,
+                        payments: draft.payments,
+                        createdAt: draft.createdAt,
+                        updatedAt: draft.updatedAt,
+                        id: draft.id,
+                      }}
+                      isDraft
+                      onSubmit={(data) => onUpdate(draft.id, data)}
+                      onSubmitDraft={onSubmitDraft ? (data) => {
+                        onUpdate(draft.id, data);
+                      } : undefined}
+                      trigger={
+                        <Button variant="outline" size="sm">
+                          {t('investments.incomplete.cta')}
+                        </Button>
+                      }
+                    />
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      className="text-destructive"
+                      onClick={() => setDeleteId(draft.id)}
+                    >
+                      <Trash2 className="h-4 w-4" />
+                    </Button>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      )}
       {/* Filters */}
       <div className="flex flex-col gap-4 sm:flex-row">
         <div className="relative flex-1">

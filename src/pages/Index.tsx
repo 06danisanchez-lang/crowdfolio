@@ -49,10 +49,13 @@ const Index = () => {
   
   const {
     investments,
+    incompleteInvestments,
+    allInvestmentsCount,
     isLoading,
     error: investmentsError,
     summary,
     addInvestment,
+    addDraftInvestment,
     updateInvestment,
     deleteInvestment,
     addPayment,
@@ -180,7 +183,7 @@ const Index = () => {
                     {investments.length > 0 && (
                       <ShareSuccessButton targetRef={shareableCardRef} disabled={investments.length === 0} />
                     )}
-                    <InvestmentForm onSubmit={addInvestment} investmentCount={investments.length} isPro={isPro} onProRequired={() => openUpgradeModal('unlimited_investments')} />
+                    <InvestmentForm onSubmit={addInvestment} onSubmitDraft={addDraftInvestment} investmentCount={allInvestmentsCount} isPro={isPro} onProRequired={() => openUpgradeModal('unlimited_investments')} />
                   </div>
                 </div>
 
@@ -331,14 +334,24 @@ const Index = () => {
             <div className="mb-8 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
               <div>
                 <h1 className="text-3xl font-bold">{t('investments.title')}</h1>
-                <p className="text-muted-foreground">{t('investments.subtitle')}{!isPro && ` (${investments.length}/3)`}</p>
+                <p className="text-muted-foreground">{t('investments.subtitle')}{!isPro && ` (${allInvestmentsCount}/3)`}</p>
               </div>
               <div className="flex flex-wrap gap-2">
                 <ImportExport investments={investments} onImport={importInvestments} exportData={exportInvestments} isPro={isPro} onProRequired={() => openUpgradeModal('unlimited_imports')} importsThisMonth={importCountThisMonth} />
-                <InvestmentForm onSubmit={addInvestment} investmentCount={investments.length} isPro={isPro} onProRequired={() => openUpgradeModal('unlimited_investments')} />
+                <InvestmentForm onSubmit={addInvestment} onSubmitDraft={addDraftInvestment} investmentCount={allInvestmentsCount} isPro={isPro} onProRequired={() => openUpgradeModal('unlimited_investments')} />
               </div>
             </div>
-            <InvestmentList investments={investments} onUpdate={updateInvestment} onDelete={deleteInvestment} onAddPayment={addPayment} onDeletePayment={deletePayment} />
+            <InvestmentList
+              investments={investments}
+              incompleteInvestments={incompleteInvestments}
+              onUpdate={updateInvestment}
+              onDelete={deleteInvestment}
+              onAddPayment={addPayment}
+              onDeletePayment={deletePayment}
+              onSubmitDraft={(data) => {
+                // When saving draft from edit, use updateInvestment
+              }}
+            />
           </div>
         );
       case 'future-investments':

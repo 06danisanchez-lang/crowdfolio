@@ -142,7 +142,7 @@ export function InvestmentForm({
     setOpen(newOpen);
   };
 
-  const schema = isFuture ? futureInvestmentSchema : (isDraft ? draftInvestmentSchema : investmentSchema);
+  const schema = isFuture ? futureInvestmentSchema : investmentSchema;
 
   const form = useForm<any>({
     resolver: zodResolver(schema),
@@ -640,7 +640,7 @@ export function InvestmentForm({
           )}
         />
 
-        <div className="flex justify-end gap-2 pt-4">
+        <div className="sticky bottom-0 bg-background pt-4 pb-2 border-t mt-4 -mx-1 px-1 flex justify-end gap-2">
           <Button type="button" variant="outline" onClick={() => setOpen(false)}>
             {t('common.cancel')}
           </Button>
@@ -686,6 +686,12 @@ export function InvestmentForm({
           </DialogTitle>
         </DialogHeader>
         
+        {showDraftButtons && (
+          <p className="text-sm text-muted-foreground px-1 -mt-1 mb-2">
+            {t('investments.form.draftHint')}
+          </p>
+        )}
+
         {renderForm()}
       </DialogContent>
     </Dialog>

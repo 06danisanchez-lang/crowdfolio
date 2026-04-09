@@ -348,9 +348,7 @@ const Index = () => {
               onDelete={deleteInvestment}
               onAddPayment={addPayment}
               onDeletePayment={deletePayment}
-              onSubmitDraft={(data) => {
-                // When saving draft from edit, use updateInvestment
-              }}
+              allowDraftSave
             />
           </div>
         );
@@ -393,6 +391,7 @@ const Index = () => {
     <AppLayout 
       currentView={currentView} 
       onViewChange={setCurrentView}
+      incompleteCount={incompleteInvestments.length}
     >
       <ErrorBoundary fallbackMessage="Ha ocurrido un error inesperado.">
       <div key={currentView}>

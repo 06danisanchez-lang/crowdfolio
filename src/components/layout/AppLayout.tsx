@@ -23,18 +23,20 @@ import crowdfolioLogo from '@/assets/crowdfolio-logo.png';
 import { useLanguage } from '@/contexts/LanguageContext';
 import { LanguageToggle } from '@/components/ui/LanguageToggle';
 import { useFutureInvestments } from '@/hooks/useFutureInvestments';
-import { useIncompleteCount } from '@/hooks/useIncompleteCount';
+
 
 interface AppLayoutProps {
   children: React.ReactNode;
   currentView: View;
   onViewChange: (view: View) => void;
+  incompleteCount?: number;
 }
 
 export function AppLayout({ 
   children, 
   currentView, 
-  onViewChange
+  onViewChange,
+  incompleteCount = 0
 }: AppLayoutProps) {
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [upgradeOpen, setUpgradeOpen] = useState(false);
@@ -44,7 +46,7 @@ export function AppLayout({
   const mainRef = useRef<HTMLElement>(null);
   const { t } = useLanguage();
   const { futureInvestments } = useFutureInvestments();
-  const { incompleteCount } = useIncompleteCount();
+  
 
   useEffect(() => {
     mainRef.current?.scrollTo(0, 0);

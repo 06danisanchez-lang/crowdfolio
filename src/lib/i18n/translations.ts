@@ -449,6 +449,8 @@ export const translations: Record<Lang, Record<string, string>> = {
     'investments.field.investmentDate': 'Fecha de inversión',
     'investments.field.expectedReturn': 'Rentabilidad esperada',
     'investments.form.saveDraft': 'Guardar borrador',
+    'investments.form.draftHint': 'Puedes guardar un borrador si todavía te faltan datos.',
+    'investments.incomplete.status': 'Pendiente',
     'tax.incomplete.warning': '{count} inversiones no se incluyen en este informe porque están pendientes de completar.',
 
   },
@@ -900,6 +902,8 @@ export const translations: Record<Lang, Record<string, string>> = {
     'investments.field.investmentDate': 'Investment date',
     'investments.field.expectedReturn': 'Expected return',
     'investments.form.saveDraft': 'Save draft',
+    'investments.form.draftHint': 'You can save a draft if you don\'t have all the data yet.',
+    'investments.incomplete.status': 'Pending',
     'tax.incomplete.warning': '{count} investments are not included in this report because they are pending completion.',
 
   },

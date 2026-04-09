@@ -58,7 +58,7 @@ interface InvestmentListProps {
   onDelete: (id: string) => void;
   onAddPayment: (investmentId: string, payment: { date: string; amount: number; type: 'dividend' | 'principal' | 'interest'; notes?: string }) => void;
   onDeletePayment: (investmentId: string, paymentId: string) => void;
-  onSubmitDraft?: (data: any) => void;
+  allowDraftSave?: boolean;
 }
 
 type SortField = 'projectName' | 'amount' | 'investmentDate' | 'expectedReturn' | 'status';
@@ -71,7 +71,7 @@ export function InvestmentList({
   onDelete,
   onAddPayment,
   onDeletePayment,
-  onSubmitDraft
+  allowDraftSave
 }: InvestmentListProps) {
   const { t } = useLanguage();
   const [search, setSearch] = useState('');
@@ -187,13 +187,21 @@ export function InvestmentList({
                           {getPlatformLabel(draft.platform as Platform, draft.customPlatformName)}
                         </span>
                       )}
-                      {draft.amount != null && draft.amount > 0 && (
+                    {draft.amount != null && draft.amount > 0 && (
                         <span className="text-xs text-muted-foreground">
                           · {formatCurrency(draft.amount)}
                         </span>
                       )}
+                      {draft.investmentDate && (
+                        <span className="text-xs text-muted-foreground">
+                          · {draft.investmentDate}
+                        </span>
+                      )}
                     </div>
                     <div className="flex flex-wrap gap-1 mt-1">
+                      <Badge variant="secondary" className="text-xs bg-orange-100 text-orange-700 dark:bg-orange-900/30 dark:text-orange-400">
+                        {t('investments.incomplete.status')}
+                      </Badge>
                       {status.missingFields.map(field => (
                         <Badge key={field} variant="outline" className="text-xs text-orange-600 border-orange-300 dark:text-orange-400 dark:border-orange-700">
                           {t(field)}
@@ -218,9 +226,7 @@ export function InvestmentList({
                       }}
                       isDraft
                       onSubmit={(data) => onUpdate(draft.id, data)}
-                      onSubmitDraft={onSubmitDraft ? (data) => {
-                        onUpdate(draft.id, data);
-                      } : undefined}
+                      onSubmitDraft={allowDraftSave ? (data) => onUpdate(draft.id, data) : undefined}
                       trigger={
                         <Button variant="outline" size="sm">
                           {t('investments.incomplete.cta')}

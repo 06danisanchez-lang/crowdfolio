@@ -471,8 +471,8 @@ export const translations: Record<Lang, Record<string, string>> = {
     'features.sectionDesc': 'From basic tracking to advanced tax reports, Crowdfolio has you covered.',
     'features.f1.title': 'Spain Tax Module',
     'features.f1.desc': 'Export your withholdings and income ready for your tax return. We automatically classify between capital income and capital gains.',
-    'features.f2.title': 'Smart Import',
-    'features.f2.desc': 'Copy and paste directly from your platform or drag your PDFs. Our technology extracts data for you.',
+    'features.f2.title': 'Quick Import',
+    'features.f2.desc': 'Import your investments from CSV or JSON quickly and easily.',
     'features.f3.title': 'Professional Dashboard',
     'features.f3.desc': 'Visualize returns, portfolio distribution and timeline evolution with interactive charts.',
     'features.f4.title': 'Return Analysis',
@@ -750,7 +750,7 @@ export const translations: Record<Lang, Record<string, string>> = {
     // Plan copy — Free features
     'subscription.free.f1': 'Up to 3 active investments',
     'subscription.free.f2': 'Up to 3 future investments',
-    'subscription.free.f3': '1 AI import per month',
+    'subscription.free.f3': '1 bulk import per month',
     'subscription.free.f4': 'Opening alerts for your future investments',
     'subscription.free.f5': 'Indicative tax summary',
     'subscription.free.f6': '',
@@ -758,7 +758,7 @@ export const translations: Record<Lang, Record<string, string>> = {
     // Plan copy — Pro features
     'subscription.pro.f1': 'Unlimited active investments',
     'subscription.pro.f2': 'Unlimited future investments',
-    'subscription.pro.f3': 'Unlimited AI imports',
+    'subscription.pro.f3': 'Unlimited bulk imports',
     'subscription.pro.f4': 'Unlimited opening alerts',
     'subscription.pro.f5': 'Unified tax report',
     'subscription.pro.f6': 'Tax report export',
@@ -766,7 +766,7 @@ export const translations: Record<Lang, Record<string, string>> = {
     // Contextual CTAs
     'subscription.cta.investments': 'Unlock unlimited investments',
     'subscription.cta.futureInvestments': 'Unlock unlimited future investments',
-    'subscription.cta.imports': 'Import without limits and save time',
+    'subscription.cta.imports': 'Unlock unlimited bulk imports',
     'subscription.cta.tax': 'Access a tax report prepared for filing',
     'subscription.cta.taxExport': 'Access a tax report prepared for filing',
     'subscription.cta.default': 'Unlock Crowdfolio Pro',

@@ -3,7 +3,7 @@ import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import { format } from 'date-fns';
-import { CalendarIcon, Plus, AlertTriangle } from 'lucide-react';
+import { CalendarIcon, Plus, AlertTriangle, Info } from 'lucide-react';
 import { Investment, Platform, InvestmentStatus, PLATFORMS, STATUS_OPTIONS } from '@/types/investment';
 import { getInvestmentCompletionStatus } from '@/lib/investment/completeness';
 
@@ -62,7 +62,7 @@ const investmentSchema = z.object({
   investmentDate: z.date(),
   expectedEndDate: z.date().optional(),
   expectedReturn: z.number().min(0, 'El rendimiento debe ser mayor o igual a 0'),
-  status: z.enum(['active', 'pending', 'completed', 'defaulted'] as const),
+  status: z.enum(['active', 'pending', 'completed', 'defaulted', 'draft'] as const),
   notes: z.string().optional(),
   sourceUrl: z.string().optional(),
 });
@@ -75,7 +75,7 @@ const draftInvestmentSchema = z.object({
   investmentDate: z.date().optional(),
   expectedEndDate: z.date().optional(),
   expectedReturn: z.number().nullable().optional(),
-  status: z.enum(['active', 'pending', 'completed', 'defaulted'] as const).optional(),
+  status: z.enum(['active', 'pending', 'completed', 'defaulted', 'draft'] as const).optional(),
   notes: z.string().optional(),
   sourceUrl: z.string().optional(),
 });
@@ -171,7 +171,15 @@ export function InvestmentForm({
           },
   });
 
+  const [validationError, setValidationError] = useState<string[] | null>(null);
   const watchPlatform = form.watch('platform');
+
+  // Clear validation error when form changes
+  useEffect(() => {
+    if (!validationError) return;
+    const { unsubscribe } = form.watch(() => setValidationError(null));
+    return () => unsubscribe();
+  }, [validationError, form]);
 
   // Auto-save draft via form.watch(callback) subscription.
   // Only active for new real investments.
@@ -272,13 +280,37 @@ export function InvestmentForm({
         notes: data.notes,
       });
     } else {
+      // Manual validation for complete investment
+      const manualResult = investmentSchema.safeParse(data);
+      if (!manualResult.success) {
+        const fieldMap: Record<string, string> = {
+          platform: 'investments.field.platform',
+          projectName: 'investments.field.projectName',
+          amount: 'investments.field.amount',
+          investmentDate: 'investments.field.investmentDate',
+          expectedReturn: 'investments.field.expectedReturn',
+          status: 'investments.field.status',
+        };
+        const missing = [...new Set(manualResult.error.issues.map(i => {
+          const key = String(i.path[0]);
+          return fieldMap[key] || key;
+        }))];
+        setValidationError(missing);
+        return;
+      }
+
+      setValidationError(null);
+
+      // When completing a draft, force status to active
+      const finalStatus = isDraft ? 'active' : data.status;
+
       onSubmit({
         platform: data.platform,
         customPlatformName: data.customPlatformName,
         projectName: data.projectName,
         amount: data.amount,
         expectedReturn: data.expectedReturn,
-        status: data.status,
+        status: finalStatus,
         notes: data.notes,
         investmentDate: data.investmentDate.toISOString(),
         expectedEndDate: data.expectedEndDate?.toISOString(),
@@ -313,7 +345,7 @@ export function InvestmentForm({
         projectName: values.projectName,
         amount: values.amount ?? null,
         expectedReturn: values.expectedReturn ?? null,
-        status: values.status || 'active',
+        status: 'draft',
         notes: values.notes,
         investmentDate: values.investmentDate?.toISOString() || null,
         expectedEndDate: values.expectedEndDate?.toISOString() || null,
@@ -390,6 +422,20 @@ export function InvestmentForm({
           <div className="flex items-start gap-2 p-3 rounded-lg bg-muted/50 border text-sm">
             <AlertTriangle className="h-4 w-4 text-muted-foreground mt-0.5 shrink-0" />
             <p className="text-muted-foreground">{t('investments.incomplete.forecastWarning')}</p>
+          </div>
+        )}
+
+        {/* Validation error block — shown when "Guardar inversión" fails */}
+        {validationError && (
+          <div className="flex items-start gap-2 p-3 rounded-lg bg-destructive/10 border border-destructive/30 text-sm">
+            <Info className="h-4 w-4 text-destructive mt-0.5 shrink-0" />
+            <div className="space-y-1">
+              <p className="font-medium text-destructive">{t('investments.validation.cannotComplete')}</p>
+              <p className="text-muted-foreground">{t('investments.validation.suggestDraft')}</p>
+              <p className="text-muted-foreground">
+                {t('investments.validation.missingFields')} {validationError.map(f => t(f)).join(', ')}
+              </p>
+            </div>
           </div>
         )}
 
@@ -686,7 +732,6 @@ export function InvestmentForm({
           </DialogTitle>
         </DialogHeader>
         
-        <p className="text-xs font-bold text-red-600 bg-red-100 px-2 py-1 rounded">TEST-DRAFT-VISIBLE</p>
         {showDraftButtons && (
           <p className="text-sm text-muted-foreground px-1 -mt-1 mb-2">
             {t('investments.form.draftHint')}

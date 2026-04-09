@@ -177,6 +177,7 @@ export function InvestmentList({
                 amount: draft.amount,
                 investmentDate: draft.investmentDate,
                 expectedReturn: draft.expectedReturn,
+                status: draft.status,
               });
               return (
                 <div key={draft.id} className="flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-4 p-3 rounded-md bg-background border">
@@ -201,7 +202,7 @@ export function InvestmentList({
                     </div>
                     <div className="flex flex-wrap gap-1 mt-1">
                       <Badge variant="secondary" className="text-xs bg-orange-100 text-orange-700 dark:bg-orange-900/30 dark:text-orange-400">
-                        {t('investments.incomplete.status')}
+                        {(draft.status as string) === 'draft' ? t('investments.incomplete.statusDraft') : t('investments.incomplete.status')}
                       </Badge>
                       {status.missingFields.map(field => (
                         <Badge key={field} variant="outline" className="text-xs text-orange-600 border-orange-300 dark:text-orange-400 dark:border-orange-700">

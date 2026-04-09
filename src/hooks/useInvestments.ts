@@ -126,6 +126,7 @@ export function useInvestments() {
         projectName: raw.projectName,
         amount: raw.amount,
         investmentDate: raw.investmentDate,
+        status: raw.status,
       })) {
         // Safe to cast — all required fields are present
         complete.push({

@@ -15,10 +15,17 @@ interface CompletenessInput {
   amount?: number | null;
   investmentDate?: string | null;
   expectedReturn?: number | null;
+  status?: string | null;
 }
 
 export function getInvestmentCompletionStatus(inv: CompletenessInput): CompletionStatus {
   const missingFields: string[] = [];
+
+  // Drafts are never complete — they must be explicitly completed
+  if (inv.status === 'draft') {
+    missingFields.push('investments.field.draftStatus');
+    return { isComplete: false, isForecastReady: false, missingFields };
+  }
 
   if (!inv.platform) missingFields.push('investments.field.platform');
   if (!inv.projectName) missingFields.push('investments.field.projectName');

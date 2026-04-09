@@ -1,40 +1,55 @@
 
-## Fase 1 — Implementada: Tipos de inversión, schedule automático y niveles de completitud
 
-### Cambios realizados
+## Plan: Cierre de Fase 1 — 4 correcciones pendientes
 
-#### Base de datos
-- `investments`: 3 columnas nuevas (`income_model`, `payment_frequency`, `principal_return_type`)
-- Nueva tabla `investment_schedule` con RLS via ownership de inversiones
-- Inversiones existentes: `income_model = 'bullet'` por defecto (sin ruptura)
+### 1. `useIncompleteCount.ts`
+**Problema**: El SELECT solo trae `id, platform, project_name, amount, investment_date`. No trae `income_model` ni `status`, así que `isInvestmentComplete` no puede evaluarlos.
 
-#### Niveles de completitud (`src/lib/investment/completeness.ts`)
-- `draft`: status === 'draft', solo requiere projectName
-- `portfolio_ready`: platform + projectName + amount > 0 + investmentDate + incomeModel + status ≠ draft
-- `forecast_ready`:
-  - bullet: portfolio_ready + expectedReturn + expectedEndDate
-  - periodic_fixed/amortizing: portfolio_ready + expectedReturn + expectedEndDate + paymentFrequency + schedule ≥1 fila
-  - variable_or_unknown: NUNCA
-- Fiscalidad: NO es nivel de inversión. Se basa en payments reales (useTaxSummary sin cambios)
+**Cambio**: Añadir `income_model, status` al SELECT. Pasar `incomeModel` y `status` a `isInvestmentComplete`.
 
-#### Schedule automático (`src/lib/investment/scheduleGenerator.ts`)
-- Genera cashflows esperados para periodic_fixed y amortizing
-- periodic_fixed: N pagos de interés + 1 de principal al vencimiento
-- amortizing: cuota constante (francés simplificado)
-- Se genera en frontend (Fase 1) — migrar a edge function en Fase 2
+### 2. Dashboard / previsiones (`useInvestments.ts` líneas 442-444)
+**Problema**: `summary.expectedReturns` (línea 444) calcula sobre TODAS las `investments`, no solo las `forecastReady`. Los KPIs de rendimiento esperado pueden incluir inversiones que no son forecast_ready.
 
-#### Formulario (`InvestmentForm.tsx`)
-- Selector de income_model (4 opciones)
-- Selector condicional de payment_frequency (periodic/amortizing)
-- Selector condicional de principal_return_type (amortizing)
-- Schemas zod actualizados para validación completa y draft
+**Cambio**: En el `summary` useMemo, calcular `expectedReturns` y `averageReturn` (línea 447) usando solo el array `forecastReady` ya calculado (líneas 416-430), no `investments`.
 
-#### Plan Free
-- Límite de 3 inversiones cuenta TODO (drafts + incompletas + completas)
-- Sin cambios necesarios (ya funcionaba así con allInvestmentsCount)
+Los gráficos (`InvestmentTimelineChart`) reciben `investments` — esto es correcto porque muestran capital invertido a lo largo del tiempo, que es dato de cartera (portfolio_ready). No requieren cambio.
 
-### Deuda técnica (Fase 2)
-- Generación de schedule en backend (edge function o trigger)
-- Matching automático de payments con schedule
-- Alertas de pagos faltantes/retrasados
-- UI para ver/editar schedule manualmente
+### 3. Regeneración de schedule (`useInvestments.ts` línea 320)
+**Problema**: El `if` en línea 320 solo detecta cambios en `incomeModel`, `paymentFrequency`, `expectedReturn`, `expectedEndDate`. Si cambia `amount`, `investmentDate`, o `principalReturnType`, el schedule no se regenera.
+
+**Cambio**: Ampliar la condición para incluir todos los campos que afectan al schedule:
+```
+if (updates.incomeModel || updates.paymentFrequency || 
+    updates.expectedReturn !== undefined || updates.expectedEndDate !== undefined ||
+    updates.amount !== undefined || updates.investmentDate !== undefined ||
+    updates.principalReturnType !== undefined)
+```
+
+### 4. Import / export
+
+**4a. `src/lib/validation/investmentSchema.ts`**
+- Añadir a `investmentImportSchema`: `incomeModel` (opcional, enum), `paymentFrequency` (opcional, enum), `principalReturnType` (opcional, enum)
+- Añadir los mismos a `csvRowSchema`
+
+**4b. `src/components/investments/ImportExport.tsx`**
+- **Export CSV**: Añadir 3 columnas nuevas en headers y rows (`Modelo de Rendimiento`, `Frecuencia de Pago`, `Tipo Devolución Principal`)
+- **Export JSON**: Ya funciona (usa `investments` que ya tiene los campos)
+- **Import CSV**: Mapear las 3 columnas nuevas desde el CSV, pasarlas al objeto de inversión
+- **CSV template**: Añadir las 3 columnas nuevas con ejemplo
+
+### Archivos a tocar (4)
+
+| Archivo | Cambio |
+|---------|--------|
+| `src/hooks/useIncompleteCount.ts` | Añadir `income_model, status` al SELECT y a la llamada |
+| `src/hooks/useInvestments.ts` | Línea 320: ampliar condición regeneración. Líneas 444,447: usar `forecastReady` |
+| `src/lib/validation/investmentSchema.ts` | Añadir 3 campos opcionales a ambos schemas |
+| `src/components/investments/ImportExport.tsx` | 3 columnas nuevas en CSV export/import/template |
+
+### Lo que NO se toca
+- `completeness.ts` — ya correcto
+- `InvestmentForm.tsx` — ya correcto
+- `scheduleGenerator.ts` — ya correcto
+- Dashboard charts — reciben `investments` (portfolio_ready), correcto para datos de cartera
+- `useTaxSummary` — ya correcto
+

@@ -40,6 +40,7 @@ export function useTaxSummary(year: number) {
   const [investments, setInvestments] = useState<Investment[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [excludedIncompleteCount, setExcludedIncompleteCount] = useState(0);
   const requestIdRef = useRef(0);
   const { expenses, totalExpenses, isLoading: expensesLoading } = useTaxExpenses(year);
 
@@ -99,6 +100,7 @@ export function useTaxSummary(year: number) {
           if (requestIdRef.current !== currentId) return;
           setInvestments(mappedInvestments);
           setPayments([]);
+          setExcludedIncompleteCount(excludedCount);
           setIsLoading(false);
           return;
         }

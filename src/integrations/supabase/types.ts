@@ -113,6 +113,54 @@ export type Database = {
         }
         Relationships: []
       }
+      investment_schedule: {
+        Row: {
+          created_at: string | null
+          expected_amount: number
+          expected_date: string
+          id: string
+          investment_id: string
+          matched_payment_id: string | null
+          status: string | null
+          type: string
+        }
+        Insert: {
+          created_at?: string | null
+          expected_amount: number
+          expected_date: string
+          id?: string
+          investment_id: string
+          matched_payment_id?: string | null
+          status?: string | null
+          type: string
+        }
+        Update: {
+          created_at?: string | null
+          expected_amount?: number
+          expected_date?: string
+          id?: string
+          investment_id?: string
+          matched_payment_id?: string | null
+          status?: string | null
+          type?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "investment_schedule_investment_id_fkey"
+            columns: ["investment_id"]
+            isOneToOne: false
+            referencedRelation: "investments"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "investment_schedule_matched_payment_id_fkey"
+            columns: ["matched_payment_id"]
+            isOneToOne: false
+            referencedRelation: "payments"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       investments: {
         Row: {
           amount: number | null
@@ -121,9 +169,12 @@ export type Database = {
           expected_end_date: string | null
           expected_return: number | null
           id: string
+          income_model: string | null
           investment_date: string | null
           notes: string | null
+          payment_frequency: string | null
           platform: string | null
+          principal_return_type: string | null
           project_name: string | null
           status: string
           updated_at: string
@@ -136,9 +187,12 @@ export type Database = {
           expected_end_date?: string | null
           expected_return?: number | null
           id?: string
+          income_model?: string | null
           investment_date?: string | null
           notes?: string | null
+          payment_frequency?: string | null
           platform?: string | null
+          principal_return_type?: string | null
           project_name?: string | null
           status?: string
           updated_at?: string
@@ -151,9 +205,12 @@ export type Database = {
           expected_end_date?: string | null
           expected_return?: number | null
           id?: string
+          income_model?: string | null
           investment_date?: string | null
           notes?: string | null
+          payment_frequency?: string | null
           platform?: string | null
+          principal_return_type?: string | null
           project_name?: string | null
           status?: string
           updated_at?: string

@@ -295,6 +295,49 @@ export function InvestmentForm({
     form.reset();
   };
 
+  const handleSaveDraft = () => {
+    const values = form.getValues();
+    // Validate with draft schema (only projectName required)
+    const result = draftInvestmentSchema.safeParse(values);
+    if (!result.success) {
+      // Show validation errors
+      form.trigger();
+      return;
+    }
+    if (onSubmitDraft) {
+      onSubmitDraft({
+        platform: values.platform || null,
+        customPlatformName: values.customPlatformName,
+        projectName: values.projectName,
+        amount: values.amount ?? null,
+        expectedReturn: values.expectedReturn ?? null,
+        status: values.status || 'active',
+        notes: values.notes,
+        investmentDate: values.investmentDate?.toISOString() || null,
+        expectedEndDate: values.expectedEndDate?.toISOString() || null,
+      });
+      draft.clear();
+      setDraftExists(false);
+      setDraftRestored(false);
+      draftLoadedRef.current = false;
+      setOpen(false);
+      form.reset();
+    }
+  };
+
+  // Compute completeness status for the current initialData (for banners)
+  const completionStatus = initialData && isDraft ? getInvestmentCompletionStatus({
+    platform: initialData.platform,
+    projectName: initialData.projectName,
+    amount: initialData.amount,
+    investmentDate: initialData.investmentDate
+      ? (initialData.investmentDate instanceof Date ? initialData.investmentDate.toISOString() : initialData.investmentDate as string)
+      : null,
+    expectedReturn: initialData.expectedReturn,
+  }) : null;
+
+  const showDraftButtons = !isFuture && (isDraft || onSubmitDraft);
+
   const handleDiscardDraft = () => {
     draft.clear();
     setDraftExists(false);

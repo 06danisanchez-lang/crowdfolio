@@ -1,62 +1,104 @@
 
 
-## Plan: Ajustar copy de planes Free y Pro
+## Plan revisado: Editar inversiones futuras + defaults seguros
 
-### Estrategia
+### Punto 1 resuelto — Sin `<span className="hidden" />`
 
-No renumerar claves — `subscription.pro.f5` se usa como `CardDescription` en PricingTable (línea 165). En su lugar: blanquear `f3`, eliminar `f3` de los arrays de render, y actualizar `f4` de Free.
+El patrón existente para editar inversiones reales (en `InvestmentList.tsx` línea 264-273) ya resuelve esto limpiamente: se pasa un `trigger` visible (un `DropdownMenuItem` o `Button`) y el `DialogTrigger` de `InvestmentForm` lo envuelve directamente. Al hacer click, el dialog se abre con el estado interno `open` del componente.
 
-### Cambios
+Para futuras, replicamos exactamente ese patrón: cada `FutureInvestmentCard` incluye un botón "Editar" como `trigger` del `InvestmentForm`. No hace falta control externo de `open/onOpenChange` ni spans ocultos.
 
-#### 1. `src/lib/i18n/translations.ts`
+```text
+<InvestmentForm
+  mode="future"
+  initialData={mapFutureToFormData(fi)}
+  onSubmit={(data) => handleEditSubmit(fi.id, data)}
+  trigger={
+    <Button variant="outline" size="sm">
+      <Pencil className="mr-1.5 h-4 w-4" />
+      {t('common.edit')}
+    </Button>
+  }
+/>
+```
 
-| Clave | Antes | Después |
-|---|---|---|
-| `subscription.free.f3` (ES) | 1 importación masiva al mes | *(vacío)* |
-| `subscription.free.f4` (ES) | Avisos de apertura de tus inversiones futuras | Hasta 3 avisos de apertura |
-| `subscription.pro.f3` (ES) | Importaciones masivas ilimitadas | *(vacío)* |
-| `subscription.free.f3` (EN) | 1 bulk import per month | *(vacío)* |
-| `subscription.free.f4` (EN) | Opening alerts for your future investments | Up to 3 opening alerts |
-| `subscription.pro.f3` (EN) | Unlimited bulk imports | *(vacío)* |
+Cada card renderiza su propio `InvestmentForm` con `initialData` precargado. El dialog se abre/cierra con el estado interno existente. Sin `editingId`, sin span oculto, sin control externo.
 
-Resto de claves intactas.
+### Punto 2 resuelto — Sin `as any`
 
-#### 2. `src/components/subscription/PricingTable.tsx`
+Se amplía el tipo de `initialData` en `InvestmentFormProps` de forma mínima:
 
-- `freeFeatures`: eliminar línea `t('subscription.free.f3')` — queda array de 4 items (f1, f2, f4, f5)
-- `proFeatures`: eliminar línea `t('subscription.pro.f3')` — queda array de 5 items (f1, f2, f4, f5, f6)
+```ts
+// Antes
+initialData?: Investment;
 
-#### 3. `src/components/subscription/UpgradeModal.tsx`
+// Después
+initialData?: Investment | FutureInvestmentFormData;
+```
 
-- `proFeatures`: eliminar línea `t('subscription.pro.f3')` — queda array de 5 items (f1, f2, f4, f5, f6)
+Donde `FutureInvestmentFormData` es un tipo ligero definido localmente en el mismo archivo:
 
-### Resultado visible
+```ts
+interface FutureInvestmentFormData {
+  platform: Platform;
+  customPlatformName?: string;
+  projectName: string;
+  amount?: number;
+  expectedReturn?: number;
+  investmentDate?: Date;
+  expectedEndDate?: Date;
+  sourceUrl?: string;
+  notes?: string;
+}
+```
 
-**Free (ES):**
-1. Hasta 3 inversiones activas
-2. Hasta 3 inversiones futuras
-3. Hasta 3 avisos de apertura
-4. Resumen fiscal indicativo
+El bloque de `defaultValues` cuando hay `initialData` ya lee solo los campos que existen — los opcionales simplemente quedan `undefined`. No rompe el branch de edición de inversiones reales porque `Investment` sigue siendo válido.
 
-**Pro (ES):**
-1. Inversiones activas ilimitadas
-2. Inversiones futuras ilimitadas
-3. Avisos de apertura sin límites
-4. Informe fiscal unificado
-5. Exportación del informe fiscal
+El mapeo `mapFutureToFormData` devuelve exactamente esta shape:
 
-**Free (EN):**
-1. Up to 3 active investments
-2. Up to 3 future investments
-3. Up to 3 opening alerts
-4. Indicative tax summary
+```ts
+function mapFutureToFormData(fi: FutureInvestment): FutureInvestmentFormData {
+  return {
+    platform: fi.platform,
+    customPlatformName: fi.customPlatformName,
+    projectName: fi.projectName,
+    amount: fi.estimatedAmount ?? undefined,
+    expectedReturn: fi.expectedReturn ?? undefined,
+    investmentDate: fi.estimatedOpenDate ? new Date(fi.estimatedOpenDate) : undefined,
+    expectedEndDate: fi.estimatedEndDate ? new Date(fi.estimatedEndDate) : undefined,
+    sourceUrl: fi.sourceUrl,
+    notes: fi.notes,
+  };
+}
+```
 
-**Pro (EN):**
-1. Unlimited active investments
-2. Unlimited future investments
-3. Unlimited opening alerts
-4. Unified tax report
-5. Tax report export
+Sin `as any`. Sin datos inventados.
 
-No se renumera ninguna clave. `subscription.pro.f5` sigue apuntando a "Informe fiscal unificado" / "Unified tax report" y la `CardDescription` de PricingTable no se rompe.
+### Cambios por archivo
+
+#### 1. `src/components/investments/InvestmentForm.tsx`
+
+- Añadir tipo `FutureInvestmentFormData` y ampliar `initialData` a `Investment | FutureInvestmentFormData`
+- Añadir `sourceUrl` al mapeo de `initialData` en `defaultValues`
+- Defaults neutrales: `platform: undefined`, `expectedReturn: undefined` (nuevas inversiones)
+- `handleDiscardDraft`: mismos defaults neutrales
+
+#### 2. `src/components/future-investments/FutureInvestmentList.tsx`
+
+- Añadir `updateFutureInvestment` al destructuring del hook
+- Añadir `mapFutureToFormData` (shape parcial fiel)
+- Añadir `handleEditSubmit(id, data)` que llama a `updateFutureInvestment`
+- En cada `FutureInvestmentCard`: renderizar `InvestmentForm` con `mode="future"`, `initialData={mapFutureToFormData(fi)}`, trigger = botón Editar visible
+- Import `Pencil` de lucide-react
+
+#### 3. No se toca `types/investment.ts`
+
+El tipo `FutureInvestmentFormData` queda en `InvestmentForm.tsx` — alcance mínimo.
+
+### Lo que NO se toca
+
+- `mapFutureToPartialInvestment` (conversión a real) — sigue igual
+- Crear inversión futura — sigue igual
+- Eliminar — sigue igual
+- Traducciones, pricing, otros componentes
 

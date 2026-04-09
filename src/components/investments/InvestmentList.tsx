@@ -161,6 +161,7 @@ export function InvestmentList({
       {/* Incomplete investments section */}
       {incompleteInvestments.length > 0 && (
         <div className="rounded-lg border border-orange-200 dark:border-orange-900/50 bg-orange-50/50 dark:bg-orange-950/20 p-4 space-y-3">
+          <p className="text-xs font-bold text-red-600 bg-red-100 px-2 py-1 rounded">TEST-PENDING-SECTION</p>
           <div className="flex items-center gap-2">
             <AlertTriangle className="h-4 w-4 text-orange-500" />
             <h3 className="text-sm font-semibold">{t('investments.incomplete.title')}</h3>

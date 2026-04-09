@@ -5,6 +5,18 @@ import { z } from 'zod';
 import { format } from 'date-fns';
 import { CalendarIcon, Plus } from 'lucide-react';
 import { Investment, Platform, InvestmentStatus, PLATFORMS, STATUS_OPTIONS } from '@/types/investment';
+
+export interface FutureInvestmentFormData {
+  platform: Platform;
+  customPlatformName?: string;
+  projectName: string;
+  amount?: number;
+  expectedReturn?: number;
+  investmentDate?: Date;
+  expectedEndDate?: Date;
+  sourceUrl?: string;
+  notes?: string;
+}
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
@@ -73,7 +85,7 @@ export type InvestmentFormMode = 'real' | 'future';
 
 interface InvestmentFormProps {
   onSubmit: (data: any) => void;
-  initialData?: Investment;
+  initialData?: Investment | FutureInvestmentFormData;
   trigger?: React.ReactNode;
   investmentCount?: number;
   isPro?: boolean;
@@ -120,20 +132,21 @@ export function InvestmentForm({
           customPlatformName: initialData.customPlatformName,
           projectName: initialData.projectName,
           amount: initialData.amount || undefined,
-          investmentDate: initialData.investmentDate ? new Date(initialData.investmentDate) : undefined,
-          expectedEndDate: initialData.expectedEndDate ? new Date(initialData.expectedEndDate) : undefined,
+          investmentDate: initialData.investmentDate
+            ? (initialData.investmentDate instanceof Date ? initialData.investmentDate : new Date(initialData.investmentDate))
+            : undefined,
+          expectedEndDate: initialData.expectedEndDate
+            ? (initialData.expectedEndDate instanceof Date ? initialData.expectedEndDate : new Date(initialData.expectedEndDate))
+            : undefined,
           expectedReturn: initialData.expectedReturn || undefined,
-          status: initialData.status,
+          status: 'status' in initialData ? initialData.status : undefined,
           notes: initialData.notes,
+          sourceUrl: 'sourceUrl' in initialData ? initialData.sourceUrl : undefined,
         }
       : isFuture
-        ? {
-            platform: 'urbanitae',
-          }
+        ? {}
         : {
-            platform: 'urbanitae',
             status: 'active',
-            expectedReturn: 10,
             investmentDate: new Date(),
           },
   });
@@ -265,9 +278,7 @@ export function InvestmentForm({
     setDraftRestored(false);
     draftLoadedRef.current = false;
     form.reset({
-      platform: 'urbanitae',
       status: 'active',
-      expectedReturn: 10,
       investmentDate: new Date(),
     });
   };

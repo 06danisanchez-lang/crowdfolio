@@ -201,7 +201,7 @@ export function InvestmentList({
                     </div>
                     <div className="flex flex-wrap gap-1 mt-1">
                       <Badge variant="secondary" className="text-xs bg-orange-100 text-orange-700 dark:bg-orange-900/30 dark:text-orange-400">
-                        {t('investments.incomplete.status')}
+                        {draft.status === 'draft' ? t('investments.incomplete.statusDraft') : t('investments.incomplete.status')}
                       </Badge>
                       {status.missingFields.map(field => (
                         <Badge key={field} variant="outline" className="text-xs text-orange-600 border-orange-300 dark:text-orange-400 dark:border-orange-700">

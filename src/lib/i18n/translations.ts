@@ -436,6 +436,20 @@ export const translations: Record<Lang, Record<string, string>> = {
     'future.attention.title': 'Requieren atención',
     'future.attention.empty': 'Todo en orden',
     'future.attention.urgentBanner': '{count} oportunidades requieren atención',
+    // Incomplete investments
+    'investments.incomplete.title': 'Pendientes de completar',
+    'investments.incomplete.cta': 'Completar inversión',
+    'investments.incomplete.banner': 'Esta inversión no se incluye todavía en Inicio ni en el informe fiscal.',
+    'investments.incomplete.missing': 'Faltan datos',
+    'investments.incomplete.forecastWarning': 'Esta inversión no se incluye en las previsiones porque falta la rentabilidad esperada.',
+    'investments.incomplete.noName': 'Sin nombre',
+    'investments.field.platform': 'Plataforma',
+    'investments.field.projectName': 'Nombre del proyecto',
+    'investments.field.amount': 'Importe',
+    'investments.field.investmentDate': 'Fecha de inversión',
+    'investments.field.expectedReturn': 'Rentabilidad esperada',
+    'investments.form.saveDraft': 'Guardar borrador',
+    'tax.incomplete.warning': '{count} inversiones no se incluyen en este informe porque están pendientes de completar.',
 
   },
   en: {
@@ -873,6 +887,20 @@ export const translations: Record<Lang, Record<string, string>> = {
     'future.attention.title': 'Need attention',
     'future.attention.empty': 'All clear',
     'future.attention.urgentBanner': '{count} opportunities need attention',
+    // Incomplete investments
+    'investments.incomplete.title': 'Pending completion',
+    'investments.incomplete.cta': 'Complete investment',
+    'investments.incomplete.banner': 'This investment is not yet included in Home or the tax report.',
+    'investments.incomplete.missing': 'Missing data',
+    'investments.incomplete.forecastWarning': 'This investment is not included in forecasts because the expected return is missing.',
+    'investments.incomplete.noName': 'Unnamed',
+    'investments.field.platform': 'Platform',
+    'investments.field.projectName': 'Project name',
+    'investments.field.amount': 'Amount',
+    'investments.field.investmentDate': 'Investment date',
+    'investments.field.expectedReturn': 'Expected return',
+    'investments.form.saveDraft': 'Save draft',
+    'tax.incomplete.warning': '{count} investments are not included in this report because they are pending completion.',
 
   },
 };

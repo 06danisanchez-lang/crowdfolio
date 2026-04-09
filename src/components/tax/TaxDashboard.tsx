@@ -31,7 +31,7 @@ export function TaxDashboard({ isPro = false, onProRequired }: TaxDashboardProps
   const [prefillDescription, setPrefillDescription] = useState<string | undefined>();
   const { t } = useLanguage();
   
-  const { summary, projection, isLoading, availableYears } = useTaxSummary(selectedYear);
+  const { summary, projection, isLoading, availableYears, excludedIncompleteCount } = useTaxSummary(selectedYear);
   const { 
     expenses, 
     addExpense, 
@@ -135,6 +135,11 @@ export function TaxDashboard({ isPro = false, onProRequired }: TaxDashboardProps
       )}
 
       {/* KPI Summary Cards */}
+      {excludedIncompleteCount > 0 && (
+        <div className="flex items-center gap-2 p-3 rounded-lg bg-muted/50 border text-sm text-muted-foreground">
+          <span>{t('tax.incomplete.warning').replace('{count}', String(excludedIncompleteCount))}</span>
+        </div>
+      )}
       <TaxSummaryCards summary={summary} />
 
       {/* Projection Card for Current Year */}

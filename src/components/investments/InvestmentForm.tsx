@@ -597,7 +597,7 @@ export function InvestmentForm({
           </>
         )}
 
-          <FormField
+        <div className="grid grid-cols-2 gap-4">
             control={form.control}
             name="amount"
             render={({ field }) => (

@@ -173,6 +173,13 @@ export function InvestmentForm({
 
   const watchPlatform = form.watch('platform');
 
+  // Clear validation error when form changes
+  useEffect(() => {
+    if (!validationError) return;
+    const { unsubscribe } = form.watch(() => setValidationError(null));
+    return () => unsubscribe();
+  }, [validationError, form]);
+
   // Auto-save draft via form.watch(callback) subscription.
   // Only active for new real investments.
   useEffect(() => {

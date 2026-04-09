@@ -481,12 +481,6 @@ export function FutureInvestmentList() {
                   setUpgradeFeature('unlimited_future_investments');
                   setUpgradeModalOpen(true);
                 }}
-                fi={fi}
-                t={t}
-                getPlatformLabel={getPlatformLabel}
-                formatCurrency={formatCurrency}
-                onConvert={handleConvertClick}
-                onDelete={setDeleteId}
               />
             ))
           )}

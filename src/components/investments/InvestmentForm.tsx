@@ -3,7 +3,7 @@ import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import { format } from 'date-fns';
-import { CalendarIcon, Plus, AlertTriangle } from 'lucide-react';
+import { CalendarIcon, Plus, AlertTriangle, Info } from 'lucide-react';
 import { Investment, Platform, InvestmentStatus, PLATFORMS, STATUS_OPTIONS } from '@/types/investment';
 import { getInvestmentCompletionStatus } from '@/lib/investment/completeness';
 
@@ -62,7 +62,7 @@ const investmentSchema = z.object({
   investmentDate: z.date(),
   expectedEndDate: z.date().optional(),
   expectedReturn: z.number().min(0, 'El rendimiento debe ser mayor o igual a 0'),
-  status: z.enum(['active', 'pending', 'completed', 'defaulted'] as const),
+  status: z.enum(['active', 'pending', 'completed', 'defaulted', 'draft'] as const),
   notes: z.string().optional(),
   sourceUrl: z.string().optional(),
 });
@@ -75,7 +75,7 @@ const draftInvestmentSchema = z.object({
   investmentDate: z.date().optional(),
   expectedEndDate: z.date().optional(),
   expectedReturn: z.number().nullable().optional(),
-  status: z.enum(['active', 'pending', 'completed', 'defaulted'] as const).optional(),
+  status: z.enum(['active', 'pending', 'completed', 'defaulted', 'draft'] as const).optional(),
   notes: z.string().optional(),
   sourceUrl: z.string().optional(),
 });
@@ -272,13 +272,37 @@ export function InvestmentForm({
         notes: data.notes,
       });
     } else {
+      // Manual validation for complete investment
+      const manualResult = investmentSchema.safeParse(data);
+      if (!manualResult.success) {
+        const fieldMap: Record<string, string> = {
+          platform: 'investments.field.platform',
+          projectName: 'investments.field.projectName',
+          amount: 'investments.field.amount',
+          investmentDate: 'investments.field.investmentDate',
+          expectedReturn: 'investments.field.expectedReturn',
+          status: 'investments.field.status',
+        };
+        const missing = [...new Set(manualResult.error.issues.map(i => {
+          const key = String(i.path[0]);
+          return fieldMap[key] || key;
+        }))];
+        setValidationError(missing);
+        return;
+      }
+
+      setValidationError(null);
+
+      // When completing a draft, force status to active
+      const finalStatus = isDraft ? 'active' : data.status;
+
       onSubmit({
         platform: data.platform,
         customPlatformName: data.customPlatformName,
         projectName: data.projectName,
         amount: data.amount,
         expectedReturn: data.expectedReturn,
-        status: data.status,
+        status: finalStatus,
         notes: data.notes,
         investmentDate: data.investmentDate.toISOString(),
         expectedEndDate: data.expectedEndDate?.toISOString(),
@@ -313,7 +337,7 @@ export function InvestmentForm({
         projectName: values.projectName,
         amount: values.amount ?? null,
         expectedReturn: values.expectedReturn ?? null,
-        status: values.status || 'active',
+        status: 'draft',
         notes: values.notes,
         investmentDate: values.investmentDate?.toISOString() || null,
         expectedEndDate: values.expectedEndDate?.toISOString() || null,
@@ -338,6 +362,7 @@ export function InvestmentForm({
     expectedReturn: initialData.expectedReturn,
   }) : null;
 
+  const [validationError, setValidationError] = useState<string[] | null>(null);
   const showDraftButtons = !isFuture && (isDraft || onSubmitDraft);
 
   const handleDiscardDraft = () => {

@@ -458,7 +458,6 @@ export const translations: Record<Lang, Record<string, string>> = {
     'investments.validation.missingFields': 'Faltan:',
     'investments.field.draftStatus': 'Completar datos',
     'investments.field.status': 'Estado',
-    'investments.field.expectedReturn': 'Rentabilidad esperada',
     'tax.incomplete.warning': '{count} inversiones no se incluyen en este informe porque están pendientes de completar.',
 
   },

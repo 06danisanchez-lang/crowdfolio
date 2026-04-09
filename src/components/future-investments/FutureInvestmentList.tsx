@@ -113,7 +113,8 @@ function mapFutureToPartialInvestment(fi: FutureInvestment): Partial<Investment>
     id: '',
     createdAt: '',
     updatedAt: '',
-};
+  };
+}
 
 function mapFutureToFormData(fi: FutureInvestment): FutureInvestmentFormData {
   return {
@@ -127,7 +128,6 @@ function mapFutureToFormData(fi: FutureInvestment): FutureInvestmentFormData {
     sourceUrl: fi.sourceUrl,
     notes: fi.notes,
   };
-}
 }
 
 export function FutureInvestmentList() {

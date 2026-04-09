@@ -177,6 +177,7 @@ export function InvestmentList({
                 amount: draft.amount,
                 investmentDate: draft.investmentDate,
                 expectedReturn: draft.expectedReturn,
+                status: draft.status,
               });
               return (
                 <div key={draft.id} className="flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-4 p-3 rounded-md bg-background border">

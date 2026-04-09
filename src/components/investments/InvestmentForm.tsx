@@ -183,6 +183,7 @@ export function InvestmentForm({
 
   const [validationError, setValidationError] = useState<string[] | null>(null);
   const watchPlatform = form.watch('platform');
+  const watchIncomeModel = form.watch('incomeModel') as IncomeModel | undefined;
 
   // Clear validation error when form changes
   useEffect(() => {

@@ -23,7 +23,6 @@ export function PricingTable() {
   const freeFeatures = [
     t('subscription.free.f1'),
     t('subscription.free.f2'),
-    t('subscription.free.f3'),
     t('subscription.free.f4'),
     t('subscription.free.f5'),
   ];
@@ -31,7 +30,6 @@ export function PricingTable() {
   const proFeatures = [
     t('subscription.pro.f1'),
     t('subscription.pro.f2'),
-    t('subscription.pro.f3'),
     t('subscription.pro.f4'),
     t('subscription.pro.f5'),
     t('subscription.pro.f6'),

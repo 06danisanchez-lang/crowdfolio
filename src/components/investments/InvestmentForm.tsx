@@ -386,6 +386,7 @@ export function InvestmentForm({
       ? (initialData.investmentDate instanceof Date ? initialData.investmentDate.toISOString() : initialData.investmentDate as string)
       : null,
     expectedReturn: initialData.expectedReturn,
+    incomeModel: 'incomeModel' in initialData ? (initialData as any).incomeModel : null,
   }) : null;
 
   const showDraftButtons = !isFuture && (isDraft || onSubmitDraft);

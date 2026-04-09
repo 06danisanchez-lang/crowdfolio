@@ -1,33 +1,29 @@
 
 
-## Plan: Añadir marcadores de test visibles
+## Ajuste UX: Sección pendientes siempre visible + badge sidebar
 
-Los 5 archivos ya tienen los cambios implementados en el código fuente. Para confirmar que la preview está sirviendo este código, añadiré marcadores temporales de texto muy visibles.
+### Archivos a tocar (3)
 
-### Cambios (2 archivos, solo texto de test)
+**1. `src/components/investments/InvestmentList.tsx`**
+- Eliminar la condición `{incompleteInvestments.length > 0 &&` (línea 162) para que el bloque se renderice siempre
+- Eliminar el marcador TEST-PENDING-SECTION (línea 164)
+- Cambiar el título para incluir el count inline: `Pendientes de completar (N)`
+- Si `incompleteInvestments.length === 0`, mostrar un mensaje vacío sobrio: "No tienes inversiones pendientes de completar." en lugar de la lista
 
-**1. `src/components/investments/InvestmentForm.tsx` (línea 688)**
-Añadir justo antes del hint existente:
-```tsx
-<p className="text-xs font-bold text-red-600 bg-red-100 px-2 py-1 rounded">TEST-DRAFT-VISIBLE</p>
-```
+**2. `src/components/layout/AppLayout.tsx`**
+- El badge ya existe y funciona (líneas 117-121), solo confirmar que sigue con `incompleteCount > 0`
+- Ya usa la misma fuente de datos pasada como prop desde Index.tsx — no hay cambio aquí
 
-**2. `src/components/investments/InvestmentList.tsx` (línea 163)**
-Añadir justo dentro del bloque de pendientes, antes del título:
-```tsx
-<p className="text-xs font-bold text-red-600 bg-red-100 px-2 py-1 rounded">TEST-PENDING-SECTION</p>
-```
+**3. `src/lib/i18n/translations.ts`**
+- Añadir clave `investments.incomplete.empty` con:
+  - ES: `'No tienes inversiones pendientes de completar.'`
+  - EN: `'You have no pending investments to complete.'`
 
-### Cómo verificar
+### Resumen visual
 
-1. Inicia sesión en la app (estás en `/landing`, necesitas entrar)
-2. Ve a la sección "Inversiones"
-3. Si hay inversiones incompletas → verás `TEST-PENDING-SECTION` en rojo
-4. Abre el modal "Nueva inversión" → verás `TEST-DRAFT-VISIBLE` en rojo
-
-Si no aparecen, la preview no está usando el código actual.
-
-### Después
-
-Una vez confirmado, eliminaremos los dos marcadores de test.
+- Sección siempre visible con título `Pendientes de completar (N)`
+- Estado vacío con mensaje sobrio cuando N = 0
+- Badge sidebar naranja cuando N > 0 (ya implementado)
+- Misma fuente de datos para ambos (ya implementado via prop desde Index.tsx)
+- Sin cambio de arquitectura
 

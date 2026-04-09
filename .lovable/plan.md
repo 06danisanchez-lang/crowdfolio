@@ -1,141 +1,101 @@
 
 
-## Plan: Sistema de inversiones incompletas / pendientes de completar
+## Corrección del front visible — Inversiones incompletas
 
-### Análisis del código actual
-
-**Modelo DB**: `investments` tiene `platform`, `project_name`, `amount`, `investment_date`, `expected_return` como NOT NULL. Para permitir borradores reales, necesitan pasar a nullable.
-
-**Tipo `Investment`**: Campos obligatorios (`platform`, `projectName`, `amount`, `investmentDate`, `expectedReturn`). Se mantiene intacto.
-
-**`useInvestments.ts`**: Fetch + mapeo directo a `Investment[]`. Summary se calcula sobre todo el array. Aquí se añadirá la separación completas/incompletas.
-
-**`useTaxSummary.ts`**: Hace su propio fetch de investments y mapea a `Investment[]` directamente (líneas 74-82). Necesita filtrar incompletas con la función centralizada.
-
-**`Index.tsx`**: Dashboard usa `investments` y `summary` directamente. Sección "investments" pasa `investments.length` como `investmentCount` al form para el límite Free.
-
-**`AppLayout.tsx`**: Ya importa `useFutureInvestments` directamente (patrón para el badge sin prop drilling).
-
-**`InvestmentForm.tsx`**: Tiene `investmentSchema` estricto y `futureInvestmentSchema` relajado. Se añadirá `draftInvestmentSchema`.
-
-**`InvestmentList.tsx`**: Recibe `investments: Investment[]`. Se añadirá prop para incompletas.
-
-**Límite Free**: `investmentCount < 3` en `InvestmentForm` (línea 117), `investments.length` en `Index.tsx` (línea 334).
+He verificado el estado exacto de los 5 archivos. Todos los cambios están perfectamente localizados. Implementaré lo siguiente:
 
 ---
 
-### Migración SQL
+### 1. `src/components/investments/InvestmentForm.tsx`
 
-```sql
-ALTER TABLE public.investments
-  ALTER COLUMN platform DROP NOT NULL,
-  ALTER COLUMN project_name DROP NOT NULL,
-  ALTER COLUMN amount DROP NOT NULL,
-  ALTER COLUMN investment_date DROP NOT NULL,
-  ALTER COLUMN expected_return DROP NOT NULL;
+**Bug de validación (línea 145):**
+```
+// DE:
+const schema = isFuture ? futureInvestmentSchema : (isDraft ? draftInvestmentSchema : investmentSchema);
+// A:
+const schema = isFuture ? futureInvestmentSchema : investmentSchema;
+```
+Así "Completar inversión" siempre valida completo. `handleSaveDraft` (línea 300) ya usa `draftInvestmentSchema.safeParse()` — no se toca.
+
+**Footer sticky (líneas 643-657):**
+Cambiar `<div className="flex justify-end gap-2 pt-4">` por `<div className="sticky bottom-0 bg-background pt-4 pb-2 border-t mt-4 -mx-1 px-1 flex justify-end gap-2">` para que los botones sean siempre visibles.
+
+**Hint visible (líneas 687-689):**
+Después de `</DialogHeader>` y antes de `{renderForm()}`, insertar:
+```tsx
+{showDraftButtons && (
+  <p className="text-sm text-muted-foreground px-1 -mt-1 mb-2">
+    {t('investments.form.draftHint')}
+  </p>
+)}
 ```
 
-Viable: datos existentes tienen todos estos campos rellenos, no se pierden datos.
+---
+
+### 2. `src/components/investments/InvestmentList.tsx`
+
+**Interfaz (línea 61):** Cambiar `onSubmitDraft?: (data: any) => void` por `allowDraftSave?: boolean`.
+
+**Desestructuración (línea 74):** Cambiar `onSubmitDraft` por `allowDraftSave`.
+
+**Tarjetas de pendientes (líneas 181-239):** Añadir fecha de inversión y badge "Pendiente":
+- Después de la línea de importe (~194), insertar bloque de fecha.
+- Antes de los badges de campos faltantes (~196), insertar badge "Pendiente" naranja.
+- Línea 221-223: cambiar `onSubmitDraft={onSubmitDraft ? (data) => { onUpdate(draft.id, data); } : undefined}` por `onSubmitDraft={allowDraftSave ? (data) => onUpdate(draft.id, data) : undefined}`.
 
 ---
 
-### Archivos nuevos (2)
+### 3. `src/pages/Index.tsx`
 
-**`src/lib/investment/completeness.ts`**
-- `CompletionStatus { isComplete, isForecastReady, missingFields }`
-- `getInvestmentCompletionStatus(inv)`: portfolio_ready = platform + projectName + amount > 0 + investmentDate. forecast_ready = portfolio_ready + expectedReturn != null.
-- `isInvestmentComplete(inv)`: shorthand boolean
-- `missingFields` devuelve translation keys (`investments.field.platform`, etc.)
+**Línea 351-353:** Cambiar `onSubmitDraft={(data) => { }}` por `allowDraftSave`.
 
-**`src/hooks/useIncompleteCount.ts`**
-- Fetch ligero de investments (solo campos necesarios), aplica `isInvestmentComplete` de `completeness.ts`, devuelve `count`
-- Mismo criterio que el hook principal → sin divergencias
-- Usado por `AppLayout` para el badge (mismo patrón que `useFutureInvestments`)
-
----
-
-### Archivos modificados (9)
-
-**`src/types/investment.ts`**
-- Añadir `DraftInvestment` con campos opcionales (platform?, projectName?, amount?, investmentDate?, expectedReturn?, + id, status, payments, createdAt, updatedAt obligatorios)
-- `Investment` NO se toca
-
-**`src/hooks/useInvestments.ts`**
-- Tipo interno `RawInvestment` para mapeo desde DB con nullables
-- Separar en `investments: Investment[]` (portfolio_ready) + `incompleteInvestments: DraftInvestment[]`
-- `summary` se calcula solo sobre `investments` (ya lo hace, pero ahora `investments` solo son las completas)
-- Previsiones (`expectedProfit`, `estimatedTotal`): filtrar adicionalmente por `forecast_ready` (expectedReturn != null)
-- `addInvestment`/`addDraftInvestment`: aceptar datos parciales para borradores
-- `allInvestmentsCount`: total guardadas (completas + incompletas) para límite Free
-- Exportar: `investments`, `incompleteInvestments`, `incompleteCount`, `allInvestmentsCount`
-
-**`src/components/investments/InvestmentForm.tsx`**
-- Añadir `draftInvestmentSchema` (solo `projectName` required, todo lo demás opcional)
-- Dos botones en modo `real`: "Guardar borrador" (outline, valida con draft) + "Guardar inversión" (primary, valida con completo)
-- Al editar una incompleta: ambos botones visibles. El primary dice "Completar inversión"
-- Banner al editar incompleta: "Faltan datos: [lista traducida]. Esta inversión no se incluye todavía en Inicio ni en el informe fiscal."
-- Si portfolio_ready pero no forecast_ready: aviso "No se incluye en previsiones — falta rentabilidad esperada."
-- `investmentCount` → usar `allInvestmentsCount` (completas + incompletas) para límite Free
-
-**`src/components/investments/InvestmentList.tsx`**
-- Nueva prop `incompleteInvestments: DraftInvestment[]`
-- Sección "Pendientes de completar" antes de la tabla principal (solo si hay)
-- Cada pendiente: nombre o "Sin nombre", plataforma, importe, campos faltantes como badges traducidos, botón "Completar inversión" que abre InvestmentForm con initialData
-- Si no hay pendientes, la sección no se renderiza
-
-**`src/pages/Index.tsx`**
-- Dashboard: usa `investments` (ya filtrado a completas) para KPIs, charts, alerts, maturity
-- Sección Investments: pasa `incompleteInvestments` a InvestmentList, `allInvestmentsCount` al form y al subtitle del límite Free
-- `investments.length` en subtitle → `allInvestmentsCount`
-
-**`src/components/layout/AppLayout.tsx`**
-- Importar `useIncompleteCount`
-- Badge naranja en nav "Inversiones" si count > 0
-
-**`src/hooks/useTaxSummary.ts`**
-- Importar `isInvestmentComplete` de `completeness.ts`
-- Después del mapeo `mappedInvestments` (línea 74-82), filtrar con `isInvestmentComplete` antes de buscar payments
-- Contar `excludedIncompleteCount` y exponerlo
-
-**`src/components/tax/TaxDashboard.tsx`**
-- Recibir `excludedIncompleteCount` de `useTaxSummary`
-- Si > 0, mostrar aviso: "X inversiones no se incluyen en este informe porque están pendientes de completar."
-
-**`src/lib/i18n/translations.ts`**
-- Claves nuevas ES/EN:
-  - `investments.incomplete.title`, `.cta`, `.banner`, `.forecastWarning`
-  - `investments.field.platform`, `.projectName`, `.amount`, `.investmentDate`, `.expectedReturn`
-  - `investments.form.saveDraft`
-  - `tax.incomplete.warning`
+**Línea 393-396:** Añadir prop `incompleteCount`:
+```tsx
+<AppLayout 
+  currentView={currentView} 
+  onViewChange={setCurrentView}
+  incompleteCount={incompleteInvestments.length}
+>
+```
 
 ---
 
-### Consistencia badge ↔ pendientes ↔ módulos
+### 4. `src/components/layout/AppLayout.tsx`
 
-- Badge (`useIncompleteCount`) → usa `isInvestmentComplete` de `completeness.ts`
-- Hook principal (`useInvestments`) → usa `isInvestmentComplete` de `completeness.ts`  
-- Tax (`useTaxSummary`) → usa `isInvestmentComplete` de `completeness.ts`
-- Una sola función, una sola fuente de verdad
+**Línea 26:** Eliminar `import { useIncompleteCount } from '@/hooks/useIncompleteCount';`
 
-### Límite Free
+**Línea 28-32:** Añadir `incompleteCount?: number` a `AppLayoutProps`.
 
-- `allInvestmentsCount` = completas + incompletas (total guardadas en DB)
-- Se usa en `InvestmentForm` para `canAddInvestment`
-- Se usa en `Index.tsx` para el subtitle "(X/3)"
-- Un borrador cuenta contra el límite
+**Línea 34-37:** Desestructurar `incompleteCount = 0` de props.
 
-### Integración automática
+**Línea 47:** Eliminar `const { incompleteCount } = useIncompleteCount();`
 
-- No hay flag ni paso manual. La función `isInvestmentComplete` evalúa en cada render
-- Si editas una incompleta y la completas → desaparece de pendientes, entra en `investments` → se refleja en dashboard y fiscal
-- Si editas una completa y le quitas un campo → sale de `investments`, entra en `incompleteInvestments`
+El badge en línea 115-119 sigue funcionando igual, ahora con dato reactivo desde `useInvestments`.
 
 ---
 
-### Lo que NO se toca
+### 5. `src/lib/i18n/translations.ts`
 
-- Tipo `Investment` — intacto
-- Inversiones futuras, pagos, alertas, pricing, edge functions, perfil, settings
-- No se renombra ningún archivo, prop, key ni función existente
-- No se crean nuevas páginas ni rutas
+**Línea 451 (ES):** Añadir después:
+```
+'investments.form.draftHint': 'Puedes guardar un borrador si todavía te faltan datos.',
+'investments.incomplete.status': 'Pendiente',
+```
+
+**Línea 902 (EN):** Añadir después:
+```
+'investments.form.draftHint': 'You can save a draft if you don\'t have all the data yet.',
+'investments.incomplete.status': 'Pending',
+```
+
+---
+
+### Resultado visible
+
+1. "Guardar borrador" visible sin scroll (footer sticky)
+2. Hint visible arriba del formulario
+3. "Completar inversión" valida con schema completo
+4. Sección pendientes con fecha + badge "Pendiente" + campos faltantes
+5. Badge reactivo usando mismo count desde `useInvestments`
+6. Sin parche incorrecto con `data.id` — `allowDraftSave` es flag semántico limpio
 

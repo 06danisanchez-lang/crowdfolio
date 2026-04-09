@@ -686,6 +686,7 @@ export function InvestmentForm({
           </DialogTitle>
         </DialogHeader>
         
+        <p className="text-xs font-bold text-red-600 bg-red-100 px-2 py-1 rounded">TEST-DRAFT-VISIBLE</p>
         {showDraftButtons && (
           <p className="text-sm text-muted-foreground px-1 -mt-1 mb-2">
             {t('investments.form.draftHint')}

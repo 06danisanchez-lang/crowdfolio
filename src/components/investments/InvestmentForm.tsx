@@ -513,7 +513,90 @@ export function InvestmentForm({
           )}
         />
 
-        <div className="grid grid-cols-2 gap-4">
+        {/* Income Model selectors — only for real investments */}
+        {!isFuture && (
+          <>
+            <FormField
+              control={form.control}
+              name="incomeModel"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>{t('investments.field.incomeModel')}</FormLabel>
+                  <Select onValueChange={field.onChange} value={field.value}>
+                    <FormControl>
+                      <SelectTrigger>
+                        <SelectValue placeholder={t('investments.incomeModel.placeholder')} />
+                      </SelectTrigger>
+                    </FormControl>
+                    <SelectContent>
+                      {INCOME_MODEL_OPTIONS.map((opt) => (
+                        <SelectItem key={opt.value} value={opt.value}>
+                          {t(opt.labelKey)}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+
+            {(watchIncomeModel === 'periodic_fixed' || watchIncomeModel === 'amortizing') && (
+              <FormField
+                control={form.control}
+                name="paymentFrequency"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>{t('investments.field.paymentFrequency')}</FormLabel>
+                    <Select onValueChange={field.onChange} value={field.value}>
+                      <FormControl>
+                        <SelectTrigger>
+                          <SelectValue placeholder={t('investments.frequency.placeholder')} />
+                        </SelectTrigger>
+                      </FormControl>
+                      <SelectContent>
+                        {PAYMENT_FREQUENCY_OPTIONS.map((opt) => (
+                          <SelectItem key={opt.value} value={opt.value}>
+                            {t(opt.labelKey)}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+            )}
+
+            {watchIncomeModel === 'amortizing' && (
+              <FormField
+                control={form.control}
+                name="principalReturnType"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>{t('investments.field.principalReturnType')}</FormLabel>
+                    <Select onValueChange={field.onChange} value={field.value || 'amortizing'}>
+                      <FormControl>
+                        <SelectTrigger>
+                          <SelectValue />
+                        </SelectTrigger>
+                      </FormControl>
+                      <SelectContent>
+                        {PRINCIPAL_RETURN_TYPE_OPTIONS.map((opt) => (
+                          <SelectItem key={opt.value} value={opt.value}>
+                            {t(opt.labelKey)}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+            )}
+          </>
+        )}
+
           <FormField
             control={form.control}
             name="amount"

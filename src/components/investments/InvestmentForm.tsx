@@ -171,6 +171,7 @@ export function InvestmentForm({
           },
   });
 
+  const [validationError, setValidationError] = useState<string[] | null>(null);
   const watchPlatform = form.watch('platform');
 
   // Clear validation error when form changes
@@ -369,7 +370,7 @@ export function InvestmentForm({
     expectedReturn: initialData.expectedReturn,
   }) : null;
 
-  const [validationError, setValidationError] = useState<string[] | null>(null);
+  const showDraftButtons_placeholder = null; // moved validationError up
   const showDraftButtons = !isFuture && (isDraft || onSubmitDraft);
 
   const handleDiscardDraft = () => {

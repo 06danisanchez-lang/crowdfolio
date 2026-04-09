@@ -1,104 +1,141 @@
 
 
-## Plan revisado: Editar inversiones futuras + defaults seguros
+## Plan: Sistema de inversiones incompletas / pendientes de completar
 
-### Punto 1 resuelto — Sin `<span className="hidden" />`
+### Análisis del código actual
 
-El patrón existente para editar inversiones reales (en `InvestmentList.tsx` línea 264-273) ya resuelve esto limpiamente: se pasa un `trigger` visible (un `DropdownMenuItem` o `Button`) y el `DialogTrigger` de `InvestmentForm` lo envuelve directamente. Al hacer click, el dialog se abre con el estado interno `open` del componente.
+**Modelo DB**: `investments` tiene `platform`, `project_name`, `amount`, `investment_date`, `expected_return` como NOT NULL. Para permitir borradores reales, necesitan pasar a nullable.
 
-Para futuras, replicamos exactamente ese patrón: cada `FutureInvestmentCard` incluye un botón "Editar" como `trigger` del `InvestmentForm`. No hace falta control externo de `open/onOpenChange` ni spans ocultos.
+**Tipo `Investment`**: Campos obligatorios (`platform`, `projectName`, `amount`, `investmentDate`, `expectedReturn`). Se mantiene intacto.
 
-```text
-<InvestmentForm
-  mode="future"
-  initialData={mapFutureToFormData(fi)}
-  onSubmit={(data) => handleEditSubmit(fi.id, data)}
-  trigger={
-    <Button variant="outline" size="sm">
-      <Pencil className="mr-1.5 h-4 w-4" />
-      {t('common.edit')}
-    </Button>
-  }
-/>
+**`useInvestments.ts`**: Fetch + mapeo directo a `Investment[]`. Summary se calcula sobre todo el array. Aquí se añadirá la separación completas/incompletas.
+
+**`useTaxSummary.ts`**: Hace su propio fetch de investments y mapea a `Investment[]` directamente (líneas 74-82). Necesita filtrar incompletas con la función centralizada.
+
+**`Index.tsx`**: Dashboard usa `investments` y `summary` directamente. Sección "investments" pasa `investments.length` como `investmentCount` al form para el límite Free.
+
+**`AppLayout.tsx`**: Ya importa `useFutureInvestments` directamente (patrón para el badge sin prop drilling).
+
+**`InvestmentForm.tsx`**: Tiene `investmentSchema` estricto y `futureInvestmentSchema` relajado. Se añadirá `draftInvestmentSchema`.
+
+**`InvestmentList.tsx`**: Recibe `investments: Investment[]`. Se añadirá prop para incompletas.
+
+**Límite Free**: `investmentCount < 3` en `InvestmentForm` (línea 117), `investments.length` en `Index.tsx` (línea 334).
+
+---
+
+### Migración SQL
+
+```sql
+ALTER TABLE public.investments
+  ALTER COLUMN platform DROP NOT NULL,
+  ALTER COLUMN project_name DROP NOT NULL,
+  ALTER COLUMN amount DROP NOT NULL,
+  ALTER COLUMN investment_date DROP NOT NULL,
+  ALTER COLUMN expected_return DROP NOT NULL;
 ```
 
-Cada card renderiza su propio `InvestmentForm` con `initialData` precargado. El dialog se abre/cierra con el estado interno existente. Sin `editingId`, sin span oculto, sin control externo.
+Viable: datos existentes tienen todos estos campos rellenos, no se pierden datos.
 
-### Punto 2 resuelto — Sin `as any`
+---
 
-Se amplía el tipo de `initialData` en `InvestmentFormProps` de forma mínima:
+### Archivos nuevos (2)
 
-```ts
-// Antes
-initialData?: Investment;
+**`src/lib/investment/completeness.ts`**
+- `CompletionStatus { isComplete, isForecastReady, missingFields }`
+- `getInvestmentCompletionStatus(inv)`: portfolio_ready = platform + projectName + amount > 0 + investmentDate. forecast_ready = portfolio_ready + expectedReturn != null.
+- `isInvestmentComplete(inv)`: shorthand boolean
+- `missingFields` devuelve translation keys (`investments.field.platform`, etc.)
 
-// Después
-initialData?: Investment | FutureInvestmentFormData;
-```
+**`src/hooks/useIncompleteCount.ts`**
+- Fetch ligero de investments (solo campos necesarios), aplica `isInvestmentComplete` de `completeness.ts`, devuelve `count`
+- Mismo criterio que el hook principal → sin divergencias
+- Usado por `AppLayout` para el badge (mismo patrón que `useFutureInvestments`)
 
-Donde `FutureInvestmentFormData` es un tipo ligero definido localmente en el mismo archivo:
+---
 
-```ts
-interface FutureInvestmentFormData {
-  platform: Platform;
-  customPlatformName?: string;
-  projectName: string;
-  amount?: number;
-  expectedReturn?: number;
-  investmentDate?: Date;
-  expectedEndDate?: Date;
-  sourceUrl?: string;
-  notes?: string;
-}
-```
+### Archivos modificados (9)
 
-El bloque de `defaultValues` cuando hay `initialData` ya lee solo los campos que existen — los opcionales simplemente quedan `undefined`. No rompe el branch de edición de inversiones reales porque `Investment` sigue siendo válido.
+**`src/types/investment.ts`**
+- Añadir `DraftInvestment` con campos opcionales (platform?, projectName?, amount?, investmentDate?, expectedReturn?, + id, status, payments, createdAt, updatedAt obligatorios)
+- `Investment` NO se toca
 
-El mapeo `mapFutureToFormData` devuelve exactamente esta shape:
+**`src/hooks/useInvestments.ts`**
+- Tipo interno `RawInvestment` para mapeo desde DB con nullables
+- Separar en `investments: Investment[]` (portfolio_ready) + `incompleteInvestments: DraftInvestment[]`
+- `summary` se calcula solo sobre `investments` (ya lo hace, pero ahora `investments` solo son las completas)
+- Previsiones (`expectedProfit`, `estimatedTotal`): filtrar adicionalmente por `forecast_ready` (expectedReturn != null)
+- `addInvestment`/`addDraftInvestment`: aceptar datos parciales para borradores
+- `allInvestmentsCount`: total guardadas (completas + incompletas) para límite Free
+- Exportar: `investments`, `incompleteInvestments`, `incompleteCount`, `allInvestmentsCount`
 
-```ts
-function mapFutureToFormData(fi: FutureInvestment): FutureInvestmentFormData {
-  return {
-    platform: fi.platform,
-    customPlatformName: fi.customPlatformName,
-    projectName: fi.projectName,
-    amount: fi.estimatedAmount ?? undefined,
-    expectedReturn: fi.expectedReturn ?? undefined,
-    investmentDate: fi.estimatedOpenDate ? new Date(fi.estimatedOpenDate) : undefined,
-    expectedEndDate: fi.estimatedEndDate ? new Date(fi.estimatedEndDate) : undefined,
-    sourceUrl: fi.sourceUrl,
-    notes: fi.notes,
-  };
-}
-```
+**`src/components/investments/InvestmentForm.tsx`**
+- Añadir `draftInvestmentSchema` (solo `projectName` required, todo lo demás opcional)
+- Dos botones en modo `real`: "Guardar borrador" (outline, valida con draft) + "Guardar inversión" (primary, valida con completo)
+- Al editar una incompleta: ambos botones visibles. El primary dice "Completar inversión"
+- Banner al editar incompleta: "Faltan datos: [lista traducida]. Esta inversión no se incluye todavía en Inicio ni en el informe fiscal."
+- Si portfolio_ready pero no forecast_ready: aviso "No se incluye en previsiones — falta rentabilidad esperada."
+- `investmentCount` → usar `allInvestmentsCount` (completas + incompletas) para límite Free
 
-Sin `as any`. Sin datos inventados.
+**`src/components/investments/InvestmentList.tsx`**
+- Nueva prop `incompleteInvestments: DraftInvestment[]`
+- Sección "Pendientes de completar" antes de la tabla principal (solo si hay)
+- Cada pendiente: nombre o "Sin nombre", plataforma, importe, campos faltantes como badges traducidos, botón "Completar inversión" que abre InvestmentForm con initialData
+- Si no hay pendientes, la sección no se renderiza
 
-### Cambios por archivo
+**`src/pages/Index.tsx`**
+- Dashboard: usa `investments` (ya filtrado a completas) para KPIs, charts, alerts, maturity
+- Sección Investments: pasa `incompleteInvestments` a InvestmentList, `allInvestmentsCount` al form y al subtitle del límite Free
+- `investments.length` en subtitle → `allInvestmentsCount`
 
-#### 1. `src/components/investments/InvestmentForm.tsx`
+**`src/components/layout/AppLayout.tsx`**
+- Importar `useIncompleteCount`
+- Badge naranja en nav "Inversiones" si count > 0
 
-- Añadir tipo `FutureInvestmentFormData` y ampliar `initialData` a `Investment | FutureInvestmentFormData`
-- Añadir `sourceUrl` al mapeo de `initialData` en `defaultValues`
-- Defaults neutrales: `platform: undefined`, `expectedReturn: undefined` (nuevas inversiones)
-- `handleDiscardDraft`: mismos defaults neutrales
+**`src/hooks/useTaxSummary.ts`**
+- Importar `isInvestmentComplete` de `completeness.ts`
+- Después del mapeo `mappedInvestments` (línea 74-82), filtrar con `isInvestmentComplete` antes de buscar payments
+- Contar `excludedIncompleteCount` y exponerlo
 
-#### 2. `src/components/future-investments/FutureInvestmentList.tsx`
+**`src/components/tax/TaxDashboard.tsx`**
+- Recibir `excludedIncompleteCount` de `useTaxSummary`
+- Si > 0, mostrar aviso: "X inversiones no se incluyen en este informe porque están pendientes de completar."
 
-- Añadir `updateFutureInvestment` al destructuring del hook
-- Añadir `mapFutureToFormData` (shape parcial fiel)
-- Añadir `handleEditSubmit(id, data)` que llama a `updateFutureInvestment`
-- En cada `FutureInvestmentCard`: renderizar `InvestmentForm` con `mode="future"`, `initialData={mapFutureToFormData(fi)}`, trigger = botón Editar visible
-- Import `Pencil` de lucide-react
+**`src/lib/i18n/translations.ts`**
+- Claves nuevas ES/EN:
+  - `investments.incomplete.title`, `.cta`, `.banner`, `.forecastWarning`
+  - `investments.field.platform`, `.projectName`, `.amount`, `.investmentDate`, `.expectedReturn`
+  - `investments.form.saveDraft`
+  - `tax.incomplete.warning`
 
-#### 3. No se toca `types/investment.ts`
+---
 
-El tipo `FutureInvestmentFormData` queda en `InvestmentForm.tsx` — alcance mínimo.
+### Consistencia badge ↔ pendientes ↔ módulos
+
+- Badge (`useIncompleteCount`) → usa `isInvestmentComplete` de `completeness.ts`
+- Hook principal (`useInvestments`) → usa `isInvestmentComplete` de `completeness.ts`  
+- Tax (`useTaxSummary`) → usa `isInvestmentComplete` de `completeness.ts`
+- Una sola función, una sola fuente de verdad
+
+### Límite Free
+
+- `allInvestmentsCount` = completas + incompletas (total guardadas en DB)
+- Se usa en `InvestmentForm` para `canAddInvestment`
+- Se usa en `Index.tsx` para el subtitle "(X/3)"
+- Un borrador cuenta contra el límite
+
+### Integración automática
+
+- No hay flag ni paso manual. La función `isInvestmentComplete` evalúa en cada render
+- Si editas una incompleta y la completas → desaparece de pendientes, entra en `investments` → se refleja en dashboard y fiscal
+- Si editas una completa y le quitas un campo → sale de `investments`, entra en `incompleteInvestments`
+
+---
 
 ### Lo que NO se toca
 
-- `mapFutureToPartialInvestment` (conversión a real) — sigue igual
-- Crear inversión futura — sigue igual
-- Eliminar — sigue igual
-- Traducciones, pricing, otros componentes
+- Tipo `Investment` — intacto
+- Inversiones futuras, pagos, alertas, pricing, edge functions, perfil, settings
+- No se renombra ningún archivo, prop, key ni función existente
+- No se crean nuevas páginas ni rutas
 

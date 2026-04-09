@@ -305,7 +305,7 @@ export const translations: Record<Lang, Record<string, string>> = {
     'subscription.startPro': 'Empezar con Pro',
     'subscription.noCommitment': 'Cancela cuando quieras. Sin compromisos.',
     'subscription.f1': 'Inversiones ilimitadas',
-    'subscription.f2': 'Importaciones con IA ilimitadas',
+    'subscription.f2': 'Importaciones masivas ilimitadas',
     'subscription.f3': 'Avisos de apertura sin límites',
     'subscription.f4': 'Informe fiscal unificado',
     'subscription.f5': 'Exportación del informe fiscal',
@@ -342,10 +342,10 @@ export const translations: Record<Lang, Record<string, string>> = {
     // Import counter
     'subscription.import.used': 'Has usado tu importación mensual',
     'subscription.import.remaining': 'Tienes 1 importación disponible este mes',
-    'subscription.import.upgradeDesc': 'Con Pro tienes importaciones ilimitadas desde imagen o PDF con IA',
+    'subscription.import.upgradeDesc': 'Con Pro tienes importaciones masivas ilimitadas desde CSV o JSON',
 
     // Dashboard Free CTA
-    'subscription.dashboard.freeDesc': 'Gestiona hasta 3 inversiones activas, 3 inversiones futuras y 1 importación con IA al mes.',
+    'subscription.dashboard.freeDesc': 'Gestiona hasta 3 inversiones activas, 3 inversiones futuras y 1 importación masiva al mes.',
     'subscription.dashboard.ctaBtn': 'Ver qué incluye Pro',
 
     'subscription.billing.title': 'Tu Plan',
@@ -742,7 +742,7 @@ export const translations: Record<Lang, Record<string, string>> = {
     'subscription.startPro': 'Start with Pro',
     'subscription.noCommitment': 'Cancel anytime. No commitments.',
     'subscription.f1': 'Unlimited investments',
-    'subscription.f2': 'Unlimited AI imports',
+    'subscription.f2': 'Unlimited bulk imports',
     'subscription.f3': 'Unlimited opening alerts',
     'subscription.f4': 'Unified tax report',
     'subscription.f5': 'Tax report export',
@@ -779,10 +779,10 @@ export const translations: Record<Lang, Record<string, string>> = {
     // Import counter
     'subscription.import.used': "You've used your monthly import",
     'subscription.import.remaining': 'You have 1 import available this month',
-    'subscription.import.upgradeDesc': 'With Pro you get unlimited imports from image or PDF with AI',
+    'subscription.import.upgradeDesc': 'With Pro you get unlimited bulk imports from CSV or JSON',
 
     // Dashboard Free CTA
-    'subscription.dashboard.freeDesc': 'Manage up to 3 active investments, 3 future investments, and 1 AI import per month.',
+    'subscription.dashboard.freeDesc': 'Manage up to 3 active investments, 3 future investments, and 1 bulk import per month.',
     'subscription.dashboard.ctaBtn': "See what's in Pro",
 
     'subscription.billing.title': 'Your Plan',

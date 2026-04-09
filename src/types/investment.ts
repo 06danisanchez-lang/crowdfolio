@@ -69,6 +69,22 @@ export const PLATFORMS: { value: Platform; label: string; color: string }[] = [
   { value: 'other', label: 'Otra', color: 'platform-other' },
 ];
 
+export interface DraftInvestment {
+  id: string;
+  platform?: Platform | null;
+  customPlatformName?: string;
+  projectName?: string | null;
+  amount?: number | null;
+  investmentDate?: string | null;
+  expectedEndDate?: string;
+  expectedReturn?: number | null;
+  status: InvestmentStatus;
+  payments: Payment[];
+  notes?: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
 export const STATUS_OPTIONS: { value: InvestmentStatus; label: string; color: string }[] = [
   { value: 'active', label: 'Activo', color: 'status-active' },
   { value: 'pending', label: 'Pendiente', color: 'status-pending' },

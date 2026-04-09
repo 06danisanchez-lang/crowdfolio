@@ -1,5 +1,4 @@
-import { useRef, useEffect } from 'react';
-import { useState } from 'react';
+import { useRef, useEffect, useState } from 'react';
 import { 
   LayoutDashboard, 
   Wallet, 
@@ -24,6 +23,7 @@ import crowdfolioLogo from '@/assets/crowdfolio-logo.png';
 import { useLanguage } from '@/contexts/LanguageContext';
 import { LanguageToggle } from '@/components/ui/LanguageToggle';
 import { useFutureInvestments } from '@/hooks/useFutureInvestments';
+import { useIncompleteCount } from '@/hooks/useIncompleteCount';
 
 interface AppLayoutProps {
   children: React.ReactNode;
@@ -44,6 +44,7 @@ export function AppLayout({
   const mainRef = useRef<HTMLElement>(null);
   const { t } = useLanguage();
   const { futureInvestments } = useFutureInvestments();
+  const { incompleteCount } = useIncompleteCount();
 
   useEffect(() => {
     mainRef.current?.scrollTo(0, 0);
@@ -111,6 +112,11 @@ export function AppLayout({
               >
                 <item.icon className="h-4 w-4" />
                 {item.label}
+                {item.id === 'investments' && incompleteCount > 0 && (
+                  <span className="ml-auto flex h-5 min-w-5 items-center justify-center rounded-full bg-orange-500 px-1.5 text-xs font-bold text-white">
+                    {incompleteCount}
+                  </span>
+                )}
               </button>
             ))}
             <button

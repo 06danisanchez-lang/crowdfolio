@@ -1,21 +1,39 @@
 import { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
-import { Investment, InvestmentSummary, Platform, InvestmentStatus, Payment } from '@/types/investment';
+import { Investment, InvestmentSummary, Platform, InvestmentStatus, Payment, DraftInvestment } from '@/types/investment';
 import { calculateInvestmentTotalReturn } from '@/lib/investment/calculations';
+import { isInvestmentComplete, getInvestmentCompletionStatus } from '@/lib/investment/completeness';
 
 const FETCH_TIMEOUT_MS = 15_000;
 
+// Internal type for raw DB rows (nullable fields)
+interface RawInvestmentRow {
+  id: string;
+  platform: string | null;
+  custom_platform_name: string | null;
+  project_name: string | null;
+  amount: number | null;
+  investment_date: string | null;
+  expected_end_date: string | null;
+  expected_return: number | null;
+  status: string;
+  notes: string | null;
+  created_at: string;
+  updated_at: string;
+  user_id: string;
+}
+
 export function useInvestments() {
   const { user } = useAuth();
-  const [investments, setInvestments] = useState<Investment[]>([]);
+  const [allRawInvestments, setAllRawInvestments] = useState<DraftInvestment[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const requestIdRef = useRef(0);
 
   const fetchInvestments = useCallback(async () => {
     if (!user) {
-      setInvestments([]);
+      setAllRawInvestments([]);
       setIsLoading(false);
       setError(null);
       return;
@@ -56,13 +74,19 @@ export function useInvestments() {
       clearTimeout(timeoutId);
       if (requestIdRef.current !== currentId) return;
 
-      const mappedInvestments: Investment[] = (investmentsData || []).map(inv => ({
-        id: inv.id, platform: inv.platform as Platform,
+      const mapped: DraftInvestment[] = (investmentsData as RawInvestmentRow[] || []).map(inv => ({
+        id: inv.id,
+        platform: (inv.platform as Platform) || undefined,
         customPlatformName: inv.custom_platform_name || undefined,
-        projectName: inv.project_name, amount: Number(inv.amount),
-        investmentDate: inv.investment_date, expectedEndDate: inv.expected_end_date || undefined,
-        expectedReturn: Number(inv.expected_return), status: inv.status as InvestmentStatus,
-        notes: inv.notes || undefined, createdAt: inv.created_at, updatedAt: inv.updated_at,
+        projectName: inv.project_name || undefined,
+        amount: inv.amount != null ? Number(inv.amount) : undefined,
+        investmentDate: inv.investment_date || undefined,
+        expectedEndDate: inv.expected_end_date || undefined,
+        expectedReturn: inv.expected_return != null ? Number(inv.expected_return) : undefined,
+        status: (inv.status as InvestmentStatus) || 'active',
+        notes: inv.notes || undefined,
+        createdAt: inv.created_at,
+        updatedAt: inv.updated_at,
         payments: paymentsData
           .filter(p => p.investment_id === inv.id)
           .map(p => ({
@@ -72,7 +96,7 @@ export function useInvestments() {
           })),
       }));
 
-      setInvestments(mappedInvestments);
+      setAllRawInvestments(mapped);
     } catch (err) {
       clearTimeout(timeoutId);
       if (requestIdRef.current !== currentId) return;
@@ -91,7 +115,47 @@ export function useInvestments() {
     return () => { ++requestIdRef.current; };
   }, [fetchInvestments]);
 
-  const addInvestment = useCallback(async (investment: Omit<Investment, 'id' | 'createdAt' | 'updatedAt' | 'payments'>) => {
+  // Separate complete vs incomplete using centralized logic
+  const { investments, incompleteInvestments } = useMemo(() => {
+    const complete: Investment[] = [];
+    const incomplete: DraftInvestment[] = [];
+
+    for (const raw of allRawInvestments) {
+      if (isInvestmentComplete({
+        platform: raw.platform,
+        projectName: raw.projectName,
+        amount: raw.amount,
+        investmentDate: raw.investmentDate,
+      })) {
+        // Safe to cast — all required fields are present
+        complete.push({
+          id: raw.id,
+          platform: raw.platform as Platform,
+          customPlatformName: raw.customPlatformName,
+          projectName: raw.projectName as string,
+          amount: raw.amount as number,
+          investmentDate: raw.investmentDate as string,
+          expectedEndDate: raw.expectedEndDate,
+          expectedReturn: raw.expectedReturn ?? 0,
+          status: raw.status,
+          payments: raw.payments,
+          notes: raw.notes,
+          createdAt: raw.createdAt,
+          updatedAt: raw.updatedAt,
+        });
+      } else {
+        incomplete.push(raw);
+      }
+    }
+
+    return { investments: complete, incompleteInvestments: incomplete };
+  }, [allRawInvestments]);
+
+  // Total count (complete + incomplete) for Free limit
+  const allInvestmentsCount = allRawInvestments.length;
+  const incompleteCount = incompleteInvestments.length;
+
+  const addInvestment = useCallback(async (investment: Omit<Investment, 'id' | 'createdAt' | 'updatedAt' | 'payments'>): Promise<Investment | null> => {
     if (!user) return null;
     const { data, error } = await supabase.from('investments').insert({
       user_id: user.id, platform: investment.platform,
@@ -103,39 +167,69 @@ export function useInvestments() {
       notes: investment.notes || null,
     }).select().single();
     if (error) { console.error('Error adding investment:', error); return null; }
-    const newInvestment: Investment = {
+    const created: Investment = {
       id: data.id, platform: data.platform as Platform,
       customPlatformName: data.custom_platform_name || undefined,
-      projectName: data.project_name, amount: Number(data.amount),
-      investmentDate: data.investment_date, expectedEndDate: data.expected_end_date || undefined,
+      projectName: data.project_name!, amount: Number(data.amount),
+      investmentDate: data.investment_date!, expectedEndDate: data.expected_end_date || undefined,
       expectedReturn: Number(data.expected_return), status: data.status as InvestmentStatus,
       notes: data.notes || undefined, createdAt: data.created_at, updatedAt: data.updated_at,
       payments: [],
     };
-    setInvestments(prev => [newInvestment, ...prev]);
-    return newInvestment;
-  }, [user]);
+    await fetchInvestments();
+    return created;
+  }, [user, fetchInvestments]);
+
+  // Add a draft/partial investment
+  const addDraftInvestment = useCallback(async (draft: {
+    projectName: string;
+    platform?: string | null;
+    customPlatformName?: string | null;
+    amount?: number | null;
+    investmentDate?: string | null;
+    expectedEndDate?: string | null;
+    expectedReturn?: number | null;
+    status?: string;
+    notes?: string | null;
+  }) => {
+    if (!user) return null;
+    const { data, error } = await supabase.from('investments').insert({
+      user_id: user.id,
+      platform: draft.platform || null,
+      custom_platform_name: draft.customPlatformName || null,
+      project_name: draft.projectName,
+      amount: draft.amount ?? null,
+      investment_date: draft.investmentDate || null,
+      expected_end_date: draft.expectedEndDate || null,
+      expected_return: draft.expectedReturn ?? null,
+      status: draft.status || 'active',
+      notes: draft.notes || null,
+    }).select().single();
+    if (error) { console.error('Error adding draft investment:', error); return null; }
+    await fetchInvestments();
+    return data;
+  }, [user, fetchInvestments]);
 
   const updateInvestment = useCallback(async (id: string, updates: Partial<Investment>) => {
     const dbUpdates: any = {};
-    if (updates.platform !== undefined) dbUpdates.platform = updates.platform;
+    if (updates.platform !== undefined) dbUpdates.platform = updates.platform || null;
     if (updates.customPlatformName !== undefined) dbUpdates.custom_platform_name = updates.customPlatformName;
-    if (updates.projectName !== undefined) dbUpdates.project_name = updates.projectName;
-    if (updates.amount !== undefined) dbUpdates.amount = updates.amount;
-    if (updates.investmentDate !== undefined) dbUpdates.investment_date = updates.investmentDate;
+    if (updates.projectName !== undefined) dbUpdates.project_name = updates.projectName || null;
+    if (updates.amount !== undefined) dbUpdates.amount = updates.amount ?? null;
+    if (updates.investmentDate !== undefined) dbUpdates.investment_date = updates.investmentDate || null;
     if (updates.expectedEndDate !== undefined) dbUpdates.expected_end_date = updates.expectedEndDate;
-    if (updates.expectedReturn !== undefined) dbUpdates.expected_return = updates.expectedReturn;
+    if (updates.expectedReturn !== undefined) dbUpdates.expected_return = updates.expectedReturn ?? null;
     if (updates.status !== undefined) dbUpdates.status = updates.status;
     if (updates.notes !== undefined) dbUpdates.notes = updates.notes;
     const { error } = await supabase.from('investments').update(dbUpdates).eq('id', id);
     if (error) { console.error('Error updating investment:', error); return; }
-    setInvestments(prev => prev.map(inv => inv.id === id ? { ...inv, ...updates, updatedAt: new Date().toISOString() } : inv));
-  }, []);
+    await fetchInvestments();
+  }, [fetchInvestments]);
 
   const deleteInvestment = useCallback(async (id: string) => {
     const { error } = await supabase.from('investments').delete().eq('id', id);
     if (error) { console.error('Error deleting investment:', error); return; }
-    setInvestments(prev => prev.filter(inv => inv.id !== id));
+    setAllRawInvestments(prev => prev.filter(inv => inv.id !== id));
   }, []);
 
   const addPayment = useCallback(async (investmentId: string, payment: Omit<Payment, 'id'>) => {
@@ -148,7 +242,7 @@ export function useInvestments() {
       id: data.id, date: data.date, amount: Number(data.amount),
       type: data.type as 'dividend' | 'principal' | 'interest', notes: data.notes || undefined,
     };
-    setInvestments(prev => prev.map(inv =>
+    setAllRawInvestments(prev => prev.map(inv =>
       inv.id === investmentId
         ? { ...inv, payments: [...inv.payments, newPayment], updatedAt: new Date().toISOString() }
         : inv
@@ -159,7 +253,7 @@ export function useInvestments() {
   const deletePayment = useCallback(async (investmentId: string, paymentId: string) => {
     const { error } = await supabase.from('payments').delete().eq('id', paymentId);
     if (error) { console.error('Error deleting payment:', error); return; }
-    setInvestments(prev => prev.map(inv =>
+    setAllRawInvestments(prev => prev.map(inv =>
       inv.id === investmentId
         ? { ...inv, payments: inv.payments.filter(p => p.id !== paymentId), updatedAt: new Date().toISOString() }
         : inv
@@ -200,16 +294,24 @@ export function useInvestments() {
     if (!user) return;
     const { error } = await supabase.from('investments').delete().eq('user_id', user.id);
     if (error) { console.error('Error clearing investments:', error); return; }
-    setInvestments([]);
+    setAllRawInvestments([]);
   }, [user]);
 
   const summary: InvestmentSummary = useMemo(() => {
     const activeInvestments = investments.filter(inv => inv.status === 'active');
-    const activeWithEndDate = activeInvestments.filter(inv => inv.expectedEndDate);
+    const forecastReady = activeInvestments.filter(inv => 
+      inv.expectedEndDate && getInvestmentCompletionStatus({
+        platform: inv.platform,
+        projectName: inv.projectName,
+        amount: inv.amount,
+        investmentDate: inv.investmentDate,
+        expectedReturn: inv.expectedReturn,
+      }).isForecastReady
+    );
 
     const activeCapital = activeInvestments.reduce((s, i) => s + i.amount, 0);
-    const expectedProfit = activeWithEndDate.reduce((s, i) => s + calculateInvestmentTotalReturn(i), 0);
-    const estimatedTotal = activeWithEndDate.reduce((s, i) => s + i.amount, 0) + expectedProfit;
+    const expectedProfit = forecastReady.reduce((s, i) => s + calculateInvestmentTotalReturn(i), 0);
+    const estimatedTotal = forecastReady.reduce((s, i) => s + i.amount, 0) + expectedProfit;
 
     const totalCollected = investments.reduce((s, i) => s + i.payments.reduce((ps, p) => ps + p.amount, 0), 0);
     const realizedProfit = investments.reduce((s, i) => s + i.payments
@@ -239,7 +341,7 @@ export function useInvestments() {
         estimatedTotal,
         expectedProfit,
         count: activeInvestments.length,
-        withEndDateCount: activeWithEndDate.length,
+        withEndDateCount: forecastReady.length,
       },
       historicalSummary: {
         totalInvested: investments.reduce((sum, inv) => sum + inv.amount, 0),
@@ -251,8 +353,9 @@ export function useInvestments() {
   }, [investments]);
 
   return {
-    investments, isLoading, error, summary,
-    addInvestment, updateInvestment, deleteInvestment,
+    investments, incompleteInvestments, incompleteCount, allInvestmentsCount,
+    isLoading, error, summary,
+    addInvestment, addDraftInvestment, updateInvestment, deleteInvestment,
     addPayment, deletePayment, importInvestments,
     exportInvestments, clearAllInvestments, refetch: fetchInvestments,
   };

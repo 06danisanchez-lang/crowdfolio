@@ -3,8 +3,9 @@ import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import { format } from 'date-fns';
-import { CalendarIcon, Plus } from 'lucide-react';
+import { CalendarIcon, Plus, AlertTriangle } from 'lucide-react';
 import { Investment, Platform, InvestmentStatus, PLATFORMS, STATUS_OPTIONS } from '@/types/investment';
+import { getInvestmentCompletionStatus } from '@/lib/investment/completeness';
 
 export interface FutureInvestmentFormData {
   platform: Platform;
@@ -66,6 +67,19 @@ const investmentSchema = z.object({
   sourceUrl: z.string().optional(),
 });
 
+const draftInvestmentSchema = z.object({
+  platform: z.enum(['urbanitae', 'housers', 'estateguru', 'crowdcube', 'brickstarter', 'wecity', 'other'] as const).optional(),
+  customPlatformName: z.string().optional(),
+  projectName: z.string().min(1, 'El nombre del proyecto es requerido'),
+  amount: z.number().nullable().optional(),
+  investmentDate: z.date().optional(),
+  expectedEndDate: z.date().optional(),
+  expectedReturn: z.number().nullable().optional(),
+  status: z.enum(['active', 'pending', 'completed', 'defaulted'] as const).optional(),
+  notes: z.string().optional(),
+  sourceUrl: z.string().optional(),
+});
+
 const futureInvestmentSchema = z.object({
   platform: z.enum(['urbanitae', 'housers', 'estateguru', 'crowdcube', 'brickstarter', 'wecity', 'other'] as const),
   customPlatformName: z.string().optional(),
@@ -85,7 +99,9 @@ export type InvestmentFormMode = 'real' | 'future';
 
 interface InvestmentFormProps {
   onSubmit: (data: any) => void;
+  onSubmitDraft?: (data: any) => void;
   initialData?: Investment | FutureInvestmentFormData;
+  isDraft?: boolean;
   trigger?: React.ReactNode;
   investmentCount?: number;
   isPro?: boolean;
@@ -95,7 +111,9 @@ interface InvestmentFormProps {
 
 export function InvestmentForm({ 
   onSubmit, 
+  onSubmitDraft,
   initialData, 
+  isDraft = false,
   trigger,
   investmentCount = 0,
   isPro = true,
@@ -124,8 +142,10 @@ export function InvestmentForm({
     setOpen(newOpen);
   };
 
+  const schema = isFuture ? futureInvestmentSchema : (isDraft ? draftInvestmentSchema : investmentSchema);
+
   const form = useForm<any>({
-    resolver: zodResolver(isFuture ? futureInvestmentSchema : investmentSchema),
+    resolver: zodResolver(schema),
     defaultValues: initialData
       ? {
           platform: initialData.platform,
@@ -277,6 +297,49 @@ export function InvestmentForm({
     form.reset();
   };
 
+  const handleSaveDraft = () => {
+    const values = form.getValues();
+    // Validate with draft schema (only projectName required)
+    const result = draftInvestmentSchema.safeParse(values);
+    if (!result.success) {
+      // Show validation errors
+      form.trigger();
+      return;
+    }
+    if (onSubmitDraft) {
+      onSubmitDraft({
+        platform: values.platform || null,
+        customPlatformName: values.customPlatformName,
+        projectName: values.projectName,
+        amount: values.amount ?? null,
+        expectedReturn: values.expectedReturn ?? null,
+        status: values.status || 'active',
+        notes: values.notes,
+        investmentDate: values.investmentDate?.toISOString() || null,
+        expectedEndDate: values.expectedEndDate?.toISOString() || null,
+      });
+      draft.clear();
+      setDraftExists(false);
+      setDraftRestored(false);
+      draftLoadedRef.current = false;
+      setOpen(false);
+      form.reset();
+    }
+  };
+
+  // Compute completeness status for the current initialData (for banners)
+  const completionStatus = initialData && isDraft ? getInvestmentCompletionStatus({
+    platform: initialData.platform,
+    projectName: initialData.projectName,
+    amount: initialData.amount,
+    investmentDate: initialData.investmentDate
+      ? (initialData.investmentDate instanceof Date ? initialData.investmentDate.toISOString() : initialData.investmentDate as string)
+      : null,
+    expectedReturn: initialData.expectedReturn,
+  }) : null;
+
+  const showDraftButtons = !isFuture && (isDraft || onSubmitDraft);
+
   const handleDiscardDraft = () => {
     draft.clear();
     setDraftExists(false);
@@ -306,6 +369,27 @@ export function InvestmentForm({
             >
               {t('investments.form.draft.discard')}
             </Button>
+          </div>
+        )}
+
+        {/* Incomplete investment banner */}
+        {isDraft && completionStatus && !completionStatus.isComplete && (
+          <div className="flex items-start gap-2 p-3 rounded-lg bg-muted/50 border text-sm">
+            <AlertTriangle className="h-4 w-4 text-orange-500 mt-0.5 shrink-0" />
+            <div>
+              <p className="text-muted-foreground">{t('investments.incomplete.banner')}</p>
+              <p className="text-muted-foreground mt-1">
+                {t('investments.incomplete.missing')}: {completionStatus.missingFields.map(f => t(f)).join(', ')}
+              </p>
+            </div>
+          </div>
+        )}
+
+        {/* Forecast warning: portfolio_ready but not forecast_ready */}
+        {isDraft && completionStatus && completionStatus.isComplete && !completionStatus.isForecastReady && (
+          <div className="flex items-start gap-2 p-3 rounded-lg bg-muted/50 border text-sm">
+            <AlertTriangle className="h-4 w-4 text-muted-foreground mt-0.5 shrink-0" />
+            <p className="text-muted-foreground">{t('investments.incomplete.forecastWarning')}</p>
           </div>
         )}
 
@@ -560,10 +644,15 @@ export function InvestmentForm({
           <Button type="button" variant="outline" onClick={() => setOpen(false)}>
             {t('common.cancel')}
           </Button>
+          {showDraftButtons && (
+            <Button type="button" variant="outline" onClick={handleSaveDraft}>
+              {t('investments.form.saveDraft')}
+            </Button>
+          )}
           <Button type="submit">
             {isFuture
               ? t('future.form.save')
-              : initialData ? t('investments.form.save.edit') : t('investments.form.save.new')}
+              : isDraft ? t('investments.incomplete.cta') : (initialData ? t('investments.form.save.edit') : t('investments.form.save.new'))}
           </Button>
         </div>
       </form>

@@ -313,15 +313,15 @@ export const translations: Record<Lang, Record<string, string>> = {
     // Plan copy — Free features
     'subscription.free.f1': 'Hasta 3 inversiones activas',
     'subscription.free.f2': 'Hasta 3 inversiones futuras',
-    'subscription.free.f3': '1 importación masiva al mes',
-    'subscription.free.f4': 'Avisos de apertura de tus inversiones futuras',
+    'subscription.free.f3': '',
+    'subscription.free.f4': 'Hasta 3 avisos de apertura',
     'subscription.free.f5': 'Resumen fiscal indicativo',
     'subscription.free.f6': '',
 
     // Plan copy — Pro features
     'subscription.pro.f1': 'Inversiones activas ilimitadas',
     'subscription.pro.f2': 'Inversiones futuras ilimitadas',
-    'subscription.pro.f3': 'Importaciones masivas ilimitadas',
+    'subscription.pro.f3': '',
     'subscription.pro.f4': 'Avisos de apertura sin límites',
     'subscription.pro.f5': 'Informe fiscal unificado',
     'subscription.pro.f6': 'Exportación del informe fiscal',
@@ -750,15 +750,15 @@ export const translations: Record<Lang, Record<string, string>> = {
     // Plan copy — Free features
     'subscription.free.f1': 'Up to 3 active investments',
     'subscription.free.f2': 'Up to 3 future investments',
-    'subscription.free.f3': '1 bulk import per month',
-    'subscription.free.f4': 'Opening alerts for your future investments',
+    'subscription.free.f3': '',
+    'subscription.free.f4': 'Up to 3 opening alerts',
     'subscription.free.f5': 'Indicative tax summary',
     'subscription.free.f6': '',
 
     // Plan copy — Pro features
     'subscription.pro.f1': 'Unlimited active investments',
     'subscription.pro.f2': 'Unlimited future investments',
-    'subscription.pro.f3': 'Unlimited bulk imports',
+    'subscription.pro.f3': '',
     'subscription.pro.f4': 'Unlimited opening alerts',
     'subscription.pro.f5': 'Unified tax report',
     'subscription.pro.f6': 'Tax report export',

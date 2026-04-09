@@ -30,7 +30,6 @@ export function UpgradeModal({ open, onOpenChange, feature = 'default' }: Upgrad
   const proFeatures = [
     t('subscription.pro.f1'),
     t('subscription.pro.f2'),
-    t('subscription.pro.f3'),
     t('subscription.pro.f4'),
     t('subscription.pro.f5'),
     t('subscription.pro.f6'),

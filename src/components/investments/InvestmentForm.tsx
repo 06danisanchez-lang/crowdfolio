@@ -3,8 +3,9 @@ import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import { format } from 'date-fns';
-import { CalendarIcon, Plus } from 'lucide-react';
+import { CalendarIcon, Plus, AlertTriangle } from 'lucide-react';
 import { Investment, Platform, InvestmentStatus, PLATFORMS, STATUS_OPTIONS } from '@/types/investment';
+import { getInvestmentCompletionStatus } from '@/lib/investment/completeness';
 
 export interface FutureInvestmentFormData {
   platform: Platform;

@@ -6,6 +6,7 @@ import { Investment } from '@/types/investment';
 import { calculateProgressiveTax, calculateEffectiveRate } from '@/lib/tax/calculations';
 import { calculateYearlyProjection, TaxProjection } from '@/lib/tax/projections';
 import { useTaxExpenses } from './useTaxExpenses';
+import { isInvestmentComplete } from '@/lib/investment/completeness';
 
 const FETCH_TIMEOUT_MS = 15_000;
 
@@ -71,15 +72,25 @@ export function useTaxSummary(year: number) {
 
         if (investmentsError) throw investmentsError;
 
-        const mappedInvestments: Investment[] = (investmentsData as InvestmentRow[] || []).map((inv) => ({
-          id: inv.id, platform: inv.platform as Investment['platform'],
-          customPlatformName: inv.custom_platform_name || undefined,
-          projectName: inv.project_name, amount: Number(inv.amount),
-          investmentDate: inv.investment_date, expectedEndDate: inv.expected_end_date || undefined,
-          expectedReturn: Number(inv.expected_return), status: inv.status as Investment['status'],
-          notes: inv.notes || undefined, payments: [],
-          createdAt: inv.created_at, updatedAt: inv.updated_at,
-        }));
+        const allMapped: Investment[] = (investmentsData as InvestmentRow[] || [])
+          .filter(inv => isInvestmentComplete({
+            platform: inv.platform,
+            projectName: inv.project_name,
+            amount: inv.amount != null ? Number(inv.amount) : null,
+            investmentDate: inv.investment_date,
+          }))
+          .map((inv) => ({
+            id: inv.id, platform: inv.platform as Investment['platform'],
+            customPlatformName: inv.custom_platform_name || undefined,
+            projectName: inv.project_name, amount: Number(inv.amount),
+            investmentDate: inv.investment_date, expectedEndDate: inv.expected_end_date || undefined,
+            expectedReturn: Number(inv.expected_return), status: inv.status as Investment['status'],
+            notes: inv.notes || undefined, payments: [],
+            createdAt: inv.created_at, updatedAt: inv.updated_at,
+          }));
+
+        const excludedCount = (investmentsData || []).length - allMapped.length;
+        const mappedInvestments = allMapped;
 
         const investmentIds = mappedInvestments.map((i) => i.id);
 

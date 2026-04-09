@@ -1,121 +1,62 @@
 
 
-## Plan: Eliminar integración IA del módulo de inversiones
+## Plan: Ajustar copy de planes Free y Pro
 
-### Archivos a modificar (4)
+### Estrategia
 
-1. **`src/components/investments/InvestmentForm.tsx`** — Eliminar selector IA/manual, ImageUploader, useInvestmentExtraction, badges IA, estados IA, funciones IA
-2. **`src/lib/i18n/translations.ts`** — Actualizar copy de features.f2, subscription.free.f3, subscription.pro.f3, subscription.cta.imports
-3. **`src/components/subscription/UpgradeModal.tsx`** — Eliminar import de `Sparkles` (solo se usaba para yearly savings badge, que usa inline — verificar si se puede mantener)
-4. **`src/pages/Index.tsx`** — Cambio mínimo: `unlimited_imports` se mantiene como key (es el CTA de importación masiva CSV/JSON, no de IA), solo se actualiza el copy en translations
+No renumerar claves — `subscription.pro.f5` se usa como `CardDescription` en PricingTable (línea 165). En su lugar: blanquear `f3`, eliminar `f3` de los arrays de render, y actualizar `f4` de Free.
 
-### Archivos a eliminar (2 + 2 edge functions)
+### Cambios
 
-1. `src/components/investments/ImageUploader.tsx`
-2. `src/hooks/useInvestmentExtraction.ts`
-3. `supabase/functions/extract-investment-from-image/`
-4. `supabase/functions/extract-investment-from-pdf/`
+#### 1. `src/lib/i18n/translations.ts`
 
-### Detalle de cambios
-
-#### `InvestmentForm.tsx`
-
-**Eliminar imports:**
-- `ImageUploader` (línea 40)
-- `useInvestmentExtraction`, `ExtractedInvestmentData`, `FileType` (línea 41)
-- `Badge` (línea 42) — solo se usaba para badges IA
-- `FileUp`, `PenLine`, `Sparkles`, `AlertTriangle` de lucide (línea 6)
-
-**Eliminar tipos/estados:**
-- `EntryMode` type (línea 75)
-- `entryMode` state (línea 100)
-- `extractedFields` state (línea 101)
-- `highAmountWarning` state (línea 102)
-- `useInvestmentExtraction()` hook (línea 113)
-
-**Eliminar funciones:**
-- `handleFileSelect` (237-246)
-- `applyExtractedData` (248-292)
-- `isFieldExtracted` (346)
-- `renderModeSelector` (348-376)
-- `renderImageUpload` (378-398)
-
-**Eliminar del renderForm:**
-- Banner "Datos extraídos por IA" (421-428)
-- 7 instancias de `{isFieldExtracted('X') && <Badge>IA</Badge>}` en labels (437, 466, 483, 502, 539, 565, 607, 651, 696)
-- Warning de importe alto IA (519-526)
-
-**Eliminar lógica de cierre de dialog (useEffect línea 214):**
-- `setEntryMode(...)` → eliminar
-- `setExtractedFields(new Set())` → eliminar
-- `setHighAmountWarning(null)` → eliminar
-- `clearExtractedData()` → eliminar
-
-**Simplificar draft useEffects:**
-- Eliminar condición `entryMode !== 'manual'` de los useEffects de draft (líneas 156, 186) — ahora siempre es manual
-
-**Simplificar render final (750-752):**
-- Eliminar condicionales `entryMode === 'select'` y `entryMode === 'image'`
-- Renderizar siempre `renderForm()` directamente
-
-**Simplificar amount onChange:**
-- Eliminar referencia a `highAmountWarning` en el onChange del campo amount (512-514)
-
-#### `translations.ts` — Cambios de copy
-
-| Clave | Antes (ES) | Después (ES) |
+| Clave | Antes | Después |
 |---|---|---|
-| `features.f2.title` | Importación Inteligente | Importación Rápida |
-| `features.f2.desc` | ...Nuestra tecnología extrae los datos por ti. | Importa tus inversiones desde CSV o JSON de forma rápida y sencilla. |
-| `subscription.free.f3` | 1 importación con IA al mes | 1 importación masiva al mes |
-| `subscription.pro.f3` | Importaciones con IA ilimitadas | Importaciones masivas ilimitadas |
-| `subscription.cta.imports` | Importa sin límites y ahorra tiempo | Desbloquea importaciones masivas ilimitadas |
+| `subscription.free.f3` (ES) | 1 importación masiva al mes | *(vacío)* |
+| `subscription.free.f4` (ES) | Avisos de apertura de tus inversiones futuras | Hasta 3 avisos de apertura |
+| `subscription.pro.f3` (ES) | Importaciones masivas ilimitadas | *(vacío)* |
+| `subscription.free.f3` (EN) | 1 bulk import per month | *(vacío)* |
+| `subscription.free.f4` (EN) | Opening alerts for your future investments | Up to 3 opening alerts |
+| `subscription.pro.f3` (EN) | Unlimited bulk imports | *(vacío)* |
 
-| Clave | Antes (EN) | Después (EN) |
-|---|---|---|
-| `features.f2.title` | Smart Import | Quick Import |
-| `features.f2.desc` | ...Our technology extracts data for you. | Import your investments from CSV or JSON quickly and easily. |
-| `subscription.free.f3` | 1 AI import per month | 1 bulk import per month |
-| `subscription.pro.f3` | Unlimited AI imports | Unlimited bulk imports |
-| `subscription.cta.imports` | Import without limits and save time | Unlock unlimited bulk imports |
+Resto de claves intactas.
 
-#### `UpgradeModal.tsx`
+#### 2. `src/components/subscription/PricingTable.tsx`
 
-- `Sparkles` sigue usándose en línea 124 para el yearly savings badge — se mantiene, no es IA
-- `unlimited_imports` se mantiene como key en `featureCtaMap` — es la CTA de importación CSV/JSON, no de IA. El copy cambia via translations.
-- **Sin cambios en este archivo**
+- `freeFeatures`: eliminar línea `t('subscription.free.f3')` — queda array de 4 items (f1, f2, f4, f5)
+- `proFeatures`: eliminar línea `t('subscription.pro.f3')` — queda array de 5 items (f1, f2, f4, f5, f6)
 
-#### `Index.tsx`
+#### 3. `src/components/subscription/UpgradeModal.tsx`
 
-- `unlimited_imports` se mantiene en línea 337 — el concepto de importación masiva CSV/JSON con límite mensual sigue vigente, solo cambia el copy
-- **Sin cambios en este archivo**
+- `proFeatures`: eliminar línea `t('subscription.pro.f3')` — queda array de 5 items (f1, f2, f4, f5, f6)
 
-### Archivos obsoletos a eliminar
+### Resultado visible
 
-| Archivo | Verificación |
-|---|---|
-| `src/components/investments/ImageUploader.tsx` | Solo importado desde InvestmentForm.tsx (línea 40) — eliminado en el refactor |
-| `src/hooks/useInvestmentExtraction.ts` | Solo importado desde InvestmentForm.tsx (línea 41) — eliminado en el refactor |
-| `supabase/functions/extract-investment-from-image/index.ts` | Invocado solo desde useInvestmentExtraction.ts — eliminado |
-| `supabase/functions/extract-investment-from-pdf/index.ts` | Invocado solo desde useInvestmentExtraction.ts — eliminado |
+**Free (ES):**
+1. Hasta 3 inversiones activas
+2. Hasta 3 inversiones futuras
+3. Hasta 3 avisos de apertura
+4. Resumen fiscal indicativo
 
-### Lo que NO se toca
+**Pro (ES):**
+1. Inversiones activas ilimitadas
+2. Inversiones futuras ilimitadas
+3. Avisos de apertura sin límites
+4. Informe fiscal unificado
+5. Exportación del informe fiscal
 
-- `ImportExport.tsx` — intacto, CSV/JSON sigue funcionando
-- `SubscriptionContext.tsx` — `importCountThisMonth` sigue contando importaciones CSV
-- `UpgradeModal.tsx` — sin cambios
-- `Index.tsx` — sin cambios
-- `FutureInvestmentList.tsx` — no tiene IA
-- `useInvestmentDraft.ts` — intacto
-- `PricingTable.tsx` — los `f3` keys se actualizan via translations, no hay cambio de código
-- `HeroSection.tsx` / `FeaturesGrid.tsx` — `Sparkles` en Hero es decorativo, no IA
+**Free (EN):**
+1. Up to 3 active investments
+2. Up to 3 future investments
+3. Up to 3 opening alerts
+4. Indicative tax summary
 
-### Resultado final
+**Pro (EN):**
+1. Unlimited active investments
+2. Unlimited future investments
+3. Unlimited opening alerts
+4. Unified tax report
+5. Tax report export
 
-- "Nueva Inversión" abre directamente el formulario manual (sin selector previo)
-- No hay upload de imagen/PDF en inversiones
-- No hay badges "IA" en campos del formulario
-- Landing, pricing y Pro features no mencionan IA
-- CSV/JSON import sigue funcionando con su límite mensual
-- 4 archivos eliminados (2 frontend + 2 edge functions)
+No se renumera ninguna clave. `subscription.pro.f5` sigue apuntando a "Informe fiscal unificado" / "Unified tax report" y la `CardDescription` de PricingTable no se rompe.
 

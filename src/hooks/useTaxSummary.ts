@@ -120,6 +120,7 @@ export function useTaxSummary(year: number) {
         if (requestIdRef.current !== currentId) return;
         if (paymentsError) throw paymentsError;
 
+        setExcludedIncompleteCount(excludedCount);
         setInvestments(mappedInvestments);
         setPayments(
           (data || []).map((p) => ({

@@ -115,46 +115,46 @@ export type Database = {
       }
       investments: {
         Row: {
-          amount: number
+          amount: number | null
           created_at: string
           custom_platform_name: string | null
           expected_end_date: string | null
-          expected_return: number
+          expected_return: number | null
           id: string
-          investment_date: string
+          investment_date: string | null
           notes: string | null
-          platform: string
-          project_name: string
+          platform: string | null
+          project_name: string | null
           status: string
           updated_at: string
           user_id: string
         }
         Insert: {
-          amount: number
+          amount?: number | null
           created_at?: string
           custom_platform_name?: string | null
           expected_end_date?: string | null
-          expected_return: number
+          expected_return?: number | null
           id?: string
-          investment_date: string
+          investment_date?: string | null
           notes?: string | null
-          platform: string
-          project_name: string
+          platform?: string | null
+          project_name?: string | null
           status?: string
           updated_at?: string
           user_id: string
         }
         Update: {
-          amount?: number
+          amount?: number | null
           created_at?: string
           custom_platform_name?: string | null
           expected_end_date?: string | null
-          expected_return?: number
+          expected_return?: number | null
           id?: string
-          investment_date?: string
+          investment_date?: string | null
           notes?: string | null
-          platform?: string
-          project_name?: string
+          platform?: string | null
+          project_name?: string | null
           status?: string
           updated_at?: string
           user_id?: string

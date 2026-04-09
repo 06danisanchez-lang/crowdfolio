@@ -109,9 +109,9 @@ export function ImportExport({
       inv.expectedReturn,
       STATUS_OPTIONS.find(s => s.value === inv.status)?.label,
       inv.notes || '',
-      INCOME_MODEL_OPTIONS.find(o => o.value === inv.incomeModel)?.label || inv.incomeModel || '',
-      PAYMENT_FREQUENCY_OPTIONS.find(o => o.value === inv.paymentFrequency)?.label || inv.paymentFrequency || '',
-      PRINCIPAL_RETURN_TYPE_OPTIONS.find(o => o.value === inv.principalReturnType)?.label || inv.principalReturnType || '',
+      inv.incomeModel || '',
+      inv.paymentFrequency || '',
+      inv.principalReturnType || '',
     ]);
 
     const csv = [headers, ...rows]

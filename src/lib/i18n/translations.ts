@@ -34,8 +34,8 @@ export const translations: Record<Lang, Record<string, string>> = {
     'features.sectionDesc': 'Desde el seguimiento básico hasta informes fiscales avanzados, Crowdfolio tiene todo cubierto.',
     'features.f1.title': 'Módulo Fiscal España',
     'features.f1.desc': 'Exporta tus retenciones e ingresos listos para el IRPF. Clasificamos automáticamente entre capital mobiliario y ganancias patrimoniales.',
-    'features.f2.title': 'Importación Inteligente',
-    'features.f2.desc': 'Copia y pega directamente desde la web de tu plataforma o arrastra tus PDFs. Nuestra tecnología extrae los datos por ti.',
+    'features.f2.title': 'Importación Rápida',
+    'features.f2.desc': 'Importa tus inversiones desde CSV o JSON de forma rápida y sencilla.',
     'features.f3.title': 'Dashboard Profesional',
     'features.f3.desc': 'Visualiza rendimientos, distribución de cartera y evolución temporal con gráficos interactivos.',
     'features.f4.title': 'Análisis de Rentabilidad',
@@ -313,7 +313,7 @@ export const translations: Record<Lang, Record<string, string>> = {
     // Plan copy — Free features
     'subscription.free.f1': 'Hasta 3 inversiones activas',
     'subscription.free.f2': 'Hasta 3 inversiones futuras',
-    'subscription.free.f3': '1 importación con IA al mes',
+    'subscription.free.f3': '1 importación masiva al mes',
     'subscription.free.f4': 'Avisos de apertura de tus inversiones futuras',
     'subscription.free.f5': 'Resumen fiscal indicativo',
     'subscription.free.f6': '',
@@ -321,7 +321,7 @@ export const translations: Record<Lang, Record<string, string>> = {
     // Plan copy — Pro features
     'subscription.pro.f1': 'Inversiones activas ilimitadas',
     'subscription.pro.f2': 'Inversiones futuras ilimitadas',
-    'subscription.pro.f3': 'Importaciones con IA ilimitadas',
+    'subscription.pro.f3': 'Importaciones masivas ilimitadas',
     'subscription.pro.f4': 'Avisos de apertura sin límites',
     'subscription.pro.f5': 'Informe fiscal unificado',
     'subscription.pro.f6': 'Exportación del informe fiscal',
@@ -329,7 +329,7 @@ export const translations: Record<Lang, Record<string, string>> = {
     // Contextual CTAs
     'subscription.cta.investments': 'Desbloquea inversiones ilimitadas',
     'subscription.cta.futureInvestments': 'Desbloquea inversiones futuras ilimitadas',
-    'subscription.cta.imports': 'Importa sin límites y ahorra tiempo',
+    'subscription.cta.imports': 'Desbloquea importaciones masivas ilimitadas',
     'subscription.cta.tax': 'Accede a un informe fiscal preparado para declarar',
     'subscription.cta.taxExport': 'Accede a un informe fiscal preparado para declarar',
     'subscription.cta.default': 'Desbloquea Crowdfolio Pro',

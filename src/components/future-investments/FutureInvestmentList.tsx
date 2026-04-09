@@ -516,9 +516,13 @@ interface FutureInvestmentCardProps {
   formatCurrency: (value: number) => string;
   onConvert: (id: string) => void;
   onDelete: (id: string) => void;
+  onEditSubmit: (fiId: string, data: any) => void;
+  isPro: boolean;
+  investmentCount: number;
+  onProRequired: () => void;
 }
 
-function FutureInvestmentCard({ fi, t, getPlatformLabel, formatCurrency, onConvert, onDelete }: FutureInvestmentCardProps) {
+function FutureInvestmentCard({ fi, t, getPlatformLabel, formatCurrency, onConvert, onDelete, onEditSubmit, isPro, investmentCount, onProRequired }: FutureInvestmentCardProps) {
   const status = getDerivedStatus(fi.estimatedOpenDate);
 
   return (
@@ -557,6 +561,20 @@ function FutureInvestmentCard({ fi, t, getPlatformLabel, formatCurrency, onConve
             )}
           </div>
           <div className="flex items-center gap-2 shrink-0">
+            <InvestmentForm
+              mode="future"
+              initialData={mapFutureToFormData(fi)}
+              onSubmit={(data) => onEditSubmit(fi.id, data)}
+              investmentCount={investmentCount}
+              isPro={isPro}
+              onProRequired={onProRequired}
+              trigger={
+                <Button variant="outline" size="sm">
+                  <Pencil className="mr-1.5 h-4 w-4" />
+                  {t('common.edit')}
+                </Button>
+              }
+            />
             <Button variant="default" size="sm" onClick={() => onConvert(fi.id)}>
               <ArrowRightCircle className="mr-1.5 h-4 w-4" />
               {t('future.convertBtn')}

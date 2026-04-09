@@ -146,8 +146,6 @@ Una vez conectado, la sincronización es **bidireccional y automática**: los ca
 | `check-subscription` | Verificación del estado de suscripción del usuario |
 | `create-checkout` | Creación de sesiones de pago con Stripe |
 | `customer-portal` | Portal de gestión de suscripción de Stripe |
-| `extract-investment-from-image` | Extracción de datos de inversión desde imágenes (IA) |
-| `extract-investment-from-pdf` | Extracción de datos de inversión desde PDFs (IA) |
 | `scheduled-scraper` | Scraping programado de oportunidades de inversión |
 | `scrape-opportunities` | Scraping manual de oportunidades desde plataformas |
 

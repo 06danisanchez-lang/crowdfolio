@@ -911,7 +911,13 @@ export const translations: Record<Lang, Record<string, string>> = {
     'investments.form.saveDraft': 'Save draft',
     'investments.form.draftHint': 'You can save a draft if you don\'t have all the data yet.',
     'investments.incomplete.status': 'Pending',
+    'investments.incomplete.statusDraft': 'Draft',
     'investments.incomplete.empty': 'You have no pending investments to complete.',
+    'investments.validation.cannotComplete': 'This investment cannot be saved as complete because required fields are missing.',
+    'investments.validation.suggestDraft': 'You can save it as a draft if you don\'t have the data yet.',
+    'investments.validation.missingFields': 'Missing:',
+    'investments.field.draftStatus': 'Complete data',
+    'investments.field.status': 'Status',
     'tax.incomplete.warning': '{count} investments are not included in this report because they are pending completion.',
 
   },

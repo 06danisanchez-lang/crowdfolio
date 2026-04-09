@@ -222,11 +222,16 @@ export function InvestmentForm({
           customPlatformName: initialData.customPlatformName,
           projectName: initialData.projectName,
           amount: initialData.amount,
-          investmentDate: new Date(initialData.investmentDate),
-          expectedEndDate: initialData.expectedEndDate ? new Date(initialData.expectedEndDate) : undefined,
+          investmentDate: initialData.investmentDate
+            ? (initialData.investmentDate instanceof Date ? initialData.investmentDate : new Date(initialData.investmentDate))
+            : undefined,
+          expectedEndDate: initialData.expectedEndDate
+            ? (initialData.expectedEndDate instanceof Date ? initialData.expectedEndDate : new Date(initialData.expectedEndDate))
+            : undefined,
           expectedReturn: initialData.expectedReturn,
-          status: initialData.status,
+          status: 'status' in initialData ? initialData.status : undefined,
           notes: initialData.notes,
+          sourceUrl: 'sourceUrl' in initialData ? initialData.sourceUrl : undefined,
         });
       }
       // new investment: intentionally NO form.reset() — draft survives close/reopen

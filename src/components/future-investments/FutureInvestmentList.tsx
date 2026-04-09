@@ -6,7 +6,7 @@ import { useSubscription } from '@/contexts/SubscriptionContext';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { FutureInvestment } from '@/types/futureInvestment';
 import { Investment, Platform, PLATFORMS } from '@/types/investment';
-import { InvestmentForm } from '@/components/investments/InvestmentForm';
+import { InvestmentForm, FutureInvestmentFormData } from '@/components/investments/InvestmentForm';
 import { UpgradeModal } from '@/components/subscription/UpgradeModal';
 import { KPICard } from '@/components/dashboard/KPICard';
 import { Button } from '@/components/ui/button';
@@ -15,7 +15,7 @@ import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
 import {
   Plus, Trash2, ArrowRightCircle, ExternalLink, CalendarPlus,
-  Bookmark, Wallet, CalendarClock, Bell, AlertTriangle,
+  Bookmark, Wallet, CalendarClock, Bell, AlertTriangle, Pencil,
 } from 'lucide-react';
 import {
   AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
@@ -116,9 +116,23 @@ function mapFutureToPartialInvestment(fi: FutureInvestment): Partial<Investment>
   };
 }
 
+function mapFutureToFormData(fi: FutureInvestment): FutureInvestmentFormData {
+  return {
+    platform: fi.platform,
+    customPlatformName: fi.customPlatformName,
+    projectName: fi.projectName,
+    amount: fi.estimatedAmount ?? undefined,
+    expectedReturn: fi.expectedReturn ?? undefined,
+    investmentDate: fi.estimatedOpenDate ? new Date(fi.estimatedOpenDate) : undefined,
+    expectedEndDate: fi.estimatedEndDate ? new Date(fi.estimatedEndDate) : undefined,
+    sourceUrl: fi.sourceUrl,
+    notes: fi.notes,
+  };
+}
+
 export function FutureInvestmentList() {
   const { t } = useLanguage();
-  const { futureInvestments, isLoading, addFutureInvestment, deleteFutureInvestment, convertToReal } = useFutureInvestments();
+  const { futureInvestments, isLoading, addFutureInvestment, updateFutureInvestment, deleteFutureInvestment, convertToReal } = useFutureInvestments();
   const { investments, addInvestment } = useInvestments();
   const { isPro } = useSubscription();
   const isMobile = useIsMobile();
@@ -184,6 +198,20 @@ export function FutureInvestmentList() {
       projectName: data.projectName,
       estimatedAmount: data.amount || null,
       expectedReturn: data.expectedReturn || null,
+      estimatedOpenDate: data.investmentDate,
+      estimatedEndDate: data.expectedEndDate,
+      sourceUrl: data.sourceUrl,
+      notes: data.notes,
+    });
+  };
+
+  const handleEditSubmit = async (fiId: string, data: any) => {
+    await updateFutureInvestment(fiId, {
+      platform: data.platform,
+      customPlatformName: data.customPlatformName,
+      projectName: data.projectName,
+      estimatedAmount: data.amount ?? null,
+      expectedReturn: data.expectedReturn ?? null,
       estimatedOpenDate: data.investmentDate,
       estimatedEndDate: data.expectedEndDate,
       sourceUrl: data.sourceUrl,
@@ -368,6 +396,13 @@ export function FutureInvestmentList() {
                   formatCurrency={formatCurrency}
                   onConvert={handleConvertClick}
                   onDelete={setDeleteId}
+                  onEditSubmit={handleEditSubmit}
+                  isPro={isPro}
+                  investmentCount={futureInvestments.length}
+                  onProRequired={() => {
+                    setUpgradeFeature('unlimited_future_investments');
+                    setUpgradeModalOpen(true);
+                  }}
                 />
               ))
             )}
@@ -439,6 +474,13 @@ export function FutureInvestmentList() {
                 formatCurrency={formatCurrency}
                 onConvert={handleConvertClick}
                 onDelete={setDeleteId}
+                onEditSubmit={handleEditSubmit}
+                isPro={isPro}
+                investmentCount={futureInvestments.length}
+                onProRequired={() => {
+                  setUpgradeFeature('unlimited_future_investments');
+                  setUpgradeModalOpen(true);
+                }}
               />
             ))
           )}
@@ -488,9 +530,13 @@ interface FutureInvestmentCardProps {
   formatCurrency: (value: number) => string;
   onConvert: (id: string) => void;
   onDelete: (id: string) => void;
+  onEditSubmit: (fiId: string, data: any) => void;
+  isPro: boolean;
+  investmentCount: number;
+  onProRequired: () => void;
 }
 
-function FutureInvestmentCard({ fi, t, getPlatformLabel, formatCurrency, onConvert, onDelete }: FutureInvestmentCardProps) {
+function FutureInvestmentCard({ fi, t, getPlatformLabel, formatCurrency, onConvert, onDelete, onEditSubmit, isPro, investmentCount, onProRequired }: FutureInvestmentCardProps) {
   const status = getDerivedStatus(fi.estimatedOpenDate);
 
   return (
@@ -529,6 +575,20 @@ function FutureInvestmentCard({ fi, t, getPlatformLabel, formatCurrency, onConve
             )}
           </div>
           <div className="flex items-center gap-2 shrink-0">
+            <InvestmentForm
+              mode="future"
+              initialData={mapFutureToFormData(fi)}
+              onSubmit={(data) => onEditSubmit(fi.id, data)}
+              investmentCount={investmentCount}
+              isPro={isPro}
+              onProRequired={onProRequired}
+              trigger={
+                <Button variant="outline" size="sm">
+                  <Pencil className="mr-1.5 h-4 w-4" />
+                  {t('common.edit')}
+                </Button>
+              }
+            />
             <Button variant="default" size="sm" onClick={() => onConvert(fi.id)}>
               <ArrowRightCircle className="mr-1.5 h-4 w-4" />
               {t('future.convertBtn')}

@@ -418,6 +418,20 @@ export function InvestmentForm({
           </div>
         )}
 
+        {/* Validation error block — shown when "Guardar inversión" fails */}
+        {validationError && (
+          <div className="flex items-start gap-2 p-3 rounded-lg bg-destructive/10 border border-destructive/30 text-sm">
+            <Info className="h-4 w-4 text-destructive mt-0.5 shrink-0" />
+            <div className="space-y-1">
+              <p className="font-medium text-destructive">{t('investments.validation.cannotComplete')}</p>
+              <p className="text-muted-foreground">{t('investments.validation.suggestDraft')}</p>
+              <p className="text-muted-foreground">
+                {t('investments.validation.missingFields')} {validationError.map(f => t(f)).join(', ')}
+              </p>
+            </div>
+          </div>
+        )}
+
         <FormField
           control={form.control}
           name="platform"

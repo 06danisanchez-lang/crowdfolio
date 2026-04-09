@@ -1,56 +1,122 @@
 
 
-## Corrección del flujo borrador vs completa
+## Fase 1: Tipos de inversión, schedule automático y niveles de completitud
 
-### Causa raíz
+### Cambios respecto a la propuesta anterior
 
-**Problema 1**: `handleSaveDraft` (línea 316) guarda con `status: values.status || 'active'`. Si el usuario no toca el campo status (por defecto `'active'`), el borrador se guarda como `active`. Luego `isInvestmentComplete` (línea 124 de useInvestments) solo mira 4 campos — si están rellenos, la inversión entra en `complete[]` aunque el usuario quería un borrador.
+1. **`portfolio_ready` ahora exige `income_model`** — una inversión sin modelo de rendimiento definido no entra en cartera
+2. **`forecast_ready` para periodic/amortizing exige los 4 campos** — `expected_return` + `expected_end_date` + `payment_frequency` + schedule no vacío
+3. **`principal_return_type`** — renombrado (ya aceptado)
+4. **`variable_or_unknown`** — entra en cartera, nunca en previsiones, fiscalidad solo por payments
 
-**Problema 2**: `handleSubmit` usa `form.handleSubmit` con zodResolver, que muestra errores inline pero no un mensaje global. No hay bloqueo explícito ni sugerencia de borrador.
+### Niveles definitivos
 
-### Archivos a tocar (5)
+```text
+DRAFT
+  Requisito: project_name
+  Entra en: solo "Pendientes de completar"
+  Cuenta Free: sí
 
-**1. `src/lib/investment/completeness.ts`**
-- Añadir `status?: string | null` a `CompletenessInput`
-- Si `status === 'draft'` → `isComplete = false`, añadir campo `investments.field.draftStatus` a missingFields
-- Esto garantiza que ningún borrador entre en cartera/dashboard/fiscalidad
+PORTFOLIO_READY
+  Requisito: platform + project_name + amount > 0 + investment_date
+             + income_model definido (no null) + status ≠ 'draft'
+  Entra en: Dashboard/cartera
 
-**2. `src/components/investments/InvestmentForm.tsx`**
-- **handleSaveDraft** (línea 316): cambiar `status: values.status || 'active'` → `status: 'draft'`
-- **handleSubmit** (línea 261): añadir validación manual con `investmentSchema.safeParse()` antes de llamar `onSubmit`. Si falla:
-  - Setear estado `validationError` con campos faltantes
-  - No guardar, no cerrar modal
-  - No llamar a `form.trigger()` (para no duplicar con errores inline del resolver — el mensaje global es complementario)
-- Añadir estado `const [validationError, setValidationError] = useState<string[] | null>(null)`
-- Renderizar bloque de error arriba del form (después del draftHint) cuando `validationError` no es null
-- Limpiar `validationError` al cambiar cualquier campo (via useEffect con watch)
-- Cuando `isDraft` (editando borrador) y se pulsa "Completar inversión", forzar `status: 'active'` en los datos enviados
-- Eliminar marcador `TEST-DRAFT-VISIBLE`
-- Añadir `'draft'` a las enums de status en `investmentSchema` y `draftInvestmentSchema` para que no rechace datos existentes con ese status
+FORECAST_READY
+  portfolio_ready + según income_model:
+    bullet           → expected_return + expected_end_date
+    periodic_fixed   → expected_return + expected_end_date + payment_frequency + schedule ≥1 fila
+    amortizing       → expected_return + expected_end_date + payment_frequency + schedule ≥1 fila
+    variable_or_unknown → NUNCA forecast_ready
+  Entra en: previsiones de rendimiento, timeline, proyecciones
 
-**3. `src/hooks/useInvestments.ts`**
-- Línea 124: pasar `status: raw.status` al llamar `isInvestmentComplete`
-- Esto hace que cualquier inversión con `status: 'draft'` vaya automáticamente a `incompleteInvestments`
+FISCALIDAD
+  No es nivel de la inversión. useTaxSummary filtra inversiones portfolio_ready
+  con payments reales en el año fiscal. Sin cambios.
+```
 
-**4. `src/components/investments/InvestmentList.tsx`**
-- En las tarjetas de pendientes: si `draft.status === 'draft'`, mostrar badge "Borrador" en vez de "Pendiente"
-- En `InvestmentForm` dentro de la lista de pendientes: el `onSubmit` ya llama `onUpdate(draft.id, data)` — cuando el usuario pulse "Completar inversión", el form enviará `status: 'active'` (cambio del punto 2), lo que actualiza el status en DB y hace que pase a completadas tras refetch
+### Migración DB (1 SQL)
 
-**5. `src/lib/i18n/translations.ts`**
-- Añadir claves:
-  - `investments.validation.cannotComplete` → "Esta inversión no puede guardarse como completa porque faltan datos obligatorios."
-  - `investments.validation.suggestDraft` → "Puedes guardarla como borrador si todavía no los tienes."
-  - `investments.validation.missingFields` → "Faltan:"
-  - `investments.incomplete.statusDraft` → "Borrador"
-  - `investments.field.draftStatus` → "Completar datos"
+```sql
+ALTER TABLE investments ADD COLUMN income_model text DEFAULT NULL;
+ALTER TABLE investments ADD COLUMN payment_frequency text DEFAULT NULL;
+ALTER TABLE investments ADD COLUMN principal_return_type text DEFAULT 'at_maturity';
 
-### Puntos de vigilancia solicitados
+CREATE TABLE investment_schedule (
+  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  investment_id uuid NOT NULL REFERENCES investments(id) ON DELETE CASCADE,
+  expected_date date NOT NULL,
+  expected_amount numeric NOT NULL,
+  type text NOT NULL,           -- 'interest', 'principal', 'mixed'
+  status text DEFAULT 'pending', -- 'pending', 'matched', 'missed', 'skipped'
+  matched_payment_id uuid REFERENCES payments(id),
+  created_at timestamptz DEFAULT now()
+);
 
-1. **"Completar inversión" cambia draft→active**: Sí. En `handleSubmit`, cuando `isDraft`, se fuerza `data.status = 'active'` antes de llamar `onSubmit`. Esto actualiza la DB y tras refetch, `isInvestmentComplete` la ve sin `status: 'draft'` → entra en completadas.
+ALTER TABLE investment_schedule ENABLE ROW LEVEL SECURITY;
+-- 4 RLS policies via investment ownership (same pattern as payments)
+```
 
-2. **"Guardar inversión" con errores no guarda nada**: Sí. Se hace `safeParse` manual antes de `onSubmit`. Si falla, se muestra mensaje global y se hace `return` sin guardar ni cerrar.
+Nota: `income_model` DEFAULT NULL (no 'bullet') — inversiones existentes no tienen modelo definido, así que **no son portfolio_ready por defecto**. Esto es un problema porque rompería inversiones existentes. Alternativa: DEFAULT 'bullet' para que las existentes sigan funcionando. **Propongo DEFAULT 'bullet'** para no romper nada — las inversiones existentes se tratan como pago único final, que es el comportamiento actual.
 
-3. **Mensaje global no conflicta con errores inline**: El mensaje global se muestra arriba del form como bloque informativo (no por campo). Los errores inline del resolver siguen funcionando para cada campo. Son complementarios: el global explica qué pasa y sugiere borrador, el inline marca cada campo rojo.
+### Archivos a modificar (7)
 
-4. **`status: 'draft'` no rompe otros filtros**: La tabla de inversiones completadas solo muestra lo que pasa `isInvestmentComplete` — los drafts no pasan. El dashboard, fiscalidad y KPIs usan `investments` (la lista filtrada), no `allRawInvestments`. Los filtros de status en la tabla (`active/pending/completed/defaulted`) no incluyen `draft`, así que no aparecen allí tampoco.
+**1. `src/types/investment.ts`**
+- Añadir tipos: `IncomeModel = 'bullet' | 'periodic_fixed' | 'amortizing' | 'variable_or_unknown'`
+- `PaymentFrequency = 'monthly' | 'quarterly' | 'semiannual' | 'annual'`
+- `PrincipalReturnType = 'at_maturity' | 'amortizing' | 'unknown'`
+- Extender `Investment` y `DraftInvestment` con 3 campos opcionales
+- Añadir `InvestmentScheduleEntry` interface
+
+**2. `src/lib/investment/completeness.ts`**
+- Añadir a `CompletenessInput`: `incomeModel`, `expectedEndDate`, `paymentFrequency`, `hasSchedule`
+- `isPortfolioReady`: campos base actuales + `incomeModel` definido + status ≠ draft
+- `isForecastReady`: según income_model como definido arriba
+- Renombrar `isComplete` → `isPortfolioReady` en `CompletionStatus`
+- `isInvestmentComplete` sigue siendo alias de `isPortfolioReady` (para no romper imports)
+
+**3. `src/lib/investment/scheduleGenerator.ts`** (nuevo)
+- `generateSchedule(investment)` → `InvestmentScheduleEntry[]`
+- periodic_fixed: N líneas interés + 1 principal al final
+- amortizing: N líneas mixtas (cuota constante simplificada)
+- bullet / variable_or_unknown: retorna []
+- Nota explícita en código: "Fase 1 — generación frontend; migrar a edge function en Fase 2"
+
+**4. `src/hooks/useInvestments.ts`**
+- Mapear 3 campos nuevos desde DB (`income_model`, `payment_frequency`, `principal_return_type`)
+- Fetch schedule count por investment para calcular `hasSchedule`
+- Pasar campos nuevos a `isInvestmentComplete` / `getInvestmentCompletionStatus`
+- `addInvestment` / `updateInvestment`: guardar campos nuevos + generar/regenerar schedule
+- `addDraftInvestment`: guardar `income_model` si presente
+
+**5. `src/components/investments/InvestmentForm.tsx`**
+- Añadir selector `income_model` (4 opciones con labels descriptivos)
+- Si periodic_fixed/amortizing: mostrar selector `payment_frequency`
+- Si amortizing: mostrar selector `principal_return_type`
+- Si variable_or_unknown: ocultar `expectedReturn` (no aplica a previsiones)
+- Añadir campos a schemas zod (opcionales en draft, income_model requerido en completa)
+- Al submit completa: si periodic/amortizing, generar schedule y guardar
+
+**6. `src/lib/i18n/translations.ts`**
+- Labels para income_model, payment_frequency, principal_return_type y sus valores
+- ES + EN
+
+**7. `.lovable/plan.md`**
+- Actualizar con la Fase 1 definitiva
+
+### Lo que NO cambia
+
+- `useTaxSummary` — ya funciona con payments reales
+- `AppLayout` sidebar badge — ya usa `incompleteCount`
+- `InvestmentList` sección pendientes — ya implementada
+- Límite Free — `allInvestmentsCount` ya cuenta todo
+- Dashboard KPIs — usan `investments` (portfolio_ready filtrado)
+
+### Inversiones existentes
+
+Con `DEFAULT 'bullet'`: siguen siendo portfolio_ready (tienen los 4 campos base + income_model = bullet). Siguen siendo forecast_ready si tienen expected_return + expected_end_date (lógica bullet). Sin ruptura.
+
+### Nota sobre generación frontend
+
+La generación del schedule en frontend es una solución Fase 1 para ir rápido. Queda explícitamente marcado como deuda técnica. En Fase 2 debería migrarse a una edge function o trigger de DB para garantizar consistencia.
 

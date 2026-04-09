@@ -159,16 +159,16 @@ export function InvestmentList({
   return (
     <div className="space-y-4">
       {/* Incomplete investments section */}
-      {incompleteInvestments.length > 0 && (
-        <div className="rounded-lg border border-orange-200 dark:border-orange-900/50 bg-orange-50/50 dark:bg-orange-950/20 p-4 space-y-3">
-          <p className="text-xs font-bold text-red-600 bg-red-100 px-2 py-1 rounded">TEST-PENDING-SECTION</p>
+      <div className="rounded-lg border border-orange-200 dark:border-orange-900/50 bg-orange-50/50 dark:bg-orange-950/20 p-4 space-y-3">
           <div className="flex items-center gap-2">
             <AlertTriangle className="h-4 w-4 text-orange-500" />
-            <h3 className="text-sm font-semibold">{t('investments.incomplete.title')}</h3>
-            <Badge variant="secondary" className="bg-orange-100 text-orange-700 dark:bg-orange-900/30 dark:text-orange-400">
-              {incompleteInvestments.length}
-            </Badge>
+            <h3 className="text-sm font-semibold">
+              {t('investments.incomplete.title')} ({incompleteInvestments.length})
+            </h3>
           </div>
+          {incompleteInvestments.length === 0 ? (
+            <p className="text-sm text-muted-foreground">{t('investments.incomplete.empty')}</p>
+          ) : (
           <div className="space-y-2">
             {incompleteInvestments.map((draft) => {
               const status = getInvestmentCompletionStatus({
@@ -247,8 +247,8 @@ export function InvestmentList({
               );
             })}
           </div>
+          )}
         </div>
-      )}
       {/* Filters */}
       <div className="flex flex-col gap-4 sm:flex-row">
         <div className="relative flex-1">

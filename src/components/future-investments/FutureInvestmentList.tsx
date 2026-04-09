@@ -205,6 +205,20 @@ export function FutureInvestmentList() {
     });
   };
 
+  const handleEditSubmit = async (fiId: string, data: any) => {
+    await updateFutureInvestment(fiId, {
+      platform: data.platform,
+      customPlatformName: data.customPlatformName,
+      projectName: data.projectName,
+      estimatedAmount: data.amount ?? null,
+      expectedReturn: data.expectedReturn ?? null,
+      estimatedOpenDate: data.investmentDate,
+      estimatedEndDate: data.expectedEndDate,
+      sourceUrl: data.sourceUrl,
+      notes: data.notes,
+    });
+  };
+
   const handleConvertClick = (fiId: string) => {
     if (!isPro && investments.length >= 3) {
       setUpgradeFeature('unlimited_investments');

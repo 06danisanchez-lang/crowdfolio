@@ -289,6 +289,7 @@ export function ImportExport({
               investmentDate: validated.investmentDate || new Date().toISOString(),
               expectedEndDate: validated.expectedEndDate,
               expectedReturn: validated.expectedReturn,
+              incomeModel: 'bullet',
               status: validated.status,
               notes: validated.notes,
               payments: [],

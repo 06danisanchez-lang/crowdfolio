@@ -111,7 +111,7 @@ export function useAdminInvestments() {
       const investmentsByUser: Record<string, Investment[]> = {};
       
       for (const inv of investmentsData || []) {
-        const mappedInvestment: Investment = {
+      const mappedInvestment: Investment = {
           id: inv.id,
           platform: inv.platform as Platform,
           customPlatformName: inv.custom_platform_name || undefined,
@@ -120,6 +120,9 @@ export function useAdminInvestments() {
           investmentDate: inv.investment_date,
           expectedEndDate: inv.expected_end_date || undefined,
           expectedReturn: Number(inv.expected_return),
+          incomeModel: ((inv as any).income_model as any) || 'bullet',
+          paymentFrequency: (inv as any).payment_frequency || undefined,
+          principalReturnType: (inv as any).principal_return_type || undefined,
           status: inv.status as InvestmentStatus,
           notes: inv.notes || undefined,
           createdAt: inv.created_at,

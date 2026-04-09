@@ -474,6 +474,19 @@ export function FutureInvestmentList() {
                 formatCurrency={formatCurrency}
                 onConvert={handleConvertClick}
                 onDelete={setDeleteId}
+                onEditSubmit={handleEditSubmit}
+                isPro={isPro}
+                investmentCount={futureInvestments.length}
+                onProRequired={() => {
+                  setUpgradeFeature('unlimited_future_investments');
+                  setUpgradeModalOpen(true);
+                }}
+                fi={fi}
+                t={t}
+                getPlatformLabel={getPlatformLabel}
+                formatCurrency={formatCurrency}
+                onConvert={handleConvertClick}
+                onDelete={setDeleteId}
               />
             ))
           )}

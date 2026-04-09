@@ -1,7 +1,7 @@
 import { useRef, useState } from 'react';
 import { useLanguage } from '@/contexts/LanguageContext';
 import { Upload, Download, FileJson, FileSpreadsheet, AlertCircle } from 'lucide-react';
-import { Investment, PLATFORMS, STATUS_OPTIONS, Platform, InvestmentStatus } from '@/types/investment';
+import { Investment, PLATFORMS, STATUS_OPTIONS, Platform, InvestmentStatus, INCOME_MODEL_OPTIONS, PAYMENT_FREQUENCY_OPTIONS, PRINCIPAL_RETURN_TYPE_OPTIONS, IncomeModel, PaymentFrequency, PrincipalReturnType } from '@/types/investment';
 import { Button } from '@/components/ui/button';
 import {
   Dialog,
@@ -95,6 +95,9 @@ export function ImportExport({
       'Rendimiento Esperado',
       'Estado',
       'Notas',
+      'Modelo de Rendimiento',
+      'Frecuencia de Pago',
+      'Tipo Devolución Principal',
     ];
 
     const rows = investments.map(inv => [
@@ -106,6 +109,9 @@ export function ImportExport({
       inv.expectedReturn,
       STATUS_OPTIONS.find(s => s.value === inv.status)?.label,
       inv.notes || '',
+      INCOME_MODEL_OPTIONS.find(o => o.value === inv.incomeModel)?.label || inv.incomeModel || '',
+      PAYMENT_FREQUENCY_OPTIONS.find(o => o.value === inv.paymentFrequency)?.label || inv.paymentFrequency || '',
+      PRINCIPAL_RETURN_TYPE_OPTIONS.find(o => o.value === inv.principalReturnType)?.label || inv.principalReturnType || '',
     ]);
 
     const csv = [headers, ...rows]

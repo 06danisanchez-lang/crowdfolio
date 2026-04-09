@@ -6,7 +6,7 @@ import { useSubscription } from '@/contexts/SubscriptionContext';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { FutureInvestment } from '@/types/futureInvestment';
 import { Investment, Platform, PLATFORMS } from '@/types/investment';
-import { InvestmentForm } from '@/components/investments/InvestmentForm';
+import { InvestmentForm, FutureInvestmentFormData } from '@/components/investments/InvestmentForm';
 import { UpgradeModal } from '@/components/subscription/UpgradeModal';
 import { KPICard } from '@/components/dashboard/KPICard';
 import { Button } from '@/components/ui/button';
@@ -15,7 +15,7 @@ import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
 import {
   Plus, Trash2, ArrowRightCircle, ExternalLink, CalendarPlus,
-  Bookmark, Wallet, CalendarClock, Bell, AlertTriangle,
+  Bookmark, Wallet, CalendarClock, Bell, AlertTriangle, Pencil,
 } from 'lucide-react';
 import {
   AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
@@ -113,12 +113,26 @@ function mapFutureToPartialInvestment(fi: FutureInvestment): Partial<Investment>
     id: '',
     createdAt: '',
     updatedAt: '',
+};
+
+function mapFutureToFormData(fi: FutureInvestment): FutureInvestmentFormData {
+  return {
+    platform: fi.platform,
+    customPlatformName: fi.customPlatformName,
+    projectName: fi.projectName,
+    amount: fi.estimatedAmount ?? undefined,
+    expectedReturn: fi.expectedReturn ?? undefined,
+    investmentDate: fi.estimatedOpenDate ? new Date(fi.estimatedOpenDate) : undefined,
+    expectedEndDate: fi.estimatedEndDate ? new Date(fi.estimatedEndDate) : undefined,
+    sourceUrl: fi.sourceUrl,
+    notes: fi.notes,
   };
+}
 }
 
 export function FutureInvestmentList() {
   const { t } = useLanguage();
-  const { futureInvestments, isLoading, addFutureInvestment, deleteFutureInvestment, convertToReal } = useFutureInvestments();
+  const { futureInvestments, isLoading, addFutureInvestment, updateFutureInvestment, deleteFutureInvestment, convertToReal } = useFutureInvestments();
   const { investments, addInvestment } = useInvestments();
   const { isPro } = useSubscription();
   const isMobile = useIsMobile();

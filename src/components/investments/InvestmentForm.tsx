@@ -165,6 +165,9 @@ export function InvestmentForm({
             ? (initialData.expectedEndDate instanceof Date ? initialData.expectedEndDate : new Date(initialData.expectedEndDate))
             : undefined,
           expectedReturn: initialData.expectedReturn || undefined,
+          incomeModel: 'incomeModel' in initialData ? initialData.incomeModel : 'bullet',
+          paymentFrequency: 'paymentFrequency' in initialData ? initialData.paymentFrequency : undefined,
+          principalReturnType: 'principalReturnType' in initialData ? initialData.principalReturnType : undefined,
           status: 'status' in initialData ? initialData.status : undefined,
           notes: initialData.notes,
           sourceUrl: 'sourceUrl' in initialData ? initialData.sourceUrl : undefined,
@@ -174,6 +177,7 @@ export function InvestmentForm({
         : {
             status: 'active',
             investmentDate: new Date(),
+            incomeModel: 'bullet',
           },
   });
 

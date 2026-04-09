@@ -177,7 +177,7 @@ export function useInvestments() {
       payments: [],
     };
     await fetchInvestments();
-    return data;
+    return created;
   }, [user, fetchInvestments]);
 
   // Add a draft/partial investment
@@ -207,7 +207,7 @@ export function useInvestments() {
     }).select().single();
     if (error) { console.error('Error adding draft investment:', error); return null; }
     await fetchInvestments();
-    return created;
+    return data;
   }, [user, fetchInvestments]);
 
   const updateInvestment = useCallback(async (id: string, updates: Partial<Investment>) => {

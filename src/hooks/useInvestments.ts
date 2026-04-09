@@ -317,7 +317,7 @@ export function useInvestments() {
     if (error) { console.error('Error updating investment:', error); return; }
 
     // Regenerate schedule if income model fields changed
-    if (updates.incomeModel || updates.paymentFrequency || updates.expectedReturn !== undefined || updates.expectedEndDate !== undefined) {
+    if (updates.incomeModel || updates.paymentFrequency || updates.expectedReturn !== undefined || updates.expectedEndDate !== undefined || updates.amount !== undefined || updates.investmentDate !== undefined || updates.principalReturnType !== undefined) {
       // Fetch the current full investment to regenerate
       const current = allRawInvestments.find(inv => inv.id === id);
       if (current) {
@@ -441,10 +441,10 @@ export function useInvestments() {
     return {
       totalInvested: investments.reduce((sum, inv) => sum + inv.amount, 0),
       totalReturns: totalCollected,
-      expectedReturns: investments.reduce((sum, inv) => sum + calculateInvestmentTotalReturn(inv), 0),
+      expectedReturns: forecastReady.reduce((sum, inv) => sum + calculateInvestmentTotalReturn(inv), 0),
       activeInvestments: activeInvestments.length,
       completedInvestments: investments.filter(inv => inv.status === 'completed').length,
-      averageReturn: investments.length > 0 ? investments.reduce((sum, inv) => sum + inv.expectedReturn, 0) / investments.length : 0,
+      averageReturn: forecastReady.length > 0 ? forecastReady.reduce((sum, inv) => sum + inv.expectedReturn, 0) / forecastReady.length : 0,
       byPlatform: investments.reduce((acc, inv) => {
         if (!acc[inv.platform]) acc[inv.platform] = { invested: 0, returns: 0, count: 0 };
         acc[inv.platform].invested += inv.amount;

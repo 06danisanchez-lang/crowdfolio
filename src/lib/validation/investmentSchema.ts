@@ -17,6 +17,15 @@ const investmentStatusSchema = z.enum(['active', 'pending', 'completed', 'defaul
 // Payment type enum validation
 const paymentTypeSchema = z.enum(['dividend', 'principal', 'interest']);
 
+// Income model enum validation
+const incomeModelSchema = z.enum(['bullet', 'periodic_fixed', 'amortizing', 'variable_or_unknown']);
+
+// Payment frequency enum validation
+const paymentFrequencySchema = z.enum(['monthly', 'quarterly', 'semiannual', 'annual']);
+
+// Principal return type enum validation
+const principalReturnTypeSchema = z.enum(['at_maturity', 'amortizing', 'unknown']);
+
 // Payment schema
 const paymentSchema = z.object({
   id: z.string().min(1),
@@ -41,6 +50,9 @@ export const investmentImportSchema = z.object({
   notes: z.string().max(5000, 'Notas demasiado largas').optional(),
   createdAt: z.string().min(1),
   updatedAt: z.string().min(1),
+  incomeModel: incomeModelSchema.optional(),
+  paymentFrequency: paymentFrequencySchema.optional(),
+  principalReturnType: principalReturnTypeSchema.optional(),
 });
 
 // Array of investments for JSON import
@@ -57,6 +69,9 @@ export const csvRowSchema = z.object({
   expectedReturn: z.number().min(-100).max(1000),
   status: investmentStatusSchema,
   notes: z.string().max(5000).optional(),
+  incomeModel: incomeModelSchema.optional(),
+  paymentFrequency: paymentFrequencySchema.optional(),
+  principalReturnType: principalReturnTypeSchema.optional(),
 });
 
 // File size limit (5MB)

@@ -1,7 +1,7 @@
 import { useRef, useState } from 'react';
 import { useLanguage } from '@/contexts/LanguageContext';
 import { Upload, Download, FileJson, FileSpreadsheet, AlertCircle } from 'lucide-react';
-import { Investment, PLATFORMS, STATUS_OPTIONS, Platform, InvestmentStatus } from '@/types/investment';
+import { Investment, PLATFORMS, STATUS_OPTIONS, Platform, InvestmentStatus, IncomeModel, PaymentFrequency, PrincipalReturnType } from '@/types/investment';
 import { Button } from '@/components/ui/button';
 import {
   Dialog,
@@ -95,6 +95,9 @@ export function ImportExport({
       'Rendimiento Esperado',
       'Estado',
       'Notas',
+      'Modelo de Rendimiento',
+      'Frecuencia de Pago',
+      'Tipo Devolución Principal',
     ];
 
     const rows = investments.map(inv => [
@@ -106,6 +109,9 @@ export function ImportExport({
       inv.expectedReturn,
       STATUS_OPTIONS.find(s => s.value === inv.status)?.label,
       inv.notes || '',
+      inv.incomeModel || '',
+      inv.paymentFrequency || '',
+      inv.principalReturnType || '',
     ]);
 
     const csv = [headers, ...rows]
@@ -134,6 +140,9 @@ export function ImportExport({
       'Rendimiento Esperado (%)',
       'Estado',
       'Notas',
+      'Modelo Rendimiento',
+      'Frecuencia Pago',
+      'Tipo Devolución Principal',
     ];
 
     const example = [
@@ -145,6 +154,9 @@ export function ImportExport({
       '10',
       'Activo',
       'Primera inversión en esta plataforma',
+      'bullet',
+      '',
+      'at_maturity',
     ];
 
     const csv = [headers, example]
@@ -263,6 +275,13 @@ export function ImportExport({
               s.label.toLowerCase() === statusName || s.value === statusName
             )?.value as InvestmentStatus || 'active';
 
+            const rawIncomeModel = values[8]?.toLowerCase() || '';
+            const incomeModel = (['bullet', 'periodic_fixed', 'amortizing', 'variable_or_unknown'].includes(rawIncomeModel) ? rawIncomeModel : undefined) as IncomeModel | undefined;
+            const rawFrequency = values[9]?.toLowerCase() || '';
+            const paymentFrequency = (['monthly', 'quarterly', 'semiannual', 'annual'].includes(rawFrequency) ? rawFrequency : undefined) as PaymentFrequency | undefined;
+            const rawPrincipal = values[10]?.toLowerCase() || '';
+            const principalReturnType = (['at_maturity', 'amortizing', 'unknown'].includes(rawPrincipal) ? rawPrincipal : undefined) as PrincipalReturnType | undefined;
+
             // Build the object for validation
             const rowData = {
               platform,
@@ -274,6 +293,9 @@ export function ImportExport({
               expectedReturn: parseFloat(values[5]) || 0,
               status,
               notes: values[7] || undefined,
+              incomeModel,
+              paymentFrequency,
+              principalReturnType,
             };
 
             // Validate with zod schema
@@ -289,7 +311,9 @@ export function ImportExport({
               investmentDate: validated.investmentDate || new Date().toISOString(),
               expectedEndDate: validated.expectedEndDate,
               expectedReturn: validated.expectedReturn,
-              incomeModel: 'bullet',
+              incomeModel: validated.incomeModel || 'bullet',
+              paymentFrequency: validated.paymentFrequency,
+              principalReturnType: validated.principalReturnType,
               status: validated.status,
               notes: validated.notes,
               payments: [],

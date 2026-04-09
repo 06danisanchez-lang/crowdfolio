@@ -642,10 +642,15 @@ export function InvestmentForm({
           <Button type="button" variant="outline" onClick={() => setOpen(false)}>
             {t('common.cancel')}
           </Button>
+          {showDraftButtons && (
+            <Button type="button" variant="outline" onClick={handleSaveDraft}>
+              {t('investments.form.saveDraft')}
+            </Button>
+          )}
           <Button type="submit">
             {isFuture
               ? t('future.form.save')
-              : initialData ? t('investments.form.save.edit') : t('investments.form.save.new')}
+              : isDraft ? t('investments.incomplete.cta') : (initialData ? t('investments.form.save.edit') : t('investments.form.save.new'))}
           </Button>
         </div>
       </form>

@@ -370,7 +370,7 @@ export function InvestmentForm({
     expectedReturn: initialData.expectedReturn,
   }) : null;
 
-  const showDraftButtons_placeholder = null; // moved validationError up
+  const showDraftButtons = !isFuture && (isDraft || onSubmitDraft);
   const showDraftButtons = !isFuture && (isDraft || onSubmitDraft);
 
   const handleDiscardDraft = () => {

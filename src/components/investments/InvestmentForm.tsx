@@ -142,8 +142,10 @@ export function InvestmentForm({
     setOpen(newOpen);
   };
 
+  const schema = isFuture ? futureInvestmentSchema : (isDraft ? draftInvestmentSchema : investmentSchema);
+
   const form = useForm<any>({
-    resolver: zodResolver(isFuture ? futureInvestmentSchema : investmentSchema),
+    resolver: zodResolver(schema),
     defaultValues: initialData
       ? {
           platform: initialData.platform,

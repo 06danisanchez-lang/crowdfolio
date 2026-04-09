@@ -371,7 +371,6 @@ export function InvestmentForm({
   }) : null;
 
   const showDraftButtons = !isFuture && (isDraft || onSubmitDraft);
-  const showDraftButtons = !isFuture && (isDraft || onSubmitDraft);
 
   const handleDiscardDraft = () => {
     draft.clear();

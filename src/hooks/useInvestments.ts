@@ -155,7 +155,7 @@ export function useInvestments() {
   const allInvestmentsCount = allRawInvestments.length;
   const incompleteCount = incompleteInvestments.length;
 
-  const addInvestment = useCallback(async (investment: Omit<Investment, 'id' | 'createdAt' | 'updatedAt' | 'payments'>) => {
+  const addInvestment = useCallback(async (investment: Omit<Investment, 'id' | 'createdAt' | 'updatedAt' | 'payments'>): Promise<Investment | null> => {
     if (!user) return null;
     const { data, error } = await supabase.from('investments').insert({
       user_id: user.id, platform: investment.platform,
@@ -167,6 +167,15 @@ export function useInvestments() {
       notes: investment.notes || null,
     }).select().single();
     if (error) { console.error('Error adding investment:', error); return null; }
+    const created: Investment = {
+      id: data.id, platform: data.platform as Platform,
+      customPlatformName: data.custom_platform_name || undefined,
+      projectName: data.project_name!, amount: Number(data.amount),
+      investmentDate: data.investment_date!, expectedEndDate: data.expected_end_date || undefined,
+      expectedReturn: Number(data.expected_return), status: data.status as InvestmentStatus,
+      notes: data.notes || undefined, createdAt: data.created_at, updatedAt: data.updated_at,
+      payments: [],
+    };
     await fetchInvestments();
     return data;
   }, [user, fetchInvestments]);
@@ -198,7 +207,7 @@ export function useInvestments() {
     }).select().single();
     if (error) { console.error('Error adding draft investment:', error); return null; }
     await fetchInvestments();
-    return data;
+    return created;
   }, [user, fetchInvestments]);
 
   const updateInvestment = useCallback(async (id: string, updates: Partial<Investment>) => {

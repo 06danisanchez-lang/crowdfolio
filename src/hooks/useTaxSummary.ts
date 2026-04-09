@@ -192,7 +192,7 @@ export function useTaxSummary(year: number) {
   }, [user]);
 
   return {
-    summary, projection, payments, expenses, error,
+    summary, projection, payments, expenses, error, excludedIncompleteCount,
     isLoading: isLoading || expensesLoading, availableYears,
   };
 }

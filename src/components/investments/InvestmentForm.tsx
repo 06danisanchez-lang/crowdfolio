@@ -300,6 +300,7 @@ export function InvestmentForm({
           amount: 'investments.field.amount',
           investmentDate: 'investments.field.investmentDate',
           expectedReturn: 'investments.field.expectedReturn',
+          incomeModel: 'investments.field.incomeModel',
           status: 'investments.field.status',
         };
         const missing = [...new Set(manualResult.error.issues.map(i => {

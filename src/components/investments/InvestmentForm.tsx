@@ -252,8 +252,8 @@ export function InvestmentForm({
       platform:           saved.formValues.platform as Platform,
       customPlatformName: saved.formValues.customPlatformName,
       projectName:        saved.formValues.projectName ?? '',
-      amount:             saved.formValues.amount ?? 0,
-      expectedReturn:     saved.formValues.expectedReturn ?? 10,
+      amount:             saved.formValues.amount ?? undefined,
+      expectedReturn:     saved.formValues.expectedReturn ?? undefined,
       status:             saved.formValues.status as InvestmentStatus,
       notes:              saved.formValues.notes,
       investmentDate:     new Date(saved.formValues.investmentDate),
@@ -579,13 +579,14 @@ export function InvestmentForm({
               render={({ field }) => (
                 <FormItem>
                   <FormLabel>{t('investments.field.paymentFrequency')}</FormLabel>
-                  <Select onValueChange={field.onChange} value={field.value}>
+                  <Select onValueChange={(v) => field.onChange(v === '__none__' ? undefined : v)} value={field.value || ''}>
                     <FormControl>
                       <SelectTrigger>
                         <SelectValue placeholder={t('investments.frequency.placeholder')} />
                       </SelectTrigger>
                     </FormControl>
                     <SelectContent>
+                      <SelectItem value="__none__">{t('common.noSelection')}</SelectItem>
                       {PAYMENT_FREQUENCY_OPTIONS.map((opt) => (
                         <SelectItem key={opt.value} value={opt.value}>
                           {t(opt.labelKey)}
@@ -606,13 +607,14 @@ export function InvestmentForm({
               render={({ field }) => (
                 <FormItem>
                   <FormLabel>{t('investments.field.principalReturnType')}</FormLabel>
-                  <Select onValueChange={field.onChange} value={field.value || 'amortizing'}>
+                  <Select onValueChange={(v) => field.onChange(v === '__none__' ? undefined : v)} value={field.value || ''}>
                     <FormControl>
                       <SelectTrigger>
-                        <SelectValue />
+                        <SelectValue placeholder={t('common.noSelection')} />
                       </SelectTrigger>
                     </FormControl>
                     <SelectContent>
+                      <SelectItem value="__none__">{t('common.noSelection')}</SelectItem>
                       {PRINCIPAL_RETURN_TYPE_OPTIONS.map((opt) => (
                         <SelectItem key={opt.value} value={opt.value}>
                           {t(opt.labelKey)}
@@ -641,12 +643,16 @@ export function InvestmentForm({
                 <Input
                   type="number"
                   placeholder={isFuture ? '' : '1000'}
-                  {...field}
+                  value={field.value != null ? field.value : ''}
                   onChange={(e) => {
-                    const value = e.target.value === '' ? (isFuture ? null : 0) : parseFloat(e.target.value);
-                    field.onChange(value);
+                    const raw = e.target.value;
+                    if (raw === '') {
+                      field.onChange(isFuture ? null : undefined);
+                    } else {
+                      const parsed = parseFloat(raw);
+                      field.onChange(isNaN(parsed) ? undefined : parsed);
+                    }
                   }}
-                  value={field.value ?? ''}
                 />
               </FormControl>
               <FormMessage />
@@ -667,9 +673,16 @@ export function InvestmentForm({
                   type="number"
                   step="0.1"
                   placeholder={isFuture ? '' : '10'}
-                  {...field}
-                  onChange={(e) => field.onChange(e.target.value === '' ? (isFuture ? null : 0) : parseFloat(e.target.value))}
-                  value={field.value ?? ''}
+                  value={field.value != null ? field.value : ''}
+                  onChange={(e) => {
+                    const raw = e.target.value;
+                    if (raw === '') {
+                      field.onChange(isFuture ? null : undefined);
+                    } else {
+                      const parsed = parseFloat(raw);
+                      field.onChange(isNaN(parsed) ? undefined : parsed);
+                    }
+                  }}
                 />
               </FormControl>
               <FormMessage />

@@ -1,55 +1,50 @@
 
 
-## Plan: Cierre de Fase 1 — 4 correcciones pendientes
+## Plan: Fase A — Correcciones críticas
 
-### 1. `useIncompleteCount.ts`
-**Problema**: El SELECT solo trae `id, platform, project_name, amount, investment_date`. No trae `income_model` ni `status`, así que `isInvestmentComplete` no puede evaluarlos.
+### A7 — `src/types/investment.ts`
+- Añadir `'draft'` a `InvestmentStatus`
+- Añadir `{ value: 'draft', label: 'Borrador', color: 'status-draft' }` a `STATUS_OPTIONS`
+- Actualizar `colorMap` en InvestmentList (ajuste mínimo derivado)
 
-**Cambio**: Añadir `income_model, status` al SELECT. Pasar `incomeModel` y `status` a `isInvestmentComplete`.
+### A1 — `src/lib/draftStorage.ts`
+- Añadir `incomeModel?`, `paymentFrequency?`, `principalReturnType?` a `DraftFormValues`
+- Añadir `'draft'` a `VALID_STATUSES`
+- En `loadDraft`: validar los 3 campos nuevos si están presentes (opcionales, no rompen drafts antiguos)
 
-### 2. Dashboard / previsiones (`useInvestments.ts` líneas 442-444)
-**Problema**: `summary.expectedReturns` (línea 444) calcula sobre TODAS las `investments`, no solo las `forecastReady`. Los KPIs de rendimiento esperado pueden incluir inversiones que no son forecast_ready.
+### A2 — `src/components/investments/InvestmentForm.tsx`
+- En `draft.save()` (~línea 208): añadir `incomeModel`, `paymentFrequency`, `principalReturnType` al objeto guardado
+- En restore (~línea 234): leer y aplicar `incomeModel`, `paymentFrequency`, `principalReturnType` del draft guardado
 
-**Cambio**: En el `summary` useMemo, calcular `expectedReturns` y `averageReturn` (línea 447) usando solo el array `forecastReady` ya calculado (líneas 416-430), no `investments`.
+### A3 — `src/components/investments/InvestmentList.tsx` (completion en pendientes)
+- Líneas 174-181: añadir `incomeModel: draft.incomeModel`, `expectedEndDate: draft.expectedEndDate` a la llamada `getInvestmentCompletionStatus`
 
-Los gráficos (`InvestmentTimelineChart`) reciben `investments` — esto es correcto porque muestran capital invertido a lo largo del tiempo, que es dato de cartera (portfolio_ready). No requieren cambio.
+### A4 — `src/components/investments/InvestmentList.tsx` (Collapsible)
+- Importar `Collapsible`, `CollapsibleTrigger`, `CollapsibleContent` de `@/components/ui/collapsible`
+- Envolver la sección pendientes en `Collapsible` con `defaultOpen={incompleteInvestments.length > 0}`
+- El trigger es el header con AlertTriangle + título + contador
+- El contenido (lista o "vacío") va dentro de `CollapsibleContent`
+- Añadir icono chevron para indicar expansión
 
-### 3. Regeneración de schedule (`useInvestments.ts` línea 320)
-**Problema**: El `if` en línea 320 solo detecta cambios en `incomeModel`, `paymentFrequency`, `expectedReturn`, `expectedEndDate`. Si cambia `amount`, `investmentDate`, o `principalReturnType`, el schedule no se regenera.
+### A5 — `src/hooks/useTaxSummary.ts`
+- Añadir `income_model`, `payment_frequency`, `principal_return_type` a `InvestmentRow` (líneas 22-35)
+- Eliminar los 3 `(inv as any)` en líneas 82, 91-93, usar campos tipados directamente
 
-**Cambio**: Ampliar la condición para incluir todos los campos que afectan al schedule:
-```
-if (updates.incomeModel || updates.paymentFrequency || 
-    updates.expectedReturn !== undefined || updates.expectedEndDate !== undefined ||
-    updates.amount !== undefined || updates.investmentDate !== undefined ||
-    updates.principalReturnType !== undefined)
-```
+### A6 — `src/hooks/useInvestments.ts` (import genera schedule)
+- En `importInvestments` (~línea 393), tras insertar cada inversión y sus payments, llamar a `saveScheduleForInvestment(data.id, {...})` con los datos de la inversión importada
 
-### 4. Import / export
+### Archivos tocados (5)
+| Archivo | Cambios |
+|---------|---------|
+| `src/types/investment.ts` | A7: `'draft'` en tipo y STATUS_OPTIONS |
+| `src/lib/draftStorage.ts` | A1: 3 campos nuevos + draft en statuses |
+| `src/components/investments/InvestmentForm.tsx` | A2: save/restore con 3 campos |
+| `src/components/investments/InvestmentList.tsx` | A3+A4: completion fix + Collapsible |
+| `src/hooks/useTaxSummary.ts` | A5: tipado correcto |
+| `src/hooks/useInvestments.ts` | A6: schedule en import |
 
-**4a. `src/lib/validation/investmentSchema.ts`**
-- Añadir a `investmentImportSchema`: `incomeModel` (opcional, enum), `paymentFrequency` (opcional, enum), `principalReturnType` (opcional, enum)
-- Añadir los mismos a `csvRowSchema`
-
-**4b. `src/components/investments/ImportExport.tsx`**
-- **Export CSV**: Añadir 3 columnas nuevas en headers y rows (`Modelo de Rendimiento`, `Frecuencia de Pago`, `Tipo Devolución Principal`)
-- **Export JSON**: Ya funciona (usa `investments` que ya tiene los campos)
-- **Import CSV**: Mapear las 3 columnas nuevas desde el CSV, pasarlas al objeto de inversión
-- **CSV template**: Añadir las 3 columnas nuevas con ejemplo
-
-### Archivos a tocar (4)
-
-| Archivo | Cambio |
-|---------|--------|
-| `src/hooks/useIncompleteCount.ts` | Añadir `income_model, status` al SELECT y a la llamada |
-| `src/hooks/useInvestments.ts` | Línea 320: ampliar condición regeneración. Líneas 444,447: usar `forecastReady` |
-| `src/lib/validation/investmentSchema.ts` | Añadir 3 campos opcionales a ambos schemas |
-| `src/components/investments/ImportExport.tsx` | 3 columnas nuevas en CSV export/import/template |
-
-### Lo que NO se toca
-- `completeness.ts` — ya correcto
-- `InvestmentForm.tsx` — ya correcto
-- `scheduleGenerator.ts` — ya correcto
-- Dashboard charts — reciben `investments` (portfolio_ready), correcto para datos de cartera
-- `useTaxSummary` — ya correcto
+### Riesgos
+- A6 es el más delicado: genera filas nuevas en `investment_schedule` para imports. No destructivo.
+- A7 amplía el tipo — requiere que `colorMap` en InvestmentList incluya `draft` (ajuste mínimo).
+- Ningún cambio altera KPIs ni cálculos existentes.
 

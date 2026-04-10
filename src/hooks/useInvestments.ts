@@ -39,7 +39,7 @@ export function useInvestments() {
   const fetchInvestments = useCallback(async () => {
     if (!user) {
       setAllRawInvestments([]);
-      setScheduleCountMap({});
+      setScheduleMap({});
       setIsLoading(false);
       setError(null);
       return;

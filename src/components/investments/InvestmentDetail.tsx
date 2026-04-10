@@ -3,11 +3,12 @@ import { useLanguage } from '@/contexts/LanguageContext';
 import { format, parseISO } from 'date-fns';
 import { es } from 'date-fns/locale';
 import { Plus, Trash2, CalendarIcon } from 'lucide-react';
-import { Investment, Payment, PLATFORMS, STATUS_OPTIONS } from '@/types/investment';
+import { Investment, Payment, PLATFORMS, STATUS_OPTIONS, InvestmentScheduleEntry, IncomeModel } from '@/types/investment';
 import { 
   getInvestmentDurationYears, 
   calculateInvestmentTotalReturn,
-  calculateInvestmentTotalReturnPercent 
+  calculateInvestmentTotalReturnPercent,
+  calculateExpectedReturnFromSchedule,
 } from '@/lib/investment/calculations';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -31,16 +32,25 @@ import {
   PopoverContent,
   PopoverTrigger,
 } from '@/components/ui/popover';
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from '@/components/ui/table';
 import { cn } from '@/lib/utils';
 
 interface InvestmentDetailProps {
   investment: Investment | null;
+  schedule?: InvestmentScheduleEntry[];
   onClose: () => void;
   onAddPayment: (investmentId: string, payment: { date: string; amount: number; type: 'dividend' | 'principal' | 'interest'; notes?: string }) => void;
   onDeletePayment: (investmentId: string, paymentId: string) => void;
 }
 
-export function InvestmentDetail({ investment, onClose, onAddPayment, onDeletePayment }: InvestmentDetailProps) {
+export function InvestmentDetail({ investment, schedule = [], onClose, onAddPayment, onDeletePayment }: InvestmentDetailProps) {
   const { t } = useLanguage();
   const [showAddPayment, setShowAddPayment] = useState(false);
   const [paymentDate, setPaymentDate] = useState<Date>(new Date());
@@ -69,6 +79,55 @@ export function InvestmentDetail({ investment, onClose, onAddPayment, onDeletePa
     return labels[type] || type;
   };
 
+  const getIncomeModelLabel = (model: IncomeModel): string => {
+    const map: Record<IncomeModel, string> = {
+      bullet: 'investments.incomeModel.bullet',
+      periodic_fixed: 'investments.incomeModel.periodicFixed',
+      amortizing: 'investments.incomeModel.amortizing',
+      variable_or_unknown: 'investments.incomeModel.variableOrUnknown',
+    };
+    return t(map[model]);
+  };
+
+  const getFrequencyLabel = (freq: string): string => {
+    const map: Record<string, string> = {
+      monthly: 'investments.frequency.monthly',
+      quarterly: 'investments.frequency.quarterly',
+      semiannual: 'investments.frequency.semiannual',
+      annual: 'investments.frequency.annual',
+    };
+    return t(map[freq] || freq);
+  };
+
+  const getPrincipalReturnLabel = (type: string): string => {
+    const map: Record<string, string> = {
+      at_maturity: 'investments.principalReturn.atMaturity',
+      amortizing: 'investments.principalReturn.amortizing',
+      unknown: 'investments.principalReturn.unknown',
+    };
+    return t(map[type] || type);
+  };
+
+  const getScheduleTypeLabel = (type: string): string => {
+    const map: Record<string, string> = {
+      interest: 'investments.schedule.type.interest',
+      principal: 'investments.schedule.type.principal',
+      mixed: 'investments.schedule.type.mixed',
+    };
+    return t(map[type] || type);
+  };
+
+  const getScheduleStatusBadge = (status: string) => {
+    const map: Record<string, { key: string; className: string }> = {
+      pending: { key: 'investments.schedule.status.pending', className: 'bg-muted text-muted-foreground' },
+      matched: { key: 'investments.schedule.status.matched', className: 'bg-status-active text-white' },
+      missed: { key: 'investments.schedule.status.missed', className: 'bg-status-defaulted text-white' },
+      skipped: { key: 'investments.schedule.status.skipped', className: 'bg-muted text-muted-foreground' },
+    };
+    const cfg = map[status] || map.pending;
+    return <Badge className={cn('text-xs', cfg.className)}>{t(cfg.key)}</Badge>;
+  };
+
   const handleAddPayment = () => {
     if (investment && paymentAmount) {
       onAddPayment(investment.id, {
@@ -85,10 +144,31 @@ export function InvestmentDetail({ investment, onClose, onAddPayment, onDeletePa
 
   const totalPayments = investment.payments.reduce((sum, p) => sum + p.amount, 0);
   const durationYears = getInvestmentDurationYears(investment.investmentDate, investment.expectedEndDate);
-  const totalReturnAmount = calculateInvestmentTotalReturn(investment);
-  const totalReturnPercent = calculateInvestmentTotalReturnPercent(investment);
+
+  // D5: Calculate returns based on income model
+  let totalReturnAmount: number;
+  let totalReturnPercent: number;
+
+  if (
+    (investment.incomeModel === 'periodic_fixed' || investment.incomeModel === 'amortizing') &&
+    schedule.length > 0
+  ) {
+    totalReturnAmount = calculateExpectedReturnFromSchedule(schedule, investment.amount, investment.incomeModel);
+    totalReturnPercent = investment.amount > 0 ? (totalReturnAmount / investment.amount) * 100 : 0;
+  } else if (investment.incomeModel === 'variable_or_unknown') {
+    totalReturnAmount = 0;
+    totalReturnPercent = 0;
+  } else {
+    totalReturnAmount = calculateInvestmentTotalReturn(investment);
+    totalReturnPercent = calculateInvestmentTotalReturnPercent(investment);
+  }
+
   const expectedTotal = investment.amount + totalReturnAmount;
   const actualReturn = investment.amount > 0 ? ((totalPayments / investment.amount) * 100) : 0;
+
+  const sortedSchedule = [...schedule].sort(
+    (a, b) => new Date(a.expectedDate).getTime() - new Date(b.expectedDate).getTime()
+  );
 
   return (
     <Dialog open={!!investment} onOpenChange={() => onClose()}>
@@ -115,6 +195,23 @@ export function InvestmentDetail({ investment, onClose, onAddPayment, onDeletePa
                 {STATUS_OPTIONS.find(s => s.value === investment.status)?.label}
               </Badge>
             </div>
+            {/* D3: Income model info */}
+            <div className="space-y-1">
+              <p className="text-sm text-muted-foreground">{t('investments.detail.incomeModel')}</p>
+              <p className="font-medium">{getIncomeModelLabel(investment.incomeModel)}</p>
+            </div>
+            {investment.paymentFrequency && (
+              <div className="space-y-1">
+                <p className="text-sm text-muted-foreground">{t('investments.detail.paymentFrequency')}</p>
+                <p className="font-medium">{getFrequencyLabel(investment.paymentFrequency)}</p>
+              </div>
+            )}
+            {investment.principalReturnType && (
+              <div className="space-y-1">
+                <p className="text-sm text-muted-foreground">{t('investments.detail.principalReturnType')}</p>
+                <p className="font-medium">{getPrincipalReturnLabel(investment.principalReturnType)}</p>
+              </div>
+            )}
             <div className="space-y-1">
               <p className="text-sm text-muted-foreground">{t('investments.detail.invested')}</p>
               <p className="font-medium">{formatCurrency(investment.amount)}</p>
@@ -129,7 +226,9 @@ export function InvestmentDetail({ investment, onClose, onAddPayment, onDeletePa
             </div>
             <div className="space-y-1">
               <p className="text-sm text-muted-foreground">{t('investments.detail.totalReturn')}</p>
-              <p className="font-medium">{totalReturnPercent.toFixed(1)}%</p>
+              <p className="font-medium">
+                {investment.incomeModel === 'variable_or_unknown' ? '—' : `${totalReturnPercent.toFixed(1)}%`}
+              </p>
             </div>
             <div className="space-y-1">
               <p className="text-sm text-muted-foreground">{t('investments.detail.investmentDate')}</p>
@@ -154,7 +253,9 @@ export function InvestmentDetail({ investment, onClose, onAddPayment, onDeletePa
                 <p className="text-xs text-muted-foreground">{t('investments.detail.received')}</p>
               </div>
               <div>
-                <p className="text-2xl font-bold text-primary">{formatCurrency(expectedTotal)}</p>
+                <p className="text-2xl font-bold text-primary">
+                  {investment.incomeModel === 'variable_or_unknown' ? '—' : formatCurrency(expectedTotal)}
+                </p>
                 <p className="text-xs text-muted-foreground">{t('investments.detail.expected')}</p>
               </div>
               <div>
@@ -168,6 +269,43 @@ export function InvestmentDetail({ investment, onClose, onAddPayment, onDeletePa
               </div>
             </div>
           </div>
+
+          {/* D4: Expected Schedule (read-only) */}
+          {sortedSchedule.length > 0 && (
+            <div>
+              <h4 className="mb-3 font-semibold">{t('investments.detail.expectedSchedule')}</h4>
+              <div className="rounded-lg border bg-card">
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>{t('investments.schedule.date')}</TableHead>
+                      <TableHead>{t('investments.schedule.amount')}</TableHead>
+                      <TableHead>{t('investments.schedule.type')}</TableHead>
+                      <TableHead>{t('investments.schedule.status')}</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {sortedSchedule.map((entry, idx) => (
+                      <TableRow key={entry.id || idx}>
+                        <TableCell className="text-sm">
+                          {format(parseISO(entry.expectedDate), 'dd MMM yyyy', { locale: es })}
+                        </TableCell>
+                        <TableCell className="text-sm font-medium">
+                          {formatCurrency(entry.expectedAmount)}
+                        </TableCell>
+                        <TableCell className="text-sm">
+                          {getScheduleTypeLabel(entry.type)}
+                        </TableCell>
+                        <TableCell>
+                          {getScheduleStatusBadge(entry.status || 'pending')}
+                        </TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              </div>
+            </div>
+          )}
 
           {/* Payments List */}
           <div>

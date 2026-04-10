@@ -14,7 +14,7 @@ import {
   AlertTriangle,
   ChevronDown
 } from 'lucide-react';
-import { Investment, DraftInvestment, PLATFORMS, STATUS_OPTIONS, Platform, InvestmentStatus } from '@/types/investment';
+import { Investment, DraftInvestment, PLATFORMS, STATUS_OPTIONS, Platform, InvestmentStatus, IncomeModel, InvestmentScheduleEntry } from '@/types/investment';
 import { getInvestmentCompletionStatus } from '@/lib/investment/completeness';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -57,6 +57,7 @@ import { InvestmentDetail } from './InvestmentDetail';
 interface InvestmentListProps {
   investments: Investment[];
   incompleteInvestments?: DraftInvestment[];
+  scheduleMap?: Record<string, InvestmentScheduleEntry[]>;
   onUpdate: (id: string, updates: Partial<Investment>) => Promise<{ demotedToDraft?: boolean } | void> | void;
   onDelete: (id: string) => void;
   onAddPayment: (investmentId: string, payment: { date: string; amount: number; type: 'dividend' | 'principal' | 'interest'; notes?: string }) => void;
@@ -70,6 +71,7 @@ type SortDirection = 'asc' | 'desc';
 export function InvestmentList({ 
   investments, 
   incompleteInvestments = [],
+  scheduleMap = {},
   onUpdate, 
   onDelete,
   onAddPayment,
@@ -113,6 +115,32 @@ export function InvestmentList({
         {statusOption?.label || status}
       </Badge>
     );
+  };
+
+  const getIncomeModelShortKey = (model: IncomeModel): string => {
+    const map: Record<IncomeModel, string> = {
+      bullet: 'investments.incomeModel.short.bullet',
+      periodic_fixed: 'investments.incomeModel.short.periodicFixed',
+      amortizing: 'investments.incomeModel.short.amortizing',
+      variable_or_unknown: 'investments.incomeModel.short.variableOrUnknown',
+    };
+    return map[model];
+  };
+
+  const isNoForecast = (inv: Investment): boolean => {
+    const status = getInvestmentCompletionStatus({
+      platform: inv.platform,
+      projectName: inv.projectName,
+      amount: inv.amount,
+      investmentDate: inv.investmentDate,
+      expectedReturn: inv.expectedReturn,
+      expectedEndDate: inv.expectedEndDate,
+      incomeModel: inv.incomeModel,
+      paymentFrequency: inv.paymentFrequency,
+      hasSchedule: (scheduleMap[inv.id]?.length ?? 0) > 0,
+      status: inv.status,
+    });
+    return status.isPortfolioReady && !status.isForecastReady;
   };
 
   const handleSort = (field: SortField) => {
@@ -364,7 +392,19 @@ export function InvestmentList({
                   <TableCell>{formatCurrency(investment.amount)}</TableCell>
                   <TableCell>{format(parseISO(investment.investmentDate), 'dd/MM/yyyy', { locale: es })}</TableCell>
                   <TableCell>{investment.expectedReturn.toFixed(1)}%</TableCell>
-                  <TableCell>{getStatusBadge(investment.status)}</TableCell>
+                  <TableCell>
+                    <div className="flex flex-wrap items-center gap-1">
+                      {getStatusBadge(investment.status)}
+                      <Badge variant="outline" className="text-xs">
+                        {t(getIncomeModelShortKey(investment.incomeModel))}
+                      </Badge>
+                      {isNoForecast(investment) && (
+                        <Badge variant="outline" className="text-xs text-muted-foreground">
+                          {t('investments.badge.noForecast')}
+                        </Badge>
+                      )}
+                    </div>
+                  </TableCell>
                   <TableCell>
                     <DropdownMenu>
                       <DropdownMenuTrigger asChild>
@@ -430,6 +470,7 @@ export function InvestmentList({
       {/* Investment Detail Dialog */}
       <InvestmentDetail
         investment={viewingInvestment}
+        schedule={viewingInvestment ? (scheduleMap[viewingInvestment.id] || []) : []}
         onClose={() => setViewingInvestment(null)}
         onAddPayment={onAddPayment}
         onDeletePayment={onDeletePayment}

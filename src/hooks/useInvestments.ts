@@ -1,8 +1,8 @@
 import { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
-import { Investment, InvestmentSummary, Platform, InvestmentStatus, Payment, DraftInvestment, IncomeModel, PaymentFrequency, PrincipalReturnType } from '@/types/investment';
-import { calculateInvestmentTotalReturn } from '@/lib/investment/calculations';
+import { Investment, InvestmentSummary, Platform, InvestmentStatus, Payment, DraftInvestment, IncomeModel, PaymentFrequency, PrincipalReturnType, InvestmentScheduleEntry } from '@/types/investment';
+import { calculateInvestmentTotalReturn, calculateExpectedReturnFromSchedule } from '@/lib/investment/calculations';
 import { isInvestmentComplete, getInvestmentCompletionStatus } from '@/lib/investment/completeness';
 import { generateSchedule } from '@/lib/investment/scheduleGenerator';
 
@@ -31,7 +31,7 @@ interface RawInvestmentRow {
 export function useInvestments() {
   const { user } = useAuth();
   const [allRawInvestments, setAllRawInvestments] = useState<DraftInvestment[]>([]);
-  const [scheduleCountMap, setScheduleCountMap] = useState<Record<string, number>>({});
+  const [scheduleMap, setScheduleMap] = useState<Record<string, InvestmentScheduleEntry[]>>({});
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const requestIdRef = useRef(0);
@@ -39,7 +39,7 @@ export function useInvestments() {
   const fetchInvestments = useCallback(async () => {
     if (!user) {
       setAllRawInvestments([]);
-      setScheduleCountMap({});
+      setScheduleMap({});
       setIsLoading(false);
       setError(null);
       return;
@@ -77,16 +77,26 @@ export function useInvestments() {
         paymentsData = data || [];
       }
 
-      // Fetch schedule counts per investment
-      let schedCounts: Record<string, number> = {};
+      // Fetch full schedule data per investment
+      let schedMap: Record<string, InvestmentScheduleEntry[]> = {};
       if (investmentIds.length > 0) {
         const { data: schedData } = await supabase
           .from('investment_schedule')
-          .select('investment_id')
+          .select('*')
           .in('investment_id', investmentIds);
         if (schedData) {
           for (const row of schedData) {
-            schedCounts[row.investment_id] = (schedCounts[row.investment_id] || 0) + 1;
+            const entry: InvestmentScheduleEntry = {
+              id: row.id,
+              investmentId: row.investment_id,
+              expectedDate: row.expected_date,
+              expectedAmount: Number(row.expected_amount),
+              type: row.type as 'interest' | 'principal' | 'mixed',
+              status: (row.status as 'pending' | 'matched' | 'missed' | 'skipped') || 'pending',
+              matchedPaymentId: row.matched_payment_id || null,
+            };
+            if (!schedMap[row.investment_id]) schedMap[row.investment_id] = [];
+            schedMap[row.investment_id].push(entry);
           }
         }
       }
@@ -120,7 +130,7 @@ export function useInvestments() {
       }));
 
       setAllRawInvestments(mapped);
-      setScheduleCountMap(schedCounts);
+      setScheduleMap(schedMap);
     } catch (err) {
       clearTimeout(timeoutId);
       if (requestIdRef.current !== currentId) return;
@@ -451,14 +461,26 @@ export function useInvestments() {
         expectedEndDate: inv.expectedEndDate,
         incomeModel: inv.incomeModel,
         paymentFrequency: inv.paymentFrequency,
-        hasSchedule: (scheduleCountMap[inv.id] || 0) > 0,
+        hasSchedule: (scheduleMap[inv.id]?.length || 0) > 0,
         status: inv.status,
       });
       return status.isForecastReady;
     });
+    // C3: route expected return calculation by incomeModel
+    const getExpectedReturn = (inv: Investment): number => {
+      if (inv.incomeModel === 'periodic_fixed' || inv.incomeModel === 'amortizing') {
+        const schedule = scheduleMap[inv.id];
+        if (schedule && schedule.length > 0) {
+          return calculateExpectedReturnFromSchedule(schedule, inv.amount, inv.incomeModel);
+        }
+        return 0; // no schedule → cannot forecast
+      }
+      // bullet (and fallback)
+      return calculateInvestmentTotalReturn(inv);
+    };
 
     const activeCapital = activeInvestments.reduce((s, i) => s + i.amount, 0);
-    const expectedProfit = forecastReady.reduce((s, i) => s + calculateInvestmentTotalReturn(i), 0);
+    const expectedProfit = forecastReady.reduce((s, i) => s + getExpectedReturn(i), 0);
     const estimatedTotal = forecastReady.reduce((s, i) => s + i.amount, 0) + expectedProfit;
 
     const totalCollected = investments.reduce((s, i) => s + i.payments.reduce((ps, p) => ps + p.amount, 0), 0);
@@ -469,7 +491,7 @@ export function useInvestments() {
     return {
       totalInvested: investments.reduce((sum, inv) => sum + inv.amount, 0),
       totalReturns: totalCollected,
-      expectedReturns: forecastReady.reduce((sum, inv) => sum + calculateInvestmentTotalReturn(inv), 0),
+      expectedReturns: forecastReady.reduce((sum, inv) => sum + getExpectedReturn(inv), 0),
       activeInvestments: activeInvestments.length,
       completedInvestments: investments.filter(inv => inv.status === 'completed').length,
       averageReturn: forecastReady.length > 0 ? forecastReady.reduce((sum, inv) => sum + inv.expectedReturn, 0) / forecastReady.length : 0,
@@ -498,11 +520,11 @@ export function useInvestments() {
         completedCount: investments.filter(inv => inv.status === 'completed').length,
       },
     };
-  }, [investments, scheduleCountMap]);
+  }, [investments, scheduleMap]);
 
   return {
     investments, incompleteInvestments, incompleteCount, allInvestmentsCount,
-    isLoading, error, summary,
+    isLoading, error, summary, scheduleMap,
     addInvestment, addDraftInvestment, updateInvestment, deleteInvestment,
     addPayment, deletePayment, importInvestments,
     exportInvestments, clearAllInvestments, refetch: fetchInvestments,

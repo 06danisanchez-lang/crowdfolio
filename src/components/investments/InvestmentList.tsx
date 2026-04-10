@@ -10,7 +10,8 @@ import {
   ArrowUpDown,
   Filter,
   Search,
-  AlertTriangle
+  AlertTriangle,
+  ChevronDown
 } from 'lucide-react';
 import { Investment, DraftInvestment, PLATFORMS, STATUS_OPTIONS, Platform, InvestmentStatus } from '@/types/investment';
 import { getInvestmentCompletionStatus } from '@/lib/investment/completeness';
@@ -99,6 +100,7 @@ export function InvestmentList({
   const getStatusBadge = (status: InvestmentStatus) => {
     const statusOption = STATUS_OPTIONS.find(s => s.value === status);
     const colorMap: Record<InvestmentStatus, string> = {
+      draft: 'bg-muted text-muted-foreground',
       active: 'bg-status-active text-white',
       pending: 'bg-status-pending text-white',
       completed: 'bg-status-completed text-white',
@@ -177,6 +179,8 @@ export function InvestmentList({
                 amount: draft.amount,
                 investmentDate: draft.investmentDate,
                 expectedReturn: draft.expectedReturn,
+                expectedEndDate: draft.expectedEndDate,
+                incomeModel: draft.incomeModel,
                 status: draft.status,
               });
               return (

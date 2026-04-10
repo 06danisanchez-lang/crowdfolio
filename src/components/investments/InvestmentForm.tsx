@@ -60,7 +60,7 @@ const investmentSchema = z.object({
   projectName: z.string().min(1, 'El nombre del proyecto es requerido'),
   amount: z.number().min(1, 'El monto debe ser mayor a 0'),
   investmentDate: z.date(),
-  expectedEndDate: z.date().optional(),
+  expectedEndDate: z.date({ required_error: 'La fecha fin estimada es requerida' }),
   expectedReturn: z.number().min(0, 'El rendimiento debe ser mayor o igual a 0'),
   incomeModel: z.enum(['bullet', 'periodic_fixed', 'amortizing', 'variable_or_unknown'] as const),
   paymentFrequency: z.enum(['monthly', 'quarterly', 'semiannual', 'annual'] as const).optional(),
@@ -220,12 +220,12 @@ export function InvestmentForm({
         : undefined;
 
       draft.save({
-        platform:           (values.platform as string) ?? 'urbanitae',
+        platform:           (values.platform as string) || undefined,
         customPlatformName: values.customPlatformName,
         projectName:        values.projectName,
         amount:             values.amount,
         expectedReturn:     values.expectedReturn,
-        status:             (values.status as string) ?? 'active',
+        status:             (values.status as string) || 'draft',
         notes:              values.notes,
         investmentDate:     date.toISOString(),
         expectedEndDate:    end?.toISOString(),
@@ -321,6 +321,7 @@ export function InvestmentForm({
           projectName: 'investments.field.projectName',
           amount: 'investments.field.amount',
           investmentDate: 'investments.field.investmentDate',
+          expectedEndDate: 'investments.field.expectedEndDate',
           expectedReturn: 'investments.field.expectedReturn',
           incomeModel: 'investments.field.incomeModel',
           status: 'investments.field.status',
@@ -408,7 +409,11 @@ export function InvestmentForm({
       ? (initialData.investmentDate instanceof Date ? initialData.investmentDate.toISOString() : initialData.investmentDate as string)
       : null,
     expectedReturn: initialData.expectedReturn,
+    expectedEndDate: initialData.expectedEndDate
+      ? (initialData.expectedEndDate instanceof Date ? initialData.expectedEndDate.toISOString() : initialData.expectedEndDate as string)
+      : null,
     incomeModel: 'incomeModel' in initialData ? (initialData as any).incomeModel : null,
+    status: 'status' in initialData ? (initialData as any).status : null,
   }) : null;
 
   const showDraftButtons = !isFuture && (isDraft || onSubmitDraft);

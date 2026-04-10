@@ -148,7 +148,7 @@ export function InvestmentForm({
     setOpen(newOpen);
   };
 
-  const schema = isFuture ? futureInvestmentSchema : investmentSchema;
+  const schema = isFuture ? futureInvestmentSchema : draftInvestmentSchema;
 
   const form = useForm<any>({
     resolver: zodResolver(schema),
@@ -165,7 +165,7 @@ export function InvestmentForm({
             ? (initialData.expectedEndDate instanceof Date ? initialData.expectedEndDate : new Date(initialData.expectedEndDate))
             : undefined,
           expectedReturn: initialData.expectedReturn || undefined,
-          incomeModel: 'incomeModel' in initialData ? initialData.incomeModel : 'bullet',
+          incomeModel: 'incomeModel' in initialData ? initialData.incomeModel || undefined : undefined,
           paymentFrequency: 'paymentFrequency' in initialData ? initialData.paymentFrequency : undefined,
           principalReturnType: 'principalReturnType' in initialData ? initialData.principalReturnType : undefined,
           status: 'status' in initialData ? initialData.status : undefined,
@@ -177,7 +177,7 @@ export function InvestmentForm({
         : {
             status: 'active',
             investmentDate: new Date(),
-            incomeModel: 'bullet',
+            
           },
   });
 
@@ -260,7 +260,7 @@ export function InvestmentForm({
       expectedEndDate:    saved.formValues.expectedEndDate
         ? new Date(saved.formValues.expectedEndDate)
         : undefined,
-      incomeModel:        (saved.formValues.incomeModel as any) ?? 'bullet',
+      incomeModel:        (saved.formValues.incomeModel as any) || undefined,
       paymentFrequency:   (saved.formValues.paymentFrequency as any) ?? undefined,
       principalReturnType: (saved.formValues.principalReturnType as any) ?? undefined,
     });
@@ -344,7 +344,7 @@ export function InvestmentForm({
         projectName: data.projectName,
         amount: data.amount,
         expectedReturn: data.expectedReturn,
-        incomeModel: data.incomeModel || 'bullet',
+        incomeModel: data.incomeModel,
         paymentFrequency: data.paymentFrequency || null,
         principalReturnType: data.principalReturnType || null,
         status: finalStatus,

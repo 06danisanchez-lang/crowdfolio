@@ -11,7 +11,7 @@ const VALID_STATUSES = [
 ] as const;
 
 export interface DraftFormValues {
-  platform: string;
+  platform?: string;
   customPlatformName?: string;
   projectName?: string;
   amount?: number;
@@ -76,8 +76,8 @@ export function loadDraft(uid: string): DraftPayload | null {
       return null;
     }
 
-    // 5. platform enum
-    if (!VALID_PLATFORMS.includes(fv.platform)) {
+    // 5. platform enum (if present)
+    if (fv.platform !== undefined && !VALID_PLATFORMS.includes(fv.platform)) {
       clearDraft(uid);
       return null;
     }

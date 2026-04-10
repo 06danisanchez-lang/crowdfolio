@@ -1,50 +1,61 @@
 
 
-## Plan: Fase A — Correcciones críticas
+## Plan: Fase B — B1, B2, B3
 
-### A7 — `src/types/investment.ts`
-- Añadir `'draft'` a `InvestmentStatus`
-- Añadir `{ value: 'draft', label: 'Borrador', color: 'status-draft' }` a `STATUS_OPTIONS`
-- Actualizar `colorMap` en InvestmentList (ajuste mínimo derivado)
+### B1 — Refactor interno de `InvestmentForm.tsx`
 
-### A1 — `src/lib/draftStorage.ts`
-- Añadir `incomeModel?`, `paymentFrequency?`, `principalReturnType?` a `DraftFormValues`
-- Añadir `'draft'` a `VALID_STATUSES`
-- En `loadDraft`: validar los 3 campos nuevos si están presentes (opcionales, no rompen drafts antiguos)
+Extraer 3 funciones render dentro del mismo componente (el actual `renderForm` de línea 411-815):
 
-### A2 — `src/components/investments/InvestmentForm.tsx`
-- En `draft.save()` (~línea 208): añadir `incomeModel`, `paymentFrequency`, `principalReturnType` al objeto guardado
-- En restore (~línea 234): leer y aplicar `incomeModel`, `paymentFrequency`, `principalReturnType` del draft guardado
+- **`renderBanners()`** — banners de draft restaurado, inversión incompleta, forecast warning, validation error (líneas 414-465)
+- **`renderCommonFields()`** — platform, customPlatformName, projectName (líneas 467-520)
+- **`renderIncomeModelFields()`** — incomeModel selector + paymentFrequency + principalReturnType + amount/expectedReturn grid + dates grid (líneas 522-736). Estos campos van aquí porque amount, expectedReturn y dates son contextualmente dependientes del tipo de inversión.
+- **`renderActions()`** — status selector, sourceUrl, notes, sticky footer con botones (líneas 738-813)
 
-### A3 — `src/components/investments/InvestmentList.tsx` (completion en pendientes)
-- Líneas 174-181: añadir `incomeModel: draft.incomeModel`, `expectedEndDate: draft.expectedEndDate` a la llamada `getInvestmentCompletionStatus`
+`renderForm()` queda como: `renderBanners()` + `renderCommonFields()` + `renderIncomeModelFields()` + `renderActions()`
 
-### A4 — `src/components/investments/InvestmentList.tsx` (Collapsible)
-- Importar `Collapsible`, `CollapsibleTrigger`, `CollapsibleContent` de `@/components/ui/collapsible`
-- Envolver la sección pendientes en `Collapsible` con `defaultOpen={incompleteInvestments.length > 0}`
-- El trigger es el header con AlertTriangle + título + contador
-- El contenido (lista o "vacío") va dentro de `CollapsibleContent`
-- Añadir icono chevron para indicar expansión
+Sin cambio funcional.
 
-### A5 — `src/hooks/useTaxSummary.ts`
-- Añadir `income_model`, `payment_frequency`, `principal_return_type` a `InvestmentRow` (líneas 22-35)
-- Eliminar los 3 `(inv as any)` en líneas 82, 91-93, usar campos tipados directamente
+### B2 — Limpiar campos incompatibles al cambiar `incomeModel`
 
-### A6 — `src/hooks/useInvestments.ts` (import genera schedule)
-- En `importInvestments` (~línea 393), tras insertar cada inversión y sus payments, llamar a `saveScheduleForInvestment(data.id, {...})` con los datos de la inversión importada
+Añadir un `useEffect` tras la línea 186 (donde se define `watchIncomeModel`):
 
-### Archivos tocados (5)
-| Archivo | Cambios |
-|---------|---------|
-| `src/types/investment.ts` | A7: `'draft'` en tipo y STATUS_OPTIONS |
-| `src/lib/draftStorage.ts` | A1: 3 campos nuevos + draft en statuses |
-| `src/components/investments/InvestmentForm.tsx` | A2: save/restore con 3 campos |
-| `src/components/investments/InvestmentList.tsx` | A3+A4: completion fix + Collapsible |
-| `src/hooks/useTaxSummary.ts` | A5: tipado correcto |
-| `src/hooks/useInvestments.ts` | A6: schedule en import |
+```
+useEffect(() => {
+  if (watchIncomeModel === 'bullet' || watchIncomeModel === 'variable_or_unknown') {
+    form.setValue('paymentFrequency', undefined);
+    form.setValue('principalReturnType', undefined);
+  }
+}, [watchIncomeModel, form]);
+```
+
+Solo limpia `paymentFrequency` y `principalReturnType`. No toca otros campos.
+
+### B3 — Auto-draft en `updateInvestment` + toast en caller
+
+**`src/hooks/useInvestments.ts`** — en `updateInvestment` (línea 302-338):
+
+Tras regenerar schedule y antes de `fetchInvestments()` (línea 337):
+1. Merge los updates con `current` (que ya se calcula en línea 322-331)
+2. Evaluar con `isInvestmentComplete` (ya importado) usando los campos merged
+3. Si `!isComplete` y el status merged no es `'draft'`: hacer `await supabase.from('investments').update({ status: 'draft' }).eq('id', id)`
+4. Cambiar return type a `Promise<{ demotedToDraft: boolean }>` en vez de `void`
+
+**`src/components/investments/InvestmentList.tsx`** — en los 2 puntos donde llama `onUpdate` (líneas 239, 240, 374):
+- Cambiar `onUpdate` prop type a `(id: string, updates: Partial<Investment>) => Promise<{ demotedToDraft?: boolean } | void>`
+- Tras llamar `onUpdate`, si resultado tiene `demotedToDraft: true`, mostrar toast con `sonner`
+
+**`src/pages/Index.tsx`** — sin cambios necesarios, pasa `updateInvestment` directamente.
+
+### Archivos a tocar
+
+| Archivo | Cambio |
+|---------|--------|
+| `src/components/investments/InvestmentForm.tsx` | B1: extraer 4 funciones render. B2: useEffect para limpiar campos |
+| `src/hooks/useInvestments.ts` | B3: auto-draft + retorno `{ demotedToDraft }` |
+| `src/components/investments/InvestmentList.tsx` | B3: manejar retorno async para toast |
 
 ### Riesgos
-- A6 es el más delicado: genera filas nuevas en `investment_schedule` para imports. No destructivo.
-- A7 amplía el tipo — requiere que `colorMap` en InvestmentList incluya `draft` (ajuste mínimo).
-- Ningún cambio altera KPIs ni cálculos existentes.
+- B3: una edición que borre platform/amount hará que la inversión baje a borradores. Toast explícito al usuario.
+- B2: el useEffect se dispara al montar si `watchIncomeModel` ya es bullet — no causa daño porque los campos ya serían undefined, pero verificaremos que no resetee datos en edición de inversiones existentes tipo bullet. Se añadirá guard con `useRef` para ignorar el montaje inicial.
+- B1: refactor puro, 0 riesgo funcional.
 

@@ -148,7 +148,7 @@ export function InvestmentForm({
     setOpen(newOpen);
   };
 
-  const schema = isFuture ? futureInvestmentSchema : investmentSchema;
+  const schema = isFuture ? futureInvestmentSchema : draftInvestmentSchema;
 
   const form = useForm<any>({
     resolver: zodResolver(schema),

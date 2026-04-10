@@ -77,16 +77,26 @@ export function useInvestments() {
         paymentsData = data || [];
       }
 
-      // Fetch schedule counts per investment
-      let schedCounts: Record<string, number> = {};
+      // Fetch full schedule data per investment
+      let schedMap: Record<string, InvestmentScheduleEntry[]> = {};
       if (investmentIds.length > 0) {
         const { data: schedData } = await supabase
           .from('investment_schedule')
-          .select('investment_id')
+          .select('*')
           .in('investment_id', investmentIds);
         if (schedData) {
           for (const row of schedData) {
-            schedCounts[row.investment_id] = (schedCounts[row.investment_id] || 0) + 1;
+            const entry: InvestmentScheduleEntry = {
+              id: row.id,
+              investmentId: row.investment_id,
+              expectedDate: row.expected_date,
+              expectedAmount: Number(row.expected_amount),
+              type: row.type as 'interest' | 'principal' | 'mixed',
+              status: (row.status as 'pending' | 'matched' | 'missed' | 'skipped') || 'pending',
+              matchedPaymentId: row.matched_payment_id || null,
+            };
+            if (!schedMap[row.investment_id]) schedMap[row.investment_id] = [];
+            schedMap[row.investment_id].push(entry);
           }
         }
       }

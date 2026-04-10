@@ -57,7 +57,7 @@ import { InvestmentDetail } from './InvestmentDetail';
 interface InvestmentListProps {
   investments: Investment[];
   incompleteInvestments?: DraftInvestment[];
-  onUpdate: (id: string, updates: Partial<Investment>) => void;
+  onUpdate: (id: string, updates: Partial<Investment>) => Promise<{ demotedToDraft?: boolean } | void> | void;
   onDelete: (id: string) => void;
   onAddPayment: (investmentId: string, payment: { date: string; amount: number; type: 'dividend' | 'principal' | 'interest'; notes?: string }) => void;
   onDeletePayment: (investmentId: string, paymentId: string) => void;

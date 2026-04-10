@@ -1,150 +1,123 @@
 
+## Plan: Tres bloques en Inversiones + regla tracking_ready
 
-## Plan: Fase D — UI informativa del nuevo modelo
+### Decisión de naming (Ajuste 3)
 
-### Archivos a tocar
+**Opción B: renombrar a `tracking_ready`.**
 
-| Archivo | Cambios |
-|---------|---------|
-| `src/lib/i18n/translations.ts` | D6: claves nuevas para detail, badges, schedule |
-| `src/components/investments/InvestmentList.tsx` | D1: badge incomeModel. D2: badge "Sin previsión". Props scheduleMap |
-| `src/components/investments/InvestmentDetail.tsx` | D3: datos del modelo. D4: sección cobros esperados. D5: cálculos por tipo |
-| `src/pages/Index.tsx` | Cableado: extraer scheduleMap y pasarlo a InvestmentList |
+Razón: `portfolio_ready` sugiere "datos mínimos para aparecer en cartera", pero la nueva regla significa "inversión suficientemente completa para que Crowdfolio la siga en el tiempo". El nombre `tracking_ready` refleja exactamente eso.
+
+Cambios derivados:
+- `completeness.ts`: `isPortfolioReady` → `isTrackingReady`, `isComplete` (alias) → apunta a `isTrackingReady`
+- `useIncompleteCount.ts`: usa `isInvestmentComplete` (alias) — sin cambio en la interfaz pública
+- Resto del código que usa `isPortfolioReady`: actualizar referencias
+
+Se mantiene `isForecastReady` sin cambios (su semántica sigue siendo correcta).
 
 ---
 
-### D6 — Traducciones
+### Orden de implementación
 
-**Problema detectado**: InvestmentDetail usa `t('investments.detail.*')` pero las claves reales son `investDetail.*`. El componente muestra claves crudas. Solución: añadir claves `investments.detail.*` que el componente ya espera + las nuevas para D1-D5.
+| Paso | Archivo(s) | Qué se hace |
+|------|-----------|-------------|
+| 1 | **Migración BD** | Quitar `DEFAULT 'bullet'` de `income_model`. Quitar `DEFAULT 'at_maturity'` de `principal_return_type`. |
+| 2 | **`completeness.ts`** | Renombrar `isPortfolioReady` → `isTrackingReady`. Añadir `expectedReturn` y `expectedEndDate` como obligatorios. Mantener alias `isComplete` → `isTrackingReady`. Actualizar comentarios de cabecera. |
+| 3 | **`translations.ts`** | Añadir todas las claves nuevas: sección "Finalizadas", campo `expectedEndDate` como faltante, mensajes de validación, labels de la nueva sección. Adelantado para evitar claves crudas en pasos posteriores. |
+| 4 | **`InvestmentForm.tsx`** | Hacer `expectedEndDate` obligatorio en `investmentSchema`. Añadir al `fieldMap` del banner de error. |
+| 5 | **`useIncompleteCount.ts`** | Añadir `expected_return` y `expected_end_date` al select y pasarlos a `isInvestmentComplete`. |
+| 6A | **`useInvestments.ts` — Paso A: separación de arrays** | Derivar 3 arrays: `incompleteInvestments`, `activeInvestments`, `completedInvestments`. Exportarlos. Limpiar fallbacks `|| 'bullet'` y `|| 'at_maturity'`. NO tocar summary todavía. |
+| 6B | **`useInvestments.ts` — Paso B: rehacer summary** | `activeSummary` usa solo `activeInvestments`. `historicalSummary` usa solo `completedInvestments`. Exportar `completedCount`. |
+| 7 | **`useTaxSummary.ts`** | Limpiar fallbacks `|| 'bullet'`. Separar obtención de payments (todas las inversiones) de inversiones para proyección (solo tracking_ready + activas). |
+| 8 | **`InvestmentList.tsx`** | Recibir `completedInvestments`. Añadir sección "Finalizadas" colapsable. Limpiar fallback `|| 'bullet'` en edición de drafts. |
+| 9 | **`Index.tsx`** | Cablear `completedInvestments` desde `useInvestments`. Pasar a `InvestmentList`. Gráficos: distribución usa activas+completed, timeline solo activas. |
 
-Nuevas claves en ES (línea ~476) y EN (línea ~952):
+---
 
+### Detalle por paso
+
+#### Paso 1 — Migración BD
+```sql
+ALTER TABLE public.investments ALTER COLUMN income_model DROP DEFAULT;
+ALTER TABLE public.investments ALTER COLUMN principal_return_type DROP DEFAULT;
 ```
-// Existing detail keys (fixing the mismatch)
-investments.detail.platform → Plataforma / Platform
-investments.detail.invested → Monto Invertido / Invested Amount
-investments.detail.annualReturn → Rentabilidad Anual / Annual Return
-investments.detail.duration → Duración Estimada / Estimated Duration
-investments.detail.totalReturn → Rentabilidad Total / Total Return
-investments.detail.investmentDate → Fecha de Inversión / Investment Date
-investments.detail.maturity → Vencimiento / Maturity
-investments.detail.notSpecified → No especificado / Not specified
-investments.detail.returnsSummary → Resumen de Retornos / Returns Summary
-investments.detail.received → Recibido / Received
-investments.detail.expected → Esperado / Expected
-investments.detail.realReturn → Rendimiento Real / Actual Return
-investments.detail.payments → Pagos Recibidos / Received Payments
-investments.detail.addPayment → Añadir Pago / Add Payment
-investments.detail.noPayments → No hay pagos registrados / No payments recorded
-investments.detail.amount → Importe / Amount
-investments.detail.dividend → Dividendo / Dividend
-investments.detail.principal → Principal / Principal
-investments.detail.interest → Intereses / Interest
-investments.detail.years → años / years
+Sin impacto funcional inmediato (el código ya inserta valores explícitos).
 
-// New keys for D1-D5
-investments.incomeModel.short.bullet → Bullet / Bullet
-investments.incomeModel.short.periodicFixed → Periódico / Periodic
-investments.incomeModel.short.amortizing → Amortizable / Amortizing
-investments.incomeModel.short.variableOrUnknown → Variable / Variable
-investments.badge.noForecast → Sin previsión / No forecast
-investments.detail.incomeModel → Tipo de rendimiento / Income model
-investments.detail.paymentFrequency → Frecuencia de cobros / Payment frequency
-investments.detail.principalReturnType → Devolución del capital / Principal return
-investments.detail.expectedSchedule → Cobros esperados / Expected payments
-investments.schedule.date → Fecha / Date
-investments.schedule.amount → Importe / Amount
-investments.schedule.type → Tipo / Type
-investments.schedule.status → Estado / Status
-investments.schedule.type.interest → Intereses / Interest
-investments.schedule.type.principal → Principal / Principal
-investments.schedule.type.mixed → Mixto / Mixed
-investments.schedule.status.pending → Pendiente / Pending
-investments.schedule.status.matched → Cobrado / Matched
-investments.schedule.status.missed → No recibido / Missed
-investments.schedule.status.skipped → Omitido / Skipped
-```
+#### Paso 2 — completeness.ts
+- Renombrar interfaz: `isPortfolioReady` → `isTrackingReady`
+- Añadir checks: `expectedReturn == null` → missing, `!expectedEndDate` → missing
+- `isComplete` sigue como alias de `isTrackingReady`
+- `isForecastReady` sin cambios (ya depende de tracking_ready)
+- Actualizar `isInvestmentComplete()` para usar `isTrackingReady`
 
----
+#### Paso 3 — translations.ts (adelantado)
+Claves nuevas ES/EN:
+- `investments.section.finished` → Finalizadas / Finished
+- `investments.section.finishedEmpty` → No hay inversiones finalizadas / No finished investments
+- `investments.section.finishedDescription` → Inversiones que ya han completado su ciclo / Investments that completed their cycle
+- `investments.field.expectedEndDate` → Fecha fin estimada / Expected end date
+- `investments.field.expectedReturn` → Rentabilidad esperada / Expected return
+- `investments.status.completed` → Finalizada / Finished (para badge)
+- `investments.tracking.notReady` → Faltan datos para seguimiento / Missing tracking data
 
-### D1 — Badge incomeModel en lista
+#### Paso 4 — InvestmentForm.tsx
+- `investmentSchema`: `expectedEndDate` pasa de `.optional()` a `.min(1, ...)`
+- `fieldMap`: añadir entrada para `investments.field.expectedEndDate`
+- Sin otros cambios en el formulario
 
-En `InvestmentList.tsx`, en la celda de status (línea 367), añadir un `Badge variant="outline"` tras el status badge con el label corto del incomeModel:
+#### Paso 5 — useIncompleteCount.ts
+- Select: añadir `expected_return, expected_end_date`
+- Pasar ambos al check de `isInvestmentComplete`
 
-```tsx
-{getStatusBadge(investment.status)}
-<Badge variant="outline" className="text-xs ml-1">
-  {t(incomeModelShortKey(investment.incomeModel))}
-</Badge>
-```
+#### Paso 6A — useInvestments.ts (separación)
+- Tras mapear inversiones, derivar:
+  - `incompleteInvestments`: `!isInvestmentComplete(inv)`
+  - `completedInvestments`: `isInvestmentComplete(inv) && inv.status === 'completed'`
+  - `activeInvestments`: `isInvestmentComplete(inv) && inv.status !== 'completed'`
+- Exportar los 3 arrays
+- Limpiar todos los `|| 'bullet'` y `|| 'at_maturity'` en addInvestment, updateInvestment, importInvestments, mapping
+- NO tocar calculateSummary en este paso
 
-Helper inline para mapear incomeModel → clave i18n corta.
+#### Paso 6B — useInvestments.ts (summary)
+- `activeSummary.capital`: suma de `activeInvestments` con `status === 'active'`
+- `activeSummary.count`: count de activeInvestments
+- `historicalSummary.totalInvested`: suma de `completedInvestments`
+- `historicalSummary.totalCollected`: payments de `completedInvestments`
+- `historicalSummary.completedCount`: count de `completedInvestments`
 
----
+#### Paso 7 — useTaxSummary.ts
+- Limpiar `|| 'bullet'` (líneas 85, 94)
+- Payments: obtener de TODAS las inversiones del usuario (no solo completas)
+- Proyección: solo de inversiones tracking_ready + activas
 
-### D2 — Badge "Sin previsión"
+#### Paso 8 — InvestmentList.tsx
+- Nueva prop: `completedInvestments`
+- Nueva sección colapsable "Finalizadas" (misma estructura que "Pendientes")
+- Orden visual: Pendientes → Activas → Finalizadas
+- Limpiar `incomeModel: draft.incomeModel || 'bullet'` (línea 260)
 
-En la misma celda, evaluar forecast_ready usando `getInvestmentCompletionStatus` con `scheduleMap`. Si `isPortfolioReady && !isForecastReady`:
-
-```tsx
-<Badge variant="outline" className="text-xs text-muted-foreground">
-  {t('investments.badge.noForecast')}
-</Badge>
-```
-
-Prop nueva: `scheduleMap?: Record<string, InvestmentScheduleEntry[]>`.
-
----
-
-### D3 — Datos del modelo en detalle
-
-Añadir al grid de datos (antes de las fechas, línea ~117):
-- **Tipo de rendimiento** — siempre visible con `t('investments.incomeModel.*')` 
-- **Frecuencia** — solo si `paymentFrequency` tiene valor
-- **Devolución del capital** — solo si `principalReturnType` tiene valor (criterio del usuario)
-
----
-
-### D4 — Sección "Cobros esperados"
-
-Nueva sección entre "Returns Summary" y "Payments List", visible **solo si `schedule.length > 0`**:
-- Header: `t('investments.detail.expectedSchedule')`
-- Tabla simple: fecha | importe | tipo | estado
-- Ordenado por fecha ascendente
-- Prop nueva: `schedule?: InvestmentScheduleEntry[]`
-
----
-
-### D5 — Cálculos correctos en detalle
-
-Líneas 88-90 usan `calculateInvestmentTotalReturn` para todos los tipos. Corrección:
-- Importar `calculateExpectedReturnFromSchedule` y `InvestmentScheduleEntry`
-- Si `periodic_fixed || amortizing` y `schedule.length > 0`: usar `calculateExpectedReturnFromSchedule`
-- Si `variable_or_unknown`: `totalReturnAmount = 0`, `totalReturnPercent = 0`
-- Si `bullet`: mantener cálculo actual
-
----
-
-### Cableado mínimo
-
-**`Index.tsx`** (línea ~50-65): extraer `scheduleMap` del destructuring de `useInvestments()`, pasarlo a `InvestmentList`:
-```tsx
-<InvestmentList ... scheduleMap={scheduleMap} />
-```
-
-**`InvestmentList.tsx`**: recibir `scheduleMap`, pasar `schedule={scheduleMap?.[viewingInvestment.id] || []}` a `InvestmentDetail`.
+#### Paso 9 — Index.tsx
+- Destructurar `completedInvestments` de `useInvestments()`
+- Pasar a `InvestmentList`
+- `PlatformDistributionChart`: `[...activeInvestments, ...completedInvestments]`
+- `InvestmentTimelineChart`: solo `activeInvestments`
+- `UpcomingMaturityList`: solo `activeInvestments` (ya filtra por expectedEndDate)
 
 ---
 
 ### Riesgos
 
-- **D6 arregla un bug preexistente**: el detalle mostraba claves crudas por mismatch de prefijo. Se añaden las claves correctas.
-- **D5 cambia números del detalle** para periodic/amortizing: ahora usa schedule real (consistente con Fase C).
-- **D1/D2 añaden 1-2 badges** discretos por fila. Impacto visual mínimo.
+1. **Inversiones existentes sin expectedEndDate**: pasarán a "Pendientes". Cambio visible y deseado.
+2. **Defaults en BD ya aplicados**: inversiones antiguas con `income_model = 'bullet'` por DEFAULT ya tienen el valor real en BD — no se pierden.
+3. **Renaming isPortfolioReady → isTrackingReady**: hay que buscar todas las referencias. Si alguna se escapa, error de compilación (fácil de detectar).
+4. **Payments de inversiones incompletas**: hoy se pierden del fiscal. El paso 7 lo corrige.
 
-### Qué queda pendiente (futuro)
-- Edición manual del schedule
-- Match automático pagos reales ↔ schedule entries
-- Eliminar `ReturnComparisonChart` (código muerto)
-- Eliminar claves duplicadas `investDetail.*` (antiguas)
+### Casos de datos existentes
 
+| Caso | Hoy | Después |
+|------|-----|---------|
+| Activa con todos los datos | Completadas | Activas ✓ |
+| Activa sin expectedEndDate | Completadas | Pendientes |
+| Activa sin expectedReturn | Completadas | Pendientes |
+| status=completed con datos | Completadas (mezclada) | Finalizadas |
+| Borrador | Pendientes | Pendientes |
+| Payments de inversión incompleta | Excluidos de fiscal | Incluidos en fiscal |

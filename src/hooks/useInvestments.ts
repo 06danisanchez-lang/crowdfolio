@@ -391,6 +391,18 @@ export function useInvestments() {
         notes: inv.notes || null,
       }).select().single();
       if (error) { console.error('Error importing investment:', error); continue; }
+
+      // Generate schedule for imported investment (same as addInvestment)
+      await saveScheduleForInvestment(data.id, {
+        amount: inv.amount,
+        expectedReturn: inv.expectedReturn,
+        incomeModel: inv.incomeModel,
+        paymentFrequency: inv.paymentFrequency,
+        principalReturnType: inv.principalReturnType,
+        investmentDate: inv.investmentDate,
+        expectedEndDate: inv.expectedEndDate,
+      });
+
       if (inv.payments && inv.payments.length > 0) {
         const paymentsToInsert = inv.payments.map(p => ({
           investment_id: data.id, date: p.date, amount: p.amount, type: p.type, notes: p.notes || null,

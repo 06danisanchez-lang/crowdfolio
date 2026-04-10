@@ -162,13 +162,16 @@ export function InvestmentList({
   return (
     <div className="space-y-4">
       {/* Incomplete investments section */}
-      <div className="rounded-lg border border-orange-200 dark:border-orange-900/50 bg-orange-50/50 dark:bg-orange-950/20 p-4 space-y-3">
-          <div className="flex items-center gap-2">
+      <Collapsible defaultOpen={incompleteInvestments.length > 0}>
+        <div className="rounded-lg border border-orange-200 dark:border-orange-900/50 bg-orange-50/50 dark:bg-orange-950/20 p-4 space-y-3">
+          <CollapsibleTrigger className="flex items-center gap-2 w-full text-left">
             <AlertTriangle className="h-4 w-4 text-orange-500" />
-            <h3 className="text-sm font-semibold">
+            <h3 className="text-sm font-semibold flex-1">
               {t('investments.incomplete.title')} ({incompleteInvestments.length})
             </h3>
-          </div>
+            <ChevronDown className="h-4 w-4 text-muted-foreground transition-transform duration-200 [[data-state=open]_&]:rotate-180" />
+          </CollapsibleTrigger>
+          <CollapsibleContent>
           {incompleteInvestments.length === 0 ? (
             <p className="text-sm text-muted-foreground">{t('investments.incomplete.empty')}</p>
           ) : (
@@ -244,7 +247,6 @@ export function InvestmentList({
                     <Button
                       variant="ghost"
                       size="sm"
-                      className="text-destructive"
                       onClick={() => setDeleteId(draft.id)}
                     >
                       <Trash2 className="h-4 w-4" />
@@ -255,7 +257,9 @@ export function InvestmentList({
             })}
           </div>
           )}
+          </CollapsibleContent>
         </div>
+      </Collapsible>
       {/* Filters */}
       <div className="flex flex-col gap-4 sm:flex-row">
         <div className="relative flex-1">

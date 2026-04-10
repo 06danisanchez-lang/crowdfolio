@@ -54,6 +54,7 @@ const Index = () => {
     isLoading,
     error: investmentsError,
     summary,
+    scheduleMap,
     addInvestment,
     addDraftInvestment,
     updateInvestment,
@@ -344,6 +345,7 @@ const Index = () => {
             <InvestmentList
               investments={investments}
               incompleteInvestments={incompleteInvestments}
+              scheduleMap={scheduleMap}
               onUpdate={updateInvestment}
               onDelete={deleteInvestment}
               onAddPayment={addPayment}

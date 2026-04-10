@@ -60,7 +60,7 @@ const investmentSchema = z.object({
   projectName: z.string().min(1, 'El nombre del proyecto es requerido'),
   amount: z.number().min(1, 'El monto debe ser mayor a 0'),
   investmentDate: z.date(),
-  expectedEndDate: z.date().optional(),
+  expectedEndDate: z.date({ required_error: 'La fecha fin estimada es requerida' }),
   expectedReturn: z.number().min(0, 'El rendimiento debe ser mayor o igual a 0'),
   incomeModel: z.enum(['bullet', 'periodic_fixed', 'amortizing', 'variable_or_unknown'] as const),
   paymentFrequency: z.enum(['monthly', 'quarterly', 'semiannual', 'annual'] as const).optional(),

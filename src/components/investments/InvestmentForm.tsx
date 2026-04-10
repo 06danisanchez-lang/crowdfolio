@@ -215,6 +215,9 @@ export function InvestmentForm({
         notes:              values.notes,
         investmentDate:     date.toISOString(),
         expectedEndDate:    end?.toISOString(),
+        incomeModel:        values.incomeModel as string | undefined,
+        paymentFrequency:   values.paymentFrequency as string | undefined,
+        principalReturnType: values.principalReturnType as string | undefined,
       });
     });
 
@@ -243,6 +246,9 @@ export function InvestmentForm({
       expectedEndDate:    saved.formValues.expectedEndDate
         ? new Date(saved.formValues.expectedEndDate)
         : undefined,
+      incomeModel:        (saved.formValues.incomeModel as any) ?? 'bullet',
+      paymentFrequency:   (saved.formValues.paymentFrequency as any) ?? undefined,
+      principalReturnType: (saved.formValues.principalReturnType as any) ?? undefined,
     });
 
     setDraftExists(true);

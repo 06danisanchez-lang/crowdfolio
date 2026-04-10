@@ -28,6 +28,9 @@ interface InvestmentRow {
   investment_date: string;
   expected_end_date: string | null;
   expected_return: number;
+  income_model: string | null;
+  payment_frequency: string | null;
+  principal_return_type: string | null;
   status: string;
   notes: string | null;
   created_at: string;
@@ -79,7 +82,7 @@ export function useTaxSummary(year: number) {
             projectName: inv.project_name,
             amount: inv.amount != null ? Number(inv.amount) : null,
             investmentDate: inv.investment_date,
-            incomeModel: (inv as any).income_model || 'bullet',
+            incomeModel: inv.income_model || 'bullet',
             status: inv.status,
           }))
           .map((inv) => ({
@@ -88,9 +91,9 @@ export function useTaxSummary(year: number) {
             projectName: inv.project_name, amount: Number(inv.amount),
             investmentDate: inv.investment_date, expectedEndDate: inv.expected_end_date || undefined,
             expectedReturn: Number(inv.expected_return), status: inv.status as Investment['status'],
-            incomeModel: ((inv as any).income_model || 'bullet') as Investment['incomeModel'],
-            paymentFrequency: (inv as any).payment_frequency || undefined,
-            principalReturnType: (inv as any).principal_return_type || undefined,
+            incomeModel: (inv.income_model || 'bullet') as Investment['incomeModel'],
+            paymentFrequency: (inv.payment_frequency || undefined) as Investment['paymentFrequency'],
+            principalReturnType: (inv.principal_return_type || undefined) as Investment['principalReturnType'],
             notes: inv.notes || undefined, payments: [],
             createdAt: inv.created_at, updatedAt: inv.updated_at,
           }));

@@ -9,7 +9,7 @@ export type Platform =
 
 export type View = 'dashboard' | 'investments' | 'future-investments' | 'tax' | 'settings' | 'profile' | 'admin';
 
-export type InvestmentStatus = 'active' | 'pending' | 'completed' | 'defaulted';
+export type InvestmentStatus = 'draft' | 'active' | 'pending' | 'completed' | 'defaulted';
 
 export type IncomeModel = 'bullet' | 'periodic_fixed' | 'amortizing' | 'variable_or_unknown';
 
@@ -108,6 +108,7 @@ export interface InvestmentScheduleEntry {
 }
 
 export const STATUS_OPTIONS: { value: InvestmentStatus; label: string; color: string }[] = [
+  { value: 'draft', label: 'Borrador', color: 'status-draft' },
   { value: 'active', label: 'Activo', color: 'status-active' },
   { value: 'pending', label: 'Pendiente', color: 'status-pending' },
   { value: 'completed', label: 'Completado', color: 'status-completed' },

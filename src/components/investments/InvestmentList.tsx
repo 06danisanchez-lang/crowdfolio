@@ -10,7 +10,8 @@ import {
   ArrowUpDown,
   Filter,
   Search,
-  AlertTriangle
+  AlertTriangle,
+  ChevronDown
 } from 'lucide-react';
 import { Investment, DraftInvestment, PLATFORMS, STATUS_OPTIONS, Platform, InvestmentStatus } from '@/types/investment';
 import { getInvestmentCompletionStatus } from '@/lib/investment/completeness';
@@ -48,6 +49,7 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
+import { Collapsible, CollapsibleTrigger, CollapsibleContent } from '@/components/ui/collapsible';
 import { InvestmentForm } from './InvestmentForm';
 import { InvestmentDetail } from './InvestmentDetail';
 
@@ -99,6 +101,7 @@ export function InvestmentList({
   const getStatusBadge = (status: InvestmentStatus) => {
     const statusOption = STATUS_OPTIONS.find(s => s.value === status);
     const colorMap: Record<InvestmentStatus, string> = {
+      draft: 'bg-muted text-muted-foreground',
       active: 'bg-status-active text-white',
       pending: 'bg-status-pending text-white',
       completed: 'bg-status-completed text-white',
@@ -159,13 +162,16 @@ export function InvestmentList({
   return (
     <div className="space-y-4">
       {/* Incomplete investments section */}
-      <div className="rounded-lg border border-orange-200 dark:border-orange-900/50 bg-orange-50/50 dark:bg-orange-950/20 p-4 space-y-3">
-          <div className="flex items-center gap-2">
+      <Collapsible defaultOpen={incompleteInvestments.length > 0}>
+        <div className="rounded-lg border border-orange-200 dark:border-orange-900/50 bg-orange-50/50 dark:bg-orange-950/20 p-4 space-y-3">
+          <CollapsibleTrigger className="flex items-center gap-2 w-full text-left">
             <AlertTriangle className="h-4 w-4 text-orange-500" />
-            <h3 className="text-sm font-semibold">
+            <h3 className="text-sm font-semibold flex-1">
               {t('investments.incomplete.title')} ({incompleteInvestments.length})
             </h3>
-          </div>
+            <ChevronDown className="h-4 w-4 text-muted-foreground transition-transform duration-200 [[data-state=open]_&]:rotate-180" />
+          </CollapsibleTrigger>
+          <CollapsibleContent>
           {incompleteInvestments.length === 0 ? (
             <p className="text-sm text-muted-foreground">{t('investments.incomplete.empty')}</p>
           ) : (
@@ -177,6 +183,8 @@ export function InvestmentList({
                 amount: draft.amount,
                 investmentDate: draft.investmentDate,
                 expectedReturn: draft.expectedReturn,
+                expectedEndDate: draft.expectedEndDate,
+                incomeModel: draft.incomeModel,
                 status: draft.status,
               });
               return (
@@ -239,7 +247,6 @@ export function InvestmentList({
                     <Button
                       variant="ghost"
                       size="sm"
-                      className="text-destructive"
                       onClick={() => setDeleteId(draft.id)}
                     >
                       <Trash2 className="h-4 w-4" />
@@ -250,7 +257,9 @@ export function InvestmentList({
             })}
           </div>
           )}
+          </CollapsibleContent>
         </div>
+      </Collapsible>
       {/* Filters */}
       <div className="flex flex-col gap-4 sm:flex-row">
         <div className="relative flex-1">

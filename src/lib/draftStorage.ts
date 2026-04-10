@@ -7,7 +7,7 @@ const VALID_PLATFORMS = [
 ] as const;
 
 const VALID_STATUSES = [
-  'active', 'pending', 'completed', 'defaulted',
+  'draft', 'active', 'pending', 'completed', 'defaulted',
 ] as const;
 
 export interface DraftFormValues {
@@ -20,6 +20,9 @@ export interface DraftFormValues {
   notes?: string;
   investmentDate: string;   // ISO via .toISOString()
   expectedEndDate?: string; // ISO via .toISOString(), optional
+  incomeModel?: string;
+  paymentFrequency?: string;
+  principalReturnType?: string;
 }
 
 export interface DraftPayload {

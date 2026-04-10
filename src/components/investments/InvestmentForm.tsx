@@ -260,7 +260,7 @@ export function InvestmentForm({
       expectedEndDate:    saved.formValues.expectedEndDate
         ? new Date(saved.formValues.expectedEndDate)
         : undefined,
-      incomeModel:        (saved.formValues.incomeModel as any) ?? 'bullet',
+      incomeModel:        (saved.formValues.incomeModel as any) || undefined,
       paymentFrequency:   (saved.formValues.paymentFrequency as any) ?? undefined,
       principalReturnType: (saved.formValues.principalReturnType as any) ?? undefined,
     });

@@ -130,7 +130,7 @@ export function useInvestments() {
       }));
 
       setAllRawInvestments(mapped);
-      setScheduleCountMap(schedCounts);
+      setScheduleMap(schedMap);
     } catch (err) {
       clearTimeout(timeoutId);
       if (requestIdRef.current !== currentId) return;
@@ -461,14 +461,26 @@ export function useInvestments() {
         expectedEndDate: inv.expectedEndDate,
         incomeModel: inv.incomeModel,
         paymentFrequency: inv.paymentFrequency,
-        hasSchedule: (scheduleCountMap[inv.id] || 0) > 0,
+        hasSchedule: (scheduleMap[inv.id]?.length || 0) > 0,
         status: inv.status,
       });
       return status.isForecastReady;
     });
+    // C3: route expected return calculation by incomeModel
+    const getExpectedReturn = (inv: Investment): number => {
+      if (inv.incomeModel === 'periodic_fixed' || inv.incomeModel === 'amortizing') {
+        const schedule = scheduleMap[inv.id];
+        if (schedule && schedule.length > 0) {
+          return calculateExpectedReturnFromSchedule(schedule, inv.amount, inv.incomeModel);
+        }
+        return 0; // no schedule → cannot forecast
+      }
+      // bullet (and fallback)
+      return calculateInvestmentTotalReturn(inv);
+    };
 
     const activeCapital = activeInvestments.reduce((s, i) => s + i.amount, 0);
-    const expectedProfit = forecastReady.reduce((s, i) => s + calculateInvestmentTotalReturn(i), 0);
+    const expectedProfit = forecastReady.reduce((s, i) => s + getExpectedReturn(i), 0);
     const estimatedTotal = forecastReady.reduce((s, i) => s + i.amount, 0) + expectedProfit;
 
     const totalCollected = investments.reduce((s, i) => s + i.payments.reduce((ps, p) => ps + p.amount, 0), 0);

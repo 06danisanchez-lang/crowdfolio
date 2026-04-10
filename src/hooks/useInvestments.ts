@@ -491,7 +491,7 @@ export function useInvestments() {
     return {
       totalInvested: investments.reduce((sum, inv) => sum + inv.amount, 0),
       totalReturns: totalCollected,
-      expectedReturns: forecastReady.reduce((sum, inv) => sum + calculateInvestmentTotalReturn(inv), 0),
+      expectedReturns: forecastReady.reduce((sum, inv) => sum + getExpectedReturn(inv), 0),
       activeInvestments: activeInvestments.length,
       completedInvestments: investments.filter(inv => inv.status === 'completed').length,
       averageReturn: forecastReady.length > 0 ? forecastReady.reduce((sum, inv) => sum + inv.expectedReturn, 0) / forecastReady.length : 0,
@@ -520,7 +520,7 @@ export function useInvestments() {
         completedCount: investments.filter(inv => inv.status === 'completed').length,
       },
     };
-  }, [investments, scheduleCountMap]);
+  }, [investments, scheduleMap]);
 
   return {
     investments, incompleteInvestments, incompleteCount, allInvestmentsCount,

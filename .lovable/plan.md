@@ -1,61 +1,125 @@
 
 
-## Plan: Fase B — B1, B2, B3
+## Plan: Fase C — Previsiones y cálculos por tipo
 
-### B1 — Refactor interno de `InvestmentForm.tsx`
+### C1 — Exponer `scheduleMap` en `useInvestments.ts`
 
-Extraer 3 funciones render dentro del mismo componente (el actual `renderForm` de línea 411-815):
+**Archivo**: `src/hooks/useInvestments.ts`
 
-- **`renderBanners()`** — banners de draft restaurado, inversión incompleta, forecast warning, validation error (líneas 414-465)
-- **`renderCommonFields()`** — platform, customPlatformName, projectName (líneas 467-520)
-- **`renderIncomeModelFields()`** — incomeModel selector + paymentFrequency + principalReturnType + amount/expectedReturn grid + dates grid (líneas 522-736). Estos campos van aquí porque amount, expectedReturn y dates son contextualmente dependientes del tipo de inversión.
-- **`renderActions()`** — status selector, sourceUrl, notes, sticky footer con botones (líneas 738-813)
+Actualmente el hook ya hace fetch de `investment_schedule` (línea 83-92) pero solo guarda conteos (`scheduleCountMap`). El cambio:
 
-`renderForm()` queda como: `renderBanners()` + `renderCommonFields()` + `renderIncomeModelFields()` + `renderActions()`
+- En vez de (o además de) contar, guardar los datos completos: `scheduleMap: Record<string, InvestmentScheduleEntry[]>`
+- El fetch actual (línea 83-86) ya trae `investment_id` — ampliarlo a `select('*')` para obtener `expected_amount`, `type`, `expected_date`, `status`
+- Nuevo state: `const [scheduleMap, setScheduleMap] = useState<Record<string, InvestmentScheduleEntry[]>>({});`
+- Derivar `scheduleCountMap` del `scheduleMap` para no romper los consumidores existentes: `Object.fromEntries(Object.entries(scheduleMap).map(([k, v]) => [k, v.length]))`
+- Exponer `scheduleMap` en el return del hook
 
-Sin cambio funcional.
+**Riesgo**: bajo. Amplía datos ya existentes. El `scheduleCountMap` se mantiene como derivado.
 
-### B2 — Limpiar campos incompatibles al cambiar `incomeModel`
+### C2 — Nueva función en `calculations.ts`
 
-Añadir un `useEffect` tras la línea 186 (donde se define `watchIncomeModel`):
+**Archivo**: `src/lib/investment/calculations.ts`
 
+Añadir una función explícita:
+
+```typescript
+/**
+ * Calcula el rendimiento esperado total para inversiones periodic_fixed o amortizing,
+ * basándose en el schedule real (investment_schedule).
+ *
+ * - periodic_fixed: suma de expected_amount donde type === 'interest'
+ * - amortizing: suma total de expected_amount - amount (el total de pagos incluye
+ *   principal + intereses, así que el rendimiento es la diferencia)
+ */
+export function calculateExpectedReturnFromSchedule(
+  schedule: InvestmentScheduleEntry[],
+  amount: number,
+  incomeModel: 'periodic_fixed' | 'amortizing'
+): number
 ```
-useEffect(() => {
-  if (watchIncomeModel === 'bullet' || watchIncomeModel === 'variable_or_unknown') {
-    form.setValue('paymentFrequency', undefined);
-    form.setValue('principalReturnType', undefined);
+
+Para `periodic_fixed`: `schedule.filter(e => e.type === 'interest').reduce((s, e) => s + e.expectedAmount, 0)`
+
+Para `amortizing`: `schedule.reduce((s, e) => s + e.expectedAmount, 0) - amount`
+- Esto funciona porque en amortización francesa cada cuota incluye principal + interés. La suma total de cuotas menos el principal original = rendimiento.
+
+Importar `InvestmentScheduleEntry` desde `@/types/investment`.
+
+### C3 — Corregir summary en `useInvestments.ts`
+
+**Archivo**: `src/hooks/useInvestments.ts`
+
+En el `useMemo` del summary (líneas 442-501), cambiar las líneas 461 y 472 que usan `calculateInvestmentTotalReturn` para todas las inversiones forecast_ready.
+
+Nueva lógica para calcular el rendimiento esperado de una inversión:
+
+```typescript
+function getExpectedReturn(inv: Investment): number {
+  if (inv.incomeModel === 'periodic_fixed' || inv.incomeModel === 'amortizing') {
+    const schedule = scheduleMap[inv.id];
+    if (schedule && schedule.length > 0) {
+      return calculateExpectedReturnFromSchedule(schedule, inv.amount, inv.incomeModel);
+    }
+    return 0; // sin schedule → no debería estar en forecastReady, pero safety
   }
-}, [watchIncomeModel, form]);
+  // bullet (y fallback)
+  return calculateInvestmentTotalReturn(inv);
+}
 ```
 
-Solo limpia `paymentFrequency` y `principalReturnType`. No toca otros campos.
+Aplicar esto en:
+- Línea 461: `expectedProfit = forecastReady.reduce((s, i) => s + getExpectedReturn(i), 0)`
+- Línea 472: `expectedReturns: forecastReady.reduce((sum, inv) => sum + getExpectedReturn(inv), 0)`
 
-### B3 — Auto-draft en `updateInvestment` + toast en caller
+Añadir `scheduleMap` a las dependencias del `useMemo`.
 
-**`src/hooks/useInvestments.ts`** — en `updateInvestment` (línea 302-338):
+### C4 — Documentar `calculateInvestmentTotalReturn`
 
-Tras regenerar schedule y antes de `fetchInvestments()` (línea 337):
-1. Merge los updates con `current` (que ya se calcula en línea 322-331)
-2. Evaluar con `isInvestmentComplete` (ya importado) usando los campos merged
-3. Si `!isComplete` y el status merged no es `'draft'`: hacer `await supabase.from('investments').update({ status: 'draft' }).eq('id', id)`
-4. Cambiar return type a `Promise<{ demotedToDraft: boolean }>` en vez de `void`
+**Archivo**: `src/lib/investment/calculations.ts`
 
-**`src/components/investments/InvestmentList.tsx`** — en los 2 puntos donde llama `onUpdate` (líneas 239, 240, 374):
-- Cambiar `onUpdate` prop type a `(id: string, updates: Partial<Investment>) => Promise<{ demotedToDraft?: boolean } | void>`
-- Tras llamar `onUpdate`, si resultado tiene `demotedToDraft: true`, mostrar toast con `sonner`
+Actualizar el JSDoc de `calculateInvestmentTotalReturn` y `calculateInvestmentTotalReturnPercent`:
 
-**`src/pages/Index.tsx`** — sin cambios necesarios, pasa `updateInvestment` directamente.
+```
+/**
+ * Calcula el rendimiento total esperado usando interés simple.
+ * SOLO VÁLIDO para inversiones tipo 'bullet'.
+ * Para periodic_fixed / amortizing, usar calculateExpectedReturnFromSchedule.
+ */
+```
+
+No renombrar — se usa en `InvestmentDetail.tsx` (Fase D lo corregirá). Renombrar ahora obligaría a tocar más archivos fuera del alcance.
+
+### C5 — `ReturnComparisonChart`
+
+**Resultado de la comprobación**: el componente NO se importa en ningún sitio de la app. Es código muerto.
+
+**Decisión**: no tocarlo. No merece la pena añadir lógica a un componente sin consumidor. Se reporta como código muerto para decisión futura (Fase D o limpieza).
 
 ### Archivos a tocar
 
 | Archivo | Cambio |
 |---------|--------|
-| `src/components/investments/InvestmentForm.tsx` | B1: extraer 4 funciones render. B2: useEffect para limpiar campos |
-| `src/hooks/useInvestments.ts` | B3: auto-draft + retorno `{ demotedToDraft }` |
-| `src/components/investments/InvestmentList.tsx` | B3: manejar retorno async para toast |
+| `src/hooks/useInvestments.ts` | C1: scheduleMap completo. C3: summary usa cálculo por tipo |
+| `src/lib/investment/calculations.ts` | C2: nueva `calculateExpectedReturnFromSchedule`. C4: documentar limitación de funciones existentes |
 
-### Riesgos
-- B3: una edición que borre platform/amount hará que la inversión baje a borradores. Toast explícito al usuario.
-- B2: el useEffect se dispara al montar si `watchIncomeModel` ya es bullet — no causa daño porque los campos ya serían undefined, pero verificaremos que no resetee datos en edición de inversiones existentes tipo bullet. Se añadirá guard con `useRef` para ignorar el montaje inicial.
-- B1: refactor puro, 0 riesgo funcional.
+### Ajuste mínimo adicional previsto
+
+- Importar `InvestmentScheduleEntry` en `calculations.ts` desde `@/types/investment`
+- Puede requerirse ajuste del import en `useInvestments.ts` para la nueva función
+
+### Efectos visibles
+
+- **KPIs de previsión cambiarán** para usuarios con inversiones `periodic_fixed` o `amortizing` que tengan schedule generado. Los números serán más precisos (basados en flujos reales vs interés simple genérico).
+- Si una inversión periodic_fixed tiene schedule con 12 cuotas de interés de 50€, el rendimiento esperado será 600€ exactos, no una aproximación por interés simple.
+- Inversiones `bullet` no cambian.
+- Inversiones `variable_or_unknown` ya estaban fuera — sin cambio.
+
+### Qué queda para Fase D
+
+- Schedule visible en `InvestmentDetail.tsx` (sección "Cobros esperados")
+- Corregir `InvestmentDetail.tsx` para usar `calculateExpectedReturnFromSchedule` en periodic/amortizing
+- Badges de `incomeModel` en lista
+- Badge "Sin previsión" para portfolio_ready no forecast_ready
+- Labels i18n nuevos
+- Decisión sobre `ReturnComparisonChart` (eliminar o activar)
 

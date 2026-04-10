@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { useLanguage } from '@/contexts/LanguageContext';
+import { toast } from 'sonner';
 import { format, parseISO } from 'date-fns';
 import { es } from 'date-fns/locale';
 import { 
@@ -56,7 +57,7 @@ import { InvestmentDetail } from './InvestmentDetail';
 interface InvestmentListProps {
   investments: Investment[];
   incompleteInvestments?: DraftInvestment[];
-  onUpdate: (id: string, updates: Partial<Investment>) => void;
+  onUpdate: (id: string, updates: Partial<Investment>) => Promise<{ demotedToDraft?: boolean } | void> | void;
   onDelete: (id: string) => void;
   onAddPayment: (investmentId: string, payment: { date: string; amount: number; type: 'dividend' | 'principal' | 'interest'; notes?: string }) => void;
   onDeletePayment: (investmentId: string, paymentId: string) => void;
@@ -236,8 +237,15 @@ export function InvestmentList({
                         id: draft.id,
                       } as Investment}
                       isDraft
-                      onSubmit={(data) => onUpdate(draft.id, data)}
-                      onSubmitDraft={allowDraftSave ? (data) => onUpdate(draft.id, data) : undefined}
+                      onSubmit={async (data) => {
+                        const result = await onUpdate(draft.id, data);
+                        if (result && 'demotedToDraft' in result && result.demotedToDraft) {
+                          toast.warning('La inversión ha pasado a pendientes por faltar datos obligatorios.');
+                        }
+                      }}
+                      onSubmitDraft={allowDraftSave ? async (data) => {
+                        await onUpdate(draft.id, data);
+                      } : undefined}
                       trigger={
                         <Button variant="outline" size="sm">
                           {t('investments.incomplete.cta')}
@@ -371,7 +379,12 @@ export function InvestmentList({
                         </DropdownMenuItem>
                         <InvestmentForm
                           initialData={investment}
-                          onSubmit={(data) => onUpdate(investment.id, data)}
+                          onSubmit={async (data) => {
+                            const result = await onUpdate(investment.id, data);
+                            if (result && 'demotedToDraft' in result && result.demotedToDraft) {
+                              toast.warning('La inversión ha pasado a pendientes por faltar datos obligatorios.');
+                            }
+                          }}
                           trigger={
                             <DropdownMenuItem onSelect={(e) => e.preventDefault()}>
                               <Pencil className="mr-2 h-4 w-4" />

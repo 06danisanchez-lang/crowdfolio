@@ -185,6 +185,20 @@ export function InvestmentForm({
   const watchPlatform = form.watch('platform');
   const watchIncomeModel = form.watch('incomeModel') as IncomeModel | undefined;
 
+  // B2 — Clear incompatible fields when incomeModel changes to bullet or variable_or_unknown
+  const incomeModelMountRef = useRef(true);
+  useEffect(() => {
+    // Skip the initial mount to avoid clearing fields on edit of existing bullet/variable investments
+    if (incomeModelMountRef.current) {
+      incomeModelMountRef.current = false;
+      return;
+    }
+    if (watchIncomeModel === 'bullet' || watchIncomeModel === 'variable_or_unknown') {
+      form.setValue('paymentFrequency', undefined);
+      form.setValue('principalReturnType', undefined);
+    }
+  }, [watchIncomeModel, form]);
+
   // Clear validation error when form changes
   useEffect(() => {
     if (!validationError) return;
@@ -280,6 +294,8 @@ export function InvestmentForm({
         });
       }
       // new investment: intentionally NO form.reset() — draft survives close/reopen
+      // Reset the incomeModel mount guard so it's ready for the next open
+      incomeModelMountRef.current = true;
     }
   }, [open, initialData, form]);
 
@@ -408,134 +424,169 @@ export function InvestmentForm({
     });
   };
 
-  const renderForm = () => (
-    <Form {...form}>
-      <form onSubmit={form.handleSubmit(handleSubmit)} className="space-y-4">
-        {/* Draft restored banner */}
-        {draftExists && draftRestored && (
-          <div className="flex items-center justify-between p-3 rounded-lg bg-muted/50 border text-sm">
-            <span className="text-muted-foreground">
-              {t('investments.form.draft.restored')}
-            </span>
-            <Button
-              type="button"
-              variant="ghost"
-              size="sm"
-              className="text-destructive hover:text-destructive h-auto py-1 px-2"
-              onClick={handleDiscardDraft}
-            >
-              {t('investments.form.draft.discard')}
-            </Button>
+  // ─── B1: Render helpers ────────────────────────────────────────
+
+  const renderBanners = () => (
+    <>
+      {/* Draft restored banner */}
+      {draftExists && draftRestored && (
+        <div className="flex items-center justify-between p-3 rounded-lg bg-muted/50 border text-sm">
+          <span className="text-muted-foreground">
+            {t('investments.form.draft.restored')}
+          </span>
+          <Button
+            type="button"
+            variant="ghost"
+            size="sm"
+            className="text-destructive hover:text-destructive h-auto py-1 px-2"
+            onClick={handleDiscardDraft}
+          >
+            {t('investments.form.draft.discard')}
+          </Button>
+        </div>
+      )}
+
+      {/* Incomplete investment banner */}
+      {isDraft && completionStatus && !completionStatus.isComplete && (
+        <div className="flex items-start gap-2 p-3 rounded-lg bg-muted/50 border text-sm">
+          <AlertTriangle className="h-4 w-4 text-orange-500 mt-0.5 shrink-0" />
+          <div>
+            <p className="text-muted-foreground">{t('investments.incomplete.banner')}</p>
+            <p className="text-muted-foreground mt-1">
+              {t('investments.incomplete.missing')}: {completionStatus.missingFields.map(f => t(f)).join(', ')}
+            </p>
           </div>
-        )}
+        </div>
+      )}
 
-        {/* Incomplete investment banner */}
-        {isDraft && completionStatus && !completionStatus.isComplete && (
-          <div className="flex items-start gap-2 p-3 rounded-lg bg-muted/50 border text-sm">
-            <AlertTriangle className="h-4 w-4 text-orange-500 mt-0.5 shrink-0" />
-            <div>
-              <p className="text-muted-foreground">{t('investments.incomplete.banner')}</p>
-              <p className="text-muted-foreground mt-1">
-                {t('investments.incomplete.missing')}: {completionStatus.missingFields.map(f => t(f)).join(', ')}
-              </p>
-            </div>
+      {/* Forecast warning: portfolio_ready but not forecast_ready */}
+      {isDraft && completionStatus && completionStatus.isComplete && !completionStatus.isForecastReady && (
+        <div className="flex items-start gap-2 p-3 rounded-lg bg-muted/50 border text-sm">
+          <AlertTriangle className="h-4 w-4 text-muted-foreground mt-0.5 shrink-0" />
+          <p className="text-muted-foreground">{t('investments.incomplete.forecastWarning')}</p>
+        </div>
+      )}
+
+      {/* Validation error block — shown when "Guardar inversión" fails */}
+      {validationError && (
+        <div className="flex items-start gap-2 p-3 rounded-lg bg-destructive/10 border border-destructive/30 text-sm">
+          <Info className="h-4 w-4 text-destructive mt-0.5 shrink-0" />
+          <div className="space-y-1">
+            <p className="font-medium text-destructive">{t('investments.validation.cannotComplete')}</p>
+            <p className="text-muted-foreground">{t('investments.validation.suggestDraft')}</p>
+            <p className="text-muted-foreground">
+              {t('investments.validation.missingFields')} {validationError.map(f => t(f)).join(', ')}
+            </p>
           </div>
-        )}
+        </div>
+      )}
+    </>
+  );
 
-        {/* Forecast warning: portfolio_ready but not forecast_ready */}
-        {isDraft && completionStatus && completionStatus.isComplete && !completionStatus.isForecastReady && (
-          <div className="flex items-start gap-2 p-3 rounded-lg bg-muted/50 border text-sm">
-            <AlertTriangle className="h-4 w-4 text-muted-foreground mt-0.5 shrink-0" />
-            <p className="text-muted-foreground">{t('investments.incomplete.forecastWarning')}</p>
-          </div>
-        )}
-
-        {/* Validation error block — shown when "Guardar inversión" fails */}
-        {validationError && (
-          <div className="flex items-start gap-2 p-3 rounded-lg bg-destructive/10 border border-destructive/30 text-sm">
-            <Info className="h-4 w-4 text-destructive mt-0.5 shrink-0" />
-            <div className="space-y-1">
-              <p className="font-medium text-destructive">{t('investments.validation.cannotComplete')}</p>
-              <p className="text-muted-foreground">{t('investments.validation.suggestDraft')}</p>
-              <p className="text-muted-foreground">
-                {t('investments.validation.missingFields')} {validationError.map(f => t(f)).join(', ')}
-              </p>
-            </div>
-          </div>
-        )}
-
-        <FormField
-          control={form.control}
-          name="platform"
-          render={({ field }) => (
-            <FormItem>
-              <FormLabel>Plataforma</FormLabel>
-              <Select onValueChange={field.onChange} value={field.value}>
-                <FormControl>
-                  <SelectTrigger>
-                    <SelectValue placeholder="Selecciona una plataforma" />
-                  </SelectTrigger>
-                </FormControl>
-                <SelectContent>
-                  {PLATFORMS.map((platform) => (
-                    <SelectItem key={platform.value} value={platform.value}>
-                      {platform.label}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-              <FormMessage />
-            </FormItem>
-          )}
-        />
-
-        {watchPlatform === 'other' && (
-          <FormField
-            control={form.control}
-            name="customPlatformName"
-            render={({ field }) => (
-              <FormItem>
-                <FormLabel>Nombre de la Plataforma</FormLabel>
-                <FormControl>
-                  <Input placeholder="Nombre de la plataforma" {...field} />
-                </FormControl>
-                <FormMessage />
-              </FormItem>
-            )}
-          />
-        )}
-
-        <FormField
-          control={form.control}
-          name="projectName"
-          render={({ field }) => (
-            <FormItem>
-              <FormLabel>Nombre del Proyecto</FormLabel>
+  const renderCommonFields = () => (
+    <>
+      <FormField
+        control={form.control}
+        name="platform"
+        render={({ field }) => (
+          <FormItem>
+            <FormLabel>Plataforma</FormLabel>
+            <Select onValueChange={field.onChange} value={field.value}>
               <FormControl>
-                <Input placeholder="Ej: Promoción Residencial Madrid" {...field} />
+                <SelectTrigger>
+                  <SelectValue placeholder="Selecciona una plataforma" />
+                </SelectTrigger>
+              </FormControl>
+              <SelectContent>
+                {PLATFORMS.map((platform) => (
+                  <SelectItem key={platform.value} value={platform.value}>
+                    {platform.label}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            <FormMessage />
+          </FormItem>
+        )}
+      />
+
+      {watchPlatform === 'other' && (
+        <FormField
+          control={form.control}
+          name="customPlatformName"
+          render={({ field }) => (
+            <FormItem>
+              <FormLabel>Nombre de la Plataforma</FormLabel>
+              <FormControl>
+                <Input placeholder="Nombre de la plataforma" {...field} />
               </FormControl>
               <FormMessage />
             </FormItem>
           )}
         />
+      )}
 
-        {/* Income Model selectors — only for real investments */}
-        {!isFuture && (
-          <>
+      <FormField
+        control={form.control}
+        name="projectName"
+        render={({ field }) => (
+          <FormItem>
+            <FormLabel>Nombre del Proyecto</FormLabel>
+            <FormControl>
+              <Input placeholder="Ej: Promoción Residencial Madrid" {...field} />
+            </FormControl>
+            <FormMessage />
+          </FormItem>
+        )}
+      />
+    </>
+  );
+
+  const renderIncomeModelFields = () => (
+    <>
+      {/* Income Model selectors — only for real investments */}
+      {!isFuture && (
+        <>
+          <FormField
+            control={form.control}
+            name="incomeModel"
+            render={({ field }) => (
+              <FormItem>
+                <FormLabel>{t('investments.field.incomeModel')}</FormLabel>
+                <Select onValueChange={field.onChange} value={field.value}>
+                  <FormControl>
+                    <SelectTrigger>
+                      <SelectValue placeholder={t('investments.incomeModel.placeholder')} />
+                    </SelectTrigger>
+                  </FormControl>
+                  <SelectContent>
+                    {INCOME_MODEL_OPTIONS.map((opt) => (
+                      <SelectItem key={opt.value} value={opt.value}>
+                        {t(opt.labelKey)}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                <FormMessage />
+              </FormItem>
+            )}
+          />
+
+          {(watchIncomeModel === 'periodic_fixed' || watchIncomeModel === 'amortizing') && (
             <FormField
               control={form.control}
-              name="incomeModel"
+              name="paymentFrequency"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>{t('investments.field.incomeModel')}</FormLabel>
+                  <FormLabel>{t('investments.field.paymentFrequency')}</FormLabel>
                   <Select onValueChange={field.onChange} value={field.value}>
                     <FormControl>
                       <SelectTrigger>
-                        <SelectValue placeholder={t('investments.incomeModel.placeholder')} />
+                        <SelectValue placeholder={t('investments.frequency.placeholder')} />
                       </SelectTrigger>
                     </FormControl>
                     <SelectContent>
-                      {INCOME_MODEL_OPTIONS.map((opt) => (
+                      {PAYMENT_FREQUENCY_OPTIONS.map((opt) => (
                         <SelectItem key={opt.value} value={opt.value}>
                           {t(opt.labelKey)}
                         </SelectItem>
@@ -546,248 +597,56 @@ export function InvestmentForm({
                 </FormItem>
               )}
             />
+          )}
 
-            {(watchIncomeModel === 'periodic_fixed' || watchIncomeModel === 'amortizing') && (
-              <FormField
-                control={form.control}
-                name="paymentFrequency"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>{t('investments.field.paymentFrequency')}</FormLabel>
-                    <Select onValueChange={field.onChange} value={field.value}>
-                      <FormControl>
-                        <SelectTrigger>
-                          <SelectValue placeholder={t('investments.frequency.placeholder')} />
-                        </SelectTrigger>
-                      </FormControl>
-                      <SelectContent>
-                        {PAYMENT_FREQUENCY_OPTIONS.map((opt) => (
-                          <SelectItem key={opt.value} value={opt.value}>
-                            {t(opt.labelKey)}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-            )}
-
-            {watchIncomeModel === 'amortizing' && (
-              <FormField
-                control={form.control}
-                name="principalReturnType"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>{t('investments.field.principalReturnType')}</FormLabel>
-                    <Select onValueChange={field.onChange} value={field.value || 'amortizing'}>
-                      <FormControl>
-                        <SelectTrigger>
-                          <SelectValue />
-                        </SelectTrigger>
-                      </FormControl>
-                      <SelectContent>
-                        {PRINCIPAL_RETURN_TYPE_OPTIONS.map((opt) => (
-                          <SelectItem key={opt.value} value={opt.value}>
-                            {t(opt.labelKey)}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-            )}
-          </>
-        )}
-
-        <div className="grid grid-cols-2 gap-4">
-          <FormField
-            control={form.control}
-            name="amount"
-            render={({ field }) => (
-              <FormItem>
-                <FormLabel>
-                  {isFuture ? t('future.form.estimatedAmount') : 'Monto (€)'}
-                </FormLabel>
-                <FormControl>
-                  <Input
-                    type="number"
-                    placeholder={isFuture ? '' : '1000'}
-                    {...field}
-                    onChange={(e) => {
-                      const value = e.target.value === '' ? (isFuture ? null : 0) : parseFloat(e.target.value);
-                      field.onChange(value);
-                    }}
-                    value={field.value ?? ''}
-                  />
-                </FormControl>
-                <FormMessage />
-              </FormItem>
-            )}
-          />
-
-          <FormField
-            control={form.control}
-            name="expectedReturn"
-            render={({ field }) => (
-              <FormItem>
-                <FormLabel>
-                  {isFuture ? t('future.form.estimatedReturn') : 'Rentabilidad Anual (%)'}
-                </FormLabel>
-                <FormControl>
-                  <Input
-                    type="number"
-                    step="0.1"
-                    placeholder={isFuture ? '' : '10'}
-                    {...field}
-                    onChange={(e) => field.onChange(e.target.value === '' ? (isFuture ? null : 0) : parseFloat(e.target.value))}
-                    value={field.value ?? ''}
-                  />
-                </FormControl>
-                <FormMessage />
-              </FormItem>
-            )}
-          />
-        </div>
-
-        <div className="grid grid-cols-2 gap-4">
-          <FormField
-            control={form.control}
-            name="investmentDate"
-            render={({ field }) => (
-              <FormItem className="flex flex-col">
-                <FormLabel>
-                  {isFuture ? t('future.form.openDate') : 'Fecha de Inversión'}
-                </FormLabel>
-                <Popover>
-                  <PopoverTrigger asChild>
+          {watchIncomeModel === 'amortizing' && (
+            <FormField
+              control={form.control}
+              name="principalReturnType"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>{t('investments.field.principalReturnType')}</FormLabel>
+                  <Select onValueChange={field.onChange} value={field.value || 'amortizing'}>
                     <FormControl>
-                      <Button
-                        variant="outline"
-                        className={cn(
-                          "w-full pl-3 text-left font-normal",
-                          !field.value && "text-muted-foreground"
-                        )}
-                      >
-                        {field.value ? (
-                          format(field.value, "dd/MM/yyyy")
-                        ) : (
-                          <span>Seleccionar</span>
-                        )}
-                        <CalendarIcon className="ml-auto h-4 w-4 opacity-50" />
-                      </Button>
+                      <SelectTrigger>
+                        <SelectValue />
+                      </SelectTrigger>
                     </FormControl>
-                  </PopoverTrigger>
-                  <PopoverContent className="w-auto p-0" align="start">
-                    <Calendar
-                      mode="single"
-                      selected={field.value}
-                      onSelect={field.onChange}
-                      initialFocus
-                    />
-                  </PopoverContent>
-                </Popover>
-                <FormMessage />
-              </FormItem>
-            )}
-          />
+                    <SelectContent>
+                      {PRINCIPAL_RETURN_TYPE_OPTIONS.map((opt) => (
+                        <SelectItem key={opt.value} value={opt.value}>
+                          {t(opt.labelKey)}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+          )}
+        </>
+      )}
 
-          <FormField
-            control={form.control}
-            name="expectedEndDate"
-            render={({ field }) => (
-              <FormItem className="flex flex-col">
-                <FormLabel>Fecha de Vencimiento</FormLabel>
-                <Popover>
-                  <PopoverTrigger asChild>
-                    <FormControl>
-                      <Button
-                        variant="outline"
-                        className={cn(
-                          "w-full pl-3 text-left font-normal",
-                          !field.value && "text-muted-foreground"
-                        )}
-                      >
-                        {field.value ? (
-                          format(field.value, "dd/MM/yyyy")
-                        ) : (
-                          <span>Opcional</span>
-                        )}
-                        <CalendarIcon className="ml-auto h-4 w-4 opacity-50" />
-                      </Button>
-                    </FormControl>
-                  </PopoverTrigger>
-                  <PopoverContent className="w-auto p-0" align="start">
-                    <Calendar
-                      mode="single"
-                      selected={field.value}
-                      onSelect={field.onChange}
-                      initialFocus
-                    />
-                  </PopoverContent>
-                </Popover>
-                <FormMessage />
-              </FormItem>
-            )}
-          />
-        </div>
-
-        {!isFuture && (
-          <FormField
-            control={form.control}
-            name="status"
-            render={({ field }) => (
-              <FormItem>
-                <FormLabel>Estado</FormLabel>
-                <Select onValueChange={field.onChange} value={field.value}>
-                  <FormControl>
-                    <SelectTrigger>
-                      <SelectValue placeholder="Selecciona un estado" />
-                    </SelectTrigger>
-                  </FormControl>
-                  <SelectContent>
-                    {STATUS_OPTIONS.map((status) => (
-                      <SelectItem key={status.value} value={status.value}>
-                        {status.label}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-                <FormMessage />
-              </FormItem>
-            )}
-          />
-        )}
-
-        {isFuture && (
-          <FormField
-            control={form.control}
-            name="sourceUrl"
-            render={({ field }) => (
-              <FormItem>
-                <FormLabel>{t('future.form.sourceUrl')}</FormLabel>
-                <FormControl>
-                  <Input type="url" placeholder="https://..." {...field} value={field.value ?? ''} />
-                </FormControl>
-                <FormMessage />
-              </FormItem>
-            )}
-          />
-        )}
-
+      <div className="grid grid-cols-2 gap-4">
         <FormField
           control={form.control}
-          name="notes"
+          name="amount"
           render={({ field }) => (
             <FormItem>
-              <FormLabel>Notas</FormLabel>
+              <FormLabel>
+                {isFuture ? t('future.form.estimatedAmount') : 'Monto (€)'}
+              </FormLabel>
               <FormControl>
-                <Textarea
-                  placeholder="Notas adicionales..."
+                <Input
+                  type="number"
+                  placeholder={isFuture ? '' : '1000'}
                   {...field}
+                  onChange={(e) => {
+                    const value = e.target.value === '' ? (isFuture ? null : 0) : parseFloat(e.target.value);
+                    field.onChange(value);
+                  }}
+                  value={field.value ?? ''}
                 />
               </FormControl>
               <FormMessage />
@@ -795,21 +654,203 @@ export function InvestmentForm({
           )}
         />
 
-        <div className="sticky bottom-0 bg-background pt-4 pb-2 border-t mt-4 -mx-1 px-1 flex justify-end gap-2">
-          <Button type="button" variant="outline" onClick={() => setOpen(false)}>
-            {t('common.cancel')}
-          </Button>
-          {showDraftButtons && (
-            <Button type="button" variant="outline" onClick={handleSaveDraft}>
-              {t('investments.form.saveDraft')}
-            </Button>
+        <FormField
+          control={form.control}
+          name="expectedReturn"
+          render={({ field }) => (
+            <FormItem>
+              <FormLabel>
+                {isFuture ? t('future.form.estimatedReturn') : 'Rentabilidad Anual (%)'}
+              </FormLabel>
+              <FormControl>
+                <Input
+                  type="number"
+                  step="0.1"
+                  placeholder={isFuture ? '' : '10'}
+                  {...field}
+                  onChange={(e) => field.onChange(e.target.value === '' ? (isFuture ? null : 0) : parseFloat(e.target.value))}
+                  value={field.value ?? ''}
+                />
+              </FormControl>
+              <FormMessage />
+            </FormItem>
           )}
-          <Button type="submit">
-            {isFuture
-              ? t('future.form.save')
-              : isDraft ? t('investments.incomplete.cta') : (initialData ? t('investments.form.save.edit') : t('investments.form.save.new'))}
+        />
+      </div>
+
+      <div className="grid grid-cols-2 gap-4">
+        <FormField
+          control={form.control}
+          name="investmentDate"
+          render={({ field }) => (
+            <FormItem className="flex flex-col">
+              <FormLabel>
+                {isFuture ? t('future.form.openDate') : 'Fecha de Inversión'}
+              </FormLabel>
+              <Popover>
+                <PopoverTrigger asChild>
+                  <FormControl>
+                    <Button
+                      variant="outline"
+                      className={cn(
+                        "w-full pl-3 text-left font-normal",
+                        !field.value && "text-muted-foreground"
+                      )}
+                    >
+                      {field.value ? (
+                        format(field.value, "dd/MM/yyyy")
+                      ) : (
+                        <span>Seleccionar</span>
+                      )}
+                      <CalendarIcon className="ml-auto h-4 w-4 opacity-50" />
+                    </Button>
+                  </FormControl>
+                </PopoverTrigger>
+                <PopoverContent className="w-auto p-0" align="start">
+                  <Calendar
+                    mode="single"
+                    selected={field.value}
+                    onSelect={field.onChange}
+                    initialFocus
+                  />
+                </PopoverContent>
+              </Popover>
+              <FormMessage />
+            </FormItem>
+          )}
+        />
+
+        <FormField
+          control={form.control}
+          name="expectedEndDate"
+          render={({ field }) => (
+            <FormItem className="flex flex-col">
+              <FormLabel>Fecha de Vencimiento</FormLabel>
+              <Popover>
+                <PopoverTrigger asChild>
+                  <FormControl>
+                    <Button
+                      variant="outline"
+                      className={cn(
+                        "w-full pl-3 text-left font-normal",
+                        !field.value && "text-muted-foreground"
+                      )}
+                    >
+                      {field.value ? (
+                        format(field.value, "dd/MM/yyyy")
+                      ) : (
+                        <span>Opcional</span>
+                      )}
+                      <CalendarIcon className="ml-auto h-4 w-4 opacity-50" />
+                    </Button>
+                  </FormControl>
+                </PopoverTrigger>
+                <PopoverContent className="w-auto p-0" align="start">
+                  <Calendar
+                    mode="single"
+                    selected={field.value}
+                    onSelect={field.onChange}
+                    initialFocus
+                  />
+                </PopoverContent>
+              </Popover>
+              <FormMessage />
+            </FormItem>
+          )}
+        />
+      </div>
+    </>
+  );
+
+  const renderActions = () => (
+    <>
+      {!isFuture && (
+        <FormField
+          control={form.control}
+          name="status"
+          render={({ field }) => (
+            <FormItem>
+              <FormLabel>Estado</FormLabel>
+              <Select onValueChange={field.onChange} value={field.value}>
+                <FormControl>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Selecciona un estado" />
+                  </SelectTrigger>
+                </FormControl>
+                <SelectContent>
+                  {STATUS_OPTIONS.map((status) => (
+                    <SelectItem key={status.value} value={status.value}>
+                      {status.label}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              <FormMessage />
+            </FormItem>
+          )}
+        />
+      )}
+
+      {isFuture && (
+        <FormField
+          control={form.control}
+          name="sourceUrl"
+          render={({ field }) => (
+            <FormItem>
+              <FormLabel>{t('future.form.sourceUrl')}</FormLabel>
+              <FormControl>
+                <Input type="url" placeholder="https://..." {...field} value={field.value ?? ''} />
+              </FormControl>
+              <FormMessage />
+            </FormItem>
+          )}
+        />
+      )}
+
+      <FormField
+        control={form.control}
+        name="notes"
+        render={({ field }) => (
+          <FormItem>
+            <FormLabel>Notas</FormLabel>
+            <FormControl>
+              <Textarea
+                placeholder="Notas adicionales..."
+                {...field}
+              />
+            </FormControl>
+            <FormMessage />
+          </FormItem>
+        )}
+      />
+
+      <div className="sticky bottom-0 bg-background pt-4 pb-2 border-t mt-4 -mx-1 px-1 flex justify-end gap-2">
+        <Button type="button" variant="outline" onClick={() => setOpen(false)}>
+          {t('common.cancel')}
+        </Button>
+        {showDraftButtons && (
+          <Button type="button" variant="outline" onClick={handleSaveDraft}>
+            {t('investments.form.saveDraft')}
           </Button>
-        </div>
+        )}
+        <Button type="submit">
+          {isFuture
+            ? t('future.form.save')
+            : isDraft ? t('investments.incomplete.cta') : (initialData ? t('investments.form.save.edit') : t('investments.form.save.new'))}
+        </Button>
+      </div>
+    </>
+  );
+
+  // ─── Main render ───────────────────────────────────────────────
+
+  const renderForm = () => (
+    <Form {...form}>
+      <form onSubmit={form.handleSubmit(handleSubmit)} className="space-y-4">
+        {renderBanners()}
+        {renderCommonFields()}
+        {renderIncomeModelFields()}
+        {renderActions()}
       </form>
     </Form>
   );

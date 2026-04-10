@@ -299,7 +299,7 @@ export function useInvestments() {
     return data;
   }, [user, fetchInvestments]);
 
-  const updateInvestment = useCallback(async (id: string, updates: Partial<Investment>) => {
+  const updateInvestment = useCallback(async (id: string, updates: Partial<Investment>): Promise<{ demotedToDraft: boolean }> => {
     const dbUpdates: any = {};
     if (updates.platform !== undefined) dbUpdates.platform = updates.platform || null;
     if (updates.customPlatformName !== undefined) dbUpdates.custom_platform_name = updates.customPlatformName;
@@ -314,27 +314,43 @@ export function useInvestments() {
     if (updates.paymentFrequency !== undefined) dbUpdates.payment_frequency = updates.paymentFrequency || null;
     if (updates.principalReturnType !== undefined) dbUpdates.principal_return_type = updates.principalReturnType || null;
     const { error } = await supabase.from('investments').update(dbUpdates).eq('id', id);
-    if (error) { console.error('Error updating investment:', error); return; }
+    if (error) { console.error('Error updating investment:', error); return { demotedToDraft: false }; }
 
     // Regenerate schedule if income model fields changed
-    if (updates.incomeModel || updates.paymentFrequency || updates.expectedReturn !== undefined || updates.expectedEndDate !== undefined || updates.amount !== undefined || updates.investmentDate !== undefined || updates.principalReturnType !== undefined) {
-      // Fetch the current full investment to regenerate
-      const current = allRawInvestments.find(inv => inv.id === id);
-      if (current) {
-        const merged = {
-          amount: updates.amount ?? current.amount ?? 0,
-          expectedReturn: updates.expectedReturn ?? current.expectedReturn ?? 0,
-          incomeModel: (updates.incomeModel ?? current.incomeModel ?? 'bullet') as IncomeModel,
-          paymentFrequency: (updates.paymentFrequency ?? current.paymentFrequency) as PaymentFrequency | null,
-          principalReturnType: (updates.principalReturnType ?? current.principalReturnType) as PrincipalReturnType | null,
-          investmentDate: updates.investmentDate ?? current.investmentDate ?? '',
-          expectedEndDate: updates.expectedEndDate ?? current.expectedEndDate,
-        };
-        await saveScheduleForInvestment(id, merged);
+    const current = allRawInvestments.find(inv => inv.id === id);
+    if (current && (updates.incomeModel || updates.paymentFrequency || updates.expectedReturn !== undefined || updates.expectedEndDate !== undefined || updates.amount !== undefined || updates.investmentDate !== undefined || updates.principalReturnType !== undefined)) {
+      const merged = {
+        amount: updates.amount ?? current.amount ?? 0,
+        expectedReturn: updates.expectedReturn ?? current.expectedReturn ?? 0,
+        incomeModel: (updates.incomeModel ?? current.incomeModel ?? 'bullet') as IncomeModel,
+        paymentFrequency: (updates.paymentFrequency ?? current.paymentFrequency) as PaymentFrequency | null,
+        principalReturnType: (updates.principalReturnType ?? current.principalReturnType) as PrincipalReturnType | null,
+        investmentDate: updates.investmentDate ?? current.investmentDate ?? '',
+        expectedEndDate: updates.expectedEndDate ?? current.expectedEndDate,
+      };
+      await saveScheduleForInvestment(id, merged);
+    }
+
+    // B3 — Auto-draft: demote to draft if edit breaks portfolio_ready
+    let demotedToDraft = false;
+    if (current) {
+      const mergedStatus = updates.status ?? current.status ?? 'active';
+      const mergedComplete = isInvestmentComplete({
+        platform: updates.platform ?? current.platform,
+        projectName: updates.projectName ?? current.projectName,
+        amount: updates.amount ?? current.amount,
+        investmentDate: updates.investmentDate ?? current.investmentDate,
+        incomeModel: updates.incomeModel ?? current.incomeModel,
+        status: mergedStatus,
+      });
+      if (!mergedComplete && mergedStatus !== 'draft') {
+        await supabase.from('investments').update({ status: 'draft' }).eq('id', id);
+        demotedToDraft = true;
       }
     }
 
     await fetchInvestments();
+    return { demotedToDraft };
   }, [fetchInvestments, allRawInvestments, saveScheduleForInvestment]);
 
   const deleteInvestment = useCallback(async (id: string) => {

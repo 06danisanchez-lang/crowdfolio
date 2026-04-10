@@ -524,7 +524,7 @@ export function useInvestments() {
 
   return {
     investments, incompleteInvestments, incompleteCount, allInvestmentsCount,
-    isLoading, error, summary,
+    isLoading, error, summary, scheduleMap,
     addInvestment, addDraftInvestment, updateInvestment, deleteInvestment,
     addPayment, deletePayment, importInvestments,
     exportInvestments, clearAllInvestments, refetch: fetchInvestments,

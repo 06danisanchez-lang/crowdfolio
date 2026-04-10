@@ -31,7 +31,7 @@ interface RawInvestmentRow {
 export function useInvestments() {
   const { user } = useAuth();
   const [allRawInvestments, setAllRawInvestments] = useState<DraftInvestment[]>([]);
-  const [scheduleCountMap, setScheduleCountMap] = useState<Record<string, number>>({});
+  const [scheduleMap, setScheduleMap] = useState<Record<string, InvestmentScheduleEntry[]>>({});
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const requestIdRef = useRef(0);

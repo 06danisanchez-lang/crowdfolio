@@ -450,6 +450,7 @@ export const translations: Record<Lang, Record<string, string>> = {
     'investments.field.incomeModel': 'Tipo de rendimiento',
     'investments.field.paymentFrequency': 'Frecuencia de cobros',
     'investments.field.principalReturnType': 'Devolución del capital',
+    'investments.field.schedule': 'Calendario de cobros',
     'investments.incomeModel.placeholder': 'Selecciona el tipo de rendimiento',
     'investments.incomeModel.bullet': 'Pago único al vencimiento',
     'investments.incomeModel.periodicFixed': 'Rendimiento periódico fijo',

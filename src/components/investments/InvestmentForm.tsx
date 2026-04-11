@@ -343,6 +343,7 @@ export function InvestmentForm({
           return fieldMap[key] || key;
         }))];
         setValidationError(missing);
+        setBlockingModal(missing);
         return;
       }
 

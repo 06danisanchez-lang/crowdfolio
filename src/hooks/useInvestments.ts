@@ -164,6 +164,8 @@ export function useInvestments() {
         expectedReturn: raw.expectedReturn,
         expectedEndDate: raw.expectedEndDate,
         incomeModel: raw.incomeModel,
+        paymentFrequency: raw.paymentFrequency,
+        hasSchedule: (scheduleMap[raw.id]?.length ?? 0) > 0,
         status: raw.status,
       });
 
@@ -365,6 +367,7 @@ export function useInvestments() {
     let demotedToDraft = false;
     if (current) {
       const mergedStatus = updates.status ?? current.status ?? 'active';
+      const mergedIncomeModel = updates.incomeModel ?? current.incomeModel;
       const mergedComplete = isInvestmentComplete({
         platform: updates.platform ?? current.platform,
         projectName: updates.projectName ?? current.projectName,
@@ -372,7 +375,9 @@ export function useInvestments() {
         investmentDate: updates.investmentDate ?? current.investmentDate,
         expectedReturn: updates.expectedReturn ?? current.expectedReturn,
         expectedEndDate: updates.expectedEndDate ?? current.expectedEndDate,
-        incomeModel: updates.incomeModel ?? current.incomeModel,
+        incomeModel: mergedIncomeModel,
+        paymentFrequency: updates.paymentFrequency ?? current.paymentFrequency,
+        hasSchedule: (scheduleMap[id]?.length ?? 0) > 0,
         status: mergedStatus,
       });
       if (!mergedComplete && mergedStatus !== 'draft') {

@@ -209,7 +209,7 @@ export function useInvestments() {
       completedInvestments: completed,
       incompleteInvestments: incomplete,
     };
-  }, [allRawInvestments]);
+  }, [allRawInvestments, scheduleMap]);
 
   // Total count (complete + incomplete) for Free limit
   const allInvestmentsCount = allRawInvestments.length;

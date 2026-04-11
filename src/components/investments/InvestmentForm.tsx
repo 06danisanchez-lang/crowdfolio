@@ -877,7 +877,7 @@ export function InvestmentForm({
 
   const renderForm = () => (
     <Form {...form}>
-      <form onSubmit={form.handleSubmit(handleSubmit)} className="space-y-4">
+      <form ref={formRef} onSubmit={form.handleSubmit(handleSubmit)} className="space-y-4">
         {renderBanners()}
         {renderCommonFields()}
         {renderIncomeModelFields()}

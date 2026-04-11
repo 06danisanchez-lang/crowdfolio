@@ -37,10 +37,31 @@ interface InvestmentRow {
   updated_at: string;
 }
 
+function mapInvestmentRow(inv: InvestmentRow): Investment {
+  return {
+    id: inv.id,
+    platform: inv.platform as Investment['platform'],
+    customPlatformName: inv.custom_platform_name || undefined,
+    projectName: inv.project_name,
+    amount: Number(inv.amount),
+    investmentDate: inv.investment_date,
+    expectedEndDate: inv.expected_end_date || undefined,
+    expectedReturn: Number(inv.expected_return),
+    status: inv.status as Investment['status'],
+    incomeModel: (inv.income_model || undefined) as Investment['incomeModel'],
+    paymentFrequency: (inv.payment_frequency || undefined) as Investment['paymentFrequency'],
+    principalReturnType: (inv.principal_return_type || undefined) as Investment['principalReturnType'],
+    notes: inv.notes || undefined,
+    payments: [],
+    createdAt: inv.created_at,
+    updatedAt: inv.updated_at,
+  };
+}
+
 export function useTaxSummary(year: number) {
   const { user } = useAuth();
   const [payments, setPayments] = useState<PaymentWithInvestment[]>([]);
-  const [investments, setInvestments] = useState<Investment[]>([]);
+  const [projectionInvestments, setProjectionInvestments] = useState<Investment[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [excludedIncompleteCount, setExcludedIncompleteCount] = useState(0);
@@ -53,7 +74,7 @@ export function useTaxSummary(year: number) {
     async function fetchData() {
       if (!user) {
         setPayments([]);
-        setInvestments([]);
+        setProjectionInvestments([]);
         setIsLoading(false);
         setError(null);
         return;
@@ -69,6 +90,7 @@ export function useTaxSummary(year: number) {
         setIsLoading(true);
         setError(null);
 
+        // Single fetch of all investments
         const { data: investmentsData, error: investmentsError } = await supabase
           .from('investments')
           .select('*')
@@ -76,50 +98,57 @@ export function useTaxSummary(year: number) {
 
         if (investmentsError) throw investmentsError;
 
-        const allMapped: Investment[] = (investmentsData as InvestmentRow[] || [])
-          .filter(inv => isInvestmentComplete({
+        const allRows = (investmentsData as InvestmentRow[]) || [];
+        const allIds = allRows.map((i) => i.id);
+
+        // Separate: tracking_ready + active → for projections
+        const trackingReadyActive = allRows
+          .filter(inv =>
+            inv.status === 'active' &&
+            isInvestmentComplete({
+              platform: inv.platform,
+              projectName: inv.project_name,
+              amount: inv.amount != null ? Number(inv.amount) : null,
+              investmentDate: inv.investment_date,
+              incomeModel: inv.income_model,
+              status: inv.status,
+              expectedReturn: inv.expected_return != null ? Number(inv.expected_return) : null,
+              expectedEndDate: inv.expected_end_date,
+            })
+          )
+          .map(mapInvestmentRow);
+
+        const excludedCount = allRows.length - allRows.filter(inv =>
+          isInvestmentComplete({
             platform: inv.platform,
             projectName: inv.project_name,
             amount: inv.amount != null ? Number(inv.amount) : null,
             investmentDate: inv.investment_date,
-            incomeModel: inv.income_model || 'bullet',
+            incomeModel: inv.income_model,
             status: inv.status,
-          }))
-          .map((inv) => ({
-            id: inv.id, platform: inv.platform as Investment['platform'],
-            customPlatformName: inv.custom_platform_name || undefined,
-            projectName: inv.project_name, amount: Number(inv.amount),
-            investmentDate: inv.investment_date, expectedEndDate: inv.expected_end_date || undefined,
-            expectedReturn: Number(inv.expected_return), status: inv.status as Investment['status'],
-            incomeModel: (inv.income_model || 'bullet') as Investment['incomeModel'],
-            paymentFrequency: (inv.payment_frequency || undefined) as Investment['paymentFrequency'],
-            principalReturnType: (inv.principal_return_type || undefined) as Investment['principalReturnType'],
-            notes: inv.notes || undefined, payments: [],
-            createdAt: inv.created_at, updatedAt: inv.updated_at,
-          }));
+            expectedReturn: inv.expected_return != null ? Number(inv.expected_return) : null,
+            expectedEndDate: inv.expected_end_date,
+          })
+        ).length;
 
-        const excludedCount = (investmentsData || []).length - allMapped.length;
-        const mappedInvestments = allMapped;
-
-        const investmentIds = mappedInvestments.map((i) => i.id);
-
-        if (investmentIds.length === 0) {
+        if (allIds.length === 0) {
           clearTimeout(timeoutId);
           if (requestIdRef.current !== currentId) return;
-          setInvestments(mappedInvestments);
+          setProjectionInvestments(trackingReadyActive);
           setPayments([]);
           setExcludedIncompleteCount(excludedCount);
           setIsLoading(false);
           return;
         }
 
+        // Fetch ALL payments for the year — no completeness filter
         const startDate = `${year}-01-01`;
         const endDate = `${year}-12-31`;
 
         const { data, error: paymentsError } = await supabase
           .from('payments')
           .select('id, date, amount, type, withholding_applied, investment_id')
-          .in('investment_id', investmentIds)
+          .in('investment_id', allIds)
           .gte('date', startDate)
           .lte('date', endDate)
           .order('date', { ascending: true });
@@ -129,10 +158,11 @@ export function useTaxSummary(year: number) {
         if (paymentsError) throw paymentsError;
 
         setExcludedIncompleteCount(excludedCount);
-        setInvestments(mappedInvestments);
+        setProjectionInvestments(trackingReadyActive);
         setPayments(
           (data || []).map((p) => ({
-            ...p, amount: Number(p.amount),
+            ...p,
+            amount: Number(p.amount),
             withholding_applied: p.withholding_applied ? Number(p.withholding_applied) : null,
           }))
         );
@@ -153,6 +183,7 @@ export function useTaxSummary(year: number) {
     return () => { ++requestIdRef.current; };
   }, [user, year]);
 
+  // Tax summary — based on ALL real payments (no investment completeness filter)
   const summary: TaxSummary = useMemo(() => {
     const interestIncome = payments.filter((p) => p.type === 'interest').reduce((sum, p) => sum + p.amount, 0);
     const dividendIncome = payments.filter((p) => p.type === 'dividend').reduce((sum, p) => sum + p.amount, 0);
@@ -168,14 +199,15 @@ export function useTaxSummary(year: number) {
     };
   }, [payments, totalExpenses, year]);
 
+  // Projection — based only on active + tracking_ready investments
   const projection: TaxProjection = useMemo(() => {
     const paymentsByInvestment = new Map<string, number>();
     payments.filter((p) => p.type === 'interest' || p.type === 'dividend').forEach((p) => {
       const current = paymentsByInvestment.get(p.investment_id) || 0;
       paymentsByInvestment.set(p.investment_id, current + p.amount);
     });
-    return calculateYearlyProjection(investments, paymentsByInvestment, summary.grossIncome, summary.withholdingsApplied, totalExpenses, year);
-  }, [investments, payments, summary, totalExpenses, year]);
+    return calculateYearlyProjection(projectionInvestments, paymentsByInvestment, summary.grossIncome, summary.withholdingsApplied, totalExpenses, year);
+  }, [projectionInvestments, payments, summary, totalExpenses, year]);
 
   const [availableYears, setAvailableYears] = useState<number[]>([]);
 

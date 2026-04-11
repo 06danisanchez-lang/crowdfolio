@@ -67,7 +67,7 @@ const Index = () => {
     exportInvestments,
   } = useInvestments();
 
-  const { alerts, alertCount, hasUrgentAlerts } = useAlerts(investments);
+  const { alerts, alertCount, hasUrgentAlerts } = useAlerts(activeInvestments);
 
   const openUpgradeModal = (feature: string) => {
     setUpgradeFeature(feature);
@@ -125,7 +125,7 @@ const Index = () => {
       <KPICard
         title={t('dashboard.kpi.historicalInvested')}
         value={formatCurrency(summary.historicalSummary.totalInvested)}
-        subtitle={`${investments.length} ${t('dashboard.kpi.projects')}`}
+        subtitle={`${completedInvestments.length} ${t('dashboard.kpi.projects')}`}
         icon={Wallet}
         helpContent={HELP_CONTENT.dashboard.historicalInvested}
       />
@@ -294,7 +294,7 @@ const Index = () => {
                         </CardTitle>
                       </CardHeader>
                       <CardContent>
-                        <UpcomingMaturityList investments={investments} />
+                        <UpcomingMaturityList investments={activeInvestments} />
                       </CardContent>
                     </Card>
                   </div>

@@ -959,6 +959,7 @@ export const translations: Record<Lang, Record<string, string>> = {
     'investments.field.incomeModel': 'Income type',
     'investments.field.paymentFrequency': 'Payment frequency',
     'investments.field.principalReturnType': 'Principal return',
+    'investments.field.schedule': 'Payment schedule',
     'investments.incomeModel.placeholder': 'Select income type',
     'investments.incomeModel.bullet': 'Lump sum at maturity',
     'investments.incomeModel.periodicFixed': 'Fixed periodic income',

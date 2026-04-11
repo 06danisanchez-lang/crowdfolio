@@ -6,6 +6,7 @@ import { format } from 'date-fns';
 import { CalendarIcon, Plus, AlertTriangle, Info } from 'lucide-react';
 import { Investment, Platform, InvestmentStatus, PLATFORMS, STATUS_OPTIONS, INCOME_MODEL_OPTIONS, PAYMENT_FREQUENCY_OPTIONS, PRINCIPAL_RETURN_TYPE_OPTIONS, IncomeModel } from '@/types/investment';
 import { getInvestmentCompletionStatus } from '@/lib/investment/completeness';
+import { generateSchedule } from '@/lib/investment/scheduleGenerator';
 
 export interface FutureInvestmentFormData {
   platform: Platform;
@@ -344,6 +345,42 @@ export function InvestmentForm({
         }))];
         setValidationError(missing);
         setBlockingModal(missing);
+        return;
+      }
+
+      // Completeness check via centralized logic (handles schedule requirement for periodic/amortizing)
+      const model = data.incomeModel as string | undefined;
+      let hasSchedule = true; // default true for bullet/variable_or_unknown
+      if (model === 'periodic_fixed' || model === 'amortizing') {
+        const dryRunEntries = generateSchedule({
+          id: 'dry-run',
+          amount: data.amount,
+          expectedReturn: data.expectedReturn,
+          incomeModel: model as any,
+          paymentFrequency: data.paymentFrequency,
+          principalReturnType: data.principalReturnType,
+          investmentDate: data.investmentDate instanceof Date ? data.investmentDate.toISOString().split('T')[0] : data.investmentDate,
+          expectedEndDate: data.expectedEndDate instanceof Date ? data.expectedEndDate.toISOString().split('T')[0] : (data.expectedEndDate || ''),
+        });
+        hasSchedule = dryRunEntries.length > 0;
+      }
+
+      const completionCheck = getInvestmentCompletionStatus({
+        platform: data.platform,
+        projectName: data.projectName,
+        amount: data.amount,
+        investmentDate: data.investmentDate instanceof Date ? data.investmentDate.toISOString() : data.investmentDate,
+        expectedReturn: data.expectedReturn,
+        expectedEndDate: data.expectedEndDate instanceof Date ? data.expectedEndDate.toISOString() : data.expectedEndDate,
+        incomeModel: data.incomeModel,
+        paymentFrequency: data.paymentFrequency,
+        hasSchedule,
+        status: isDraft ? 'active' : data.status,
+      });
+
+      if (!completionCheck.isTrackingReady) {
+        setValidationError(completionCheck.missingFields);
+        setBlockingModal(completionCheck.missingFields);
         return;
       }
 

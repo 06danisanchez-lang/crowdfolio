@@ -149,21 +149,29 @@ export function useInvestments() {
     return () => { ++requestIdRef.current; };
   }, [fetchInvestments]);
 
-  // Separate complete vs incomplete using centralized logic
-  const { investments, incompleteInvestments } = useMemo(() => {
-    const complete: Investment[] = [];
+  // ── 5A: Ternary separation — incomplete / active / completed ──
+  const { investments, activeInvestments, completedInvestments, incompleteInvestments } = useMemo(() => {
+    const active: Investment[] = [];
+    const completed: Investment[] = [];
     const incomplete: DraftInvestment[] = [];
 
     for (const raw of allRawInvestments) {
-      if (isInvestmentComplete({
+      const trackingReady = isInvestmentComplete({
         platform: raw.platform,
         projectName: raw.projectName,
         amount: raw.amount,
         investmentDate: raw.investmentDate,
+        expectedReturn: raw.expectedReturn,
+        expectedEndDate: raw.expectedEndDate,
         incomeModel: raw.incomeModel,
         status: raw.status,
-      })) {
-        complete.push({
+      });
+
+      if (!trackingReady || raw.status === 'draft') {
+        incomplete.push(raw);
+      } else {
+        // tracking_ready — safe to cast required fields
+        const inv: Investment = {
           id: raw.id,
           platform: raw.platform as Platform,
           customPlatformName: raw.customPlatformName,
@@ -171,8 +179,8 @@ export function useInvestments() {
           amount: raw.amount as number,
           investmentDate: raw.investmentDate as string,
           expectedEndDate: raw.expectedEndDate,
-          expectedReturn: raw.expectedReturn ?? 0,
-          incomeModel: (raw.incomeModel as IncomeModel) || 'bullet',
+          expectedReturn: raw.expectedReturn as number,
+          incomeModel: raw.incomeModel as IncomeModel,
           paymentFrequency: raw.paymentFrequency || undefined,
           principalReturnType: raw.principalReturnType || undefined,
           status: raw.status,
@@ -180,13 +188,25 @@ export function useInvestments() {
           notes: raw.notes,
           createdAt: raw.createdAt,
           updatedAt: raw.updatedAt,
-        });
-      } else {
-        incomplete.push(raw);
+        };
+
+        if (raw.status === 'completed') {
+          completed.push(inv);
+        } else {
+          active.push(inv);
+        }
       }
     }
 
-    return { investments: complete, incompleteInvestments: incomplete };
+    // Backward-compat alias: active + completed
+    const all = [...active, ...completed];
+
+    return {
+      investments: all,
+      activeInvestments: active,
+      completedInvestments: completed,
+      incompleteInvestments: incomplete,
+    };
   }, [allRawInvestments]);
 
   // Total count (complete + incomplete) for Free limit
@@ -239,9 +259,9 @@ export function useInvestments() {
       investment_date: investment.investmentDate,
       expected_end_date: investment.expectedEndDate || null,
       expected_return: investment.expectedReturn, status: investment.status,
-      income_model: investment.incomeModel || 'bullet',
+      income_model: investment.incomeModel || null,
       payment_frequency: investment.paymentFrequency || null,
-      principal_return_type: investment.principalReturnType || 'at_maturity',
+      principal_return_type: investment.principalReturnType || null,
       notes: investment.notes || null,
     }).select().single();
     if (error) { console.error('Error adding investment:', error); return null; }
@@ -263,7 +283,7 @@ export function useInvestments() {
       projectName: data.project_name!, amount: Number(data.amount),
       investmentDate: data.investment_date!, expectedEndDate: data.expected_end_date || undefined,
       expectedReturn: Number(data.expected_return), status: data.status as InvestmentStatus,
-      incomeModel: ((data as any).income_model || 'bullet') as IncomeModel,
+      incomeModel: (data as any).income_model as IncomeModel,
       paymentFrequency: (data as any).payment_frequency || undefined,
       principalReturnType: (data as any).principal_return_type || undefined,
       notes: data.notes || undefined, createdAt: data.created_at, updatedAt: data.updated_at,
@@ -332,7 +352,7 @@ export function useInvestments() {
       const merged = {
         amount: updates.amount ?? current.amount ?? 0,
         expectedReturn: updates.expectedReturn ?? current.expectedReturn ?? 0,
-        incomeModel: (updates.incomeModel ?? current.incomeModel ?? 'bullet') as IncomeModel,
+        incomeModel: (updates.incomeModel ?? current.incomeModel) as IncomeModel,
         paymentFrequency: (updates.paymentFrequency ?? current.paymentFrequency) as PaymentFrequency | null,
         principalReturnType: (updates.principalReturnType ?? current.principalReturnType) as PrincipalReturnType | null,
         investmentDate: updates.investmentDate ?? current.investmentDate ?? '',
@@ -341,7 +361,7 @@ export function useInvestments() {
       await saveScheduleForInvestment(id, merged);
     }
 
-    // B3 — Auto-draft: demote to draft if edit breaks portfolio_ready
+    // Auto-draft: demote to draft if edit breaks tracking_ready
     let demotedToDraft = false;
     if (current) {
       const mergedStatus = updates.status ?? current.status ?? 'active';
@@ -350,6 +370,8 @@ export function useInvestments() {
         projectName: updates.projectName ?? current.projectName,
         amount: updates.amount ?? current.amount,
         investmentDate: updates.investmentDate ?? current.investmentDate,
+        expectedReturn: updates.expectedReturn ?? current.expectedReturn,
+        expectedEndDate: updates.expectedEndDate ?? current.expectedEndDate,
         incomeModel: updates.incomeModel ?? current.incomeModel,
         status: mergedStatus,
       });
@@ -411,14 +433,14 @@ export function useInvestments() {
         investment_date: inv.investmentDate,
         expected_end_date: inv.expectedEndDate || null,
         expected_return: inv.expectedReturn, status: inv.status,
-        income_model: inv.incomeModel || 'bullet',
+        income_model: inv.incomeModel || null,
         payment_frequency: inv.paymentFrequency || null,
-        principal_return_type: inv.principalReturnType || 'at_maturity',
+        principal_return_type: inv.principalReturnType || null,
         notes: inv.notes || null,
       }).select().single();
       if (error) { console.error('Error importing investment:', error); continue; }
 
-      // Generate schedule for imported investment (same as addInvestment)
+      // Generate schedule for imported investment
       await saveScheduleForInvestment(data.id, {
         amount: inv.amount,
         expectedReturn: inv.expectedReturn,
@@ -449,8 +471,9 @@ export function useInvestments() {
     setAllRawInvestments([]);
   }, [user]);
 
+  // ── 5B: Summary using separated arrays ──
   const summary: InvestmentSummary = useMemo(() => {
-    const activeInvestments = investments.filter(inv => inv.status === 'active');
+    // forecastReady filters within activeInvestments only
     const forecastReady = activeInvestments.filter(inv => {
       const status = getInvestmentCompletionStatus({
         platform: inv.platform,
@@ -466,6 +489,7 @@ export function useInvestments() {
       });
       return status.isForecastReady;
     });
+
     // C3: route expected return calculation by incomeModel
     const getExpectedReturn = (inv: Investment): number => {
       if (inv.incomeModel === 'periodic_fixed' || inv.incomeModel === 'amortizing') {
@@ -473,27 +497,32 @@ export function useInvestments() {
         if (schedule && schedule.length > 0) {
           return calculateExpectedReturnFromSchedule(schedule, inv.amount, inv.incomeModel);
         }
-        return 0; // no schedule → cannot forecast
+        return 0;
       }
-      // bullet (and fallback)
       return calculateInvestmentTotalReturn(inv);
     };
 
+    // activeSummary — only activeInvestments
     const activeCapital = activeInvestments.reduce((s, i) => s + i.amount, 0);
     const expectedProfit = forecastReady.reduce((s, i) => s + getExpectedReturn(i), 0);
     const estimatedTotal = forecastReady.reduce((s, i) => s + i.amount, 0) + expectedProfit;
 
-    const totalCollected = investments.reduce((s, i) => s + i.payments.reduce((ps, p) => ps + p.amount, 0), 0);
-    const realizedProfit = investments.reduce((s, i) => s + i.payments
+    // historicalSummary — only completedInvestments
+    const historicalTotalInvested = completedInvestments.reduce((s, i) => s + i.amount, 0);
+    const historicalTotalCollected = completedInvestments.reduce((s, i) => s + i.payments.reduce((ps, p) => ps + p.amount, 0), 0);
+    const historicalRealizedProfit = completedInvestments.reduce((s, i) => s + i.payments
       .filter(p => p.type === 'dividend' || p.type === 'interest')
       .reduce((ps, p) => ps + p.amount, 0), 0);
+
+    // Global metrics use investments (active + completed, no incompletes)
+    const totalCollected = investments.reduce((s, i) => s + i.payments.reduce((ps, p) => ps + p.amount, 0), 0);
 
     return {
       totalInvested: investments.reduce((sum, inv) => sum + inv.amount, 0),
       totalReturns: totalCollected,
       expectedReturns: forecastReady.reduce((sum, inv) => sum + getExpectedReturn(inv), 0),
       activeInvestments: activeInvestments.length,
-      completedInvestments: investments.filter(inv => inv.status === 'completed').length,
+      completedInvestments: completedInvestments.length,
       averageReturn: forecastReady.length > 0 ? forecastReady.reduce((sum, inv) => sum + inv.expectedReturn, 0) / forecastReady.length : 0,
       byPlatform: investments.reduce((acc, inv) => {
         if (!acc[inv.platform]) acc[inv.platform] = { invested: 0, returns: 0, count: 0 };
@@ -514,16 +543,17 @@ export function useInvestments() {
         withEndDateCount: forecastReady.length,
       },
       historicalSummary: {
-        totalInvested: investments.reduce((sum, inv) => sum + inv.amount, 0),
-        totalCollected,
-        realizedProfit,
-        completedCount: investments.filter(inv => inv.status === 'completed').length,
+        totalInvested: historicalTotalInvested,
+        totalCollected: historicalTotalCollected,
+        realizedProfit: historicalRealizedProfit,
+        completedCount: completedInvestments.length,
       },
     };
-  }, [investments, scheduleMap]);
+  }, [investments, activeInvestments, completedInvestments, scheduleMap]);
 
   return {
-    investments, incompleteInvestments, incompleteCount, allInvestmentsCount,
+    investments, activeInvestments, completedInvestments,
+    incompleteInvestments, incompleteCount, allInvestmentsCount,
     isLoading, error, summary, scheduleMap,
     addInvestment, addDraftInvestment, updateInvestment, deleteInvestment,
     addPayment, deletePayment, importInvestments,

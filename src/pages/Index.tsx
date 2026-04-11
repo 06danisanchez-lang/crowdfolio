@@ -49,6 +49,8 @@ const Index = () => {
   
   const {
     investments,
+    activeInvestments,
+    completedInvestments,
     incompleteInvestments,
     allInvestmentsCount,
     isLoading,
@@ -343,7 +345,8 @@ const Index = () => {
               </div>
             </div>
             <InvestmentList
-              investments={investments}
+              activeInvestments={activeInvestments}
+              completedInvestments={completedInvestments}
               incompleteInvestments={incompleteInvestments}
               scheduleMap={scheduleMap}
               onUpdate={updateInvestment}

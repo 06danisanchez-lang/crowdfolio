@@ -12,7 +12,8 @@ import {
   Filter,
   Search,
   AlertTriangle,
-  ChevronDown
+  ChevronDown,
+  CheckCircle2
 } from 'lucide-react';
 import { Investment, DraftInvestment, PLATFORMS, STATUS_OPTIONS, Platform, InvestmentStatus, IncomeModel, InvestmentScheduleEntry } from '@/types/investment';
 import { getInvestmentCompletionStatus } from '@/lib/investment/completeness';
@@ -55,7 +56,8 @@ import { InvestmentForm } from './InvestmentForm';
 import { InvestmentDetail } from './InvestmentDetail';
 
 interface InvestmentListProps {
-  investments: Investment[];
+  activeInvestments: Investment[];
+  completedInvestments: Investment[];
   incompleteInvestments?: DraftInvestment[];
   scheduleMap?: Record<string, InvestmentScheduleEntry[]>;
   onUpdate: (id: string, updates: Partial<Investment>) => Promise<{ demotedToDraft?: boolean } | void> | void;
@@ -68,8 +70,11 @@ interface InvestmentListProps {
 type SortField = 'projectName' | 'amount' | 'investmentDate' | 'expectedReturn' | 'status';
 type SortDirection = 'asc' | 'desc';
 
+const ACTIVE_STATUS_OPTIONS = STATUS_OPTIONS.filter(s => s.value !== 'draft' && s.value !== 'completed');
+
 export function InvestmentList({ 
-  investments, 
+  activeInvestments,
+  completedInvestments,
   incompleteInvestments = [],
   scheduleMap = {},
   onUpdate, 
@@ -152,7 +157,7 @@ export function InvestmentList({
     }
   };
 
-  const filteredAndSortedInvestments = investments
+  const filteredAndSortedInvestments = activeInvestments
     .filter(inv => {
       const matchesSearch = inv.projectName.toLowerCase().includes(search.toLowerCase());
       const matchesPlatform = platformFilter === 'all' || inv.platform === platformFilter;
@@ -296,7 +301,8 @@ export function InvestmentList({
           </CollapsibleContent>
         </div>
       </Collapsible>
-      {/* Filters */}
+
+      {/* Filters — applied to active investments only */}
       <div className="flex flex-col gap-4 sm:flex-row">
         <div className="relative flex-1">
           <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
@@ -328,7 +334,7 @@ export function InvestmentList({
             </SelectTrigger>
             <SelectContent>
               <SelectItem value="all">{t('common.allStatuses')}</SelectItem>
-              {STATUS_OPTIONS.map((status) => (
+              {ACTIVE_STATUS_OPTIONS.map((status) => (
                 <SelectItem key={status.value} value={status.value}>
                   {status.label}
                 </SelectItem>
@@ -338,7 +344,7 @@ export function InvestmentList({
         </div>
       </div>
 
-      {/* Table */}
+      {/* Active investments table */}
       <div className="rounded-lg border bg-card">
         <Table>
           <TableHeader>
@@ -448,6 +454,71 @@ export function InvestmentList({
           </TableBody>
         </Table>
       </div>
+
+      {/* Completed investments section */}
+      <Collapsible defaultOpen={completedInvestments.length > 0}>
+        <div className="rounded-lg border border-emerald-200 dark:border-emerald-900/50 bg-emerald-50/30 dark:bg-emerald-950/10 p-4 space-y-3">
+          <CollapsibleTrigger className="flex items-center gap-2 w-full text-left">
+            <CheckCircle2 className="h-4 w-4 text-emerald-600 dark:text-emerald-400" />
+            <h3 className="text-sm font-semibold flex-1">
+              {t('investments.section.completed')} ({completedInvestments.length})
+            </h3>
+            <ChevronDown className="h-4 w-4 text-muted-foreground transition-transform duration-200 [[data-state=open]_&]:rotate-180" />
+          </CollapsibleTrigger>
+          <CollapsibleContent>
+            {completedInvestments.length === 0 ? (
+              <p className="text-sm text-muted-foreground">{t('investments.section.completedEmpty')}</p>
+            ) : (
+              <div className="space-y-2">
+                {completedInvestments.map((inv) => (
+                  <div
+                    key={inv.id}
+                    className="flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-4 p-3 rounded-md bg-background border"
+                  >
+                    <div className="flex-1 min-w-0">
+                      <p className="font-medium truncate">{inv.projectName}</p>
+                      <div className="flex flex-wrap items-center gap-1 mt-1">
+                        <span className="text-xs text-muted-foreground">
+                          {getPlatformLabel(inv.platform, inv.customPlatformName)}
+                        </span>
+                        <span className="text-xs text-muted-foreground">
+                          · {formatCurrency(inv.amount)}
+                        </span>
+                        <span className="text-xs text-muted-foreground">
+                          · {inv.expectedReturn.toFixed(1)}%
+                        </span>
+                      </div>
+                      <div className="flex flex-wrap items-center gap-1 mt-1">
+                        {getStatusBadge(inv.status)}
+                        <Badge variant="outline" className="text-xs">
+                          {t(getIncomeModelShortKey(inv.incomeModel))}
+                        </Badge>
+                      </div>
+                    </div>
+                    <div className="flex gap-2 shrink-0">
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => setViewingInvestment(inv)}
+                      >
+                        <Eye className="h-4 w-4 mr-1" />
+                        {t('common.view')}
+                      </Button>
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => setDeleteId(inv.id)}
+                      >
+                        <Trash2 className="h-4 w-4" />
+                      </Button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </CollapsibleContent>
+        </div>
+      </Collapsible>
 
       {/* Delete Confirmation */}
       <AlertDialog open={!!deleteId} onOpenChange={() => setDeleteId(null)}>

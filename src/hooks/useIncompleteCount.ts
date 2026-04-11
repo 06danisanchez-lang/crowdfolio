@@ -16,7 +16,7 @@ export function useIncompleteCount() {
 
     const { data, error } = await supabase
       .from('investments')
-      .select('id, platform, project_name, amount, investment_date, income_model, status')
+      .select('id, platform, project_name, amount, investment_date, income_model, status, expected_return, expected_end_date')
       .eq('user_id', user.id);
 
     if (error || !data) { setIncompleteCount(0); return; }
@@ -28,6 +28,8 @@ export function useIncompleteCount() {
       investmentDate: row.investment_date,
       incomeModel: row.income_model,
       status: row.status,
+      expectedReturn: row.expected_return != null ? Number(row.expected_return) : null,
+      expectedEndDate: row.expected_end_date,
     })).length;
 
     setIncompleteCount(count);

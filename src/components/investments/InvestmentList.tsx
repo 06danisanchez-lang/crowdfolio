@@ -262,7 +262,7 @@ export function InvestmentList({
                         amount: draft.amount ?? 0,
                         investmentDate: draft.investmentDate || '',
                         expectedReturn: draft.expectedReturn ?? 0,
-                        incomeModel: draft.incomeModel || 'bullet',
+                        incomeModel: (draft.incomeModel as IncomeModel) || undefined,
                         status: draft.status,
                         payments: draft.payments,
                         createdAt: draft.createdAt,

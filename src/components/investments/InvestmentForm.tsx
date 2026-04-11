@@ -886,41 +886,85 @@ export function InvestmentForm({
     </Form>
   );
 
-  return (
-    <Dialog open={open} onOpenChange={handleOpenChange}>
-      <DialogTrigger asChild>
-        {trigger || (
-          <Button onClick={(e) => {
-            if (!canAddInvestment) {
-              e.preventDefault();
-              onProRequired?.();
-            }
-          }}>
-            <Plus className="mr-2 h-4 w-4" />
-            Nueva Inversión
-            {!isPro && investmentCount >= 3 && (
-              <span className="ml-1 text-xs opacity-70">(Pro)</span>
-            )}
-          </Button>
-        )}
-      </DialogTrigger>
-      <DialogContent className="max-h-[90vh] overflow-y-auto sm:max-w-[500px]">
-        <DialogHeader>
-          <DialogTitle>
-            {isFuture
-              ? t('future.form.title')
-              : initialData ? t('investments.form.title.edit') : t('investments.form.title.new')}
-          </DialogTitle>
-        </DialogHeader>
-        
-        {showDraftButtons && (
-          <p className="text-sm text-muted-foreground px-1 -mt-1 mb-2">
-            {t('investments.form.draftHint')}
-          </p>
-        )}
+  const handleBlockingContinueEditing = () => {
+    setBlockingModal(null);
+    // Scroll to validation banner at the top of the form
+    formRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  };
 
-        {renderForm()}
-      </DialogContent>
-    </Dialog>
+  const handleBlockingAsDraft = () => {
+    // Reads fresh form.getValues() inside handleSaveDraft — no stale snapshot
+    setBlockingModal(null);
+    handleSaveDraft();
+  };
+
+  return (
+    <>
+      <Dialog open={open} onOpenChange={handleOpenChange}>
+        <DialogTrigger asChild>
+          {trigger || (
+            <Button onClick={(e) => {
+              if (!canAddInvestment) {
+                e.preventDefault();
+                onProRequired?.();
+              }
+            }}>
+              <Plus className="mr-2 h-4 w-4" />
+              Nueva Inversión
+              {!isPro && investmentCount >= 3 && (
+                <span className="ml-1 text-xs opacity-70">(Pro)</span>
+              )}
+            </Button>
+          )}
+        </DialogTrigger>
+        <DialogContent className="max-h-[90vh] overflow-y-auto sm:max-w-[500px]">
+          <DialogHeader>
+            <DialogTitle>
+              {isFuture
+                ? t('future.form.title')
+                : initialData ? t('investments.form.title.edit') : t('investments.form.title.new')}
+            </DialogTitle>
+          </DialogHeader>
+          
+          {showDraftButtons && (
+            <p className="text-sm text-muted-foreground px-1 -mt-1 mb-2">
+              {t('investments.form.draftHint')}
+            </p>
+          )}
+
+          {renderForm()}
+        </DialogContent>
+      </Dialog>
+
+      {/* Blocking modal when saving incomplete investment */}
+      <AlertDialog open={!!blockingModal} onOpenChange={(o) => { if (!o) setBlockingModal(null); }}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>{t('investments.blocking.title')}</AlertDialogTitle>
+            <AlertDialogDescription className="space-y-3">
+              <p>{t('investments.blocking.description')}</p>
+              <div className="mt-2">
+                <p className="font-medium text-foreground text-sm mb-1">{t('investments.blocking.missingLabel')}</p>
+                <ul className="list-disc list-inside text-sm space-y-0.5">
+                  {blockingModal?.map((field) => (
+                    <li key={field}>{t(field)}</li>
+                  ))}
+                </ul>
+              </div>
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel onClick={handleBlockingContinueEditing}>
+              {t('investments.blocking.continueEditing')}
+            </AlertDialogCancel>
+            {onSubmitDraft && (
+              <AlertDialogAction onClick={handleBlockingAsDraft}>
+                {t('investments.blocking.saveAsPending')}
+              </AlertDialogAction>
+            )}
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+    </>
   );
 }

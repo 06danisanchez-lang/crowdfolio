@@ -192,6 +192,8 @@ export function InvestmentForm({
   });
 
   const [validationError, setValidationError] = useState<string[] | null>(null);
+  const [blockingModal, setBlockingModal] = useState<string[] | null>(null);
+  const formRef = useRef<HTMLFormElement>(null);
   const watchPlatform = form.watch('platform');
   const watchIncomeModel = form.watch('incomeModel') as IncomeModel | undefined;
 

@@ -53,19 +53,25 @@ export function getInvestmentCompletionStatus(inv: CompletenessInput): Completio
   if (inv.expectedReturn == null) missingFields.push('investments.field.expectedReturn');
   if (!inv.expectedEndDate) missingFields.push('investments.field.expectedEndDate');
 
+  // periodic_fixed / amortizing additionally require paymentFrequency + schedule
+  const model = inv.incomeModel;
+  if (model === 'periodic_fixed' || model === 'amortizing') {
+    if (!inv.paymentFrequency) missingFields.push('investments.field.paymentFrequency');
+    if (!inv.hasSchedule) missingFields.push('investments.field.schedule');
+  }
+
   const isTrackingReady = missingFields.length === 0;
 
   // Forecast-ready checks (only if tracking-ready)
   let isForecastReady = false;
   if (isTrackingReady) {
-    const model = inv.incomeModel;
     if (model === 'variable_or_unknown') {
       isForecastReady = false;
     } else if (model === 'bullet') {
-      // expectedReturn + expectedEndDate already guaranteed by tracking-ready
       isForecastReady = true;
     } else if (model === 'periodic_fixed' || model === 'amortizing') {
-      isForecastReady = !!inv.paymentFrequency && !!inv.hasSchedule;
+      // frequency + schedule already guaranteed by tracking-ready
+      isForecastReady = true;
     }
   }
 

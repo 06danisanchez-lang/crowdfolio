@@ -388,7 +388,7 @@ export function useInvestments() {
 
     await fetchInvestments();
     return { demotedToDraft };
-  }, [fetchInvestments, allRawInvestments, saveScheduleForInvestment]);
+  }, [fetchInvestments, allRawInvestments, saveScheduleForInvestment, scheduleMap]);
 
   const deleteInvestment = useCallback(async (id: string) => {
     const { error } = await supabase.from('investments').delete().eq('id', id);

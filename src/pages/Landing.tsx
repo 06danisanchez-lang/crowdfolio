@@ -1,6 +1,6 @@
 import { useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
-import crowdfolioLogo from '@/assets/crowdfolio-logo.png';
+import crowdfolioLogo from '@/assets/logo_crowdfolio.png';
 import HeroSection from '@/components/landing/HeroSection';
 import StatsSection from '@/components/landing/StatsSection';
 import ProductShowcase from '@/components/landing/ProductShowcase';

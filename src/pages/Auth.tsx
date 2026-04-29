@@ -10,7 +10,7 @@ import { Loader2, Mail, Lock, AlertCircle, RefreshCw, ArrowLeft, Crown } from 'l
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Checkbox } from '@/components/ui/checkbox';
 import { z } from 'zod';
-import crowdfolioLogo from '@/assets/crowdfolio-logo.png';
+import crowdfolioLogo from '@/assets/logo_crowdfolio.png';
 import { GoogleButton } from '@/components/auth/GoogleButton';
 import { AuthDivider } from '@/components/auth/AuthDivider';
 import { LEGAL_ROUTES } from '@/lib/legal/routes';

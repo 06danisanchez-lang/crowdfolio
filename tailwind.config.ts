@@ -84,6 +84,12 @@ export default {
           "5": "hsl(var(--chart-5))",
           "6": "hsl(var(--chart-6))",
         },
+        brand: {
+          navy:  "#253765",
+          sky:   "#79c6fa",
+          cream: "#e4ddcf",
+          brown: "#3f3623",
+        },
       },
       borderRadius: {
         lg: "var(--radius)",

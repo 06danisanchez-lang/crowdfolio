@@ -19,7 +19,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import { Separator } from '@/components/ui/separator';
 import { useSubscription } from '@/contexts/SubscriptionContext';
 import { UpgradeModal } from '@/components/subscription/UpgradeModal';
-import crowdfolioLogo from '@/assets/crowdfolio-logo.png';
+import crowdfolioLogo from '@/assets/logo_crowdfolio.png';
 import { useLanguage } from '@/contexts/LanguageContext';
 import { LanguageToggle } from '@/components/ui/LanguageToggle';
 import { useFutureInvestments } from '@/hooks/useFutureInvestments';

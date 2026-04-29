@@ -3,7 +3,7 @@ import { ArrowRight, Check, Sparkles } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import AnimatedBackground from './AnimatedBackground';
 import dashboardImg from '@/assets/screenshots/dashboard.jpg';
-import crowdfolioLogo from '@/assets/crowdfolio-logo.png';
+import crowdfolioLogo from '@/assets/logo_crowdfolio.png';
 import { useLanguage } from '@/contexts/LanguageContext';
 
 export default function HeroSection() {

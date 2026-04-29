@@ -1,6 +1,6 @@
 import { useMemo } from 'react';
-import { Investment } from '@/types/investment';
-import { parseISO, differenceInDays, addMonths, isAfter, isBefore } from 'date-fns';
+import { Investment, InvestmentScheduleEntry } from '@/types/investment';
+import { parseISO, differenceInDays } from 'date-fns';
 
 export type AlertType = 'maturity' | 'overdue' | 'expected-payment';
 export type AlertSeverity = 'warning' | 'danger' | 'info';
@@ -28,21 +28,24 @@ interface UseAlertsReturn {
   hasUrgentAlerts: boolean;
 }
 
-export function useAlerts(investments: Investment[]): UseAlertsReturn {
+export function useAlerts(
+  investments: Investment[],
+  scheduleMap: Record<string, InvestmentScheduleEntry[]> = {},
+): UseAlertsReturn {
   const alerts = useMemo(() => {
-    const now = new Date();
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
     const allAlerts: Alert[] = [];
 
     investments.forEach(investment => {
       if (investment.status !== 'active') return;
 
-      // Check for upcoming maturities (within 30 days)
+      // Maturity alerts (within 30 days or already overdue)
       if (investment.expectedEndDate) {
         const endDate = parseISO(investment.expectedEndDate);
-        const daysUntilMaturity = differenceInDays(endDate, now);
+        const daysUntilMaturity = differenceInDays(endDate, today);
 
         if (daysUntilMaturity < 0) {
-          // Overdue investment
           allAlerts.push({
             id: `overdue-${investment.id}`,
             type: 'overdue',
@@ -57,14 +60,13 @@ export function useAlerts(investments: Investment[]): UseAlertsReturn {
             daysRemaining: daysUntilMaturity,
           });
         } else if (daysUntilMaturity <= 30) {
-          // Upcoming maturity within 30 days
           allAlerts.push({
             id: `maturity-${investment.id}`,
             type: 'maturity',
             severity: daysUntilMaturity <= 7 ? 'danger' : 'warning',
             title: daysUntilMaturity === 0 ? 'Vence hoy' : 'Vencimiento próximo',
-            message: daysUntilMaturity === 0 
-              ? 'Esta inversión vence hoy' 
+            message: daysUntilMaturity === 0
+              ? 'Esta inversión vence hoy'
               : `Vence en ${daysUntilMaturity} ${daysUntilMaturity === 1 ? 'día' : 'días'}`,
             investmentId: investment.id,
             investmentName: investment.projectName,
@@ -76,40 +78,54 @@ export function useAlerts(investments: Investment[]): UseAlertsReturn {
         }
       }
 
-      // Check for expected payments based on investment duration
-      // Estimate quarterly payments for active investments older than 3 months
-      const investmentDate = parseISO(investment.investmentDate);
-      const monthsSinceInvestment = Math.floor(differenceInDays(now, investmentDate) / 30);
-      
-      if (monthsSinceInvestment >= 3) {
-        // Calculate expected number of quarterly payments
-        const expectedPaymentsCount = Math.floor(monthsSinceInvestment / 3);
-        const actualPaymentsCount = investment.payments.length;
-        
-        if (expectedPaymentsCount > actualPaymentsCount) {
-          // Missing expected payment
-          const expectedPaymentDate = addMonths(investmentDate, (actualPaymentsCount + 1) * 3);
-          const daysSinceExpected = differenceInDays(now, expectedPaymentDate);
-          
-          if (daysSinceExpected >= 0 && daysSinceExpected <= 60) {
-            const expectedAmount = (investment.amount * investment.expectedReturn / 100) / 4; // Quarterly
-            
-            allAlerts.push({
-              id: `payment-${investment.id}-${actualPaymentsCount + 1}`,
-              type: 'expected-payment',
-              severity: daysSinceExpected > 30 ? 'warning' : 'info',
-              title: 'Pago esperado pendiente',
-              message: daysSinceExpected === 0 
-                ? 'Se esperaba un pago hoy'
-                : `Se esperaba un pago hace ${daysSinceExpected} días`,
-              investmentId: investment.id,
-              investmentName: investment.projectName,
-              platform: investment.platform,
-              date: expectedPaymentDate,
-              amount: expectedAmount,
-              daysRemaining: -daysSinceExpected,
-            });
-          }
+      // Expected-payment alerts from the real schedule.
+      // Only fires for investments with a generated schedule (periodic_fixed, amortizing).
+      // Bullet and variable_or_unknown have no schedule entries, so they're silently skipped.
+      const schedule = scheduleMap[investment.id];
+      if (!schedule || schedule.length === 0) return;
+
+      for (const entry of schedule) {
+        if (entry.status === 'matched' || entry.status === 'skipped') continue;
+
+        const entryDate = parseISO(entry.expectedDate);
+        // positive = days in the future; negative = days past due
+        const daysFromToday = differenceInDays(entryDate, today);
+
+        if (daysFromToday < 0 && daysFromToday >= -60) {
+          // Past due within 60-day window
+          const daysOverdue = Math.abs(daysFromToday);
+          allAlerts.push({
+            id: `payment-${investment.id}-${entry.id ?? entry.expectedDate}`,
+            type: 'expected-payment',
+            severity: daysOverdue > 30 ? 'warning' : 'info',
+            title: 'Pago esperado pendiente',
+            message: daysOverdue === 1
+              ? 'Se esperaba un pago ayer'
+              : `Se esperaba un pago hace ${daysOverdue} días`,
+            investmentId: investment.id,
+            investmentName: investment.projectName,
+            platform: investment.platform,
+            date: entryDate,
+            amount: entry.expectedAmount,
+            daysRemaining: daysFromToday,
+          });
+        } else if (daysFromToday >= 0 && daysFromToday <= 7) {
+          // Upcoming within 7 days
+          allAlerts.push({
+            id: `payment-upcoming-${investment.id}-${entry.id ?? entry.expectedDate}`,
+            type: 'expected-payment',
+            severity: 'info',
+            title: daysFromToday === 0 ? 'Pago esperado hoy' : 'Pago próximo',
+            message: daysFromToday === 0
+              ? `Se espera un pago hoy de ${entry.expectedAmount.toFixed(2)} €`
+              : `Se espera un pago en ${daysFromToday} ${daysFromToday === 1 ? 'día' : 'días'}`,
+            investmentId: investment.id,
+            investmentName: investment.projectName,
+            platform: investment.platform,
+            date: entryDate,
+            amount: entry.expectedAmount,
+            daysRemaining: daysFromToday,
+          });
         }
       }
     });
@@ -122,7 +138,7 @@ export function useAlerts(investments: Investment[]): UseAlertsReturn {
       }
       return a.date.getTime() - b.date.getTime();
     });
-  }, [investments]);
+  }, [investments, scheduleMap]);
 
   const upcomingMaturities = alerts.filter(a => a.type === 'maturity');
   const overdueInvestments = alerts.filter(a => a.type === 'overdue');

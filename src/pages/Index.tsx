@@ -67,7 +67,7 @@ const Index = () => {
     exportInvestments,
   } = useInvestments();
 
-  const { alerts, alertCount, hasUrgentAlerts } = useAlerts(activeInvestments);
+  const { alerts, alertCount, hasUrgentAlerts } = useAlerts(activeInvestments, scheduleMap);
 
   const openUpgradeModal = (feature: string) => {
     setUpgradeFeature(feature);

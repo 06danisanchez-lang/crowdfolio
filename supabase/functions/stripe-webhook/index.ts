@@ -42,6 +42,12 @@ serve(async (req) => {
 
   logStep("Event received", { type: event.type, id: event.id });
 
+  const supabaseAdmin = createClient(
+    Deno.env.get("SUPABASE_URL") ?? "",
+    Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "",
+    { auth: { persistSession: false } }
+  );
+
   if (event.type === "checkout.session.completed") {
     const session = event.data.object as Stripe.Checkout.Session;
 
@@ -77,12 +83,6 @@ serve(async (req) => {
         userId,
       });
 
-      const supabaseAdmin = createClient(
-        Deno.env.get("SUPABASE_URL") ?? "",
-        Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "",
-        { auth: { persistSession: false } }
-      );
-
       // Update profiles with stripe_customer_id
       const { error: profileError } = await supabaseAdmin
         .from("profiles")
@@ -115,11 +115,78 @@ serve(async (req) => {
         return new Response(JSON.stringify({ error: subError.message }), { status: 500 });
       }
 
-      logStep("SUCCESS", { userId, plan, status: sub.status });
+      logStep("SUCCESS checkout.session.completed", { userId, plan, status: sub.status });
     } catch (err) {
       logStep("ERROR processing subscription", { error: String(err) });
       return new Response(JSON.stringify({ error: String(err) }), { status: 500 });
     }
+  }
+
+  if (
+    event.type === "customer.subscription.updated" ||
+    event.type === "customer.subscription.deleted"
+  ) {
+    const sub = event.data.object as Stripe.Subscription;
+    const subscriptionId = sub.id;
+    const isDeleted = event.type === "customer.subscription.deleted";
+
+    // Look up the user by their Stripe subscription ID
+    const { data: existingRow, error: lookupError } = await supabaseAdmin
+      .from("subscriptions")
+      .select("user_id")
+      .eq("stripe_subscription_id", subscriptionId)
+      .maybeSingle();
+
+    if (lookupError || !existingRow) {
+      logStep("WARNING: subscription not found in DB, skipping", { subscriptionId });
+      return new Response(JSON.stringify({ received: true }), {
+        status: 200,
+        headers: { "Content-Type": "application/json" },
+      });
+    }
+
+    const priceId = sub.items?.data[0]?.price?.id;
+    let plan: "free" | "monthly" | "yearly" = "free";
+    if (!isDeleted) {
+      if (priceId === STRIPE_PRICES.monthly) plan = "monthly";
+      if (priceId === STRIPE_PRICES.yearly) plan = "yearly";
+    }
+
+    // Map Stripe subscription statuses to DB enum values.
+    // DB enum: 'free' | 'active' | 'past_due' | 'canceled'
+    const stripeStatusToDb = (
+      stripeStatus: string,
+    ): "free" | "active" | "past_due" | "canceled" => {
+      if (stripeStatus === "active" || stripeStatus === "trialing") return "active";
+      if (stripeStatus === "past_due" || stripeStatus === "unpaid" || stripeStatus === "paused") return "past_due";
+      return "canceled";
+    };
+
+    const dbStatus = isDeleted ? "canceled" : stripeStatusToDb(sub.status);
+    const dbPlan = isDeleted || dbStatus === "canceled" ? "free" : plan;
+
+    const { error: updateError } = await supabaseAdmin
+      .from("subscriptions")
+      .update({
+        status: dbStatus,
+        plan: dbPlan,
+        current_period_start: new Date(sub.current_period_start * 1000).toISOString(),
+        current_period_end: new Date(sub.current_period_end * 1000).toISOString(),
+        updated_at: new Date().toISOString(),
+      })
+      .eq("stripe_subscription_id", subscriptionId);
+
+    if (updateError) {
+      logStep("ERROR updating subscription", updateError);
+      return new Response(JSON.stringify({ error: updateError.message }), { status: 500 });
+    }
+
+    logStep(`SUCCESS ${event.type}`, {
+      subscriptionId,
+      userId: existingRow.user_id,
+      dbStatus,
+      dbPlan,
+    });
   }
 
   return new Response(JSON.stringify({ received: true }), {

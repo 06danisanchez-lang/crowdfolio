@@ -35,7 +35,7 @@ export default function HeroSection() {
           <h1 className="mb-4 text-4xl font-bold tracking-tight md:text-5xl lg:text-6xl xl:text-7xl">
             {t('hero.headline1')}{' '}
             <span className="relative">
-              <span className="bg-gradient-to-r from-primary via-blue-500 to-violet-500 bg-clip-text text-transparent">
+              <span className="bg-gradient-to-r from-brand-navy via-brand-sky to-brand-sky bg-clip-text text-transparent">
                 crowdfunding
               </span>
               <svg

@@ -6,26 +6,26 @@
 
 @layer base {
   :root {
-    --background: 220 20% 97%;
-    --foreground: 222 47% 11%;
+    --background: 40 15% 98%;          /* warm white con tinte crema */
+    --foreground: 41 29% 19%;          /* brand-brown */
 
     --card: 0 0% 100%;
-    --card-foreground: 222 47% 11%;
+    --card-foreground: 41 29% 19%;     /* brand-brown */
 
     --popover: 0 0% 100%;
-    --popover-foreground: 222 47% 11%;
+    --popover-foreground: 41 29% 19%;  /* brand-brown */
 
-    --primary: 217 91% 60%;
-    --primary-foreground: 0 0% 100%;
+    --primary: 223 46% 27%;            /* brand-navy #253765 */
+    --primary-foreground: 0 0% 100%;   /* blanco sobre navy */
 
-    --secondary: 220 14% 96%;
-    --secondary-foreground: 222 47% 11%;
+    --secondary: 40 25% 90%;           /* crema claro */
+    --secondary-foreground: 41 29% 19%; /* brand-brown */
 
-    --muted: 220 14% 96%;
-    --muted-foreground: 220 9% 46%;
+    --muted: 40 20% 94%;               /* crema muy suave */
+    --muted-foreground: 40 10% 46%;    /* gris cálido */
 
-    --accent: 220 14% 96%;
-    --accent-foreground: 222 47% 11%;
+    --accent: 40 25% 90%;              /* crema */
+    --accent-foreground: 41 29% 19%;   /* brand-brown */
 
     --destructive: 0 84% 60%;
     --destructive-foreground: 0 0% 100%;
@@ -33,9 +33,9 @@
     --warning: 45 93% 47%;
     --warning-foreground: 0 0% 0%;
 
-    --border: 220 13% 91%;
-    --input: 220 13% 91%;
-    --ring: 217 91% 60%;
+    --border: 40 15% 87%;              /* borde cálido */
+    --input: 40 15% 87%;
+    --ring: 204 93% 73%;               /* brand-sky para foco */
 
     --radius: 0.75rem;
 
@@ -51,11 +51,11 @@
     /* Status colors */
     --status-active: 142 76% 36%;
     --status-pending: 45 93% 47%;
-    --status-completed: 217 91% 60%;
+    --status-completed: 223 46% 27%;   /* brand-navy */
     --status-defaulted: 0 84% 60%;
 
-    /* Chart colors */
-    --chart-1: 217 91% 60%;
+    /* Chart colors — sky como primario de datos */
+    --chart-1: 204 93% 73%;            /* brand-sky */
     --chart-2: 142 76% 36%;
     --chart-3: 25 95% 53%;
     --chart-4: 262 83% 58%;
@@ -64,48 +64,48 @@
 
     /* Sidebar */
     --sidebar-background: 0 0% 100%;
-    --sidebar-foreground: 222 47% 11%;
-    --sidebar-primary: 217 91% 60%;
+    --sidebar-foreground: 41 29% 19%;  /* brand-brown */
+    --sidebar-primary: 223 46% 27%;    /* brand-navy */
     --sidebar-primary-foreground: 0 0% 100%;
-    --sidebar-accent: 220 14% 96%;
-    --sidebar-accent-foreground: 222 47% 11%;
-    --sidebar-border: 220 13% 91%;
-    --sidebar-ring: 217 91% 60%;
+    --sidebar-accent: 40 25% 90%;      /* crema */
+    --sidebar-accent-foreground: 41 29% 19%;
+    --sidebar-border: 40 15% 87%;
+    --sidebar-ring: 204 93% 73%;       /* brand-sky */
   }
 
   .dark {
-    --background: 222 47% 6%;
-    --foreground: 210 40% 98%;
+    --background: 223 30% 8%;          /* navy muy oscuro */
+    --foreground: 40 28% 85%;          /* brand-cream para texto */
 
-    --card: 222 47% 9%;
-    --card-foreground: 210 40% 98%;
+    --card: 223 30% 11%;
+    --card-foreground: 40 28% 85%;     /* brand-cream */
 
-    --popover: 222 47% 9%;
-    --popover-foreground: 210 40% 98%;
+    --popover: 223 30% 11%;
+    --popover-foreground: 40 28% 85%;
 
-    --primary: 217 91% 60%;
-    --primary-foreground: 0 0% 100%;
+    --primary: 204 93% 73%;            /* brand-sky en dark (claro sobre oscuro) */
+    --primary-foreground: 223 46% 15%; /* navy oscuro sobre sky */
 
-    --secondary: 217 33% 17%;
-    --secondary-foreground: 210 40% 98%;
+    --secondary: 223 30% 17%;
+    --secondary-foreground: 40 28% 85%;
 
-    --muted: 217 33% 17%;
-    --muted-foreground: 215 20% 65%;
+    --muted: 223 30% 17%;
+    --muted-foreground: 40 15% 60%;
 
-    --accent: 217 33% 17%;
-    --accent-foreground: 210 40% 98%;
+    --accent: 223 30% 17%;
+    --accent-foreground: 40 28% 85%;
 
     --destructive: 0 63% 31%;
-    --destructive-foreground: 210 40% 98%;
+    --destructive-foreground: 40 28% 85%;
 
     --warning: 45 93% 52%;
     --warning-foreground: 0 0% 0%;
 
-    --border: 217 33% 17%;
-    --input: 217 33% 17%;
-    --ring: 217 91% 60%;
+    --border: 223 30% 20%;
+    --input: 223 30% 20%;
+    --ring: 204 93% 73%;               /* brand-sky */
 
-    /* Platform colors - slightly adjusted for dark mode */
+    /* Platform colors - dark mode */
     --platform-urbanitae: 210 100% 55%;
     --platform-housers: 25 95% 58%;
     --platform-estateguru: 142 76% 46%;
@@ -117,11 +117,11 @@
     /* Status colors - dark mode */
     --status-active: 142 76% 46%;
     --status-pending: 45 93% 52%;
-    --status-completed: 217 91% 65%;
+    --status-completed: 204 93% 73%;   /* brand-sky en dark */
     --status-defaulted: 0 84% 55%;
 
     /* Chart colors - dark mode */
-    --chart-1: 217 91% 65%;
+    --chart-1: 204 93% 73%;            /* brand-sky */
     --chart-2: 142 76% 46%;
     --chart-3: 25 95% 58%;
     --chart-4: 262 83% 65%;
@@ -129,14 +129,14 @@
     --chart-6: 199 89% 55%;
 
     /* Sidebar - dark mode */
-    --sidebar-background: 222 47% 9%;
-    --sidebar-foreground: 210 40% 98%;
-    --sidebar-primary: 217 91% 60%;
-    --sidebar-primary-foreground: 0 0% 100%;
-    --sidebar-accent: 217 33% 17%;
-    --sidebar-accent-foreground: 210 40% 98%;
-    --sidebar-border: 217 33% 17%;
-    --sidebar-ring: 217 91% 60%;
+    --sidebar-background: 223 30% 11%;
+    --sidebar-foreground: 40 28% 85%;  /* brand-cream */
+    --sidebar-primary: 204 93% 73%;    /* brand-sky */
+    --sidebar-primary-foreground: 223 46% 15%;
+    --sidebar-accent: 223 30% 17%;
+    --sidebar-accent-foreground: 40 28% 85%;
+    --sidebar-border: 223 30% 20%;
+    --sidebar-ring: 204 93% 73%;       /* brand-sky */
   }
 }
 

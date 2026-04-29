@@ -21,9 +21,9 @@ export default function CTASection() {
       ref={ref} 
       className="relative overflow-hidden border-t py-12 md:py-16"
     >
-      <div className="absolute inset-0 bg-gradient-to-br from-primary/10 via-blue-500/5 to-violet-500/10" />
+      <div className="absolute inset-0 bg-gradient-to-br from-primary/10 via-brand-sky/5 to-primary/5" />
       <div className="absolute left-10 top-20 h-64 w-64 rounded-full bg-primary/20 blur-3xl" />
-      <div className="absolute bottom-10 right-10 h-48 w-48 rounded-full bg-violet-500/20 blur-3xl" />
+      <div className="absolute bottom-10 right-10 h-48 w-48 rounded-full bg-brand-sky/20 blur-3xl" />
       
       <div className="container relative mx-auto px-4 text-center">
         <div

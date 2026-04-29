@@ -29,7 +29,12 @@ function getPeriodsPerYear(freq: PaymentFrequency): number {
 
 function addMonths(date: Date, months: number): Date {
   const d = new Date(date);
-  d.setMonth(d.getMonth() + months);
+  const targetMonth = d.getMonth() + months;
+  d.setDate(1); // anchor to 1st to avoid month overflow during setMonth
+  d.setMonth(targetMonth);
+  // Clamp day to the last day of the target month
+  const lastDay = new Date(d.getFullYear(), d.getMonth() + 1, 0).getDate();
+  d.setDate(Math.min(date.getDate(), lastDay));
   return d;
 }
 

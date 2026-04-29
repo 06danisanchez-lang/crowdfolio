@@ -474,6 +474,7 @@ export function useInvestments() {
     const { error } = await supabase.from('investments').delete().eq('user_id', user.id);
     if (error) { console.error('Error clearing investments:', error); return; }
     setAllRawInvestments([]);
+    setScheduleMap({});
   }, [user]);
 
   // ── 5B: Summary using separated arrays ──

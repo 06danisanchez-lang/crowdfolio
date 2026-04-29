@@ -127,11 +127,34 @@ export function SubscriptionProvider({ children }: { children: ReactNode }) {
     }
   }, [user, refreshSubscription]);
 
-  // Auto-refresh every 60 seconds
+  // Auto-refresh every 5 minutes, but only when the tab is visible.
+  // On tab focus, refreshes immediately if 5+ minutes have elapsed since the last call.
   useEffect(() => {
     if (!user) return;
-    const interval = setInterval(refreshSubscription, 60000);
-    return () => clearInterval(interval);
+
+    const INTERVAL_MS = 5 * 60 * 1000;
+    let lastRefreshAt = Date.now();
+
+    const intervalId = setInterval(() => {
+      if (document.visibilityState === 'visible') {
+        refreshSubscription();
+        lastRefreshAt = Date.now();
+      }
+    }, INTERVAL_MS);
+
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === 'visible' && Date.now() - lastRefreshAt >= INTERVAL_MS) {
+        refreshSubscription();
+        lastRefreshAt = Date.now();
+      }
+    };
+
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+
+    return () => {
+      clearInterval(intervalId);
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
+    };
   }, [user, refreshSubscription]);
 
   // Check URL params for subscription success — aggressive retry

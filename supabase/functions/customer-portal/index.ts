@@ -41,17 +41,29 @@ serve(async (req) => {
     if (!user?.email) throw new Error("User not authenticated or email not available");
     logStep("User authenticated", { userId: user.id, email: user.email });
 
-    const stripe = new Stripe(stripeKey, { apiVersion: "2025-08-27.basil" });
-    const customers = await stripe.customers.list({ email: user.email, limit: 1 });
-    
-    if (customers.data.length === 0) {
-      throw new Error("No Stripe customer found for this user");
+    const stripe = new Stripe(stripeKey, { apiVersion: "2024-06-20" });
+
+    // Prefer stored stripe_customer_id; fall back to email lookup
+    const { data: profile } = await supabaseClient
+      .from("profiles")
+      .select("stripe_customer_id")
+      .eq("id", user.id)
+      .maybeSingle();
+
+    let customerId: string | null = profile?.stripe_customer_id ?? null;
+
+    if (!customerId) {
+      logStep("No stored customer ID, falling back to email lookup");
+      const customerList = await stripe.customers.list({ email: user.email, limit: 1 });
+      if (customerList.data.length === 0) {
+        throw new Error("No Stripe customer found for this user");
+      }
+      customerId = customerList.data[0].id;
     }
-    
-    const customerId = customers.data[0].id;
+
     logStep("Found Stripe customer", { customerId });
 
-    const origin = req.headers.get("origin") || "https://lovable.dev";
+    const origin = req.headers.get("origin") || "https://crowdfolio.es";
     const portalSession = await stripe.billingPortal.sessions.create({
       customer: customerId,
       return_url: `${origin}/`,

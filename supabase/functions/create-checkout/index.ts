@@ -67,7 +67,7 @@ serve(async (req) => {
     }
 
     const priceId = STRIPE_PRICES[plan];
-    const origin = req.headers.get("origin") || "https://lovable.dev";
+    const origin = req.headers.get("origin") || "https://crowdfolio.es";
 
     // Leer stripe_customer_id guardado (RLS: solo el propio usuario)
     const { data: profile } = await supabaseClient

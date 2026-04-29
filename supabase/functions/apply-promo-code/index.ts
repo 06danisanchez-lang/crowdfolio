@@ -18,7 +18,8 @@ serve(async (req) => {
 
   const supabaseClient = createClient(
     Deno.env.get("SUPABASE_URL") ?? "",
-    Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? ""
+    Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "",
+    { auth: { persistSession: false } }
   );
 
   try {
@@ -73,11 +74,15 @@ serve(async (req) => {
     }
 
     // Check if user is already Pro (with Stripe subscription)
-    const { data: subscription } = await supabaseClient
+    const { data: subscription, error: subCheckError } = await supabaseClient
       .from('subscriptions')
-      .select('*')
+      .select('stripe_subscription_id')
       .eq('user_id', user.id)
-      .single();
+      .maybeSingle();
+
+    if (subCheckError) {
+      throw new Error("Error checking subscription status");
+    }
 
     if (subscription?.stripe_subscription_id) {
       return new Response(
@@ -103,19 +108,19 @@ serve(async (req) => {
       throw new Error("Error recording promo code usage");
     }
 
-    // Update subscription to Pro
-    const { error: updateError } = await supabaseClient
+    // Upsert subscription to Pro (creates the row if the user never went through checkout)
+    const { error: upsertError } = await supabaseClient
       .from('subscriptions')
-      .update({
+      .upsert({
+        user_id: user.id,
         status: 'active',
         plan: promoConfig.plan,
         current_period_start: now.toISOString(),
         current_period_end: expiresAt.toISOString(),
         updated_at: now.toISOString(),
-      })
-      .eq('user_id', user.id);
+      }, { onConflict: 'user_id' });
 
-    if (updateError) {
+    if (upsertError) {
       throw new Error("Error updating subscription");
     }
 

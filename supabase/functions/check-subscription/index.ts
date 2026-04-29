@@ -58,7 +58,6 @@ serve(async (req) => {
       .gt("current_period_end", nowIso)
       .order("current_period_end", { ascending: false })
       .maybeSingle();
-    const debugDbSub = dbSub;
     if (dbSubError) {
       logStep("DB subscription check error", { message: dbSubError.message });
       // continue to Stripe fallback below
@@ -71,7 +70,7 @@ serve(async (req) => {
       });
 
       // Normalize plan to the values your frontend expects
-      let plan: "free" | "monthly" | "yearly" = "yearly";
+      let plan: "free" | "monthly" | "yearly" = "free";
       if (dbSub.plan === "monthly") plan = "monthly";
       else if (dbSub.plan === "yearly") plan = "yearly";
 
@@ -152,11 +151,6 @@ serve(async (req) => {
           plan: "free",
           product_id: null,
           subscription_end: null,
-
-          // DEBUG TEMPORAL (quitar cuando esté arreglado)
-          debug_user_id: user.id,
-          debug_email: user.email,
-          debug_db_sub: debugDbSub ?? null,
         }),
         {
           headers: { ...corsHeaders, "Content-Type": "application/json" },

@@ -8,7 +8,7 @@ import { Card, CardContent, CardDescription, CardHeader } from '@/components/ui/
 import { Loader2, Lock, AlertCircle, CheckCircle } from 'lucide-react';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { z } from 'zod';
-import crowdfolioLogo from '@/assets/logo_crowdfolio.png';
+import crowdfolioLogo from '@/assets/logo_crowdfolio.svg';
 
 const passwordSchema = z.object({
   password: z.string().min(6, 'La contraseña debe tener al menos 6 caracteres'),

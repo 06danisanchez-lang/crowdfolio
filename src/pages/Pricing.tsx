@@ -1,7 +1,7 @@
 import { ArrowLeft } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { PricingTable } from '@/components/subscription/PricingTable';
-import crowdfolioLogo from '@/assets/logo_crowdfolio.png';
+import crowdfolioLogo from '@/assets/logo_crowdfolio.svg';
 
 interface PricingProps {
   onBack?: () => void;

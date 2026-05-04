@@ -1,6 +1,6 @@
 import { forwardRef } from 'react';
 import { Wallet, TrendingUp, PiggyBank } from 'lucide-react';
-import crowdfolioLogo from '@/assets/logo_crowdfolio.png';
+import crowdfolioLogo from '@/assets/logo_crowdfolio.svg';
 
 interface ShareableCardProps {
   totalInvested: number;

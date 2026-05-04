@@ -19,10 +19,11 @@ import { useAuth } from '@/contexts/AuthContext';
 import { Separator } from '@/components/ui/separator';
 import { useSubscription } from '@/contexts/SubscriptionContext';
 import { UpgradeModal } from '@/components/subscription/UpgradeModal';
-import crowdfolioLogo from '@/assets/logo_crowdfolio.png';
+import crowdfolioLogo from '@/assets/logo_crowdfolio.svg';
+import crowdfolioIcon from '@/assets/icon_crowdfolio.svg';
+import crowdfolioWordmark from '@/assets/wordmark_crowdfolio.svg';
 import { useLanguage } from '@/contexts/LanguageContext';
 import { LanguageToggle } from '@/components/ui/LanguageToggle';
-import { useFutureInvestments } from '@/hooks/useFutureInvestments';
 
 
 interface AppLayoutProps {
@@ -45,8 +46,6 @@ export function AppLayout({
   const navigate = useNavigate();
   const mainRef = useRef<HTMLElement>(null);
   const { t } = useLanguage();
-  const { futureInvestments } = useFutureInvestments();
-  
 
   useEffect(() => {
     mainRef.current?.scrollTo(0, 0);
@@ -71,7 +70,7 @@ export function AppLayout({
           <Menu className="h-5 w-5" />
         </Button>
         <div className="flex items-center gap-2">
-          <img src={crowdfolioLogo} alt="Crowdfolio" className="h-16" />
+          <img src={crowdfolioLogo} alt="Crowdfolio" className="h-8 w-auto" />
         </div>
         <div className="flex items-center gap-2">
           <LanguageToggle />
@@ -83,7 +82,7 @@ export function AppLayout({
             <Crown className="h-4 w-4" />
             {isPro ? t('nav.alreadyPro') : t('nav.upgradePro')}
           </Button>
-          <NotificationBell futureInvestments={futureInvestments} />
+          <NotificationBell />
         </div>
       </header>
 
@@ -93,8 +92,9 @@ export function AppLayout({
           "fixed inset-y-0 left-0 z-40 w-64 transform border-r bg-card transition-transform lg:static lg:translate-x-0 flex flex-col",
           sidebarOpen ? "translate-x-0" : "-translate-x-full"
         )}>
-          <div className="flex h-14 items-center gap-2 border-b px-6 shrink-0">
-            <img src={crowdfolioLogo} alt="Crowdfolio" className="h-18" />
+          <div className="flex h-14 items-center gap-3 border-b px-6 shrink-0">
+            <img src={crowdfolioIcon} alt="" className="h-9 w-9 shrink-0" />
+            <img src={crowdfolioWordmark} alt="CROWDFOLIO" className="h-4 w-auto" />
           </div>
 
           <nav className="flex-1 overflow-y-auto space-y-1 p-4">
@@ -170,11 +170,6 @@ export function AppLayout({
 
         {/* Main Content */}
         <main ref={mainRef} className="flex-1 overflow-auto">
-          {/* Desktop top bar with notification bell */}
-          <div className="hidden lg:flex items-center justify-end border-b bg-card px-6 py-2">
-            <NotificationBell futureInvestments={futureInvestments} />
-          </div>
-
           {children}
           <footer className="border-t py-4 px-6 mt-8">
             <div className="flex flex-wrap justify-center gap-4 text-xs text-muted-foreground">

@@ -22,6 +22,7 @@ import { TaxDashboard } from '@/components/tax/TaxDashboard';
 import { FutureInvestmentList } from '@/components/future-investments/FutureInvestmentList';
 import { ShareableCard } from '@/components/dashboard/ShareableCard';
 import { ShareSuccessButton } from '@/components/dashboard/ShareSuccessButton';
+import { NotificationBell } from '@/components/layout/NotificationBell';
 import { BillingSettings } from '@/components/subscription/BillingSettings';
 import { UpgradeModal } from '@/components/subscription/UpgradeModal';
 import { FounderWelcomeModal } from '@/components/subscription/FounderWelcomeModal';
@@ -158,7 +159,7 @@ const Index = () => {
     switch (currentView) {
       case 'dashboard':
         return (
-          <div className="p-4 sm:p-6 lg:p-8">
+          <div className="px-4 pt-4 pb-6 sm:px-6 lg:px-8">
             {investmentsError ? (
               <ErrorState message={investmentsError} onRetry={() => window.location.reload()} />
             ) : isLoading ? (
@@ -182,10 +183,11 @@ const Index = () => {
                     <h1 className="text-2xl sm:text-3xl font-bold">{t('nav.dashboard')}</h1>
                     <p className="text-sm text-muted-foreground">{t('dashboard.subtitle')}</p>
                   </div>
-                  <div className="flex flex-wrap gap-2">
+                  <div className="flex items-center gap-2">
                     {investments.length > 0 && (
                       <ShareSuccessButton targetRef={shareableCardRef} disabled={investments.length === 0} />
                     )}
+                    <NotificationBell />
                     <InvestmentForm onSubmit={addInvestment} onSubmitDraft={addDraftInvestment} investmentCount={allInvestmentsCount} isPro={isPro} onProRequired={() => openUpgradeModal('unlimited_investments')} />
                   </div>
                 </div>
@@ -333,7 +335,7 @@ const Index = () => {
         );
       case 'investments':
         return (
-          <div className="p-6 lg:p-8">
+          <div className="px-6 pt-4 pb-6 lg:px-8">
             <div className="mb-8 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
               <div>
                 <h1 className="text-3xl font-bold">{t('investments.title')}</h1>
@@ -359,13 +361,13 @@ const Index = () => {
         );
       case 'future-investments':
         return (
-          <div className="p-4 sm:p-6 lg:p-8">
+          <div className="px-4 pt-4 pb-6 sm:px-6 lg:px-8">
             <FutureInvestmentList />
           </div>
         );
       case 'tax':
         return (
-          <div className="p-6 lg:p-8">
+          <div className="px-6 pt-4 pb-6 lg:px-8">
             <div className="mb-8">
               <h1 className="text-3xl font-bold">{t('tax.title')}</h1>
               <p className="text-muted-foreground">{t('tax.subtitle')}</p>
@@ -379,7 +381,7 @@ const Index = () => {
         return <SettingsView />;
       case 'admin':
         return (
-          <div className="p-6 lg:p-8">
+          <div className="px-6 pt-4 pb-6 lg:px-8">
             <div className="mb-8">
               <h1 className="text-3xl font-bold">{t('admin.title')}</h1>
               <p className="text-muted-foreground">{t('admin.subtitle')}</p>

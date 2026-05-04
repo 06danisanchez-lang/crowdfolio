@@ -3,7 +3,6 @@ import { useLanguage } from '@/contexts/LanguageContext';
 import { useFutureInvestments } from '@/hooks/useFutureInvestments';
 import { useInvestments } from '@/hooks/useInvestments';
 import { useSubscription } from '@/contexts/SubscriptionContext';
-import { useIsMobile } from '@/hooks/use-mobile';
 import { FutureInvestment } from '@/types/futureInvestment';
 import { Investment, Platform, PLATFORMS } from '@/types/investment';
 import { InvestmentForm, FutureInvestmentFormData } from '@/components/investments/InvestmentForm';
@@ -21,6 +20,7 @@ import {
   AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
   AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { differenceInDays, parseISO, format, startOfDay, addDays } from 'date-fns';
 import { cn } from '@/lib/utils';
 
@@ -135,7 +135,6 @@ export function FutureInvestmentList() {
   const { futureInvestments, isLoading, addFutureInvestment, updateFutureInvestment, deleteFutureInvestment, convertToReal } = useFutureInvestments();
   const { investments, addInvestment } = useInvestments();
   const { isPro } = useSubscription();
-  const isMobile = useIsMobile();
   const [deleteId, setDeleteId] = useState<string | null>(null);
   const [convertingId, setConvertingId] = useState<string | null>(null);
   const [upgradeModalOpen, setUpgradeModalOpen] = useState(false);
@@ -297,22 +296,58 @@ export function FutureInvestmentList() {
           <h1 className="text-2xl sm:text-3xl font-bold">{t('future.title')}</h1>
           <p className="text-sm text-muted-foreground">{t('future.subtitle')}</p>
         </div>
-        <InvestmentForm
-          mode="future"
-          onSubmit={handleFutureSubmit}
-          investmentCount={futureInvestments.length}
-          isPro={isPro}
-          onProRequired={() => {
-            setUpgradeFeature('unlimited_future_investments');
-            setUpgradeModalOpen(true);
-          }}
-          trigger={
-            <Button>
-              <Plus className="mr-2 h-4 w-4" />
-              {t('future.addBtn')}
-            </Button>
-          }
-        />
+        <div className="flex items-center gap-2">
+          {attentionItems.length > 0 && (
+            <Popover>
+              <PopoverTrigger asChild>
+                <Button variant="outline" size="sm" className="relative">
+                  <AlertTriangle className="h-4 w-4 text-destructive" />
+                  <span className="ml-1.5">{t('future.attention.title')}</span>
+                  <span className="ml-1.5 flex h-5 min-w-5 items-center justify-center rounded-full bg-destructive px-1.5 text-xs font-bold text-white">
+                    {attentionItems.length}
+                  </span>
+                </Button>
+              </PopoverTrigger>
+              <PopoverContent align="end" className="w-80 p-3">
+                <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-2">
+                  {t('future.attention.title')}
+                </p>
+                <div className="space-y-2">
+                  {attentionItems.map(fi => {
+                    const status = getDerivedStatus(fi.estimatedOpenDate);
+                    return (
+                      <div key={fi.id} className="flex items-center justify-between gap-2 rounded-md border p-2.5">
+                        <div className="min-w-0">
+                          <p className="text-sm font-medium truncate">{fi.projectName}</p>
+                          <p className="text-xs text-muted-foreground">{getPlatformLabel(fi.platform, fi.customPlatformName)}</p>
+                        </div>
+                        <Badge variant={getStatusVariant(status)} className="shrink-0 text-xs">
+                          {getStatusLabel(status, t)}
+                        </Badge>
+                      </div>
+                    );
+                  })}
+                </div>
+              </PopoverContent>
+            </Popover>
+          )}
+          <InvestmentForm
+            mode="future"
+            onSubmit={handleFutureSubmit}
+            investmentCount={futureInvestments.length}
+            isPro={isPro}
+            onProRequired={() => {
+              setUpgradeFeature('unlimited_future_investments');
+              setUpgradeModalOpen(true);
+            }}
+            trigger={
+              <Button>
+                <Plus className="mr-2 h-4 w-4" />
+                {t('future.addBtn')}
+              </Button>
+            }
+          />
+        </div>
       </div>
 
       {/* KPIs */}
@@ -360,135 +395,43 @@ export function FutureInvestmentList() {
         ))}
       </div>
 
-      {/* Mobile attention banner */}
-      {isMobile && attentionItems.length > 0 && (
-        <div className="flex items-center gap-3 rounded-lg border border-destructive/30 bg-destructive/5 p-3">
-          <AlertTriangle className="h-5 w-5 text-destructive shrink-0" />
-          <p className="text-sm font-medium">
-            {t('future.attention.urgentBanner').replace('{count}', String(attentionItems.length))}
-          </p>
-        </div>
-      )}
-
-      {/* Desktop: 2-column layout (list + attention sidebar) */}
-      {!isMobile ? (
-        <div className="grid gap-6 lg:grid-cols-3">
-          {/* Main list — 2/3 */}
-          <div className="lg:col-span-2 space-y-3">
-            {sortedList.length === 0 && futureInvestments.length > 0 ? (
-              <Card>
-                <CardContent className="py-8 text-center text-muted-foreground">
-                  {t('future.filter.all')} — 0
-                </CardContent>
-              </Card>
-            ) : sortedList.length === 0 ? (
-              <Card>
-                <CardContent className="flex flex-col items-center justify-center py-12 text-center">
-                  <CalendarPlus className="h-12 w-12 text-muted-foreground/50 mb-4" />
-                  <p className="text-lg font-medium">{t('future.emptyTitle')}</p>
-                  <p className="text-sm text-muted-foreground mt-1">{t('future.emptyDesc')}</p>
-                </CardContent>
-              </Card>
-            ) : (
-              sortedList.map(fi => (
-                <FutureInvestmentCard
-                  key={fi.id}
-                  fi={fi}
-                  t={t}
-                  getPlatformLabel={getPlatformLabel}
-                  formatCurrency={formatCurrency}
-                  onConvert={handleConvertClick}
-                  onDelete={setDeleteId}
-                  onEditSubmit={handleEditSubmit}
-                  isPro={isPro}
-                  investmentCount={futureInvestments.length}
-                  onProRequired={() => {
-                    setUpgradeFeature('unlimited_future_investments');
-                    setUpgradeModalOpen(true);
-                  }}
-                />
-              ))
-            )}
-          </div>
-
-          {/* Attention sidebar — 1/3 */}
-          <div className="space-y-4">
-            <Card>
-              <CardHeader className="pb-3">
-                <CardTitle className="flex items-center gap-2 text-base">
-                  <AlertTriangle className="h-4 w-4" />
-                  {t('future.attention.title')}
-                  {attentionItems.length > 0 && (
-                    <span className="flex h-5 min-w-5 items-center justify-center rounded-full bg-destructive px-1.5 text-xs font-bold text-white">
-                      {attentionItems.length}
-                    </span>
-                  )}
-                </CardTitle>
-              </CardHeader>
-              <CardContent>
-                {attentionItems.length === 0 ? (
-                  <p className="text-sm text-muted-foreground">{t('future.attention.empty')}</p>
-                ) : (
-                  <div className="space-y-2">
-                    {attentionItems.map(fi => {
-                      const status = getDerivedStatus(fi.estimatedOpenDate);
-                      return (
-                        <div key={fi.id} className="flex items-center justify-between gap-2 rounded-md border p-2.5">
-                          <div className="min-w-0">
-                            <p className="text-sm font-medium truncate">{fi.projectName}</p>
-                            <p className="text-xs text-muted-foreground">{getPlatformLabel(fi.platform, fi.customPlatformName)}</p>
-                          </div>
-                          <Badge variant={getStatusVariant(status)} className="shrink-0 text-xs">
-                            {getStatusLabel(status, t)}
-                          </Badge>
-                        </div>
-                      );
-                    })}
-                  </div>
-                )}
-              </CardContent>
-            </Card>
-          </div>
-        </div>
-      ) : (
-        /* Mobile: list only */
-        <div className="space-y-3">
-          {sortedList.length === 0 && futureInvestments.length > 0 ? (
-            <Card>
-              <CardContent className="py-8 text-center text-muted-foreground">
-                {t('future.filter.all')} — 0
-              </CardContent>
-            </Card>
-          ) : sortedList.length === 0 ? (
-            <Card>
-              <CardContent className="flex flex-col items-center justify-center py-12 text-center">
-                <CalendarPlus className="h-12 w-12 text-muted-foreground/50 mb-4" />
-                <p className="text-lg font-medium">{t('future.emptyTitle')}</p>
-                <p className="text-sm text-muted-foreground mt-1">{t('future.emptyDesc')}</p>
-              </CardContent>
-            </Card>
-          ) : (
-            sortedList.map(fi => (
-              <FutureInvestmentCard
-                key={fi.id}
-                fi={fi}
-                t={t}
-                getPlatformLabel={getPlatformLabel}
-                formatCurrency={formatCurrency}
-                onConvert={handleConvertClick}
-                onDelete={setDeleteId}
-                onEditSubmit={handleEditSubmit}
-                isPro={isPro}
-                investmentCount={futureInvestments.length}
-                onProRequired={() => {
-                  setUpgradeFeature('unlimited_future_investments');
-                  setUpgradeModalOpen(true);
-                }}
-              />
-            ))
-          )}
-        </div>
-      )}
+      {/* Investment list — full width */}
+      <div className="space-y-3">
+        {sortedList.length === 0 && futureInvestments.length > 0 ? (
+          <Card>
+            <CardContent className="py-8 text-center text-muted-foreground">
+              {t('future.filter.all')} — 0
+            </CardContent>
+          </Card>
+        ) : sortedList.length === 0 ? (
+          <Card>
+            <CardContent className="flex flex-col items-center justify-center py-12 text-center">
+              <CalendarPlus className="h-12 w-12 text-muted-foreground/50 mb-4" />
+              <p className="text-lg font-medium">{t('future.emptyTitle')}</p>
+              <p className="text-sm text-muted-foreground mt-1">{t('future.emptyDesc')}</p>
+            </CardContent>
+          </Card>
+        ) : (
+          sortedList.map(fi => (
+            <FutureInvestmentCard
+              key={fi.id}
+              fi={fi}
+              t={t}
+              getPlatformLabel={getPlatformLabel}
+              formatCurrency={formatCurrency}
+              onConvert={handleConvertClick}
+              onDelete={setDeleteId}
+              onEditSubmit={handleEditSubmit}
+              isPro={isPro}
+              investmentCount={futureInvestments.length}
+              onProRequired={() => {
+                setUpgradeFeature('unlimited_future_investments');
+                setUpgradeModalOpen(true);
+              }}
+            />
+          ))
+        )}
+      </div>
 
       {/* Convert dialog */}
       {convertingItem && (

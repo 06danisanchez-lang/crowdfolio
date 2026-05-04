@@ -1,6 +1,6 @@
 import { Link } from 'react-router-dom';
 import { useNavigate } from 'react-router-dom';
-import crowdfolioLogo from '@/assets/logo_crowdfolio.png';
+import crowdfolioLogo from '@/assets/logo_crowdfolio.svg';
 import TrustBadges from './TrustBadges';
 import { LEGAL_ROUTES } from '@/lib/legal/routes';
 import { useLanguage } from '@/contexts/LanguageContext';

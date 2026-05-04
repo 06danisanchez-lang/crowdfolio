@@ -10,14 +10,11 @@ import { ScrollArea } from '@/components/ui/scroll-area';
 import { Badge } from '@/components/ui/badge';
 import { cn } from '@/lib/utils';
 import { useFutureReminders, FutureReminder } from '@/hooks/useFutureReminders';
-import { FutureInvestment } from '@/types/futureInvestment';
+import { useFutureInvestments } from '@/hooks/useFutureInvestments';
 import { useLanguage } from '@/contexts/LanguageContext';
 
-interface NotificationBellProps {
-  futureInvestments: FutureInvestment[];
-}
-
-export function NotificationBell({ futureInvestments }: NotificationBellProps) {
+export function NotificationBell() {
+  const { futureInvestments } = useFutureInvestments();
   const { lang } = useLanguage();
   const [, forceUpdate] = useState(0);
 

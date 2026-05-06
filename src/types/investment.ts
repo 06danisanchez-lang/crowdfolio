@@ -47,7 +47,7 @@ export interface Investment {
 export interface InvestmentSummary {
   totalInvested: number;
   totalReturns: number;
-  expectedReturns: number;
+  accruedReturns: number;
   activeInvestments: number;
   completedInvestments: number;
   averageReturn: number;
@@ -56,7 +56,8 @@ export interface InvestmentSummary {
   activeSummary: {
     capital: number;
     estimatedTotal: number;
-    expectedProfit: number;
+    accruedProfit: number;
+    remainingProfit: number;
     count: number;
     withEndDateCount: number;
   };

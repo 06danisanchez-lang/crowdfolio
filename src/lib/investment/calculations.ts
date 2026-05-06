@@ -95,3 +95,45 @@ export function calculateExpectedReturnFromSchedule(
   const totalPayments = schedule.reduce((sum, e) => sum + e.expectedAmount, 0);
   return totalPayments - amount;
 }
+
+export function calculateAccruedReturn(
+  inv: Investment,
+  schedule: InvestmentScheduleEntry[],
+  today: Date = new Date()
+): number {
+  if (inv.incomeModel === 'variable_or_unknown') return 0;
+
+  const todayStr = today.toISOString().split('T')[0];
+
+  if (inv.incomeModel === 'periodic_fixed' || inv.incomeModel === 'amortizing') {
+    return schedule
+      .filter(e => e.type === 'interest' && e.expectedDate <= todayStr)
+      .reduce((sum, e) => {
+        if (e.matchedPaymentId && inv.payments) {
+          const real = inv.payments.find(p => p.id === e.matchedPaymentId);
+          return sum + (real ? real.amount : e.expectedAmount);
+        }
+        return sum + e.expectedAmount;
+      }, 0);
+  }
+
+  // bullet y variable_or_unknown: interés simple desde investmentDate hasta hoy
+  const start = new Date(inv.investmentDate);
+  const end = today < new Date(inv.expectedEndDate ?? today) ? today : new Date(inv.expectedEndDate!);
+  const yearsElapsed = Math.max((end.getTime() - start.getTime()) / (1000 * 60 * 60 * 24 * 365.25), 0);
+  return inv.amount * (inv.expectedReturn / 100) * yearsElapsed;
+}
+
+export function calculateRemainingReturn(
+  inv: Investment,
+  schedule: InvestmentScheduleEntry[],
+  today: Date = new Date()
+): number {
+  if (inv.incomeModel === 'variable_or_unknown') return 0;
+
+  const total = inv.incomeModel === 'periodic_fixed' || inv.incomeModel === 'amortizing'
+    ? calculateExpectedReturnFromSchedule(schedule, inv.amount, inv.incomeModel)
+    : calculateInvestmentTotalReturn(inv);
+  const accrued = calculateAccruedReturn(inv, schedule, today);
+  return Math.max(total - accrued, 0);
+}

@@ -5,7 +5,7 @@ export const HELP_CONTENT = {
   dashboard: {
     activeCapital: 'Capital actualmente comprometido en inversiones en curso.',
     estimatedTotal: 'Capital invertido más beneficio estimado de tus inversiones activas con fecha de vencimiento.',
-    expectedProfit: 'Beneficio estimado pendiente de cobrar, calculado solo sobre inversiones activas con fecha de vencimiento.',
+    accruedProfit: 'Beneficio acumulado hasta hoy: intereses devengados desde la fecha de inversión. Para pagos periódicos usa las cuotas vencidas; para bullet usa interés simple proporcional al tiempo transcurrido.',
     activeCount: 'Número de inversiones en estado "activo" (pendientes de recuperar el capital).',
     // Historical
     historicalInvested: 'Todo el capital que has invertido a lo largo del tiempo, incluyendo inversiones ya cerradas.',

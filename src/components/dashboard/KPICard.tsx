@@ -14,14 +14,20 @@ interface KPICardProps {
   };
   className?: string;
   helpContent?: ReactNode;
+  onClick?: () => void;
 }
 
-export function KPICard({ title, value, subtitle, icon: Icon, trend, className, helpContent }: KPICardProps) {
+export function KPICard({ title, value, subtitle, icon: Icon, trend, className, helpContent, onClick }: KPICardProps) {
   return (
-    <div className={cn(
-      "bg-card rounded-lg border p-6 shadow-sm transition-all hover:shadow-md",
-      className
-    )}>
+    <div
+      className={cn(
+        "bg-card rounded-lg border p-6 shadow-sm transition-all hover:shadow-md",
+        onClick && "cursor-pointer hover:border-primary/50",
+        className
+      )}
+      onClick={onClick}
+      role={onClick ? "button" : undefined}
+    >
       <div className="flex items-start justify-between">
         <div className="space-y-1">
           <div className="flex items-center gap-1.5">

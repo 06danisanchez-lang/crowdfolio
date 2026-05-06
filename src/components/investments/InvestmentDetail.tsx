@@ -2,13 +2,14 @@ import { useState } from 'react';
 import { useLanguage } from '@/contexts/LanguageContext';
 import { format, parseISO } from 'date-fns';
 import { es } from 'date-fns/locale';
-import { Plus, Trash2, CalendarIcon } from 'lucide-react';
+import { Plus, Trash2, CalendarIcon, Pencil } from 'lucide-react';
 import { Investment, Payment, PLATFORMS, STATUS_OPTIONS, InvestmentScheduleEntry, IncomeModel } from '@/types/investment';
-import { 
-  getInvestmentDurationYears, 
+import {
+  getInvestmentDurationYears,
   calculateInvestmentTotalReturn,
   calculateInvestmentTotalReturnPercent,
   calculateExpectedReturnFromSchedule,
+  calculateAccruedReturn,
 } from '@/lib/investment/calculations';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -20,6 +21,18 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '@/components/ui/alert-dialog';
+import { InvestmentForm } from './InvestmentForm';
+import { toast } from 'sonner';
 import {
   Select,
   SelectContent,
@@ -42,20 +55,45 @@ import {
 } from '@/components/ui/table';
 import { cn } from '@/lib/utils';
 
+type ActionForm = 'extend' | 'partial-return' | 'update-return' | 'close' | null;
+
 interface InvestmentDetailProps {
   investment: Investment | null;
   schedule?: InvestmentScheduleEntry[];
   onClose: () => void;
+  onUpdate: (id: string, updates: Partial<Investment>) => Promise<any>;
+  onDelete: (id: string) => void;
   onAddPayment: (investmentId: string, payment: { date: string; amount: number; type: 'dividend' | 'principal' | 'interest'; notes?: string }) => void;
   onDeletePayment: (investmentId: string, paymentId: string) => void;
 }
 
-export function InvestmentDetail({ investment, schedule = [], onClose, onAddPayment, onDeletePayment }: InvestmentDetailProps) {
+export function InvestmentDetail({ investment, schedule = [], onClose, onUpdate, onDelete, onAddPayment, onDeletePayment }: InvestmentDetailProps) {
   const { t } = useLanguage();
   const [showAddPayment, setShowAddPayment] = useState(false);
   const [paymentDate, setPaymentDate] = useState<Date>(new Date());
   const [paymentAmount, setPaymentAmount] = useState('');
   const [paymentType, setPaymentType] = useState<'dividend' | 'principal' | 'interest'>('dividend');
+
+  // Delete confirmation
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+
+  // Action forms
+  const [activeForm, setActiveForm] = useState<ActionForm>(null);
+  const [newEndDate, setNewEndDate] = useState<Date | undefined>(undefined);
+  const [partialAmount, setPartialAmount] = useState('');
+  const [partialDate, setPartialDate] = useState<Date>(new Date());
+  const [newReturnRate, setNewReturnRate] = useState('');
+  const [closeAmount, setCloseAmount] = useState('');
+  const [closeDate, setCloseDate] = useState<Date>(new Date());
+
+  const openForm = (form: ActionForm) => setActiveForm(prev => prev === form ? null : form);
+  const resetForms = () => {
+    setActiveForm(null);
+    setNewEndDate(undefined);
+    setPartialAmount('');
+    setNewReturnRate('');
+    setCloseAmount('');
+  };
 
   const formatCurrency = (value: number) => {
     return new Intl.NumberFormat('es-ES', {
@@ -128,6 +166,39 @@ export function InvestmentDetail({ investment, schedule = [], onClose, onAddPaym
     return <Badge className={cn('text-xs', cfg.className)}>{t(cfg.key)}</Badge>;
   };
 
+  const handleExtend = async () => {
+    if (!investment || !newEndDate) return;
+    await onUpdate(investment.id, { expectedEndDate: newEndDate.toISOString().split('T')[0] });
+    resetForms();
+  };
+
+  const handlePartialReturn = async () => {
+    if (!investment || !partialAmount) return;
+    await onAddPayment(investment.id, {
+      date: partialDate.toISOString(),
+      amount: parseFloat(partialAmount),
+      type: 'principal',
+    });
+    resetForms();
+  };
+
+  const handleUpdateReturn = async () => {
+    if (!investment || !newReturnRate) return;
+    await onUpdate(investment.id, { expectedReturn: parseFloat(newReturnRate) });
+    resetForms();
+  };
+
+  const handleCloseInvestment = async () => {
+    if (!investment || !closeAmount) return;
+    await onAddPayment(investment.id, {
+      date: closeDate.toISOString(),
+      amount: parseFloat(closeAmount),
+      type: 'principal',
+    });
+    await onUpdate(investment.id, { status: 'completed' });
+    onClose();
+  };
+
   const handleAddPayment = () => {
     if (investment && paymentAmount) {
       onAddPayment(investment.id, {
@@ -164,6 +235,7 @@ export function InvestmentDetail({ investment, schedule = [], onClose, onAddPaym
   }
 
   const expectedTotal = investment.amount + totalReturnAmount;
+  const accruedReturn = calculateAccruedReturn(investment, schedule);
   const actualReturn = investment.amount > 0 ? ((totalPayments / investment.amount) * 100) : 0;
 
   const sortedSchedule = [...schedule].sort(
@@ -174,7 +246,23 @@ export function InvestmentDetail({ investment, schedule = [], onClose, onAddPaym
     <Dialog open={!!investment} onOpenChange={() => onClose()}>
       <DialogContent className="max-h-[90vh] overflow-y-auto sm:max-w-[600px]">
         <DialogHeader>
-          <DialogTitle className="text-xl">{investment.projectName}</DialogTitle>
+          <div className="flex items-start justify-between gap-3 pr-8">
+            <DialogTitle className="text-xl leading-tight">{investment.projectName}</DialogTitle>
+            <InvestmentForm
+              initialData={investment}
+              onSubmit={async (data) => {
+                const result = await onUpdate(investment.id, data);
+                if (result && 'demotedToDraft' in result && result.demotedToDraft) {
+                  toast.warning('La inversión ha pasado a pendientes por faltar datos obligatorios.');
+                }
+              }}
+              trigger={
+                <Button variant="outline" size="sm" className="shrink-0">
+                  <Pencil className="h-3.5 w-3.5 mr-1.5" />{t('common.edit')}
+                </Button>
+              }
+            />
+          </div>
         </DialogHeader>
 
         <div className="space-y-6">
@@ -185,7 +273,7 @@ export function InvestmentDetail({ investment, schedule = [], onClose, onAddPaym
               <p className="font-medium">{getPlatformLabel(investment.platform, investment.customPlatformName)}</p>
             </div>
             <div className="space-y-1">
-              <p className="text-sm text-muted-foreground">{t('common.status')}</p>
+              <p className="text-sm text-muted-foreground">{t('investments.detail.status')}</p>
               <Badge className={cn(
                 investment.status === 'active' && 'bg-status-active text-white',
                 investment.status === 'pending' && 'bg-status-pending text-white',
@@ -247,27 +335,50 @@ export function InvestmentDetail({ investment, schedule = [], onClose, onAddPaym
           {/* Returns Summary */}
           <div className="rounded-lg bg-muted/50 p-4">
             <h4 className="mb-3 font-semibold">{t('investments.detail.returnsSummary')}</h4>
-            <div className="grid grid-cols-3 gap-4 text-center">
-              <div>
-                <p className="text-2xl font-bold text-status-active">{formatCurrency(totalPayments)}</p>
-                <p className="text-xs text-muted-foreground">{t('investments.detail.received')}</p>
+            {investment.incomeModel === 'variable_or_unknown' ? (
+              <div className="grid grid-cols-2 gap-4 text-center">
+                <div>
+                  <p className="text-xl font-bold text-status-active">{formatCurrency(totalPayments)}</p>
+                  <p className="text-xs text-muted-foreground">{t('investments.detail.received')}</p>
+                </div>
+                <div>
+                  <p className={cn(
+                    "text-xl font-bold",
+                    actualReturn > 0 ? "text-status-active" : "text-muted-foreground"
+                  )}>
+                    {actualReturn.toFixed(1)}%
+                  </p>
+                  <p className="text-xs text-muted-foreground">{t('investments.detail.realReturn')}</p>
+                </div>
+                <div className="col-span-2 rounded-md border border-muted-foreground/20 bg-background px-3 py-2 text-center">
+                  <p className="text-xs text-muted-foreground italic">{t('investments.detail.variableNote')}</p>
+                </div>
               </div>
-              <div>
-                <p className="text-2xl font-bold text-primary">
-                  {investment.incomeModel === 'variable_or_unknown' ? '—' : formatCurrency(expectedTotal)}
-                </p>
-                <p className="text-xs text-muted-foreground">{t('investments.detail.expected')}</p>
+            ) : (
+              <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 text-center">
+                <div>
+                  <p className="text-xl font-bold text-status-active">{formatCurrency(totalPayments)}</p>
+                  <p className="text-xs text-muted-foreground">{t('investments.detail.received')}</p>
+                </div>
+                <div>
+                  <p className="text-xl font-bold text-primary">{formatCurrency(accruedReturn)}</p>
+                  <p className="text-xs text-muted-foreground">{t('investments.detail.accrued')}</p>
+                </div>
+                <div>
+                  <p className="text-xl font-bold text-foreground">{formatCurrency(expectedTotal)}</p>
+                  <p className="text-xs text-muted-foreground">{t('investments.detail.expected')}</p>
+                </div>
+                <div>
+                  <p className={cn(
+                    "text-xl font-bold",
+                    actualReturn >= investment.expectedReturn ? "text-status-active" : "text-muted-foreground"
+                  )}>
+                    {actualReturn.toFixed(1)}%
+                  </p>
+                  <p className="text-xs text-muted-foreground">{t('investments.detail.realReturn')}</p>
+                </div>
               </div>
-              <div>
-                <p className={cn(
-                  "text-2xl font-bold",
-                  actualReturn >= investment.expectedReturn ? "text-status-active" : "text-muted-foreground"
-                )}>
-                  {actualReturn.toFixed(1)}%
-                </p>
-                <p className="text-xs text-muted-foreground">{t('investments.detail.realReturn')}</p>
-              </div>
-            </div>
+            )}
           </div>
 
           {/* D4: Expected Schedule (read-only) */}
@@ -408,8 +519,182 @@ export function InvestmentDetail({ investment, schedule = [], onClose, onAddPaym
               <p className="text-muted-foreground">{investment.notes}</p>
             </div>
           )}
+
+          {/* Actions — only for active investments */}
+          {investment.status === 'active' && (
+            <div>
+              <h4 className="mb-3 font-semibold">{t('investments.action.title')}</h4>
+
+              {/* Action buttons */}
+              <div className="flex flex-wrap gap-2">
+                <Button variant="outline" size="sm" onClick={() => openForm('extend')}>
+                  {t('investments.action.extend')}
+                </Button>
+                <Button variant="outline" size="sm" onClick={() => openForm('partial-return')}>
+                  {t('investments.action.partialReturn')}
+                </Button>
+                <Button variant="outline" size="sm" onClick={() => openForm('update-return')}>
+                  {t('investments.action.updateReturn')}
+                </Button>
+                <Button variant="destructive" size="sm" onClick={() => openForm('close')}>
+                  {t('investments.action.close')}
+                </Button>
+              </div>
+
+              {/* Prorrogar */}
+              {activeForm === 'extend' && (
+                <div className="mt-3 rounded-lg border bg-card p-4 space-y-3">
+                  <p className="text-sm font-medium">{t('investments.action.newEndDate')}</p>
+                  <Popover>
+                    <PopoverTrigger asChild>
+                      <Button variant="outline" className="w-full justify-start text-left font-normal">
+                        <CalendarIcon className="mr-2 h-4 w-4" />
+                        {newEndDate ? format(newEndDate, 'dd/MM/yyyy') : t('common.select')}
+                      </Button>
+                    </PopoverTrigger>
+                    <PopoverContent className="w-auto p-0">
+                      <Calendar mode="single" selected={newEndDate} onSelect={setNewEndDate} initialFocus />
+                    </PopoverContent>
+                  </Popover>
+                  <div className="flex gap-2">
+                    <Button size="sm" onClick={handleExtend} disabled={!newEndDate}>{t('common.save')}</Button>
+                    <Button size="sm" variant="ghost" onClick={resetForms}>{t('common.cancel')}</Button>
+                  </div>
+                </div>
+              )}
+
+              {/* Devolución parcial */}
+              {activeForm === 'partial-return' && (
+                <div className="mt-3 rounded-lg border bg-card p-4 space-y-3">
+                  <p className="text-sm font-medium">{t('investments.action.partialReturnTitle')}</p>
+                  <div className="grid grid-cols-2 gap-3">
+                    <div className="space-y-1">
+                      <p className="text-xs text-muted-foreground">{t('investments.action.returnedAmount')}</p>
+                      <Input
+                        type="number"
+                        min="0"
+                        step="0.01"
+                        placeholder="0.00"
+                        value={partialAmount}
+                        onChange={e => setPartialAmount(e.target.value)}
+                      />
+                    </div>
+                    <div className="space-y-1">
+                      <p className="text-xs text-muted-foreground">{t('investments.action.date')}</p>
+                      <Popover>
+                        <PopoverTrigger asChild>
+                          <Button variant="outline" className="w-full justify-start text-left font-normal">
+                            <CalendarIcon className="mr-2 h-4 w-4" />
+                            {format(partialDate, 'dd/MM/yyyy')}
+                          </Button>
+                        </PopoverTrigger>
+                        <PopoverContent className="w-auto p-0">
+                          <Calendar mode="single" selected={partialDate} onSelect={d => d && setPartialDate(d)} initialFocus />
+                        </PopoverContent>
+                      </Popover>
+                    </div>
+                  </div>
+                  <div className="flex gap-2">
+                    <Button size="sm" onClick={handlePartialReturn} disabled={!partialAmount}>{t('common.save')}</Button>
+                    <Button size="sm" variant="ghost" onClick={resetForms}>{t('common.cancel')}</Button>
+                  </div>
+                </div>
+              )}
+
+              {/* Actualizar rentabilidad */}
+              {activeForm === 'update-return' && (
+                <div className="mt-3 rounded-lg border bg-card p-4 space-y-3">
+                  <p className="text-sm font-medium">{t('investments.action.updateReturnTitle')}</p>
+                  <div className="space-y-1">
+                    <p className="text-xs text-muted-foreground">{t('investments.action.newReturnRate')}</p>
+                    <Input
+                      type="number"
+                      min="0"
+                      step="0.1"
+                      placeholder={investment.expectedReturn.toFixed(1)}
+                      value={newReturnRate}
+                      onChange={e => setNewReturnRate(e.target.value)}
+                    />
+                  </div>
+                  <div className="flex gap-2">
+                    <Button size="sm" onClick={handleUpdateReturn} disabled={!newReturnRate}>{t('common.save')}</Button>
+                    <Button size="sm" variant="ghost" onClick={resetForms}>{t('common.cancel')}</Button>
+                  </div>
+                </div>
+              )}
+
+              {/* Cerrar inversión */}
+              {activeForm === 'close' && (
+                <div className="mt-3 rounded-lg border border-destructive/30 bg-destructive/5 p-4 space-y-3">
+                  <p className="text-sm font-medium">{t('investments.action.closeTitle')}</p>
+                  <div className="grid grid-cols-2 gap-3">
+                    <div className="space-y-1">
+                      <p className="text-xs text-muted-foreground">{t('investments.action.totalRecovered')}</p>
+                      <Input
+                        type="number"
+                        min="0"
+                        step="0.01"
+                        placeholder="0.00"
+                        value={closeAmount}
+                        onChange={e => setCloseAmount(e.target.value)}
+                      />
+                    </div>
+                    <div className="space-y-1">
+                      <p className="text-xs text-muted-foreground">{t('investments.action.closeDate')}</p>
+                      <Popover>
+                        <PopoverTrigger asChild>
+                          <Button variant="outline" className="w-full justify-start text-left font-normal">
+                            <CalendarIcon className="mr-2 h-4 w-4" />
+                            {format(closeDate, 'dd/MM/yyyy')}
+                          </Button>
+                        </PopoverTrigger>
+                        <PopoverContent className="w-auto p-0">
+                          <Calendar mode="single" selected={closeDate} onSelect={d => d && setCloseDate(d)} initialFocus />
+                        </PopoverContent>
+                      </Popover>
+                    </div>
+                  </div>
+                  <div className="flex gap-2">
+                    <Button size="sm" variant="destructive" onClick={handleCloseInvestment} disabled={!closeAmount}>
+                      {t('investments.action.confirmClose')}
+                    </Button>
+                    <Button size="sm" variant="ghost" onClick={resetForms}>{t('common.cancel')}</Button>
+                  </div>
+                </div>
+              )}
+            </div>
+          )}
+          {/* Delete */}
+          <div className="border-t pt-4">
+            <Button
+              variant="ghost"
+              size="sm"
+              className="text-destructive hover:text-destructive hover:bg-destructive/10"
+              onClick={() => setShowDeleteConfirm(true)}
+            >
+              <Trash2 className="h-4 w-4 mr-1.5" />{t('common.delete')}
+            </Button>
+          </div>
         </div>
       </DialogContent>
+
+      <AlertDialog open={showDeleteConfirm} onOpenChange={setShowDeleteConfirm}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>{t('investments.deleteConfirm')}</AlertDialogTitle>
+            <AlertDialogDescription>{t('investments.deleteDesc')}</AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>{t('common.cancel')}</AlertDialogCancel>
+            <AlertDialogAction
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+              onClick={() => { onDelete(investment.id); onClose(); }}
+            >
+              {t('common.delete')}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </Dialog>
   );
 }

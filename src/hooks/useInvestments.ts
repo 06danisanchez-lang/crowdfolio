@@ -2,7 +2,7 @@ import { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { Investment, InvestmentSummary, Platform, InvestmentStatus, Payment, DraftInvestment, IncomeModel, PaymentFrequency, PrincipalReturnType, InvestmentScheduleEntry } from '@/types/investment';
-import { calculateInvestmentTotalReturn, calculateExpectedReturnFromSchedule } from '@/lib/investment/calculations';
+import { calculateInvestmentTotalReturn, calculateExpectedReturnFromSchedule, calculateAccruedReturn, calculateRemainingReturn } from '@/lib/investment/calculations';
 import { isInvestmentComplete, getInvestmentCompletionStatus } from '@/lib/investment/completeness';
 import { generateSchedule } from '@/lib/investment/scheduleGenerator';
 
@@ -479,8 +479,10 @@ export function useInvestments() {
 
   // ── 5B: Summary using separated arrays ──
   const summary: InvestmentSummary = useMemo(() => {
-    // forecastReady filters within activeInvestments only
+    // forecastReady: active investments with calculable return forecast.
+    // variable_or_unknown is always excluded — return depends on asset liquidation.
     const forecastReady = activeInvestments.filter(inv => {
+      if (inv.incomeModel === 'variable_or_unknown') return false;
       const status = getInvestmentCompletionStatus({
         platform: inv.platform,
         projectName: inv.projectName,
@@ -496,22 +498,23 @@ export function useInvestments() {
       return status.isForecastReady;
     });
 
-    // C3: route expected return calculation by incomeModel
-    const getExpectedReturn = (inv: Investment): number => {
-      if (inv.incomeModel === 'periodic_fixed' || inv.incomeModel === 'amortizing') {
-        const schedule = scheduleMap[inv.id];
-        if (schedule && schedule.length > 0) {
-          return calculateExpectedReturnFromSchedule(schedule, inv.amount, inv.incomeModel);
-        }
-        return 0;
-      }
-      return calculateInvestmentTotalReturn(inv);
+    const today = new Date();
+
+    const getAccruedReturn = (inv: Investment): number => {
+      const schedule = scheduleMap[inv.id] ?? [];
+      return calculateAccruedReturn(inv, schedule, today);
+    };
+
+    const getRemainingReturn = (inv: Investment): number => {
+      const schedule = scheduleMap[inv.id] ?? [];
+      return calculateRemainingReturn(inv, schedule, today);
     };
 
     // activeSummary — only activeInvestments
-    const activeCapital = activeInvestments.reduce((s, i) => s + i.amount, 0);
-    const expectedProfit = forecastReady.reduce((s, i) => s + getExpectedReturn(i), 0);
-    const estimatedTotal = forecastReady.reduce((s, i) => s + i.amount, 0) + expectedProfit;
+    const activeCapital    = activeInvestments.reduce((s, i) => s + i.amount, 0);
+    const accruedProfit    = forecastReady.reduce((s, i) => s + getAccruedReturn(i), 0);
+    const remainingProfit  = forecastReady.reduce((s, i) => s + getRemainingReturn(i), 0);
+    const estimatedTotal   = forecastReady.reduce((s, i) => s + i.amount, 0) + accruedProfit + remainingProfit;
 
     // historicalSummary — only completedInvestments
     const historicalTotalInvested = completedInvestments.reduce((s, i) => s + i.amount, 0);
@@ -526,7 +529,7 @@ export function useInvestments() {
     return {
       totalInvested: investments.reduce((sum, inv) => sum + inv.amount, 0),
       totalReturns: totalCollected,
-      expectedReturns: forecastReady.reduce((sum, inv) => sum + getExpectedReturn(inv), 0),
+      accruedReturns: accruedProfit,
       activeInvestments: activeInvestments.length,
       completedInvestments: completedInvestments.length,
       averageReturn: forecastReady.length > 0 ? forecastReady.reduce((sum, inv) => sum + inv.expectedReturn, 0) / forecastReady.length : 0,
@@ -544,7 +547,8 @@ export function useInvestments() {
       activeSummary: {
         capital: activeCapital,
         estimatedTotal,
-        expectedProfit,
+        accruedProfit,
+        remainingProfit,
         count: activeInvestments.length,
         withEndDateCount: forecastReady.length,
       },

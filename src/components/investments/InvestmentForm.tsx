@@ -721,13 +721,20 @@ export function InvestmentForm({
           render={({ field }) => (
             <FormItem>
               <FormLabel>
-                {isFuture ? t('future.form.estimatedReturn') : 'Rentabilidad Anual (%)'}
+                {isFuture
+                  ? t('future.form.estimatedReturn')
+                  : watchIncomeModel === 'variable_or_unknown'
+                    ? t('investments.field.expectedReturnVariable')
+                    : 'Rentabilidad Anual (%)'}
               </FormLabel>
               <FormControl>
                 <Input
                   type="number"
                   step="0.1"
-                  placeholder={isFuture ? '' : '10'}
+                  placeholder={
+                    isFuture ? '' :
+                    watchIncomeModel === 'variable_or_unknown' ? t('common.optional') : '10'
+                  }
                   value={field.value != null ? field.value : ''}
                   onChange={(e) => {
                     const raw = e.target.value;
@@ -744,6 +751,12 @@ export function InvestmentForm({
             </FormItem>
           )}
         />
+        {!isFuture && watchIncomeModel === 'variable_or_unknown' && (
+          <div className="flex items-start gap-2 rounded-md border bg-muted/40 px-3 py-2 text-xs text-muted-foreground -mt-2">
+            <Info className="h-3.5 w-3.5 mt-0.5 shrink-0" />
+            <span>{t('investments.form.variableReturnNote')}</span>
+          </div>
+        )}
       </div>
 
       <div className="grid grid-cols-2 gap-4">

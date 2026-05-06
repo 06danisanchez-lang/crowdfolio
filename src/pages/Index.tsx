@@ -5,6 +5,8 @@ import { ErrorBoundary } from '@/components/ErrorBoundary';
 import { ErrorState } from '@/components/ui/error-state';
 import { useInvestments } from '@/hooks/useInvestments';
 import { useAlerts } from '@/hooks/useAlerts';
+import { useNotifications } from '@/hooks/useNotifications';
+import { useNotificationGenerator } from '@/hooks/useNotificationGenerator';
 import { useIsMobile } from '@/hooks/use-mobile';
 
 import { useSubscription } from '@/contexts/SubscriptionContext';
@@ -30,6 +32,17 @@ import { AdminPanel } from '@/components/admin/AdminPanel';
 import { ProfileView } from '@/components/profile/ProfileView';
 import { SettingsView } from '@/components/settings/SettingsView';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
+import {
+  Sheet,
+  SheetContent,
+  SheetHeader,
+  SheetTitle,
+  SheetDescription,
+} from '@/components/ui/sheet';
+import { ScrollArea } from '@/components/ui/scroll-area';
+import { CheckCircle, ExternalLink, AlertTriangle, Clock, BarChart3 } from 'lucide-react';
+import { Button } from '@/components/ui/button';
+import { Notification } from '@/hooks/useNotifications';
 import { HelpTooltip } from '@/components/ui/help-tooltip';
 import { HELP_CONTENT } from '@/lib/help/tooltipContent';
 import { toast } from 'sonner';
@@ -40,6 +53,9 @@ import { cn } from '@/lib/utils';
 const Index = () => {
   const { t } = useLanguage();
   const [currentView, setCurrentView] = useState<View>('dashboard');
+  const [investmentsFilter, setInvestmentsFilter] = useState<'active' | 'all'>('all');
+  const [notificationsSheetOpen, setNotificationsSheetOpen] = useState(false);
+  const [savingNotificationId, setSavingNotificationId] = useState<string | null>(null);
   const [upgradeModalOpen, setUpgradeModalOpen] = useState(false);
   const [upgradeFeature, setUpgradeFeature] = useState('default');
   const [dashboardTab, setDashboardTab] = useState<'current' | 'historical'>('current');
@@ -69,6 +85,49 @@ const Index = () => {
   } = useInvestments();
 
   const { alerts, alertCount, hasUrgentAlerts } = useAlerts(activeInvestments, scheduleMap);
+
+  const {
+    notifications,
+    isLoading: notificationsLoading,
+    unreadCount,
+    markAsRead,
+  } = useNotifications();
+
+  const unreadNotifications = notifications.filter(n => !n.read);
+
+  useNotificationGenerator(
+    activeInvestments,
+    scheduleMap,
+    notifications,
+    !notificationsLoading,
+  );
+
+  const handleViewChange = (view: View) => {
+    setCurrentView(view);
+    setInvestmentsFilter('all');
+  };
+
+  const handleSheetPaid = async (notification: Notification) => {
+    setSavingNotificationId(notification.id);
+    const data = notification.data as any;
+    try {
+      await addPayment(data.investmentId, {
+        date: new Date(data.scheduleEntryDate).toISOString(),
+        amount: data.expectedAmount,
+        type: 'interest',
+      });
+      markAsRead(notification.id);
+    } finally {
+      setSavingNotificationId(null);
+    }
+  };
+
+  const handleSheetNotPaid = (notification: Notification) => {
+    markAsRead(notification.id);
+    setInvestmentsFilter('all');
+    setCurrentView('investments');
+    setNotificationsSheetOpen(false);
+  };
 
   const openUpgradeModal = (feature: string) => {
     setUpgradeFeature(feature);
@@ -106,17 +165,18 @@ const Index = () => {
         helpContent={HELP_CONTENT.dashboard.estimatedTotal}
       />
       <KPICard
-        title={t('dashboard.kpi.expectedProfit')}
-        value={formatCurrency(summary.activeSummary.expectedProfit)}
+        title={t('dashboard.kpi.accruedProfit')}
+        value={formatCurrency(summary.activeSummary.accruedProfit)}
         subtitle={scopeSubtitle(summary.activeSummary.withEndDateCount, summary.activeSummary.count)}
         icon={TrendingUp}
-        helpContent={HELP_CONTENT.dashboard.expectedProfit}
+        helpContent={HELP_CONTENT.dashboard.accruedProfit}
       />
       <KPICard
         title={t('dashboard.kpi.activeCount')}
         value={summary.activeSummary.count}
         icon={PiggyBank}
         helpContent={HELP_CONTENT.dashboard.activeCount}
+        onClick={() => { setInvestmentsFilter('active'); setCurrentView('investments'); }}
       />
     </div>
   );
@@ -187,7 +247,13 @@ const Index = () => {
                     {investments.length > 0 && (
                       <ShareSuccessButton targetRef={shareableCardRef} disabled={investments.length === 0} />
                     )}
-                    <NotificationBell />
+                    <NotificationBell
+                      notifications={unreadNotifications}
+                      unreadCount={unreadCount}
+                      onMarkAsRead={markAsRead}
+                      onAddPayment={async (investmentId, payment) => { await addPayment(investmentId, payment); }}
+                      onOpenInvestment={() => { setInvestmentsFilter('all'); setCurrentView('investments'); }}
+                    />
                     <InvestmentForm onSubmit={addInvestment} onSubmitDraft={addDraftInvestment} investmentCount={allInvestmentsCount} isPro={isPro} onProRequired={() => openUpgradeModal('unlimited_investments')} />
                   </div>
                 </div>
@@ -356,6 +422,7 @@ const Index = () => {
               onAddPayment={addPayment}
               onDeletePayment={deletePayment}
               allowDraftSave
+              initialStatusFilter={investmentsFilter}
             />
           </div>
         );
@@ -397,8 +464,10 @@ const Index = () => {
   return (
     <AppLayout 
       currentView={currentView} 
-      onViewChange={setCurrentView}
+      onViewChange={handleViewChange}
       incompleteCount={incompleteInvestments.length}
+      notificationCount={unreadCount + alertCount}
+      onOpenNotifications={() => setNotificationsSheetOpen(true)}
     >
       <ErrorBoundary fallbackMessage="Ha ocurrido un error inesperado.">
       <div key={currentView}>
@@ -414,6 +483,117 @@ const Index = () => {
         onOpenChange={setUpgradeModalOpen}
         feature={upgradeFeature}
       />
+
+      {/* Notifications Sheet */}
+      {(() => {
+        const paymentDue   = unreadNotifications.filter(n => n.type === 'payment_due');
+        const maturityNtfs = unreadNotifications.filter(n => n.type === 'maturity_soon' || n.type === 'maturity_overdue');
+        const weeklySummary = unreadNotifications.find(n => n.type === 'weekly_summary');
+        const totalUnread = unreadCount + alertCount;
+
+        const handleViewInvestment = (n: any) => {
+          markAsRead(n.id);
+          setInvestmentsFilter('all');
+          setCurrentView('investments');
+          setNotificationsSheetOpen(false);
+        };
+
+        return (
+          <Sheet open={notificationsSheetOpen} onOpenChange={setNotificationsSheetOpen}>
+            <SheetContent className="w-full sm:max-w-lg p-0">
+              <SheetHeader className="px-6 py-4 border-b">
+                <SheetTitle>{t('nav.notifications')}</SheetTitle>
+                <SheetDescription>
+                  {totalUnread === 0 ? t('notifications.empty') : `${totalUnread} ${t('notifications.pending')}`}
+                </SheetDescription>
+              </SheetHeader>
+
+              <ScrollArea className="h-[calc(100vh-88px)]">
+                <div className="divide-y">
+
+                  {/* Resumen semanal */}
+                  {weeklySummary && (
+                    <div className="px-6 py-4">
+                      <div className="rounded-lg border-2 border-primary/20 bg-primary/5 p-4 space-y-2">
+                        <div className="flex items-center justify-between">
+                          <div className="flex items-center gap-2">
+                            <BarChart3 className="h-4 w-4 text-primary" />
+                            <p className="text-sm font-semibold text-primary">{weeklySummary.title}</p>
+                          </div>
+                          <Button variant="ghost" size="icon" className="h-6 w-6" onClick={() => markAsRead(weeklySummary.id)}>
+                            <CheckCircle className="h-3.5 w-3.5" />
+                          </Button>
+                        </div>
+                        <p className="text-sm text-muted-foreground leading-relaxed">{weeklySummary.message}</p>
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Cobros esperados */}
+                  {paymentDue.length > 0 && (
+                    <div className="px-6 py-4 space-y-3">
+                      <h3 className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">{t('notifications.paymentDue')}</h3>
+                      {paymentDue.map(n => {
+                        const isSaving = savingNotificationId === n.id;
+                        return (
+                          <div key={n.id} className="rounded-lg border bg-primary/5 p-3 space-y-2">
+                            <div>
+                              <p className="text-sm font-medium">{n.title}</p>
+                              <p className="text-xs text-muted-foreground mt-0.5 leading-snug">{n.message}</p>
+                            </div>
+                            <div className="flex gap-2">
+                              <Button size="sm" className="h-7 text-xs" disabled={isSaving} onClick={() => handleSheetPaid(n)}>
+                                <CheckCircle className="mr-1 h-3 w-3" />{t('notifications.yesPaid')}
+                              </Button>
+                              <Button size="sm" variant="outline" className="h-7 text-xs" disabled={isSaving} onClick={() => handleSheetNotPaid(n)}>
+                                <ExternalLink className="mr-1 h-3 w-3" />{t('notifications.notPaid')}
+                              </Button>
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  )}
+
+                  {/* Vencimientos */}
+                  {maturityNtfs.length > 0 && (
+                    <div className="px-6 py-4 space-y-3">
+                      <h3 className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">{t('notifications.maturities')}</h3>
+                      {maturityNtfs.map(n => {
+                        const isOverdue = n.type === 'maturity_overdue';
+                        return (
+                          <div key={n.id} className={cn('rounded-lg border p-3 space-y-2', isOverdue ? 'bg-destructive/5 border-destructive/20' : 'bg-orange-500/5 border-orange-200')}>
+                            <div className="flex items-start gap-2">
+                              {isOverdue
+                                ? <Clock className="h-4 w-4 text-destructive mt-0.5 shrink-0" />
+                                : <AlertTriangle className="h-4 w-4 text-orange-500 mt-0.5 shrink-0" />}
+                              <div>
+                                <p className="text-sm font-medium">{n.title}</p>
+                                <p className="text-xs text-muted-foreground mt-0.5 leading-snug">{n.message}</p>
+                              </div>
+                            </div>
+                            <Button size="sm" variant="outline" className="h-7 text-xs ml-6" onClick={() => handleViewInvestment(n)}>
+                              <ExternalLink className="mr-1 h-3 w-3" />{t('notifications.viewInvestment')}
+                            </Button>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  )}
+
+                  {/* Alertas de cartera */}
+                  <div className="px-6 py-4 space-y-3">
+                    <h3 className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">{t('notifications.portfolioAlerts')}</h3>
+                    <AlertsPanel alerts={alerts} alertCount={alertCount} hasUrgentAlerts={hasUrgentAlerts} variant="inline" />
+                  </div>
+
+                </div>
+              </ScrollArea>
+            </SheetContent>
+          </Sheet>
+        );
+      })()}
+
       </ErrorBoundary>
     </AppLayout>
   );

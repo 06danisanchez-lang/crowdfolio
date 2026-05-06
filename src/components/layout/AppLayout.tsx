@@ -1,12 +1,13 @@
 import { useRef, useEffect, useState } from 'react';
-import { 
-  LayoutDashboard, 
-  Wallet, 
+import {
+  LayoutDashboard,
+  Wallet,
   Menu,
   Receipt,
   Shield,
   Crown,
-  CalendarPlus
+  CalendarPlus,
+  Bell,
 } from 'lucide-react';
 import { useNavigate, Link } from 'react-router-dom';
 import { LEGAL_ROUTES } from '@/lib/legal/routes';
@@ -31,13 +32,17 @@ interface AppLayoutProps {
   currentView: View;
   onViewChange: (view: View) => void;
   incompleteCount?: number;
+  notificationCount?: number;
+  onOpenNotifications?: () => void;
 }
 
-export function AppLayout({ 
-  children, 
-  currentView, 
+export function AppLayout({
+  children,
+  currentView,
   onViewChange,
-  incompleteCount = 0
+  incompleteCount = 0,
+  notificationCount = 0,
+  onOpenNotifications,
 }: AppLayoutProps) {
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [upgradeOpen, setUpgradeOpen] = useState(false);
@@ -55,10 +60,12 @@ export function AppLayout({
     await signOut();
   };
 
-  const navItems = [
+  const navItemsBefore = [
     { id: 'dashboard' as View, label: t('nav.dashboard'), icon: LayoutDashboard },
     { id: 'investments' as View, label: t('nav.investments'), icon: Wallet },
     { id: 'future-investments' as View, label: t('nav.futureInvestments'), icon: CalendarPlus },
+  ];
+  const navItemsAfter = [
     { id: 'tax' as View, label: t('nav.tax'), icon: Receipt },
   ];
 
@@ -98,28 +105,42 @@ export function AppLayout({
           </div>
 
           <nav className="flex-1 overflow-y-auto space-y-1 p-4">
-            {navItems.map((item) => (
-              <button
-                key={item.id}
-                onClick={() => {
-                  onViewChange(item.id);
-                  setSidebarOpen(false);
-                }}
-                className={cn(
-                  "flex w-full items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium transition-colors",
-                  currentView === item.id
-                    ? "bg-primary text-primary-foreground"
-                    : "text-muted-foreground hover:bg-accent hover:text-accent-foreground"
+            {[...navItemsBefore, ...navItemsAfter].map((item, idx) => (
+              <>
+                {idx === navItemsBefore.length && onOpenNotifications && (
+                  <button
+                    key="notifications"
+                    onClick={() => { onOpenNotifications(); setSidebarOpen(false); }}
+                    className="flex w-full items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium transition-colors text-muted-foreground hover:bg-accent hover:text-accent-foreground"
+                  >
+                    <Bell className="h-4 w-4" />
+                    {t('nav.notifications')}
+                    {notificationCount > 0 && (
+                      <span className="ml-auto flex h-5 min-w-5 items-center justify-center rounded-full bg-primary px-1.5 text-xs font-bold text-white">
+                        {notificationCount > 9 ? '9+' : notificationCount}
+                      </span>
+                    )}
+                  </button>
                 )}
-              >
-                <item.icon className="h-4 w-4" />
-                {item.label}
-                {item.id === 'investments' && incompleteCount > 0 && (
-                  <span className="ml-auto flex h-5 min-w-5 items-center justify-center rounded-full bg-orange-500 px-1.5 text-xs font-bold text-white">
-                    {incompleteCount}
-                  </span>
-                )}
-              </button>
+                <button
+                  key={item.id}
+                  onClick={() => { onViewChange(item.id); setSidebarOpen(false); }}
+                  className={cn(
+                    "flex w-full items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium transition-colors",
+                    currentView === item.id
+                      ? "bg-primary text-primary-foreground"
+                      : "text-muted-foreground hover:bg-accent hover:text-accent-foreground"
+                  )}
+                >
+                  <item.icon className="h-4 w-4" />
+                  {item.label}
+                  {item.id === 'investments' && incompleteCount > 0 && (
+                    <span className="ml-auto flex h-5 min-w-5 items-center justify-center rounded-full bg-orange-500 px-1.5 text-xs font-bold text-white">
+                      {incompleteCount}
+                    </span>
+                  )}
+                </button>
+              </>
             ))}
             <button
               onClick={() => { setUpgradeOpen(true); setSidebarOpen(false); }}

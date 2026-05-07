@@ -1,4 +1,5 @@
 import { Investment } from '@/types/investment';
+import { calculateProgressiveTax } from '@/lib/tax/calculations';
 
 export interface ProjectedInvestment {
   investmentId: string;
@@ -125,7 +126,7 @@ export function calculateYearlyProjection(
 
   // Calculate tax on total projected taxable base
   const projectedTaxableBase = Math.max(0, totalProjectedGross - deductibleExpenses);
-  const totalProjectedTax = calculateProgressiveTaxSimple(projectedTaxableBase);
+  const totalProjectedTax = calculateProgressiveTax(projectedTaxableBase);
 
   // Total withholdings = current + projected
   const totalWithholdings = currentWithholdings + projectedWithholdings;
@@ -143,27 +144,3 @@ export function calculateYearlyProjection(
   };
 }
 
-// Simple progressive tax calculation (duplicated to avoid circular deps)
-function calculateProgressiveTaxSimple(taxableBase: number): number {
-  if (taxableBase <= 0) return 0;
-
-  const brackets = [
-    { min: 0, max: 6000, rate: 0.19 },
-    { min: 6000, max: 50000, rate: 0.21 },
-    { min: 50000, max: 200000, rate: 0.23 },
-    { min: 200000, max: Infinity, rate: 0.27 },
-  ];
-
-  let remainingBase = taxableBase;
-  let totalTax = 0;
-
-  for (const bracket of brackets) {
-    if (remainingBase <= 0) break;
-    const bracketSize = bracket.max - bracket.min;
-    const taxableInBracket = Math.min(remainingBase, bracketSize);
-    totalTax += taxableInBracket * bracket.rate;
-    remainingBase -= taxableInBracket;
-  }
-
-  return Math.round(totalTax * 100) / 100;
-}

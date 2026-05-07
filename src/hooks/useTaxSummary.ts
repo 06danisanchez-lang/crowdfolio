@@ -118,18 +118,8 @@ export function useTaxSummary(year: number) {
           )
           .map(mapInvestmentRow);
 
-        const excludedCount = allRows.length - allRows.filter(inv =>
-          isInvestmentComplete({
-            platform: inv.platform,
-            projectName: inv.project_name,
-            amount: inv.amount != null ? Number(inv.amount) : null,
-            investmentDate: inv.investment_date,
-            incomeModel: inv.income_model,
-            status: inv.status,
-            expectedReturn: inv.expected_return != null ? Number(inv.expected_return) : null,
-            expectedEndDate: inv.expected_end_date,
-          })
-        ).length;
+        const activeRows = allRows.filter(inv => inv.status === 'active');
+        const excludedCount = activeRows.length - trackingReadyActive.length;
 
         if (allIds.length === 0) {
           clearTimeout(timeoutId);

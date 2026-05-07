@@ -116,7 +116,7 @@ function AlertItem({
           <Button
             variant="ghost"
             size="icon"
-            className="shrink-0"
+            className="h-10 w-10 shrink-0"
             onClick={() => onViewInvestment(alert.investmentId)}
           >
             <ChevronRight className="h-4 w-4" />
@@ -227,7 +227,7 @@ export function AlertsPanel({
             )}
           </Button>
         ) : (
-          <Button variant="outline" size="icon" className="relative">
+          <Button variant="outline" size="icon" className="relative h-10 w-10">
             <Bell className={cn("h-5 w-5", hasUrgentAlerts && "text-destructive")} />
             {alertCount > 0 && (
               <span className={cn(

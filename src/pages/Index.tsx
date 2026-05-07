@@ -149,7 +149,7 @@ const Index = () => {
   };
 
   const renderCurrentKPIs = () => (
-    <div className="grid gap-4 grid-cols-2 lg:grid-cols-4">
+    <div className="grid gap-4 grid-cols-1 sm:grid-cols-2 lg:grid-cols-4">
       <KPICard
         title={t('dashboard.kpi.activeCapital')}
         value={formatCurrency(summary.activeSummary.capital)}
@@ -182,7 +182,7 @@ const Index = () => {
   );
 
   const renderHistoricalKPIs = () => (
-    <div className="grid gap-4 grid-cols-2 lg:grid-cols-4">
+    <div className="grid gap-4 grid-cols-1 sm:grid-cols-2 lg:grid-cols-4">
       <KPICard
         title={t('dashboard.kpi.historicalInvested')}
         value={formatCurrency(summary.historicalSummary.totalInvested)}
@@ -225,7 +225,7 @@ const Index = () => {
             ) : isLoading ? (
               <div className="space-y-4">
                 <Skeleton className="h-8 w-48" />
-                <div className="grid gap-4 grid-cols-2 lg:grid-cols-4">
+                <div className="grid gap-4 grid-cols-1 sm:grid-cols-2 lg:grid-cols-4">
                   {Array.from({ length: 4 }).map((_, i) => (
                     <Skeleton key={i} className="h-32" />
                   ))}
@@ -404,7 +404,7 @@ const Index = () => {
           <div className="px-6 pt-4 pb-6 lg:px-8">
             <div className="mb-8 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
               <div>
-                <h1 className="text-3xl font-bold">{t('investments.title')}</h1>
+                <h1 className="text-xl sm:text-2xl lg:text-3xl font-bold">{t('investments.title')}</h1>
                 <p className="text-muted-foreground">{t('investments.subtitle')}{!isPro && ` (${allInvestmentsCount}/3)`}</p>
               </div>
               <div className="flex flex-wrap gap-2">
@@ -436,7 +436,7 @@ const Index = () => {
         return (
           <div className="px-6 pt-4 pb-6 lg:px-8">
             <div className="mb-8">
-              <h1 className="text-3xl font-bold">{t('tax.title')}</h1>
+              <h1 className="text-xl sm:text-2xl lg:text-3xl font-bold">{t('tax.title')}</h1>
               <p className="text-muted-foreground">{t('tax.subtitle')}</p>
             </div>
             <TaxDashboard isPro={isPro} onProRequired={() => openUpgradeModal('export_irpf')} />
@@ -450,7 +450,7 @@ const Index = () => {
         return (
           <div className="px-6 pt-4 pb-6 lg:px-8">
             <div className="mb-8">
-              <h1 className="text-3xl font-bold">{t('admin.title')}</h1>
+              <h1 className="text-xl sm:text-2xl lg:text-3xl font-bold">{t('admin.title')}</h1>
               <p className="text-muted-foreground">{t('admin.subtitle')}</p>
             </div>
             <AdminPanel />
@@ -500,7 +500,7 @@ const Index = () => {
 
         return (
           <Sheet open={notificationsSheetOpen} onOpenChange={setNotificationsSheetOpen}>
-            <SheetContent className="w-full sm:max-w-lg p-0">
+            <SheetContent className="w-full md:max-w-lg p-0">
               <SheetHeader className="px-6 py-4 border-b">
                 <SheetTitle>{t('nav.notifications')}</SheetTitle>
                 <SheetDescription>
@@ -542,10 +542,10 @@ const Index = () => {
                               <p className="text-xs text-muted-foreground mt-0.5 leading-snug">{n.message}</p>
                             </div>
                             <div className="flex gap-2">
-                              <Button size="sm" className="h-7 text-xs" disabled={isSaving} onClick={() => handleSheetPaid(n)}>
+                              <Button size="sm" className="min-h-[44px] text-xs" disabled={isSaving} onClick={() => handleSheetPaid(n)}>
                                 <CheckCircle className="mr-1 h-3 w-3" />{t('notifications.yesPaid')}
                               </Button>
-                              <Button size="sm" variant="outline" className="h-7 text-xs" disabled={isSaving} onClick={() => handleSheetNotPaid(n)}>
+                              <Button size="sm" variant="outline" className="min-h-[44px] text-xs" disabled={isSaving} onClick={() => handleSheetNotPaid(n)}>
                                 <ExternalLink className="mr-1 h-3 w-3" />{t('notifications.notPaid')}
                               </Button>
                             </div>
@@ -572,7 +572,7 @@ const Index = () => {
                                 <p className="text-xs text-muted-foreground mt-0.5 leading-snug">{n.message}</p>
                               </div>
                             </div>
-                            <Button size="sm" variant="outline" className="h-7 text-xs ml-6" onClick={() => handleViewInvestment(n)}>
+                            <Button size="sm" variant="outline" className="min-h-[44px] text-xs ml-6" onClick={() => handleViewInvestment(n)}>
                               <ExternalLink className="mr-1 h-3 w-3" />{t('notifications.viewInvestment')}
                             </Button>
                           </div>

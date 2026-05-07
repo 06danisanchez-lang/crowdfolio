@@ -22,7 +22,7 @@ export default function Landing() {
       {/* Header */}
       <header className="sticky top-0 z-50 border-b bg-background/80 backdrop-blur-md supports-[backdrop-filter]:bg-background/60">
         <div className="container mx-auto flex h-16 items-center justify-between px-4">
-          <img src={crowdfolioLogo} alt="Crowdfolio" className="h-20 md:h-24" />
+          <img src={crowdfolioLogo} alt="Crowdfolio" className="h-10 md:h-16 lg:h-20" />
           <div className="flex items-center gap-4">
             <LanguageToggle />
             <Button variant="ghost" onClick={() => navigate('/auth')}>

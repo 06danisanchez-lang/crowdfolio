@@ -252,6 +252,7 @@ export default function Auth() {
   // Login / Signup View
   return (
     <div className="min-h-screen flex items-center justify-center bg-background p-4">
+      <div className="px-4 w-full">
       <Card className="w-full max-w-md">
         <CardHeader className="text-center">
           <div className="mx-auto mb-4">
@@ -409,6 +410,7 @@ export default function Auth() {
 
         </CardContent>
       </Card>
+      </div>
     </div>
   );
 }

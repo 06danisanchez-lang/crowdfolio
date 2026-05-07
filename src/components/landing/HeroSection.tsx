@@ -21,7 +21,7 @@ export default function HeroSection() {
             <img 
               src={crowdfolioLogo} 
               alt="Crowdfolio" 
-              className="mx-auto h-24 md:h-32 lg:h-40"
+              className="mx-auto h-16 sm:h-20 md:h-32 lg:h-40"
             />
           </div>
 
@@ -32,7 +32,7 @@ export default function HeroSection() {
           </div>
 
           {/* Main Headline */}
-          <h1 className="mb-4 text-4xl font-bold tracking-tight md:text-5xl lg:text-6xl xl:text-7xl">
+          <h1 className="mb-4 text-2xl sm:text-3xl md:text-4xl lg:text-5xl xl:text-6xl font-bold tracking-tight">
             {t('hero.headline1')}{' '}
             <span className="relative">
               <span className="bg-gradient-to-r from-brand-navy via-brand-sky to-brand-sky bg-clip-text text-transparent">

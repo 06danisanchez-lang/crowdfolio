@@ -83,7 +83,6 @@ export function AppLayout({
           <LanguageToggle />
           <Button
             variant={isPro ? "outline" : "default"}
-            size="sm"
             onClick={() => setUpgradeOpen(true)}
           >
             <Crown className="h-4 w-4" />

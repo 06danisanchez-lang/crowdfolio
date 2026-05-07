@@ -29,7 +29,7 @@ export default function Pricing({ onBack }: PricingProps) {
       {/* Content */}
       <main className="container mx-auto px-4 py-12">
         <div className="mb-12 text-center">
-          <h1 className="mb-4 text-4xl font-bold">Elige tu plan</h1>
+          <h1 className="mb-4 text-2xl sm:text-3xl lg:text-4xl font-bold">Elige tu plan</h1>
           <p className="mx-auto max-w-2xl text-lg text-muted-foreground">
             Empieza gratis y actualiza cuando necesites más. Sin compromisos, cancela cuando quieras.
           </p>

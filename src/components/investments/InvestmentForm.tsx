@@ -967,7 +967,10 @@ export function InvestmentForm({
             </Button>
           )}
         </DialogTrigger>
-        <DialogContent className="max-h-[90vh] overflow-y-auto sm:max-w-[500px]">
+        <DialogContent
+          className="max-h-[90vh] overflow-y-auto sm:max-w-[500px]"
+          onFocusOutside={(e) => e.preventDefault()}
+        >
           <DialogHeader>
             <DialogTitle>
               {isFuture

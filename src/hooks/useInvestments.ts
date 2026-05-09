@@ -35,6 +35,7 @@ export function useInvestments() {
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const requestIdRef = useRef(0);
+  const hasLoadedRef = useRef(false);
 
   const fetchInvestments = useCallback(async () => {
     if (!user) {
@@ -42,6 +43,7 @@ export function useInvestments() {
       setScheduleMap({});
       setIsLoading(false);
       setError(null);
+      hasLoadedRef.current = false;
       return;
     }
 
@@ -55,7 +57,11 @@ export function useInvestments() {
     }, FETCH_TIMEOUT_MS);
 
     try {
-      setIsLoading(true);
+      // Only show loading spinner on first fetch; subsequent refetches (e.g. after
+      // token refresh) update data silently so open modals are not unmounted.
+      if (!hasLoadedRef.current) {
+        setIsLoading(true);
+      }
       setError(null);
 
       const { data: investmentsData, error: investmentsError } = await supabase
@@ -131,6 +137,7 @@ export function useInvestments() {
 
       setAllRawInvestments(mapped);
       setScheduleMap(schedMap);
+      hasLoadedRef.current = true;
     } catch (err) {
       clearTimeout(timeoutId);
       if (requestIdRef.current !== currentId) return;

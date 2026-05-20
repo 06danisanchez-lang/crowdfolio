@@ -26,3 +26,4 @@ dist-ssr
 # Editor swap/lock files (e.g. from Cursor/VSCode multi-instance)
 **/.!*!*
 "Recurso 2.svg"
+.vercel

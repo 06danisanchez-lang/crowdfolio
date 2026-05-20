@@ -40,7 +40,7 @@ import {
   SheetDescription,
 } from '@/components/ui/sheet';
 import { ScrollArea } from '@/components/ui/scroll-area';
-import { CheckCircle, ExternalLink, AlertTriangle, Clock, BarChart3 } from 'lucide-react';
+import { CheckCircle, ExternalLink, AlertTriangle, Clock } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Notification } from '@/hooks/useNotifications';
 import { HelpTooltip } from '@/components/ui/help-tooltip';

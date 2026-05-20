@@ -2,7 +2,6 @@ import { useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import crowdfolioLogo from '@/assets/logo_crowdfolio.svg';
 import HeroSection from '@/components/landing/HeroSection';
-import StatsSection from '@/components/landing/StatsSection';
 import ProductShowcase from '@/components/landing/ProductShowcase';
 import PlatformMarquee from '@/components/landing/PlatformMarquee';
 import FeaturesGrid from '@/components/landing/FeaturesGrid';
@@ -22,7 +21,7 @@ export default function Landing() {
       {/* Header */}
       <header className="sticky top-0 z-50 border-b bg-background/80 backdrop-blur-md supports-[backdrop-filter]:bg-background/60">
         <div className="container mx-auto flex h-16 items-center justify-between px-4">
-          <img src={crowdfolioLogo} alt="Crowdfolio" className="h-10 md:h-16 lg:h-20" />
+          <img src={crowdfolioLogo} alt="Crowdfolio" className="h-7 md:h-9" />
           <div className="flex items-center gap-4">
             <LanguageToggle />
             <Button variant="ghost" onClick={() => navigate('/auth')}>
@@ -36,7 +35,6 @@ export default function Landing() {
       </header>
 
       <HeroSection />
-      <StatsSection />
       <ProductShowcase />
       <PlatformMarquee />
       <FeaturesGrid />

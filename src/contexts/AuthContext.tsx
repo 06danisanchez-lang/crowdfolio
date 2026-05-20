@@ -1,7 +1,6 @@
 import { createContext, useContext, useEffect, useState, useCallback, useRef, ReactNode } from 'react';
 import { User, Session, AuthChangeEvent } from '@supabase/supabase-js';
 import { supabase } from '@/integrations/supabase/client';
-import { lovable } from '@/integrations/lovable';
 
 const AUTH_TIMEOUT_MS = 10_000;
 
@@ -212,13 +211,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const signInWithGoogle = async () => {
     const redirectUri = getAuthOrigin();
-    const result = await lovable.auth.signInWithOAuth("google", { redirect_uri: redirectUri });
-    if (result.redirected) return { error: null };
-    if (result.error) {
-      const enhancedError = new Error(`${result.error.message} (redirect_uri usado: ${redirectUri})`);
-      return { error: enhancedError };
-    }
-    return { error: null };
+    const { error } = await supabase.auth.signInWithOAuth({
+      provider: 'google',
+      options: { redirectTo: redirectUri },
+    });
+    return { error: error as Error | null };
   };
 
   const resetPassword = async (email: string) => {

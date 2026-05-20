@@ -34,39 +34,12 @@ export default function HeroSection() {
           {/* Main Headline */}
           <h1 className="mb-4 text-2xl sm:text-3xl md:text-4xl lg:text-5xl xl:text-6xl font-bold tracking-tight">
             {t('hero.headline1')}{' '}
-            <span className="relative">
-              <span className="bg-gradient-to-r from-brand-navy via-brand-sky to-brand-sky bg-clip-text text-transparent">
-                crowdfunding
-              </span>
-              <svg
-                className="absolute -bottom-2 left-0 w-full"
-                viewBox="0 0 300 12"
-                fill="none"
-                xmlns="http://www.w3.org/2000/svg"
-              >
-                <path
-                  d="M2 10C50 4 100 2 150 6C200 10 250 8 298 4"
-                  stroke="url(#gradient)"
-                  strokeWidth="3"
-                  strokeLinecap="round"
-                />
-                <defs>
-                  <linearGradient id="gradient" x1="0%" y1="0%" x2="100%" y2="0%">
-                    <stop offset="0%" stopColor="hsl(217 91% 60%)" />
-                    <stop offset="50%" stopColor="hsl(221 83% 53%)" />
-                    <stop offset="100%" stopColor="hsl(250 83% 60%)" />
-                  </linearGradient>
-                </defs>
-              </svg>
-            </span>{' '}
+            <span className="bg-gradient-to-r from-brand-navy via-brand-sky to-brand-sky bg-clip-text text-transparent">
+                crowdfunding inmobiliario
+              </span>{' '}
             <br className="hidden sm:block" />
             {t('hero.headline2')}
           </h1>
-
-          {/* Subheadline */}
-          <p className="mx-auto mb-4 max-w-2xl text-lg text-muted-foreground md:text-xl">
-            {t('hero.subheadline')}
-          </p>
 
           {/* Value bullets */}
           <ul className="mx-auto mb-6 flex max-w-xl flex-col items-start gap-2 text-left text-muted-foreground">
@@ -81,6 +54,10 @@ export default function HeroSection() {
             <li className="flex items-center gap-2">
               <Check className="h-5 w-5 shrink-0 text-primary" />
               <span>{t('hero.bullet3')}</span>
+            </li>
+            <li className="flex items-center gap-2">
+              <Check className="h-5 w-5 shrink-0 text-primary" />
+              <span>{t('hero.bullet4')}</span>
             </li>
           </ul>
 

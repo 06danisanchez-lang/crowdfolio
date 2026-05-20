@@ -30,9 +30,9 @@ export class GlobalErrorBoundary extends Component<Props, State> {
   };
 
   handleReset = () => {
-    try { localStorage.clear(); } catch {}
-    try { sessionStorage.clear(); } catch {}
-    try { queryClient.clear(); } catch {}
+    try { localStorage.clear(); } catch { /* intentional */ }
+    try { sessionStorage.clear(); } catch { /* intentional */ }
+    try { queryClient.clear(); } catch { /* intentional */ }
     window.location.assign('/');
   };
 

@@ -170,6 +170,7 @@ export function useTaxSummary(year: number) {
 
     fetchData();
 
+    // eslint-disable-next-line react-hooks/exhaustive-deps
     return () => { ++requestIdRef.current; };
   }, [user, year]);
 

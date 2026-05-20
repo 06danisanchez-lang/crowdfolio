@@ -1,3 +1,4 @@
+/* eslint-disable react-refresh/only-export-components */
 import { createContext, useContext, useEffect, useState, useCallback, useRef, ReactNode } from 'react';
 import { User, Session, AuthChangeEvent } from '@supabase/supabase-js';
 import { supabase } from '@/integrations/supabase/client';
@@ -188,6 +189,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       isMounted = false;
       subscription.unsubscribe();
     };
+    // fireNewUserWebhook is stable (useCallback with no deps) — omitting intentionally
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [checkAdminRole]);
 
   const signIn = async (email: string, password: string) => {

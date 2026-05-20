@@ -4,7 +4,7 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import { format } from 'date-fns';
 import { CalendarIcon, Plus, AlertTriangle, Info } from 'lucide-react';
-import { Investment, Platform, InvestmentStatus, PLATFORMS, STATUS_OPTIONS, INCOME_MODEL_OPTIONS, PAYMENT_FREQUENCY_OPTIONS, PRINCIPAL_RETURN_TYPE_OPTIONS, IncomeModel } from '@/types/investment';
+import { Investment, Platform, InvestmentStatus, PLATFORMS, STATUS_OPTIONS, INCOME_MODEL_OPTIONS, PAYMENT_FREQUENCY_OPTIONS, PRINCIPAL_RETURN_TYPE_OPTIONS, IncomeModel, PaymentFrequency, PrincipalReturnType } from '@/types/investment';
 import { getInvestmentCompletionStatus } from '@/lib/investment/completeness';
 import { generateSchedule } from '@/lib/investment/scheduleGenerator';
 
@@ -115,7 +115,9 @@ type InvestmentFormData = z.infer<typeof investmentSchema>;
 export type InvestmentFormMode = 'real' | 'future';
 
 interface InvestmentFormProps {
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   onSubmit: (data: any) => void;
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   onSubmitDraft?: (data: any) => void;
   initialData?: Investment | FutureInvestmentFormData;
   isDraft?: boolean;
@@ -161,6 +163,7 @@ export function InvestmentForm({
 
   const schema = isFuture ? futureInvestmentSchema : draftInvestmentSchema;
 
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const form = useForm<any>({
     resolver: zodResolver(schema),
     defaultValues: initialData
@@ -273,9 +276,9 @@ export function InvestmentForm({
       expectedEndDate:    saved.formValues.expectedEndDate
         ? new Date(saved.formValues.expectedEndDate)
         : undefined,
-      incomeModel:        (saved.formValues.incomeModel as any) || undefined,
-      paymentFrequency:   (saved.formValues.paymentFrequency as any) ?? undefined,
-      principalReturnType: (saved.formValues.principalReturnType as any) ?? undefined,
+      incomeModel:        (saved.formValues.incomeModel as IncomeModel) || undefined,
+      paymentFrequency:   (saved.formValues.paymentFrequency as PaymentFrequency) ?? undefined,
+      principalReturnType: (saved.formValues.principalReturnType as PrincipalReturnType) ?? undefined,
     });
 
     setDraftExists(true);
@@ -312,6 +315,7 @@ export function InvestmentForm({
     }
   }, [open, initialData, form]);
 
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const handleSubmit = (data: any) => {
     if (isFuture) {
       onSubmit({
@@ -356,7 +360,7 @@ export function InvestmentForm({
           id: 'dry-run',
           amount: data.amount,
           expectedReturn: data.expectedReturn,
-          incomeModel: model as any,
+          incomeModel: model as IncomeModel,
           paymentFrequency: data.paymentFrequency,
           principalReturnType: data.principalReturnType,
           investmentDate: data.investmentDate instanceof Date ? data.investmentDate.toISOString().split('T')[0] : data.investmentDate,
@@ -462,8 +466,8 @@ export function InvestmentForm({
     expectedEndDate: initialData.expectedEndDate
       ? (initialData.expectedEndDate instanceof Date ? initialData.expectedEndDate.toISOString() : initialData.expectedEndDate as string)
       : null,
-    incomeModel: 'incomeModel' in initialData ? (initialData as any).incomeModel : null,
-    status: 'status' in initialData ? (initialData as any).status : null,
+    incomeModel: 'incomeModel' in initialData ? (initialData as Investment).incomeModel : null,
+    status: 'status' in initialData ? (initialData as Investment).status : null,
   }) : null;
 
   const showDraftButtons = !isFuture && (isDraft || onSubmitDraft);

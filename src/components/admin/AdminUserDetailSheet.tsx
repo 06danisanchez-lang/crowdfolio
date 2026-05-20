@@ -84,8 +84,8 @@ export default function AdminUserDetailSheet({ user, open, onOpenChange, onUserD
       toast.success(`Usuario ${user.email || user.fullName} eliminado correctamente`);
       onOpenChange(false);
       onUserDeleted?.();
-    } catch (err: any) {
-      toast.error(err.message || 'Error al eliminar el usuario');
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : 'Error al eliminar el usuario');
     } finally {
       setIsDeleting(false);
     }

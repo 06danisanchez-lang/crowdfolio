@@ -190,6 +190,7 @@ export function FutureInvestmentList() {
   const formatCurrency = (value: number) =>
     new Intl.NumberFormat('es-ES', { style: 'currency', currency: 'EUR', minimumFractionDigits: 0, maximumFractionDigits: 0 }).format(value);
 
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const handleFutureSubmit = async (data: any) => {
     await addFutureInvestment({
       platform: data.platform,
@@ -204,6 +205,7 @@ export function FutureInvestmentList() {
     });
   };
 
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const handleEditSubmit = async (fiId: string, data: any) => {
     await updateFutureInvestment(fiId, {
       platform: data.platform,
@@ -227,6 +229,7 @@ export function FutureInvestmentList() {
     setConvertingId(fiId);
   };
 
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const handleConvertSubmit = async (data: any) => {
     if (!convertingId) return;
     const realData: Omit<Investment, 'id' | 'createdAt' | 'updatedAt' | 'payments'> = {
@@ -476,6 +479,7 @@ interface FutureInvestmentCardProps {
   formatCurrency: (value: number) => string;
   onConvert: (id: string) => void;
   onDelete: (id: string) => void;
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   onEditSubmit: (fiId: string, data: any) => void;
   isPro: boolean;
   investmentCount: number;

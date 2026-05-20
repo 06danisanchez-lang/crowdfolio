@@ -61,7 +61,7 @@ interface InvestmentDetailProps {
   investment: Investment | null;
   schedule?: InvestmentScheduleEntry[];
   onClose: () => void;
-  onUpdate: (id: string, updates: Partial<Investment>) => Promise<any>;
+  onUpdate: (id: string, updates: Partial<Investment>) => Promise<unknown>;
   onDelete: (id: string) => void;
   onAddPayment: (investmentId: string, payment: { date: string; amount: number; type: 'dividend' | 'principal' | 'interest'; notes?: string }) => void;
   onDeletePayment: (investmentId: string, paymentId: string) => void;

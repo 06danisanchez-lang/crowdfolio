@@ -17,7 +17,7 @@ interface NotificationBellProps {
   onAddPayment?: (
     investmentId: string,
     payment: { date: string; amount: number; type: 'interest' },
-  ) => Promise<any>;
+  ) => Promise<void>;
   onOpenInvestment?: (investmentId: string) => void;
 }
 
@@ -49,11 +49,11 @@ export function NotificationBell({
   const handlePaid = async (n: Notification) => {
     if (!onAddPayment || !onMarkAsRead) return;
     setSavingId(n.id);
-    const data = n.data as any;
+    const data = n.data as Record<string, unknown>;
     try {
-      await onAddPayment(data.investmentId, {
-        date: new Date(data.scheduleEntryDate).toISOString(),
-        amount: data.expectedAmount,
+      await onAddPayment(data.investmentId as string, {
+        date: new Date(data.scheduleEntryDate as string).toISOString(),
+        amount: data.expectedAmount as number,
         type: 'interest',
       });
       onMarkAsRead(n.id);
@@ -65,8 +65,8 @@ export function NotificationBell({
   const handleViewInvestment = (n: Notification) => {
     if (!onMarkAsRead) return;
     onMarkAsRead(n.id);
-    const data = n.data as any;
-    onOpenInvestment?.(data.investmentId);
+    const data = n.data as Record<string, unknown>;
+    onOpenInvestment?.(data.investmentId as string);
   };
 
   const handleMarkRead = (n: Notification) => {
@@ -173,7 +173,7 @@ export function NotificationBell({
                               </Button>
                             )}
                             {onOpenInvestment && (
-                              <Button size="sm" variant="outline" className="h-7 text-xs" disabled={isSaving} onClick={() => { onMarkAsRead?.(n.id); onOpenInvestment?.((n.data as any).investmentId); }}>
+                              <Button size="sm" variant="outline" className="h-7 text-xs" disabled={isSaving} onClick={() => { onMarkAsRead?.(n.id); onOpenInvestment?.((n.data as Record<string, unknown>).investmentId as string); }}>
                                 <ExternalLink className="mr-1 h-3 w-3" />
                                 {lang === 'es' ? 'No fue así' : 'Not quite'}
                               </Button>

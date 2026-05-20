@@ -78,6 +78,7 @@ export function useNotifications() {
 
   useEffect(() => {
     fetchNotifications();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
     return () => { ++requestIdRef.current; };
   }, [fetchNotifications]);
 

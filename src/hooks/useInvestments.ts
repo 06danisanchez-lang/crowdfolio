@@ -72,7 +72,7 @@ export function useInvestments() {
       if (investmentsError) throw investmentsError;
 
       const investmentIds = investmentsData?.map(inv => inv.id) || [];
-      let paymentsData: any[] = [];
+      let paymentsData: Record<string, unknown>[] = [];
 
       if (investmentIds.length > 0) {
         const { data, error: paymentsError } = await supabase
@@ -84,7 +84,7 @@ export function useInvestments() {
       }
 
       // Fetch full schedule data per investment
-      let schedMap: Record<string, InvestmentScheduleEntry[]> = {};
+      const schedMap: Record<string, InvestmentScheduleEntry[]> = {};
       if (investmentIds.length > 0) {
         const { data: schedData } = await supabase
           .from('investment_schedule')
@@ -153,6 +153,7 @@ export function useInvestments() {
 
   useEffect(() => {
     fetchInvestments();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
     return () => { ++requestIdRef.current; };
   }, [fetchInvestments]);
 
@@ -292,9 +293,9 @@ export function useInvestments() {
       projectName: data.project_name!, amount: Number(data.amount),
       investmentDate: data.investment_date!, expectedEndDate: data.expected_end_date || undefined,
       expectedReturn: Number(data.expected_return), status: data.status as InvestmentStatus,
-      incomeModel: (data as any).income_model as IncomeModel,
-      paymentFrequency: (data as any).payment_frequency || undefined,
-      principalReturnType: (data as any).principal_return_type || undefined,
+      incomeModel: (data as Record<string, unknown>).income_model as IncomeModel,
+      paymentFrequency: (data as Record<string, unknown>).payment_frequency as PaymentFrequency || undefined,
+      principalReturnType: (data as Record<string, unknown>).principal_return_type as PrincipalReturnType || undefined,
       notes: data.notes || undefined, createdAt: data.created_at, updatedAt: data.updated_at,
       payments: [],
     };
@@ -339,7 +340,7 @@ export function useInvestments() {
   }, [user, fetchInvestments]);
 
   const updateInvestment = useCallback(async (id: string, updates: Partial<Investment>): Promise<{ demotedToDraft: boolean }> => {
-    const dbUpdates: any = {};
+    const dbUpdates: Record<string, unknown> = {};
     if (updates.platform !== undefined) dbUpdates.platform = updates.platform || null;
     if (updates.customPlatformName !== undefined) dbUpdates.custom_platform_name = updates.customPlatformName;
     if (updates.projectName !== undefined) dbUpdates.project_name = updates.projectName || null;
@@ -472,7 +473,7 @@ export function useInvestments() {
       }
     }
     fetchInvestments();
-  }, [user, fetchInvestments]);
+  }, [user, fetchInvestments, saveScheduleForInvestment]);
 
   const exportInvestments = useCallback(() => JSON.stringify(investments, null, 2), [investments]);
 

@@ -1,3 +1,4 @@
+/* eslint-disable react-refresh/only-export-components */
 import { createContext, useContext, useState, useEffect, useCallback, ReactNode } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
@@ -205,6 +206,8 @@ export function SubscriptionProvider({ children }: { children: ReactNode }) {
         }, 1500);
       }
     }
+  // openCheckout is defined after this effect — omitting to avoid loop
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [user, session?.access_token]);
 
   const openCheckout = async (plan: 'monthly' | 'yearly') => {

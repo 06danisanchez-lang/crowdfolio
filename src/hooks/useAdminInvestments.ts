@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
-import { Investment, Platform, InvestmentStatus, Payment } from '@/types/investment';
+import { Investment, Platform, InvestmentStatus, Payment, IncomeModel, PaymentFrequency, PrincipalReturnType } from '@/types/investment';
 
 interface UserInvestments {
   userId: string;
@@ -88,7 +88,7 @@ export function useAdminInvestments() {
 
       // Fetch payments for all investments
       const investmentIds = investmentsData?.map(inv => inv.id) || [];
-      let paymentsData: any[] = [];
+      let paymentsData: Record<string, unknown>[] = [];
 
       if (investmentIds.length > 0) {
         const { data, error: paymentsError } = await supabase
@@ -120,9 +120,9 @@ export function useAdminInvestments() {
           investmentDate: inv.investment_date,
           expectedEndDate: inv.expected_end_date || undefined,
           expectedReturn: Number(inv.expected_return),
-          incomeModel: ((inv as any).income_model as any) || 'bullet',
-          paymentFrequency: (inv as any).payment_frequency || undefined,
-          principalReturnType: (inv as any).principal_return_type || undefined,
+          incomeModel: ((inv as Record<string, unknown>).income_model as IncomeModel) || 'bullet',
+          paymentFrequency: (inv as Record<string, unknown>).payment_frequency as PaymentFrequency || undefined,
+          principalReturnType: (inv as Record<string, unknown>).principal_return_type as PrincipalReturnType || undefined,
           status: inv.status as InvestmentStatus,
           notes: inv.notes || undefined,
           createdAt: inv.created_at,

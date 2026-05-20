@@ -74,6 +74,7 @@ export function useTaxExpenses(year?: number) {
 
   useEffect(() => {
     fetchExpenses();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
     return () => { ++requestIdRef.current; };
   }, [fetchExpenses]);
 

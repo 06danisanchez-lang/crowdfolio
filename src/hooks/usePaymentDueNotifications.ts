@@ -43,8 +43,8 @@ export function usePaymentDueNotifications(
           const alreadyExists = existingNotifications.some(
             n =>
               n.type === 'payment_due' &&
-              (n.data as any).investmentId === inv.id &&
-              (n.data as any).scheduleEntryDate === entry.expectedDate,
+              (n.data as Record<string, unknown>).investmentId === inv.id &&
+              (n.data as Record<string, unknown>).scheduleEntryDate === entry.expectedDate,
           );
           if (alreadyExists) continue;
 

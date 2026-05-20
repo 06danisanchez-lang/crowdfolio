@@ -102,6 +102,7 @@ export function TaxExpenseForm({
   };
 
   // Export for parent components
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   (TaxExpenseForm as any).openWithPrefill = openWithPrefill;
 
   return (

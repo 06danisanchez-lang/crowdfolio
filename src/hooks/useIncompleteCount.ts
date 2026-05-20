@@ -23,7 +23,7 @@ export function useIncompleteCount() {
 
     // Fetch schedule counts for periodic/amortizing
     const ids = data.filter(r => r.income_model === 'periodic_fixed' || r.income_model === 'amortizing').map(r => r.id);
-    let schedCounts: Record<string, number> = {};
+    const schedCounts: Record<string, number> = {};
     if (ids.length > 0) {
       const { data: schedData } = await supabase
         .from('investment_schedule')

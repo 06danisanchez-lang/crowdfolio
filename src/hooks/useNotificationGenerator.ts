@@ -48,8 +48,8 @@ export function useNotificationGenerator(
 
           const alreadyExists = existingNotifications.some(
             n => n.type === 'payment_due' &&
-              (n.data as any).investmentId === inv.id &&
-              (n.data as any).scheduleEntryDate === entry.expectedDate,
+              (n.data as Record<string, unknown>).investmentId === inv.id &&
+              (n.data as Record<string, unknown>).scheduleEntryDate === entry.expectedDate,
           );
           if (alreadyExists) continue;
 
@@ -74,7 +74,7 @@ export function useNotificationGenerator(
         if (daysUntil < 0 || daysUntil > 7) continue;
 
         const alreadyExists = existingNotifications.some(
-          n => n.type === 'maturity_soon' && (n.data as any).investmentId === inv.id,
+          n => n.type === 'maturity_soon' && (n.data as Record<string, unknown>).investmentId === inv.id,
         );
         if (alreadyExists) continue;
 
@@ -102,7 +102,7 @@ export function useNotificationGenerator(
         if (hasSettlement) continue;
 
         const alreadyExists = existingNotifications.some(
-          n => n.type === 'maturity_overdue' && (n.data as any).investmentId === inv.id,
+          n => n.type === 'maturity_overdue' && (n.data as Record<string, unknown>).investmentId === inv.id,
         );
         if (alreadyExists) continue;
 
@@ -121,7 +121,7 @@ export function useNotificationGenerator(
       if (todayDate.getDay() === 1) {
         const weekKey = getWeekKey(todayDate);
         const alreadyExists = existingNotifications.some(
-          n => n.type === 'weekly_summary' && (n.data as any).weekKey === weekKey,
+          n => n.type === 'weekly_summary' && (n.data as Record<string, unknown>).weekKey === weekKey,
         );
 
         if (!alreadyExists) {

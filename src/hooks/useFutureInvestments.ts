@@ -30,7 +30,7 @@ export function useFutureInvestments() {
       if (error) throw error;
       if (requestIdRef.current !== currentId) return;
 
-      const mapped: FutureInvestment[] = (data || []).map((row: any) => ({
+      const mapped: FutureInvestment[] = (data || []).map((row: Record<string, unknown>) => ({
         id: row.id,
         platform: row.platform as Platform,
         customPlatformName: row.custom_platform_name || undefined,
@@ -55,6 +55,7 @@ export function useFutureInvestments() {
 
   useEffect(() => {
     fetchFutureInvestments();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
     return () => { ++requestIdRef.current; };
   }, [fetchFutureInvestments]);
 
@@ -98,7 +99,7 @@ export function useFutureInvestments() {
   }, [user]);
 
   const updateFutureInvestment = useCallback(async (id: string, updates: Partial<FutureInvestment>) => {
-    const dbUpdates: any = {};
+    const dbUpdates: Record<string, unknown> = {};
     if (updates.platform !== undefined) dbUpdates.platform = updates.platform;
     if (updates.customPlatformName !== undefined) dbUpdates.custom_platform_name = updates.customPlatformName;
     if (updates.projectName !== undefined) dbUpdates.project_name = updates.projectName;

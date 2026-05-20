@@ -109,11 +109,11 @@ const Index = () => {
 
   const handleSheetPaid = async (notification: Notification) => {
     setSavingNotificationId(notification.id);
-    const data = notification.data as any;
+    const data = notification.data as Record<string, unknown>;
     try {
-      await addPayment(data.investmentId, {
-        date: new Date(data.scheduleEntryDate).toISOString(),
-        amount: data.expectedAmount,
+      await addPayment(data.investmentId as string, {
+        date: new Date(data.scheduleEntryDate as string).toISOString(),
+        amount: data.expectedAmount as number,
         type: 'interest',
       });
       markAsRead(notification.id);
@@ -491,7 +491,7 @@ const Index = () => {
         const weeklySummary = unreadNotifications.find(n => n.type === 'weekly_summary');
         const totalUnread = unreadCount + alertCount;
 
-        const handleViewInvestment = (n: any) => {
+        const handleViewInvestment = (n: Notification) => {
           markAsRead(n.id);
           setInvestmentsFilter('all');
           setCurrentView('investments');

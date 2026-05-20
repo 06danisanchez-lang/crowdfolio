@@ -180,6 +180,24 @@ function RedirectLoopFallback() {
   );
 }
 
+function AdminRoute({ children }: { children: React.ReactNode }) {
+  const { user, isAdmin, hasBootstrapped, isLoading } = useAuth();
+  const [canRedirect, setCanRedirect] = useState(false);
+
+  useEffect(() => {
+    if (hasBootstrapped && !isLoading) {
+      const timer = setTimeout(() => setCanRedirect(true), 50);
+      return () => clearTimeout(timer);
+    }
+  }, [hasBootstrapped, isLoading]);
+
+  if (!canRedirect) return <LoadingSpinner />;
+  if (!user) return <Navigate to="/landing" replace />;
+  if (!isAdmin) return <Navigate to="/" replace />;
+
+  return <>{children}</>;
+}
+
 // AuthGate: Blocks ALL rendering until auth is fully bootstrapped
 function AuthGate({ children }: { children: React.ReactNode }) {
   const { hasBootstrapped, isLoading } = useAuth();
@@ -326,13 +344,13 @@ const AppRoutes = () => (
           </PublicRoute>
         } 
       />
-      <Route 
-        path="/admin-dashboard" 
+      <Route
+        path="/admin-dashboard"
         element={
-          <ProtectedRoute>
+          <AdminRoute>
             <AdminDashboard />
-          </ProtectedRoute>
-        } 
+          </AdminRoute>
+        }
       />
       <Route path="/pricing" element={<Pricing onBack={() => window.history.back()} />} />
       <Route path="/reset-password" element={<ResetPassword />} />

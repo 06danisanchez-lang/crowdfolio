@@ -149,7 +149,13 @@ export default function Auth() {
             }),
           }).catch(() => {});
 
-          setSuccessMessage('¡Cuenta creada! Revisa tu correo para verificar tu cuenta antes de iniciar sesión.');
+          // Si Supabase no requiere confirmación, redirige directamente
+          const { data: { session } } = await supabase.auth.getSession();
+          if (session) {
+            navigate('/');
+          } else {
+            setSuccessMessage('¡Cuenta creada! Revisa tu correo para verificar tu cuenta antes de iniciar sesión.');
+          }
         }
       }
     } catch {

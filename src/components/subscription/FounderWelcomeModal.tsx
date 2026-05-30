@@ -1,6 +1,8 @@
 import { useState, useEffect } from 'react';
-import { PartyPopper, Mail } from 'lucide-react';
+import { PartyPopper, Check } from 'lucide-react';
 import { useSubscription } from '@/contexts/SubscriptionContext';
+import { useAuth } from '@/contexts/AuthContext';
+import { supabase } from '@/integrations/supabase/client';
 import {
   Dialog,
   DialogContent,
@@ -11,32 +13,46 @@ import {
 } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 
-const STORAGE_KEY = 'crowdfolio_founder_welcome_shown';
+const BENEFITS = [
+  'Inversiones activas ilimitadas',
+  'Inversiones futuras ilimitadas',
+  'Informe fiscal listo para declarar',
+];
 
 export const FounderWelcomeModal = () => {
   const { isPro } = useSubscription();
+  const { user } = useAuth();
   const [open, setOpen] = useState(false);
 
   useEffect(() => {
-    // Solo mostrar si el usuario es Pro y no ha visto el modal antes
-    const hasSeenWelcome = localStorage.getItem(STORAGE_KEY);
-    
-    if (isPro && !hasSeenWelcome) {
-      // Pequeño delay para que el dashboard cargue primero
-      const timer = setTimeout(() => {
-        setOpen(true);
-      }, 500);
-      
-      return () => clearTimeout(timer);
-    }
-  }, [isPro]);
+    if (!isPro || !user) return;
 
-  const handleClose = () => {
-    localStorage.setItem(STORAGE_KEY, 'true');
+    let cancelled = false;
+
+    supabase
+      .from('profiles')
+      .select('pro_welcome_shown')
+      .eq('id', user.id)
+      .single()
+      .then(({ data }) => {
+        if (!cancelled && data && !data.pro_welcome_shown) {
+          setTimeout(() => setOpen(true), 500);
+        }
+      });
+
+    return () => { cancelled = true; };
+  }, [isPro, user]);
+
+  const handleClose = async () => {
     setOpen(false);
+    if (user) {
+      await supabase
+        .from('profiles')
+        .update({ pro_welcome_shown: true })
+        .eq('id', user.id);
+    }
   };
 
-  // No renderizar si no es Pro
   if (!isPro) return null;
 
   return (
@@ -47,25 +63,21 @@ export const FounderWelcomeModal = () => {
             <PartyPopper className="h-8 w-8 text-primary" />
           </div>
           <DialogTitle className="text-2xl">
-            ¡Bienvenido, Héroe Fundador!
+            ¡Ya eres Pro!
           </DialogTitle>
-          <DialogDescription className="text-base leading-relaxed pt-2">
-            Gracias por ayudarnos a construir Crowdfolio. Tu apoyo temprano hace posible este proyecto.
+          <DialogDescription className="text-base pt-2">
+            Tus ventajas:
           </DialogDescription>
         </DialogHeader>
-        
-        <div className="my-4 rounded-lg bg-muted p-4 text-center">
-          <p className="text-sm text-muted-foreground mb-2">
-            Si encuentras cualquier error o tienes una sugerencia, escríbeme directamente a:
-          </p>
-          <a 
-            href="mailto:soporte@crowdfolio.es"
-            className="inline-flex items-center gap-2 text-primary font-medium hover:underline"
-          >
-            <Mail className="h-4 w-4" />
-            soporte@crowdfolio.es
-          </a>
-        </div>
+
+        <ul className="my-2 space-y-2 px-2">
+          {BENEFITS.map(benefit => (
+            <li key={benefit} className="flex items-center gap-3">
+              <Check className="h-4 w-4 shrink-0 text-primary" />
+              <span className="text-sm">{benefit}</span>
+            </li>
+          ))}
+        </ul>
 
         <DialogFooter className="sm:justify-center">
           <Button onClick={handleClose} className="w-full sm:w-auto">

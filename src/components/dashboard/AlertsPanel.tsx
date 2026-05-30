@@ -64,13 +64,21 @@ const typeConfig: Record<AlertType, {
   'expected-payment': { icon: Wallet, label: 'Pago esperado' },
 };
 
-function AlertItem({ 
-  alert, 
-  onViewInvestment 
-}: { 
-  alert: Alert; 
+// Overdue alerts represent completed investment cycles — use green, not red
+const overdueStyle = {
+  card: 'bg-green-50 border-green-200 text-green-800',
+  icon: 'text-green-600',
+  badge: 'bg-green-100 text-green-700 border-0',
+} as const;
+
+function AlertItem({
+  alert,
+  onViewInvestment
+}: {
+  alert: Alert;
   onViewInvestment?: (id: string) => void;
 }) {
+  const isOverdue = alert.type === 'overdue';
   const severity = severityConfig[alert.severity];
   const type = typeConfig[alert.type];
   const SeverityIcon = severity.icon;
@@ -86,23 +94,30 @@ function AlertItem({
   };
 
   return (
-    <div 
+    <div
       className={cn(
         "rounded-lg border p-3 transition-all hover:shadow-sm",
-        severity.className
+        isOverdue ? overdueStyle.card : severity.className
       )}
     >
       <div className="flex items-start gap-3">
         <div className="mt-0.5 shrink-0">
-          <SeverityIcon className="h-5 w-5" />
+          <SeverityIcon className={cn("h-5 w-5", isOverdue && overdueStyle.icon)} />
         </div>
         <div className="min-w-0 flex-1">
           <div className="mb-1 flex items-center gap-2">
             <span className="font-semibold">{alert.title}</span>
-            <Badge variant={severity.badgeVariant} className="text-xs">
-              <TypeIcon className="mr-1 h-3 w-3" />
-              {type.label}
-            </Badge>
+            {isOverdue ? (
+              <Badge className={cn("text-xs", overdueStyle.badge)}>
+                <TypeIcon className="mr-1 h-3 w-3" />
+                {type.label}
+              </Badge>
+            ) : (
+              <Badge variant={severity.badgeVariant} className="text-xs">
+                <TypeIcon className="mr-1 h-3 w-3" />
+                {type.label}
+              </Badge>
+            )}
           </div>
           <p className="mb-2 text-sm opacity-90">{alert.message}</p>
           <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-xs opacity-75">
@@ -158,8 +173,8 @@ export function AlertsPanel({
         <div className="space-y-4">
           {groupedAlerts.overdue.length > 0 && (
             <div>
-              <h4 className="mb-2 flex items-center gap-2 text-xs font-semibold uppercase tracking-wider text-destructive">
-                <AlertCircle className="h-3.5 w-3.5" />
+              <h4 className="mb-2 flex items-center gap-2 text-xs font-semibold uppercase tracking-wider text-green-700">
+                <AlertCircle className="h-3.5 w-3.5 text-green-700" />
                 Inversiones Vencidas ({groupedAlerts.overdue.length})
               </h4>
               <div className="space-y-2">

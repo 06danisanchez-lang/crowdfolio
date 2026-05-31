@@ -2,13 +2,7 @@ import { useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import crowdfolioLogo from '@/assets/logo_crowdfolio.svg';
 import HeroSection from '@/components/landing/HeroSection';
-import ProductShowcase from '@/components/landing/ProductShowcase';
-import PlatformMarquee from '@/components/landing/PlatformMarquee';
-import FeaturesGrid from '@/components/landing/FeaturesGrid';
-import HowItWorks from '@/components/landing/HowItWorks';
-import TestimonialCarousel from '@/components/landing/TestimonialCarousel';
-import CTASection from '@/components/landing/CTASection';
-import Footer from '@/components/landing/Footer';
+import LandingSections from '@/components/landing/LandingSections';
 import { useLanguage } from '@/contexts/LanguageContext';
 import { LanguageToggle } from '@/components/ui/LanguageToggle';
 
@@ -35,13 +29,7 @@ export default function Landing() {
       </header>
 
       <HeroSection />
-      <ProductShowcase />
-      <PlatformMarquee />
-      <FeaturesGrid />
-      <HowItWorks />
-      <TestimonialCarousel />
-      <CTASection />
-      <Footer />
+      <LandingSections />
     </div>
   );
 }

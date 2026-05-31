@@ -1,5 +1,8 @@
 import { useState, useEffect, useCallback } from 'react';
-import { Bell, X, CalendarClock, CheckCircle, ExternalLink, AlertTriangle, Clock, BarChart3 } from 'lucide-react';
+import {
+  Bell, X, CalendarClock, CheckCircle, ExternalLink,
+  AlertTriangle, Clock, BarChart3, Banknote,
+} from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { ScrollArea } from '@/components/ui/scroll-area';
@@ -9,6 +12,16 @@ import { useFutureReminders } from '@/hooks/useFutureReminders';
 import { useFutureInvestments } from '@/hooks/useFutureInvestments';
 import { Notification } from '@/hooks/useNotifications';
 import { useLanguage } from '@/contexts/LanguageContext';
+import { getNotifConfig } from '@/lib/notifications/notificationConfig';
+
+const ICONS = { Banknote, Clock, AlertTriangle, BarChart3 } as const;
+
+const phaseIcon = (phase: string) => {
+  if (phase === 'open') return '🟢';
+  if (phase === '1h' || phase === 'today') return '🔵';
+  if (phase === '2d') return '🟠';
+  return '🔵';
+};
 
 interface NotificationBellProps {
   notifications?: Notification[];
@@ -69,20 +82,8 @@ export function NotificationBell({
     onOpenInvestment?.(data.investmentId as string);
   };
 
-  const handleMarkRead = (n: Notification) => {
-    if (!onMarkAsRead) return;
-    onMarkAsRead(n.id);
-  };
-
-  const phaseIcon = (phase: string) => {
-    if (phase === 'open') return '🟢';
-    if (phase === '1h' || phase === 'today') return '🔴';
-    if (phase === '2d') return '🟠';
-    return '🔵';
-  };
-
-  const paymentDue  = notifications.filter(n => n.type === 'payment_due');
-  const maturity    = notifications.filter(n => n.type === 'maturity_soon' || n.type === 'maturity_overdue');
+  const paymentDue    = notifications.filter(n => n.type === 'payment_due');
+  const maturityNtfs  = notifications.filter(n => n.type === 'maturity_soon' || n.type === 'maturity_overdue');
   const weeklySummary = notifications.find(n => n.type === 'weekly_summary');
 
   const totalCount = unreadCount + activeCount;
@@ -94,10 +95,7 @@ export function NotificationBell({
         <Button variant="ghost" size="icon" className="relative">
           <Bell className="h-5 w-5" />
           {totalCount > 0 && (
-            <Badge
-              variant="destructive"
-              className="absolute -right-1 -top-1 h-5 w-5 rounded-full p-0 text-xs flex items-center justify-center"
-            >
+            <Badge className="absolute -right-1 -top-1 h-5 w-5 rounded-full p-0 text-xs flex items-center justify-center bg-[#253765] text-white border-0">
               {totalCount > 9 ? '9+' : totalCount}
             </Badge>
           )}
@@ -128,24 +126,27 @@ export function NotificationBell({
             <div className="divide-y">
 
               {/* ── Resumen semanal ─────────────────────────────── */}
-              {weeklySummary && (
-                <div className="px-4 py-3">
-                  <div className="rounded-lg border bg-muted/60 p-3 space-y-1.5">
-                    <div className="flex items-center justify-between gap-2">
-                      <div className="flex items-center gap-1.5">
-                        <BarChart3 className="h-3.5 w-3.5 text-primary shrink-0" />
-                        <p className="text-xs font-semibold text-primary">{weeklySummary.title}</p>
+              {weeklySummary && (() => {
+                const cfg = getNotifConfig('weekly_summary');
+                return (
+                  <div className="px-4 py-3">
+                    <div className={cn('p-3 space-y-1.5', cfg.cardClass)} style={cfg.cardStyle}>
+                      <div className="flex items-center justify-between gap-2">
+                        <div className="flex items-center gap-1.5">
+                          <BarChart3 className={cn('h-3.5 w-3.5 shrink-0', cfg.iconClass)} />
+                          <p className={cn('text-xs font-semibold', cfg.titleClass)}>{weeklySummary.title}</p>
+                        </div>
+                        {onMarkAsRead && (
+                          <Button variant="ghost" size="icon" className="h-5 w-5 shrink-0" onClick={() => onMarkAsRead(weeklySummary.id)}>
+                            <X className="h-3 w-3" />
+                          </Button>
+                        )}
                       </div>
-                      {onMarkAsRead && (
-                        <Button variant="ghost" size="icon" className="h-5 w-5 shrink-0" onClick={() => handleMarkRead(weeklySummary)}>
-                          <X className="h-3 w-3" />
-                        </Button>
-                      )}
+                      <p className={cn('text-xs leading-snug', cfg.textClass)}>{weeklySummary.message}</p>
                     </div>
-                    <p className="text-xs text-muted-foreground leading-snug">{weeklySummary.message}</p>
                   </div>
-                </div>
-              )}
+                );
+              })()}
 
               {/* ── Cobros esperados ─────────────────────────────── */}
               {paymentDue.length > 0 && (
@@ -154,20 +155,21 @@ export function NotificationBell({
                     {lang === 'es' ? 'Cobros esperados' : 'Expected payments'}
                   </p>
                   {paymentDue.map(n => {
+                    const cfg = getNotifConfig(n.type);
                     const isSaving = savingId === n.id;
                     return (
-                      <div key={n.id} className="px-4 py-2.5 space-y-2 bg-primary/5">
+                      <div key={n.id} className={cn('px-4 py-2.5 space-y-2', cfg.cardClass)} style={cfg.cardStyle}>
                         <div className="flex items-start gap-2">
-                          <div className="mt-1.5 h-1.5 w-1.5 rounded-full bg-primary shrink-0" />
+                          <div className={cn('mt-1.5 h-1.5 w-1.5 rounded-full shrink-0', cfg.dotClass)} />
                           <div className="min-w-0">
-                            <p className="text-sm font-medium leading-tight">{n.title}</p>
-                            <p className="text-xs text-muted-foreground mt-0.5">{n.message}</p>
+                            <p className={cn('text-sm font-medium leading-tight', cfg.titleClass)}>{n.title}</p>
+                            <p className={cn('text-xs mt-0.5', cfg.textClass)}>{n.message}</p>
                           </div>
                         </div>
                         {(onAddPayment || onOpenInvestment) && (
                           <div className="flex gap-2 pl-3.5">
                             {onAddPayment && (
-                              <Button size="sm" className="h-7 text-xs" disabled={isSaving} onClick={() => handlePaid(n)}>
+                              <Button size="sm" className="h-7 text-xs bg-[#253765] hover:bg-[#1a2847] text-white" disabled={isSaving} onClick={() => handlePaid(n)}>
                                 <CheckCircle className="mr-1 h-3 w-3" />
                                 {lang === 'es' ? 'Sí, cobrado' : 'Yes, received'}
                               </Button>
@@ -187,23 +189,21 @@ export function NotificationBell({
               )}
 
               {/* ── Vencimientos ─────────────────────────────────── */}
-              {maturity.length > 0 && (
+              {maturityNtfs.length > 0 && (
                 <div>
                   <p className="px-4 pt-3 pb-1 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
                     {lang === 'es' ? 'Vencimientos' : 'Maturities'}
                   </p>
-                  {maturity.map(n => {
-                    const isOverdue = n.type === 'maturity_overdue';
+                  {maturityNtfs.map(n => {
+                    const cfg = getNotifConfig(n.type);
+                    const IconComp = ICONS[cfg.icon];
                     return (
-                      <div key={n.id} className={cn('px-4 py-2.5 space-y-2', isOverdue ? 'bg-destructive/5' : 'bg-orange-500/5')}>
+                      <div key={n.id} className={cn('px-4 py-2.5 space-y-2', cfg.cardClass)} style={cfg.cardStyle}>
                         <div className="flex items-start gap-2">
-                          {isOverdue
-                            ? <Clock className="h-4 w-4 text-destructive mt-0.5 shrink-0" />
-                            : <AlertTriangle className="h-4 w-4 text-orange-500 mt-0.5 shrink-0" />
-                          }
+                          <IconComp className={cn('h-4 w-4 mt-0.5 shrink-0', cfg.iconClass)} />
                           <div className="min-w-0">
-                            <p className="text-sm font-medium leading-tight">{n.title}</p>
-                            <p className="text-xs text-muted-foreground mt-0.5">{n.message}</p>
+                            <p className={cn('text-sm font-medium leading-tight', cfg.titleClass)}>{n.title}</p>
+                            <p className={cn('text-xs mt-0.5', cfg.textClass)}>{n.message}</p>
                           </div>
                         </div>
                         {onOpenInvestment && (

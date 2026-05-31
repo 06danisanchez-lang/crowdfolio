@@ -65,6 +65,7 @@ export function useTaxSummary(year: number) {
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [excludedIncompleteCount, setExcludedIncompleteCount] = useState(0);
+  const [retryCount, setRetryCount] = useState(0);
   const requestIdRef = useRef(0);
   const { expenses, totalExpenses, isLoading: expensesLoading } = useTaxExpenses(year);
 
@@ -172,7 +173,7 @@ export function useTaxSummary(year: number) {
 
     // eslint-disable-next-line react-hooks/exhaustive-deps
     return () => { ++requestIdRef.current; };
-  }, [user, year]);
+  }, [user, year, retryCount]);
 
   // Tax summary — based on ALL real payments (no investment completeness filter)
   const summary: TaxSummary = useMemo(() => {
@@ -225,5 +226,6 @@ export function useTaxSummary(year: number) {
   return {
     summary, projection, payments, expenses, error, excludedIncompleteCount,
     isLoading: isLoading || expensesLoading, availableYears,
+    refetch: () => setRetryCount(c => c + 1),
   };
 }

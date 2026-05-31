@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Receipt, Calculator, ArrowLeftRight, Crown } from 'lucide-react';
+import { Receipt, Calculator, ArrowLeftRight, Crown, AlertTriangle, RefreshCw } from 'lucide-react';
 import { useTaxSummary } from '@/hooks/useTaxSummary';
 import { useTaxExpenses } from '@/hooks/useTaxExpenses';
 import { useLanguage } from '@/contexts/LanguageContext';
@@ -25,13 +25,13 @@ interface TaxDashboardProps {
 }
 
 export function TaxDashboard({ isPro = false, onProRequired }: TaxDashboardProps) {
-  const [selectedYear, setSelectedYear] = useState(2025);
+  const [selectedYear, setSelectedYear] = useState(new Date().getFullYear());
   const [expenseFormOpen, setExpenseFormOpen] = useState(false);
   const [prefillCategory, setPrefillCategory] = useState<TaxExpenseCategory | undefined>();
   const [prefillDescription, setPrefillDescription] = useState<string | undefined>();
   const { t } = useLanguage();
   
-  const { summary, projection, isLoading, availableYears, excludedIncompleteCount } = useTaxSummary(selectedYear);
+  const { summary, projection, isLoading, availableYears, excludedIncompleteCount, error, refetch } = useTaxSummary(selectedYear);
   const { 
     expenses, 
     addExpense, 
@@ -51,6 +51,22 @@ export function TaxDashboard({ isPro = false, onProRequired }: TaxDashboardProps
     return (
       <div className="flex items-center justify-center p-12">
         <div className="animate-pulse text-muted-foreground">Cargando datos fiscales...</div>
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="flex flex-col items-center justify-center gap-4 p-12 text-center">
+        <AlertTriangle className="h-10 w-10 text-destructive" />
+        <div>
+          <p className="text-base font-medium">No se pudieron cargar los datos fiscales</p>
+          <p className="mt-1 text-sm text-muted-foreground">{error}</p>
+        </div>
+        <Button variant="outline" onClick={refetch}>
+          <RefreshCw className="mr-2 h-4 w-4" />
+          Reintentar
+        </Button>
       </div>
     );
   }

@@ -184,7 +184,11 @@ export function AppLayout({
             {/* Direct logout for mobile — bypasses DropdownMenu portal which
                 can misfire on touch due to the sidebar's CSS transform stacking context */}
             <button
-              onClick={() => { setSidebarOpen(false); handleSignOut(); }}
+              onClick={async () => {
+                setSidebarOpen(false);
+                await signOut();
+                window.location.href = '/';
+              }}
               className="flex w-full items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium text-destructive hover:bg-destructive/10 transition-colors lg:hidden"
             >
               <LogOut className="h-4 w-4" />
@@ -193,10 +197,11 @@ export function AppLayout({
           </div>
         </aside>
 
-        {/* Mobile Overlay */}
+        {/* Mobile Overlay — covers only the area outside the sidebar (right of w-64)
+            so it never sits on top of sidebar buttons on touch devices */}
         {sidebarOpen && (
           <div
-            className="fixed inset-0 z-30 bg-black/50 lg:hidden"
+            className="fixed inset-y-0 left-64 right-0 z-30 bg-black/50 lg:hidden"
             onClick={() => setSidebarOpen(false)}
           />
         )}

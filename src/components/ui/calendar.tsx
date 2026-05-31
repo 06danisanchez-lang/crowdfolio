@@ -1,9 +1,60 @@
 import * as React from "react";
 import { ChevronLeft, ChevronRight } from "lucide-react";
-import { DayPicker } from "react-day-picker";
+import { DayPicker, useNavigation } from "react-day-picker";
 
 import { cn } from "@/lib/utils";
 import { buttonVariants } from "@/components/ui/button";
+
+const MONTHS_ES = [
+  "Enero", "Febrero", "Marzo", "Abril", "Mayo", "Junio",
+  "Julio", "Agosto", "Septiembre", "Octubre", "Noviembre", "Diciembre",
+];
+
+const CURRENT_YEAR = new Date().getFullYear();
+const YEARS = Array.from({ length: 26 }, (_, i) => CURRENT_YEAR - 10 + i);
+
+function MonthYearDropdowns({
+  displayMonth,
+}: {
+  displayMonth: Date;
+  id: string;
+}) {
+  const { goToMonth } = useNavigation();
+
+  const selectClass =
+    "text-sm font-medium bg-background rounded border border-input px-1.5 py-0.5 cursor-pointer focus:outline-none focus:ring-1 focus:ring-ring";
+
+  return (
+    <div className="flex items-center gap-1">
+      <select
+        value={displayMonth.getMonth()}
+        onChange={(e) =>
+          goToMonth(new Date(displayMonth.getFullYear(), +e.target.value, 1))
+        }
+        className={selectClass}
+      >
+        {MONTHS_ES.map((name, i) => (
+          <option key={name} value={i}>
+            {name}
+          </option>
+        ))}
+      </select>
+      <select
+        value={displayMonth.getFullYear()}
+        onChange={(e) =>
+          goToMonth(new Date(+e.target.value, displayMonth.getMonth(), 1))
+        }
+        className={selectClass}
+      >
+        {YEARS.map((year) => (
+          <option key={year} value={year}>
+            {year}
+          </option>
+        ))}
+      </select>
+    </div>
+  );
+}
 
 export type CalendarProps = React.ComponentProps<typeof DayPicker>;
 
@@ -16,6 +67,7 @@ function Calendar({
   return (
     <DayPicker
       showOutsideDays={showOutsideDays}
+      fixedWeeks
       className={cn("p-3 pointer-events-auto", className)}
       classNames={{
         months: "flex flex-col sm:flex-row space-y-4 sm:space-x-4 sm:space-y-0",
@@ -52,6 +104,7 @@ function Calendar({
         ...classNames,
       }}
       components={{
+        CaptionLabel: MonthYearDropdowns,
         IconLeft: ({ ..._props }) => <ChevronLeft className="h-4 w-4" />,
         IconRight: ({ ..._props }) => <ChevronRight className="h-4 w-4" />,
       }}
@@ -59,6 +112,7 @@ function Calendar({
     />
   );
 }
+
 Calendar.displayName = "Calendar";
 
 export { Calendar };

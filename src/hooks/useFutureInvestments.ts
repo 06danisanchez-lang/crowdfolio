@@ -66,19 +66,23 @@ export function useFutureInvestments() {
       .insert({
         user_id: user.id,
         platform: fi.platform,
-        custom_platform_name: fi.customPlatformName || null,
+        custom_platform_name: fi.customPlatformName ?? null,
         project_name: fi.projectName,
-        estimated_amount: fi.estimatedAmount,
-        expected_return: fi.expectedReturn,
-        estimated_open_date: fi.estimatedOpenDate || null,
-        estimated_end_date: fi.estimatedEndDate || null,
-        source_url: fi.sourceUrl || null,
-        notes: fi.notes || null,
+        estimated_amount: fi.estimatedAmount ?? null,
+        expected_return: fi.expectedReturn ?? null,
+        estimated_open_date: fi.estimatedOpenDate ?? null,
+        estimated_end_date: fi.estimatedEndDate ?? null,
+        source_url: fi.sourceUrl ?? null,
+        notes: fi.notes ?? null,
       })
       .select()
       .single();
 
-    if (error) { console.error('Error adding future investment:', error); return null; }
+    if (error) {
+      console.error('Error adding future investment:', error);
+      toast.error('No se pudo guardar la inversión futura. Inténtalo de nuevo.');
+      return null;
+    }
 
     const newItem: FutureInvestment = {
       id: data.id,
@@ -94,7 +98,12 @@ export function useFutureInvestments() {
       createdAt: data.created_at,
       updatedAt: data.updated_at,
     };
-    setFutureInvestments(prev => [newItem, ...prev]);
+    setFutureInvestments(prev => [...prev, newItem].sort((a, b) => {
+      if (!a.estimatedOpenDate) return 1;
+      if (!b.estimatedOpenDate) return -1;
+      return a.estimatedOpenDate.localeCompare(b.estimatedOpenDate);
+    }));
+    toast.success('Inversión futura guardada');
     return newItem;
   }, [user]);
 

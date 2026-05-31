@@ -194,14 +194,14 @@ export function FutureInvestmentList() {
   const handleFutureSubmit = async (data: any) => {
     await addFutureInvestment({
       platform: data.platform,
-      customPlatformName: data.customPlatformName,
+      customPlatformName: data.customPlatformName ?? undefined,
       projectName: data.projectName,
-      estimatedAmount: data.amount || null,
-      expectedReturn: data.expectedReturn || null,
-      estimatedOpenDate: data.investmentDate,
-      estimatedEndDate: data.expectedEndDate,
-      sourceUrl: data.sourceUrl,
-      notes: data.notes,
+      estimatedAmount: data.amount ?? null,
+      expectedReturn: data.expectedReturn ?? null,
+      estimatedOpenDate: data.investmentDate ?? undefined,
+      estimatedEndDate: data.expectedEndDate ?? undefined,
+      sourceUrl: data.sourceUrl ?? undefined,
+      notes: data.notes ?? undefined,
     });
   };
 
@@ -209,14 +209,14 @@ export function FutureInvestmentList() {
   const handleEditSubmit = async (fiId: string, data: any) => {
     await updateFutureInvestment(fiId, {
       platform: data.platform,
-      customPlatformName: data.customPlatformName,
+      customPlatformName: data.customPlatformName ?? undefined,
       projectName: data.projectName,
       estimatedAmount: data.amount ?? null,
       expectedReturn: data.expectedReturn ?? null,
-      estimatedOpenDate: data.investmentDate,
-      estimatedEndDate: data.expectedEndDate,
-      sourceUrl: data.sourceUrl,
-      notes: data.notes,
+      estimatedOpenDate: data.investmentDate ?? undefined,
+      estimatedEndDate: data.expectedEndDate ?? undefined,
+      sourceUrl: data.sourceUrl ?? undefined,
+      notes: data.notes ?? undefined,
     });
   };
 

@@ -176,6 +176,7 @@ export type Database = {
           platform: string | null
           principal_return_type: string | null
           project_name: string | null
+          source_url: string | null
           status: string
           updated_at: string
           user_id: string
@@ -194,6 +195,7 @@ export type Database = {
           platform?: string | null
           principal_return_type?: string | null
           project_name?: string | null
+          source_url?: string | null
           status?: string
           updated_at?: string
           user_id: string
@@ -212,6 +214,7 @@ export type Database = {
           platform?: string | null
           principal_return_type?: string | null
           project_name?: string | null
+          source_url?: string | null
           status?: string
           updated_at?: string
           user_id?: string

@@ -40,6 +40,7 @@ export interface Investment {
   status: InvestmentStatus;
   payments: Payment[];
   notes?: string;
+  sourceUrl?: string;
   createdAt: string;
   updatedAt: string;
 }
@@ -94,6 +95,7 @@ export interface DraftInvestment {
   status: InvestmentStatus;
   payments: Payment[];
   notes?: string;
+  sourceUrl?: string;
   createdAt: string;
   updatedAt: string;
 }

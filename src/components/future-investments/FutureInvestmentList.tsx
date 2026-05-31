@@ -108,6 +108,7 @@ function mapFutureToPartialInvestment(fi: FutureInvestment): Partial<Investment>
     investmentDate: fi.estimatedOpenDate || new Date().toISOString(),
     expectedEndDate: fi.estimatedEndDate,
     notes: fi.notes,
+    sourceUrl: fi.sourceUrl,
     status: 'active' as const,
     payments: [],
     id: '',
@@ -242,9 +243,14 @@ export function FutureInvestmentList() {
       paymentFrequency: data.paymentFrequency,
       principalReturnType: data.principalReturnType,
       status: data.status,
-      investmentDate: data.investmentDate.toISOString(),
-      expectedEndDate: data.expectedEndDate?.toISOString(),
+      investmentDate: data.investmentDate instanceof Date
+        ? data.investmentDate.toISOString()
+        : data.investmentDate,
+      expectedEndDate: data.expectedEndDate instanceof Date
+        ? data.expectedEndDate.toISOString()
+        : data.expectedEndDate,
       notes: data.notes,
+      sourceUrl: data.sourceUrl || undefined,
     };
     await convertToReal(convertingId, realData, addInvestment);
     setConvertingId(null);
@@ -436,10 +442,12 @@ export function FutureInvestmentList() {
         )}
       </div>
 
-      {/* Convert dialog */}
+      {/* Convert dialog — opens automatically when convertingItem is set */}
       {convertingItem && (
         <InvestmentForm
+          key={convertingItem.id}
           mode="real"
+          defaultOpen
           initialData={mapFutureToPartialInvestment(convertingItem) as Investment}
           onSubmit={handleConvertSubmit}
           investmentCount={investments.length}

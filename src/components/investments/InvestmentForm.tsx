@@ -136,21 +136,23 @@ interface InvestmentFormProps {
   isPro?: boolean;
   onProRequired?: () => void;
   mode?: InvestmentFormMode;
+  defaultOpen?: boolean;
 }
 
-export function InvestmentForm({ 
-  onSubmit, 
+export function InvestmentForm({
+  onSubmit,
   onSubmitDraft,
-  initialData, 
+  initialData,
   isDraft = false,
   trigger,
   investmentCount = 0,
   isPro = true,
   onProRequired,
-  mode = 'real'
+  mode = 'real',
+  defaultOpen = false,
 }: InvestmentFormProps) {
   const isFuture = mode === 'future';
-  const [open, setOpen] = useState(false);
+  const [open, setOpen] = useState(defaultOpen);
 
   // Draft persistence — only for new real investments (not edit, not future)
   const { user } = useAuth();
@@ -422,6 +424,7 @@ export function InvestmentForm({
         principalReturnType: data.principalReturnType || null,
         status: finalStatus,
         notes: data.notes,
+        sourceUrl: data.sourceUrl || undefined,
         investmentDate: data.investmentDate.toISOString(),
         expectedEndDate: data.expectedEndDate?.toISOString(),
       });
@@ -901,21 +904,22 @@ export function InvestmentForm({
         />
       )}
 
-      {isFuture && (
-        <FormField
-          control={form.control}
-          name="sourceUrl"
-          render={({ field }) => (
-            <FormItem>
-              <FormLabel>{t('future.form.sourceUrl')}</FormLabel>
-              <FormControl>
-                <Input type="url" placeholder="https://..." {...field} value={field.value ?? ''} />
-              </FormControl>
-              <FormMessage />
-            </FormItem>
-          )}
-        />
-      )}
+      <FormField
+        control={form.control}
+        name="sourceUrl"
+        render={({ field }) => (
+          <FormItem>
+            <FormLabel>
+              URL de la inversión
+              <span className="text-muted-foreground text-xs font-normal ml-1">(Opcional)</span>
+            </FormLabel>
+            <FormControl>
+              <Input type="url" placeholder="https://..." {...field} value={field.value ?? ''} />
+            </FormControl>
+            <FormMessage />
+          </FormItem>
+        )}
+      />
 
       <FormField
         control={form.control}

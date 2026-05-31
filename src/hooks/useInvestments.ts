@@ -23,6 +23,7 @@ interface RawInvestmentRow {
   principal_return_type: string | null;
   status: string;
   notes: string | null;
+  source_url: string | null;
   created_at: string;
   updated_at: string;
   user_id: string;
@@ -140,6 +141,7 @@ export function useInvestments() {
         principalReturnType: (inv.principal_return_type as PrincipalReturnType) || undefined,
         status: autoPendingIds.has(inv.id) ? 'pending' : ((inv.status as InvestmentStatus) || 'active'),
         notes: inv.notes || undefined,
+        sourceUrl: inv.source_url || undefined,
         createdAt: inv.created_at,
         updatedAt: inv.updated_at,
         payments: paymentsData
@@ -289,6 +291,7 @@ export function useInvestments() {
       payment_frequency: investment.paymentFrequency || null,
       principal_return_type: investment.principalReturnType || null,
       notes: investment.notes || null,
+      source_url: investment.sourceUrl || null,
     }).select().single();
     if (error) { console.error('Error adding investment:', error); return null; }
 
@@ -312,6 +315,7 @@ export function useInvestments() {
       incomeModel: (data as Record<string, unknown>).income_model as IncomeModel,
       paymentFrequency: (data as Record<string, unknown>).payment_frequency as PaymentFrequency || undefined,
       principalReturnType: (data as Record<string, unknown>).principal_return_type as PrincipalReturnType || undefined,
+      sourceUrl: (data as Record<string, unknown>).source_url as string || undefined,
       notes: data.notes || undefined, createdAt: data.created_at, updatedAt: data.updated_at,
       payments: [],
     };
@@ -366,6 +370,7 @@ export function useInvestments() {
     if (updates.expectedReturn !== undefined) dbUpdates.expected_return = updates.expectedReturn ?? null;
     if (updates.status !== undefined) dbUpdates.status = updates.status;
     if (updates.notes !== undefined) dbUpdates.notes = updates.notes;
+    if (updates.sourceUrl !== undefined) dbUpdates.source_url = updates.sourceUrl || null;
     if (updates.incomeModel !== undefined) dbUpdates.income_model = updates.incomeModel || null;
     if (updates.paymentFrequency !== undefined) dbUpdates.payment_frequency = updates.paymentFrequency || null;
     if (updates.principalReturnType !== undefined) dbUpdates.principal_return_type = updates.principalReturnType || null;

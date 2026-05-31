@@ -184,12 +184,17 @@ export function AppLayout({
             {/* Direct logout for mobile — bypasses DropdownMenu portal which
                 can misfire on touch due to the sidebar's CSS transform stacking context */}
             <button
+              type="button"
               onClick={async () => {
                 setSidebarOpen(false);
-                await signOut();
-                window.location.href = '/';
+                try {
+                  await signOut();
+                } catch (err) {
+                  console.error('[logout]', err);
+                }
+                navigate('/landing');
               }}
-              className="flex w-full items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium text-destructive hover:bg-destructive/10 transition-colors lg:hidden"
+              className="flex w-full cursor-pointer items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium text-destructive hover:bg-destructive/10 transition-colors lg:hidden"
             >
               <LogOut className="h-4 w-4" />
               {t('usermenu.signOut')}

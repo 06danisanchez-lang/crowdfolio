@@ -352,7 +352,7 @@ const Index = () => {
                           {alertCount > 0 && (
                             <span className={cn(
                               "flex h-5 min-w-5 items-center justify-center rounded-full px-1.5 text-xs font-bold text-white",
-                              hasUrgentAlerts ? "bg-destructive" : "bg-primary"
+                              hasUrgentAlerts ? "bg-amber-500" : "bg-primary"
                             )}>
                               {alertCount}
                             </span>

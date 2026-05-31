@@ -33,25 +33,25 @@ interface AlertsPanelProps {
   variant?: 'icon' | 'full' | 'inline';
 }
 
-const severityConfig: Record<AlertSeverity, { 
-  icon: typeof AlertCircle; 
+const severityConfig: Record<AlertSeverity, {
+  icon: typeof AlertCircle;
   className: string;
-  badgeVariant: 'default' | 'secondary' | 'destructive' | 'outline';
+  badgeClass: string;
 }> = {
-  danger: { 
-    icon: AlertCircle, 
-    className: 'text-destructive bg-destructive/10 border-destructive/20',
-    badgeVariant: 'destructive'
+  danger: {
+    icon: AlertCircle,
+    className: 'text-orange-700 bg-orange-50 border-orange-200',
+    badgeClass: 'bg-orange-100 text-orange-700 border-0',
   },
-  warning: { 
-    icon: AlertTriangle, 
+  warning: {
+    icon: AlertTriangle,
     className: 'text-warning bg-warning/10 border-warning/20',
-    badgeVariant: 'default'
+    badgeClass: 'bg-amber-100 text-amber-700 border-0',
   },
-  info: { 
-    icon: Info, 
+  info: {
+    icon: Info,
     className: 'text-primary bg-primary/10 border-primary/20',
-    badgeVariant: 'secondary'
+    badgeClass: 'bg-primary/10 text-primary border-0',
   },
 };
 
@@ -113,7 +113,7 @@ function AlertItem({
                 {type.label}
               </Badge>
             ) : (
-              <Badge variant={severity.badgeVariant} className="text-xs">
+              <Badge className={cn("text-xs", severity.badgeClass)}>
                 <TypeIcon className="mr-1 h-3 w-3" />
                 {type.label}
               </Badge>
@@ -223,19 +223,19 @@ export function AlertsPanel({
     <Sheet>
       <SheetTrigger asChild>
         {variant === 'full' ? (
-          <Button 
-            variant="outline" 
+          <Button
+            variant="outline"
             className={cn(
               "w-full justify-start",
-              hasUrgentAlerts && "border-destructive/50 text-destructive"
+              hasUrgentAlerts && "border-amber-500/50 text-amber-700"
             )}
           >
-            <Bell className={cn("mr-2 h-4 w-4", hasUrgentAlerts && "text-destructive")} />
+            <Bell className={cn("mr-2 h-4 w-4", hasUrgentAlerts && "text-amber-600")} />
             Alertas
             {alertCount > 0 && (
               <span className={cn(
                 "ml-auto flex h-5 min-w-5 items-center justify-center rounded-full px-1 text-xs font-bold text-white",
-                hasUrgentAlerts ? "bg-destructive" : "bg-primary"
+                hasUrgentAlerts ? "bg-amber-500" : "bg-primary"
               )}>
                 {alertCount > 9 ? '9+' : alertCount}
               </span>
@@ -243,11 +243,11 @@ export function AlertsPanel({
           </Button>
         ) : (
           <Button variant="outline" size="icon" className="relative h-10 w-10">
-            <Bell className={cn("h-5 w-5", hasUrgentAlerts && "text-destructive")} />
+            <Bell className={cn("h-5 w-5", hasUrgentAlerts && "text-amber-600")} />
             {alertCount > 0 && (
               <span className={cn(
                 "absolute -right-1 -top-1 flex h-5 w-5 items-center justify-center rounded-full text-xs font-bold text-white",
-                hasUrgentAlerts ? "bg-destructive" : "bg-primary"
+                hasUrgentAlerts ? "bg-amber-500" : "bg-primary"
               )}>
                 {alertCount > 9 ? '9+' : alertCount}
               </span>

@@ -90,7 +90,9 @@ export function useNotificationGenerator(
       }
 
       // ── 3. maturity_overdue (superó fecha sin cobro principal) ─────
-      for (const inv of activeInvs) {
+      // Includes pending: investments auto-transitioned to pending also need this notification.
+      const overdueInvs = investments.filter(i => i.status === 'active' || i.status === 'pending');
+      for (const inv of overdueInvs) {
         if (!inv.expectedEndDate) continue;
         const maturityDate = parseISO(inv.expectedEndDate);
         if (maturityDate >= todayDate) continue;

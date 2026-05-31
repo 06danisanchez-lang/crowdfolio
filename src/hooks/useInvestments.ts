@@ -110,6 +110,22 @@ export function useInvestments() {
       clearTimeout(timeoutId);
       if (requestIdRef.current !== currentId) return;
 
+      // Auto-transition: active + past expectedEndDate → pending (skip [DISPUTA] notes)
+      const todayStr = new Date().toISOString().split('T')[0];
+      const autoPendingIds = new Set<string>(
+        (investmentsData as RawInvestmentRow[])
+          .filter(inv =>
+            inv.status === 'active' &&
+            inv.expected_end_date != null &&
+            inv.expected_end_date < todayStr &&
+            !(inv.notes ?? '').includes('[DISPUTA]')
+          )
+          .map(inv => inv.id)
+      );
+      if (autoPendingIds.size > 0) {
+        await supabase.from('investments').update({ status: 'pending' }).in('id', [...autoPendingIds]);
+      }
+
       const mapped: DraftInvestment[] = (investmentsData as RawInvestmentRow[] || []).map(inv => ({
         id: inv.id,
         platform: (inv.platform as Platform) || undefined,
@@ -122,7 +138,7 @@ export function useInvestments() {
         incomeModel: (inv.income_model as IncomeModel) || undefined,
         paymentFrequency: (inv.payment_frequency as PaymentFrequency) || undefined,
         principalReturnType: (inv.principal_return_type as PrincipalReturnType) || undefined,
-        status: (inv.status as InvestmentStatus) || 'active',
+        status: autoPendingIds.has(inv.id) ? 'pending' : ((inv.status as InvestmentStatus) || 'active'),
         notes: inv.notes || undefined,
         createdAt: inv.created_at,
         updatedAt: inv.updated_at,

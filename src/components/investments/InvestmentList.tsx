@@ -48,6 +48,7 @@ import { Collapsible, CollapsibleTrigger, CollapsibleContent } from '@/component
 import { cn } from '@/lib/utils';
 import { InvestmentForm } from './InvestmentForm';
 import { InvestmentDetail } from './InvestmentDetail';
+import { MaturityConfirmationModal } from './MaturityConfirmationModal';
 
 interface InvestmentListProps {
   activeInvestments: Investment[];
@@ -99,19 +100,28 @@ export function InvestmentList({
 
   const [deleteId, setDeleteId] = useState<string | null>(null);
   const [viewingInvestmentId, setViewingInvestmentId] = useState<string | null>(null);
+  const [confirmingMaturityId, setConfirmingMaturityId] = useState<string | null>(null);
 
-  // Derived in real-time so the detail dialog always reflects the latest data
-  // after addPayment / deletePayment / updateInvestment mutate the parent state.
+  // Both derived in real-time so dialogs always reflect the latest data.
   const viewingInvestment = useMemo(
     () => [...activeInvestments, ...completedInvestments].find(inv => inv.id === viewingInvestmentId) ?? null,
     [viewingInvestmentId, activeInvestments, completedInvestments],
+  );
+
+  const confirmingMaturityInvestment = useMemo(
+    () => [...activeInvestments, ...completedInvestments].find(inv => inv.id === confirmingMaturityId) ?? null,
+    [confirmingMaturityId, activeInvestments, completedInvestments],
   );
 
   useEffect(() => {
     if (!openInvestmentId) return;
     const match = [...activeInvestments, ...completedInvestments].find(inv => inv.id === openInvestmentId);
     if (match) {
-      setViewingInvestmentId(match.id);
+      if (match.status === 'pending') {
+        setConfirmingMaturityId(match.id);
+      } else {
+        setViewingInvestmentId(match.id);
+      }
       onInvestmentOpened?.();
     }
   }, [openInvestmentId]); // eslint-disable-line react-hooks/exhaustive-deps
@@ -124,16 +134,33 @@ export function InvestmentList({
     return PLATFORMS.find(p => p.value === platform)?.label || platform;
   };
 
-  const getStatusBadge = (status: InvestmentStatus) => {
-    const statusOption = STATUS_OPTIONS.find(s => s.value === status);
+  const getStatusBadge = (status: InvestmentStatus, investmentId?: string) => {
     const colorMap: Record<InvestmentStatus, string> = {
       draft: 'bg-muted text-muted-foreground',
       active: 'bg-status-active text-white',
-      pending: 'bg-status-pending text-white',
+      pending: 'bg-status-pending text-white cursor-pointer hover:opacity-80',
       completed: 'bg-status-completed text-white',
       defaulted: 'bg-status-defaulted text-white',
     };
-    return <Badge className={colorMap[status]}>{statusOption?.label || status}</Badge>;
+    const labelMap: Record<InvestmentStatus, string> = {
+      draft: 'Borrador',
+      active: 'Activa',
+      pending: '⏰ Por confirmar',
+      completed: 'Completada',
+      defaulted: 'Default',
+    };
+    if (status === 'pending' && investmentId) {
+      return (
+        <Badge
+          className={colorMap.pending}
+          onClick={(e) => { e.stopPropagation(); setConfirmingMaturityId(investmentId); }}
+        >
+          {labelMap.pending}
+        </Badge>
+      );
+    }
+    const statusOption = STATUS_OPTIONS.find(s => s.value === status);
+    return <Badge className={colorMap[status]}>{labelMap[status] ?? statusOption?.label ?? status}</Badge>;
   };
 
   const getIncomeModelShortKey = (model: IncomeModel): string => {
@@ -318,7 +345,12 @@ export function InvestmentList({
                           <TableCell>{inv.expectedReturn.toFixed(1)}%</TableCell>
                           <TableCell>
                             <div className="flex flex-wrap items-center gap-1">
-                              {getStatusBadge(inv.status)}
+                              {getStatusBadge(inv.status, inv.id)}
+                              {(inv.notes ?? '').includes('[DISPUTA]') && (
+                                <Badge className="bg-orange-100 text-orange-800 border-orange-200 text-xs">
+                                  ⚠️ Disputa
+                                </Badge>
+                              )}
                               <Badge variant="outline" className="text-xs">
                                 {t(getIncomeModelShortKey(inv.incomeModel))}
                               </Badge>
@@ -465,7 +497,12 @@ export function InvestmentList({
                           )}
                         </div>
                         <div className="flex flex-wrap items-center gap-1 mt-1">
-                          {getStatusBadge(inv.status)}
+                          {getStatusBadge(inv.status, inv.id)}
+                          {(inv.notes ?? '').includes('[DISPUTA]') && (
+                            <Badge className="bg-orange-100 text-orange-800 border-orange-200 text-xs">
+                              ⚠️ Disputa
+                            </Badge>
+                          )}
                           <Badge variant="outline" className="text-xs">
                             {t(getIncomeModelShortKey(inv.incomeModel))}
                           </Badge>
@@ -512,6 +549,12 @@ export function InvestmentList({
         onDelete={(id) => { onDelete(id); setViewingInvestmentId(null); }}
         onAddPayment={onAddPayment}
         onDeletePayment={onDeletePayment}
+      />
+
+      <MaturityConfirmationModal
+        investment={confirmingMaturityInvestment}
+        onClose={() => setConfirmingMaturityId(null)}
+        onUpdate={onUpdate}
       />
     </div>
   );

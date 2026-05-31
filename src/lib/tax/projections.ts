@@ -63,7 +63,7 @@ export function calculateProjectedIncome(
 
   // Calculate what should have been received by now
   const currentMonth = today.getMonth();
-  const monthsPassed = Math.max(0, currentMonth - startMonth + 1);
+  const monthsPassed = Math.max(0, currentMonth - effectiveStart.getMonth() + 1);
   const expectedByNow = (annualReturn * monthsPassed) / 12;
 
   // Projected = total expected for year - what's already received

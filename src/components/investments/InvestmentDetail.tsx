@@ -267,7 +267,7 @@ export function InvestmentDetail({ investment, schedule = [], onClose, onUpdate,
 
         <div className="space-y-6">
           {/* Investment Details */}
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div className="space-y-1">
               <p className="text-sm text-muted-foreground">{t('investments.detail.platform')}</p>
               <p className="font-medium">{getPlatformLabel(investment.platform, investment.customPlatformName)}</p>
@@ -567,7 +567,7 @@ export function InvestmentDetail({ investment, schedule = [], onClose, onUpdate,
               {activeForm === 'partial-return' && (
                 <div className="mt-3 rounded-lg border bg-card p-4 space-y-3">
                   <p className="text-sm font-medium">{t('investments.action.partialReturnTitle')}</p>
-                  <div className="grid grid-cols-2 gap-3">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                     <div className="space-y-1">
                       <p className="text-xs text-muted-foreground">{t('investments.action.returnedAmount')}</p>
                       <Input
@@ -627,7 +627,7 @@ export function InvestmentDetail({ investment, schedule = [], onClose, onUpdate,
               {activeForm === 'close' && (
                 <div className="mt-3 rounded-lg border border-destructive/30 bg-destructive/5 p-4 space-y-3">
                   <p className="text-sm font-medium">{t('investments.action.closeTitle')}</p>
-                  <div className="grid grid-cols-2 gap-3">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                     <div className="space-y-1">
                       <p className="text-xs text-muted-foreground">{t('investments.action.totalRecovered')}</p>
                       <Input

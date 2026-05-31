@@ -273,7 +273,7 @@ export function InvestmentList({
                 </div>
                 <div className="flex gap-2">
                   <Select value={platformFilter} onValueChange={(v) => setPlatformFilter(v as Platform | 'all')}>
-                    <SelectTrigger className="w-[150px]">
+                    <SelectTrigger className="w-full sm:w-[150px]">
                       <Filter className="mr-2 h-4 w-4" />
                       <SelectValue placeholder={t('common.platform')} />
                     </SelectTrigger>
@@ -283,7 +283,7 @@ export function InvestmentList({
                     </SelectContent>
                   </Select>
                   <Select value={statusFilter} onValueChange={(v) => setStatusFilter(v as InvestmentStatus | 'all')}>
-                    <SelectTrigger className="w-[140px]">
+                    <SelectTrigger className="w-full sm:w-[140px]">
                       <SelectValue placeholder={t('common.status')} />
                     </SelectTrigger>
                     <SelectContent>

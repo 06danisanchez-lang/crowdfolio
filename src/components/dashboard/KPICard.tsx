@@ -21,7 +21,7 @@ export function KPICard({ title, value, subtitle, icon: Icon, trend, className, 
   return (
     <div
       className={cn(
-        "bg-card rounded-lg border p-6 shadow-sm transition-all hover:shadow-md",
+        "bg-card rounded-lg border p-4 sm:p-6 shadow-sm transition-all hover:shadow-md",
         onClick && "cursor-pointer hover:border-primary/50",
         className
       )}
@@ -34,7 +34,7 @@ export function KPICard({ title, value, subtitle, icon: Icon, trend, className, 
             <p className="text-sm font-medium text-muted-foreground">{title}</p>
             {helpContent && <HelpTooltip content={helpContent} />}
           </div>
-          <p className="text-2xl font-bold tracking-tight">{value}</p>
+          <p className="text-xl sm:text-2xl font-bold tracking-tight">{value}</p>
           {subtitle && (
             <p className="text-xs text-muted-foreground">{subtitle}</p>
           )}

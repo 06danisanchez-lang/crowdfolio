@@ -77,7 +77,7 @@ const features = [
 
 function Features() {
   return (
-    <section style={{ background: "#e4ddcf", padding: "96px 24px" }}>
+    <section style={{ background: "#e4ddcf", padding: "clamp(48px,8vw,96px) clamp(16px,4vw,24px)" }}>
       <div style={{ maxWidth: 1100, margin: "0 auto" }}>
         <p style={{ color: "#79c6fa", fontWeight: 700, fontSize: 13, letterSpacing: "0.12em", textTransform: "uppercase", textAlign: "center", marginBottom: 12 }}>
           Funcionalidades
@@ -144,7 +144,7 @@ const steps = [
 
 function HowItWorks() {
   return (
-    <section style={{ background: "#253765", padding: "96px 24px" }}>
+    <section style={{ background: "#253765", padding: "clamp(48px,8vw,96px) clamp(16px,4vw,24px)" }}>
       <div style={{ maxWidth: 1100, margin: "0 auto" }}>
         <p style={{ color: "#79c6fa", fontWeight: 700, fontSize: 13, letterSpacing: "0.12em", textTransform: "uppercase", textAlign: "center", marginBottom: 12 }}>
           Cómo funciona
@@ -224,7 +224,7 @@ function Pricing() {
   ];
 
   return (
-    <section style={{ background: "#e4ddcf", padding: "96px 24px" }}>
+    <section style={{ background: "#e4ddcf", padding: "clamp(48px,8vw,96px) clamp(16px,4vw,24px)" }}>
       <div style={{ maxWidth: 900, margin: "0 auto" }}>
         <p style={{ color: "#79c6fa", fontWeight: 700, fontSize: 13, letterSpacing: "0.12em", textTransform: "uppercase", textAlign: "center", marginBottom: 12 }}>
           Precios
@@ -264,7 +264,7 @@ function Pricing() {
             </span>
           </span>
         </div>
-        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 24 }}>
+        <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(280px, 1fr))", gap: 24 }}>
           <div style={{
             background: "rgba(255,255,255,0.6)",
             border: "1px solid rgba(37,55,101,0.15)",
@@ -402,7 +402,7 @@ function FAQ() {
   const [open, setOpen] = useState<number | null>(null);
 
   return (
-    <section style={{ background: "#f5f0e8", padding: "96px 24px" }}>
+    <section style={{ background: "#f5f0e8", padding: "clamp(48px,8vw,96px) clamp(16px,4vw,24px)" }}>
       <div style={{ maxWidth: 740, margin: "0 auto" }}>
         <p style={{ color: "#79c6fa", fontWeight: 700, fontSize: 13, letterSpacing: "0.12em", textTransform: "uppercase", textAlign: "center", marginBottom: 12 }}>
           Preguntas frecuentes
@@ -450,7 +450,7 @@ function FAQ() {
 
 function CTAFinal() {
   return (
-    <section style={{ background: "#253765", padding: "100px 24px" }}>
+    <section style={{ background: "#253765", padding: "clamp(48px,8vw,100px) clamp(16px,4vw,24px)" }}>
       <div style={{ maxWidth: 700, margin: "0 auto", textAlign: "center" }}>
         <h2 style={{
           color: "#e4ddcf",
@@ -500,8 +500,8 @@ function Footer() {
       <div style={{ maxWidth: 1100, margin: "0 auto" }}>
         <div style={{
           display: "grid",
-          gridTemplateColumns: "2fr 1fr 1fr 1fr",
-          gap: 48, marginBottom: 56,
+          gridTemplateColumns: "repeat(auto-fit, minmax(150px, 1fr))",
+          gap: 32, marginBottom: 48,
         }}>
           <div>
             <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 16 }}>

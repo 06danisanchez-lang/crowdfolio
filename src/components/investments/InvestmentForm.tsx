@@ -65,13 +65,15 @@ import { useAuth } from '@/contexts/AuthContext';
 import { useInvestmentDraft } from '@/hooks/useInvestmentDraft';
 import { useLanguage } from '@/contexts/LanguageContext';
 
+const END_DATE_REQUIRED_MODELS = ['bullet', 'periodic_fixed', 'amortizing'] as const;
+
 const investmentSchema = z.object({
   platform: z.enum(['urbanitae', 'housers', 'estateguru', 'crowdcube', 'brickstarter', 'wecity', 'other'] as const),
   customPlatformName: z.string().optional(),
   projectName: z.string().min(1, 'El nombre del proyecto es requerido'),
   amount: z.number().min(1, 'El monto debe ser mayor a 0'),
   investmentDate: z.date(),
-  expectedEndDate: z.date({ required_error: 'La fecha fin estimada es requerida' }),
+  expectedEndDate: z.date().optional(),
   expectedReturn: z.number().min(0, 'El rendimiento debe ser mayor o igual a 0'),
   incomeModel: z.enum(['bullet', 'periodic_fixed', 'amortizing', 'variable_or_unknown'] as const),
   paymentFrequency: z.enum(['monthly', 'quarterly', 'semiannual', 'annual'] as const).optional(),
@@ -79,6 +81,14 @@ const investmentSchema = z.object({
   status: z.enum(['active', 'pending', 'completed', 'defaulted', 'draft'] as const),
   notes: z.string().optional(),
   sourceUrl: z.string().optional(),
+}).superRefine((data, ctx) => {
+  if ((END_DATE_REQUIRED_MODELS as readonly string[]).includes(data.incomeModel) && !data.expectedEndDate) {
+    ctx.addIssue({
+      code: z.ZodIssueCode.custom,
+      path: ['expectedEndDate'],
+      message: 'La fecha de vencimiento es obligatoria para este tipo de inversión',
+    });
+  }
 });
 
 const draftInvestmentSchema = z.object({
@@ -200,6 +210,8 @@ export function InvestmentForm({
   const formRef = useRef<HTMLFormElement>(null);
   const watchPlatform = form.watch('platform');
   const watchIncomeModel = form.watch('incomeModel') as IncomeModel | undefined;
+  const endDateRequired = !!watchIncomeModel &&
+    (END_DATE_REQUIRED_MODELS as readonly string[]).includes(watchIncomeModel);
 
   // B2 — Clear incompatible fields when incomeModel changes to bullet or variable_or_unknown
   const incomeModelMountRef = useRef(true);
@@ -333,6 +345,12 @@ export function InvestmentForm({
       // Manual validation for complete investment
       const manualResult = investmentSchema.safeParse(data);
       if (!manualResult.success) {
+        // Set inline field error for expectedEndDate so it shows below the field
+        for (const issue of manualResult.error.issues) {
+          if (String(issue.path[0]) === 'expectedEndDate') {
+            form.setError('expectedEndDate', { type: 'manual', message: issue.message });
+          }
+        }
         const fieldMap: Record<string, string> = {
           platform: 'investments.field.platform',
           projectName: 'investments.field.projectName',
@@ -810,7 +828,14 @@ export function InvestmentForm({
           name="expectedEndDate"
           render={({ field }) => (
             <FormItem className="flex flex-col">
-              <FormLabel>Fecha de Vencimiento</FormLabel>
+              <FormLabel>
+                Fecha de Vencimiento
+                {endDateRequired ? (
+                  <span className="text-destructive ml-1">*</span>
+                ) : (
+                  <span className="text-muted-foreground text-xs font-normal ml-1">(Opcional)</span>
+                )}
+              </FormLabel>
               <Popover>
                 <PopoverTrigger asChild>
                   <FormControl>
@@ -824,7 +849,7 @@ export function InvestmentForm({
                       {field.value ? (
                         format(field.value, "dd/MM/yyyy")
                       ) : (
-                        <span>Opcional</span>
+                        <span>{endDateRequired ? 'Selecciona una fecha' : 'Opcional'}</span>
                       )}
                       <CalendarIcon className="ml-auto h-4 w-4 opacity-50" />
                     </Button>

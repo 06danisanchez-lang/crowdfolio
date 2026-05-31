@@ -4,8 +4,6 @@ import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { PlanType, isPro } from '@/lib/stripe/config';
 
-const SUB_TIMEOUT_MS = 8_000;
-
 export interface SubscriptionState {
   plan: PlanType;
   subscribed: boolean;
@@ -39,83 +37,60 @@ export function SubscriptionProvider({ children }: { children: ReactNode }) {
   const [importCountThisMonth, setImportCountThisMonth] = useState(0);
 
   const refreshSubscription = useCallback(async () => {
-    if (!session?.access_token) {
+    if (!user?.id) {
       setSubscription(defaultSubscription);
       setImportCountThisMonth(0);
       setIsLoading(false);
       return;
     }
 
-    let resolved = false;
+    try {
+      const { data: sub, error } = await supabase
+        .from('subscriptions')
+        .select('plan, status, current_period_end, import_count_this_month, import_reset_date')
+        .eq('user_id', user.id)
+        .maybeSingle();
 
-    const timeoutId = setTimeout(() => {
-      if (!resolved) {
-        resolved = true;
-        console.warn('[Subscription] Check timeout after 8s - falling back to free plan');
+      if (error) throw error;
+
+      if (!sub) {
         setSubscription(defaultSubscription);
         setImportCountThisMonth(0);
-        setIsLoading(false);
-      }
-    }, SUB_TIMEOUT_MS);
-
-    try {
-      const [subResponse, importResponse] = await Promise.all([
-        supabase.functions.invoke('check-subscription', {
-          headers: { Authorization: `Bearer ${session.access_token}` },
-        }),
-        user?.id
-          ? supabase
-              .from('subscriptions')
-              .select('import_count_this_month, import_reset_date')
-              .eq('user_id', user.id)
-              .maybeSingle()
-          : Promise.resolve({ data: null, error: null }),
-      ]);
-
-      clearTimeout(timeoutId);
-      if (resolved) return;
-      resolved = true;
-
-      const { data, error } = subResponse;
-
-      if (error) {
-        console.error('Error checking subscription:', error);
-        setSubscription(defaultSubscription);
-      } else if (data) {
-        setSubscription({
-          plan: data.plan || 'free',
-          subscribed: data.subscribed || false,
-          subscriptionEnd: data.subscription_end || null,
-          productId: data.product_id || null,
-        });
+        return;
       }
 
-      // Handle import counter with monthly reset check
-      if (importResponse.data) {
-        const { import_count_this_month, import_reset_date } = importResponse.data;
-        const resetDate = new Date(import_reset_date);
+      const nowIso = new Date().toISOString();
+      const isActive =
+        (sub.status === 'active' || sub.status === 'trialing') &&
+        !!sub.current_period_end &&
+        sub.current_period_end > nowIso;
+
+      setSubscription({
+        plan: isActive ? (sub.plan as PlanType) : 'free',
+        subscribed: isActive,
+        subscriptionEnd: sub.current_period_end ?? null,
+        productId: null,
+      });
+
+      // Monthly reset check for import counter
+      if (sub.import_count_this_month != null && sub.import_reset_date) {
+        const resetDate = new Date(sub.import_reset_date);
         const now = new Date();
         const isSameMonth =
           resetDate.getFullYear() === now.getFullYear() &&
           resetDate.getMonth() === now.getMonth();
-        setImportCountThisMonth(isSameMonth ? import_count_this_month : 0);
+        setImportCountThisMonth(isSameMonth ? sub.import_count_this_month : 0);
       } else {
         setImportCountThisMonth(0);
       }
-    } catch (error) {
-      clearTimeout(timeoutId);
-      if (resolved) return;
-      resolved = true;
-
-      console.error('Error refreshing subscription:', error);
+    } catch (err) {
+      console.error('[Subscription] Error reading subscription from DB:', err);
       setSubscription(defaultSubscription);
       setImportCountThisMonth(0);
     } finally {
-      if (resolved) {
-        setIsLoading(false);
-      }
+      setIsLoading(false);
     }
-  }, [session?.access_token, user?.id]);
+  }, [user?.id]);
 
   // Refresh on mount and when user/session changes
   useEffect(() => {

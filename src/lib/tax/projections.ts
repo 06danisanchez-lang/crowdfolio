@@ -46,9 +46,8 @@ export function calculateProjectedIncome(
   }
 
   // Calculate months active in the year
-  const startMonth = effectiveStart.getMonth();
-  const endMonth = effectiveEnd.getMonth();
-  const monthsActive = endMonth - startMonth + 1;
+  const msPerMonth = 1000 * 60 * 60 * 24 * 30.44;
+  const monthsActive = Math.round((effectiveEnd.getTime() - effectiveStart.getTime()) / msPerMonth);
 
   // Calculate expected annual return
   const annualReturn = investment.amount * (investment.expectedReturn / 100);

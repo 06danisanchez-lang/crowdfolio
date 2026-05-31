@@ -2,7 +2,7 @@ import { SPAIN_TAX_BRACKETS, TaxBracket } from '@/types/tax';
 
 /**
  * Calculate progressive tax for Spanish savings income (rentas del ahorro)
- * Uses 2024 tax brackets
+ * Uses 2025 tax brackets (Ley 7/2024)
  */
 export function calculateProgressiveTax(taxableBase: number): number {
   if (taxableBase <= 0) return 0;

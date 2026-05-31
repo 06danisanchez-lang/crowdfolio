@@ -1,7 +1,7 @@
 import { useState, useEffect, useMemo, useRef } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
-import { TaxSummary } from '@/types/tax';
+import { TaxSummary, EnrichedPayment } from '@/types/tax';
 import { Investment } from '@/types/investment';
 import { calculateProgressiveTax, calculateEffectiveRate } from '@/lib/tax/calculations';
 import { calculateYearlyProjection, TaxProjection } from '@/lib/tax/projections';
@@ -65,6 +65,7 @@ export function useTaxSummary(year: number) {
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [excludedIncompleteCount, setExcludedIncompleteCount] = useState(0);
+  const [enrichedPayments, setEnrichedPayments] = useState<EnrichedPayment[]>([]);
   const [retryCount, setRetryCount] = useState(0);
   const requestIdRef = useRef(0);
   const { expenses, totalExpenses, isLoading: expensesLoading } = useTaxExpenses(year);
@@ -122,11 +123,20 @@ export function useTaxSummary(year: number) {
         const activeRows = allRows.filter(inv => inv.status === 'active');
         const excludedCount = activeRows.length - trackingReadyActive.length;
 
+        // Map investment id → display name + platform
+        const investmentMeta = new Map(
+          allRows.map(inv => [inv.id, {
+            name: inv.project_name,
+            platform: inv.platform === 'custom' ? (inv.custom_platform_name || 'Personalizada') : inv.platform,
+          }])
+        );
+
         if (allIds.length === 0) {
           clearTimeout(timeoutId);
           if (requestIdRef.current !== currentId) return;
           setProjectionInvestments(trackingReadyActive);
           setPayments([]);
+          setEnrichedPayments([]);
           setExcludedIncompleteCount(excludedCount);
           setIsLoading(false);
           return;
@@ -148,13 +158,25 @@ export function useTaxSummary(year: number) {
         if (requestIdRef.current !== currentId) return;
         if (paymentsError) throw paymentsError;
 
+        const rawPayments = (data || []).map((p) => ({
+          ...p,
+          amount: Number(p.amount),
+          withholding_applied: p.withholding_applied ? Number(p.withholding_applied) : null,
+        }));
+
         setExcludedIncompleteCount(excludedCount);
         setProjectionInvestments(trackingReadyActive);
-        setPayments(
-          (data || []).map((p) => ({
-            ...p,
-            amount: Number(p.amount),
-            withholding_applied: p.withholding_applied ? Number(p.withholding_applied) : null,
+        setPayments(rawPayments);
+        setEnrichedPayments(
+          rawPayments.map((p) => ({
+            id: p.id,
+            date: p.date,
+            amount: p.amount,
+            type: p.type,
+            withholdingApplied: p.withholding_applied ?? 0,
+            investmentId: p.investment_id,
+            investmentName: investmentMeta.get(p.investment_id)?.name ?? 'Inversión desconocida',
+            platform: investmentMeta.get(p.investment_id)?.platform ?? '-',
           }))
         );
       } catch (err) {
@@ -224,7 +246,7 @@ export function useTaxSummary(year: number) {
   }, [user]);
 
   return {
-    summary, projection, payments, expenses, error, excludedIncompleteCount,
+    summary, projection, payments, enrichedPayments, expenses, error, excludedIncompleteCount,
     isLoading: isLoading || expensesLoading, availableYears,
     refetch: () => setRetryCount(c => c + 1),
   };

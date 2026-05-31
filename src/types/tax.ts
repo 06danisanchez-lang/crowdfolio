@@ -32,6 +32,17 @@ export interface TaxSummary {
   effectiveRate: number;
 }
 
+export interface EnrichedPayment {
+  id: string;
+  date: string;
+  amount: number;
+  type: string;
+  withholdingApplied: number;
+  investmentId: string;
+  investmentName: string;
+  platform: string;
+}
+
 export interface TaxBracket {
   min: number;
   max: number;

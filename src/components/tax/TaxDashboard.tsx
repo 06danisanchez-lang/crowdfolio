@@ -3,6 +3,7 @@ import { Receipt, Calculator, ArrowLeftRight, Crown, AlertTriangle, RefreshCw } 
 import { useTaxSummary } from '@/hooks/useTaxSummary';
 import { useTaxExpenses } from '@/hooks/useTaxExpenses';
 import { useLanguage } from '@/contexts/LanguageContext';
+import { useAuth } from '@/contexts/AuthContext';
 import { TaxSummaryCards } from './TaxSummaryCards';
 import { TaxBreakdownTable } from './TaxBreakdownTable';
 import { TaxProjectionCard } from './TaxProjectionCard';
@@ -30,8 +31,9 @@ export function TaxDashboard({ isPro = false, onProRequired }: TaxDashboardProps
   const [prefillCategory, setPrefillCategory] = useState<TaxExpenseCategory | undefined>();
   const [prefillDescription, setPrefillDescription] = useState<string | undefined>();
   const { t } = useLanguage();
-  
-  const { summary, projection, isLoading, availableYears, excludedIncompleteCount, error, refetch } = useTaxSummary(selectedYear);
+  const { user } = useAuth();
+
+  const { summary, projection, isLoading, availableYears, excludedIncompleteCount, enrichedPayments, error, refetch } = useTaxSummary(selectedYear);
   const { 
     expenses, 
     addExpense, 
@@ -127,7 +129,7 @@ export function TaxDashboard({ isPro = false, onProRequired }: TaxDashboardProps
           </p>
         </div>
         <div className="flex items-center gap-3">
-          <TaxExportButton summary={summary} expenses={expenses} isPro={isPro} onProRequired={onProRequired} />
+          <TaxExportButton summary={summary} expenses={expenses} enrichedPayments={enrichedPayments} userEmail={user?.email ?? ''} isPro={isPro} onProRequired={onProRequired} />
           <TaxYearSelector
             selectedYear={selectedYear}
             onYearChange={setSelectedYear}

@@ -216,7 +216,7 @@ export function useInvestments() {
           updatedAt: raw.updatedAt,
         };
 
-        if (raw.status === 'completed') {
+        if (raw.status === 'completed' || raw.status === 'pending') {
           completed.push(inv);
         } else {
           active.push(inv);

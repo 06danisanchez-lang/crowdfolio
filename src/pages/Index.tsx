@@ -98,7 +98,7 @@ const Index = () => {
   const unreadNotifications = notifications.filter(n => !n.read);
 
   useNotificationGenerator(
-    activeInvestments,
+    investments,
     scheduleMap,
     notifications,
     !notificationsLoading,

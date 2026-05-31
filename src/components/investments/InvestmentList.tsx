@@ -484,8 +484,16 @@ export function InvestmentList({
                 <p className="text-sm text-muted-foreground py-2">{t('investments.section.completedEmpty')}</p>
               ) : (
                 <div className="space-y-2">
-                  {completedInvestments.map(inv => (
-                    <div key={inv.id} className="flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-4 p-3 rounded-md border">
+                  {[...completedInvestments]
+                    .sort((a, b) => (a.status === 'pending' ? -1 : b.status === 'pending' ? 1 : 0))
+                    .map(inv => (
+                    <div
+                      key={inv.id}
+                      className={cn(
+                        "flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-4 p-3 rounded-md border",
+                        inv.status === 'pending' && "border-yellow-300 bg-yellow-50/50"
+                      )}
+                    >
                       <div className="flex-1 min-w-0">
                         <p className="font-medium truncate">{inv.projectName}</p>
                         <div className="flex flex-wrap items-center gap-1 mt-1 text-xs text-muted-foreground">
@@ -509,6 +517,15 @@ export function InvestmentList({
                         </div>
                       </div>
                       <div className="flex gap-2 shrink-0">
+                        {inv.status === 'pending' && (
+                          <Button
+                            size="sm"
+                            className="bg-status-pending text-white hover:bg-status-pending/90"
+                            onClick={() => setConfirmingMaturityId(inv.id)}
+                          >
+                            Confirmar
+                          </Button>
+                        )}
                         <Button variant="outline" size="sm" onClick={() => setViewingInvestmentId(inv.id)}>
                           <Eye className="h-4 w-4 mr-1.5" />{t('common.view')}
                         </Button>

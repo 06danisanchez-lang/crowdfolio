@@ -131,10 +131,19 @@ function mapFutureToFormData(fi: FutureInvestment): FutureInvestmentFormData {
   };
 }
 
-export function FutureInvestmentList() {
+interface FutureInvestmentListProps {
+  /** addInvestment from the parent's useInvestments instance so conversions
+   *  update the shared state and the investments section reflects immediately. */
+  onAddInvestment?: (data: Omit<Investment, 'id' | 'createdAt' | 'updatedAt' | 'payments'>) => Promise<Investment | null>;
+  investmentCount?: number;
+}
+
+export function FutureInvestmentList({ onAddInvestment, investmentCount: externalCount }: FutureInvestmentListProps = {}) {
   const { t } = useLanguage();
   const { futureInvestments, isLoading, addFutureInvestment, updateFutureInvestment, deleteFutureInvestment, convertToReal } = useFutureInvestments();
-  const { investments, addInvestment } = useInvestments();
+  const { investments, addInvestment: internalAddInvestment } = useInvestments();
+  const addInvestment = onAddInvestment ?? internalAddInvestment;
+  const investmentCount = externalCount ?? investments.length;
   const { isPro } = useSubscription();
   const [deleteId, setDeleteId] = useState<string | null>(null);
   const [convertingId, setConvertingId] = useState<string | null>(null);
@@ -222,7 +231,7 @@ export function FutureInvestmentList() {
   };
 
   const handleConvertClick = (fiId: string) => {
-    if (!isPro && investments.length >= 3) {
+    if (!isPro && investmentCount >= 3) {
       setUpgradeFeature('unlimited_investments');
       setUpgradeModalOpen(true);
       return;
@@ -450,7 +459,7 @@ export function FutureInvestmentList() {
           defaultOpen
           initialData={mapFutureToPartialInvestment(convertingItem) as Investment}
           onSubmit={handleConvertSubmit}
-          investmentCount={investments.length}
+          investmentCount={investmentCount}
           isPro={isPro}
           onProRequired={() => {
             setUpgradeFeature('unlimited_investments');

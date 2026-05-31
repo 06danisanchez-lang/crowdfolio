@@ -446,7 +446,10 @@ const Index = () => {
       case 'future-investments':
         return (
           <div className="px-4 pt-4 pb-6 sm:px-6 lg:px-8">
-            <FutureInvestmentList />
+            <FutureInvestmentList
+              onAddInvestment={addInvestment}
+              investmentCount={allInvestmentsCount}
+            />
           </div>
         );
       case 'tax':

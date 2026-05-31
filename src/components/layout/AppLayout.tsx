@@ -8,6 +8,7 @@ import {
   Crown,
   CalendarPlus,
   Bell,
+  LogOut,
 } from 'lucide-react';
 import { useNavigate, Link } from 'react-router-dom';
 import { LEGAL_ROUTES } from '@/lib/legal/routes';
@@ -80,14 +81,17 @@ export function AppLayout({
           <img src={crowdfolioLogo} alt="Crowdfolio" className="h-8 w-auto" />
         </div>
         <div className="flex items-center gap-2">
-          <LanguageToggle />
-          <Button
-            variant={isPro ? "outline" : "default"}
-            onClick={() => setUpgradeOpen(true)}
-          >
-            <Crown className="h-4 w-4" />
-            {isPro ? t('nav.alreadyPro') : t('nav.upgradePro')}
-          </Button>
+          {isPro ? (
+            <span className="inline-flex items-center gap-1 rounded-full border border-primary/30 bg-primary/10 px-2.5 py-1 text-xs font-semibold text-primary">
+              <Crown className="h-3 w-3" />
+              Pro
+            </span>
+          ) : (
+            <Button size="sm" className="h-8 gap-1 px-2.5" onClick={() => setUpgradeOpen(true)}>
+              <Crown className="h-3.5 w-3.5" />
+              <span className="hidden sm:inline">Pro</span>
+            </Button>
+          )}
           <NotificationBell />
         </div>
       </header>
@@ -177,6 +181,15 @@ export function AppLayout({
               onSignOut={handleSignOut}
               onCloseSidebar={() => setSidebarOpen(false)}
             />
+            {/* Direct logout for mobile — bypasses DropdownMenu portal which
+                can misfire on touch due to the sidebar's CSS transform stacking context */}
+            <button
+              onClick={() => { setSidebarOpen(false); handleSignOut(); }}
+              className="flex w-full items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium text-destructive hover:bg-destructive/10 transition-colors lg:hidden"
+            >
+              <LogOut className="h-4 w-4" />
+              {t('usermenu.signOut')}
+            </button>
           </div>
         </aside>
 

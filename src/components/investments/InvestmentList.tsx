@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useLanguage } from '@/contexts/LanguageContext';
 import { toast } from 'sonner';
 import { format, parseISO } from 'date-fns';
@@ -60,6 +60,8 @@ interface InvestmentListProps {
   onDeletePayment: (investmentId: string, paymentId: string) => void;
   allowDraftSave?: boolean;
   initialStatusFilter?: InvestmentStatus | 'all';
+  openInvestmentId?: string | null;
+  onInvestmentOpened?: () => void;
 }
 
 type SortField = 'projectName' | 'amount' | 'investmentDate' | 'expectedReturn' | 'status';
@@ -78,6 +80,8 @@ export function InvestmentList({
   onDeletePayment,
   allowDraftSave,
   initialStatusFilter = 'all',
+  openInvestmentId,
+  onInvestmentOpened,
 }: InvestmentListProps) {
   const { t } = useLanguage();
 
@@ -95,6 +99,15 @@ export function InvestmentList({
 
   const [deleteId, setDeleteId] = useState<string | null>(null);
   const [viewingInvestment, setViewingInvestment] = useState<Investment | null>(null);
+
+  useEffect(() => {
+    if (!openInvestmentId) return;
+    const match = [...activeInvestments, ...completedInvestments].find(inv => inv.id === openInvestmentId);
+    if (match) {
+      setViewingInvestment(match);
+      onInvestmentOpened?.();
+    }
+  }, [openInvestmentId]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const formatCurrency = (value: number) =>
     new Intl.NumberFormat('es-ES', { style: 'currency', currency: 'EUR', minimumFractionDigits: 0, maximumFractionDigits: 0 }).format(value);

@@ -43,6 +43,7 @@ import { ScrollArea } from '@/components/ui/scroll-area';
 import { CheckCircle, ExternalLink, AlertTriangle, Clock } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Notification } from '@/hooks/useNotifications';
+import { getNotifConfig } from '@/lib/notifications/notificationConfig';
 import { HelpTooltip } from '@/components/ui/help-tooltip';
 import { HELP_CONTENT } from '@/lib/help/tooltipContent';
 import { toast } from 'sonner';
@@ -54,6 +55,7 @@ const Index = () => {
   const { t } = useLanguage();
   const [currentView, setCurrentView] = useState<View>('dashboard');
   const [investmentsFilter, setInvestmentsFilter] = useState<'active' | 'all'>('all');
+  const [pendingOpenInvestmentId, setPendingOpenInvestmentId] = useState<string | null>(null);
   const [notificationsSheetOpen, setNotificationsSheetOpen] = useState(false);
   const [savingNotificationId, setSavingNotificationId] = useState<string | null>(null);
   const [upgradeModalOpen, setUpgradeModalOpen] = useState(false);
@@ -107,6 +109,13 @@ const Index = () => {
     setInvestmentsFilter('all');
   };
 
+  const openInvestmentDetail = (investmentId: string) => {
+    setInvestmentsFilter('all');
+    setCurrentView('investments');
+    setNotificationsSheetOpen(false);
+    setPendingOpenInvestmentId(investmentId);
+  };
+
   const handleSheetPaid = async (notification: Notification) => {
     setSavingNotificationId(notification.id);
     const data = notification.data as Record<string, unknown>;
@@ -124,9 +133,15 @@ const Index = () => {
 
   const handleSheetNotPaid = (notification: Notification) => {
     markAsRead(notification.id);
-    setInvestmentsFilter('all');
-    setCurrentView('investments');
-    setNotificationsSheetOpen(false);
+    const data = notification.data as Record<string, unknown>;
+    const investmentId = data?.investmentId as string | undefined;
+    if (investmentId) {
+      openInvestmentDetail(investmentId);
+    } else {
+      setInvestmentsFilter('all');
+      setCurrentView('investments');
+      setNotificationsSheetOpen(false);
+    }
   };
 
   const openUpgradeModal = (feature: string) => {
@@ -252,7 +267,7 @@ const Index = () => {
                       unreadCount={unreadCount}
                       onMarkAsRead={markAsRead}
                       onAddPayment={async (investmentId, payment) => { await addPayment(investmentId, payment); }}
-                      onOpenInvestment={() => { setInvestmentsFilter('all'); setCurrentView('investments'); }}
+                      onOpenInvestment={openInvestmentDetail}
                     />
                     <InvestmentForm onSubmit={addInvestment} onSubmitDraft={addDraftInvestment} investmentCount={allInvestmentsCount} isPro={isPro} onProRequired={() => openUpgradeModal('unlimited_investments')} />
                   </div>
@@ -423,6 +438,8 @@ const Index = () => {
               onDeletePayment={deletePayment}
               allowDraftSave
               initialStatusFilter={investmentsFilter}
+              openInvestmentId={pendingOpenInvestmentId}
+              onInvestmentOpened={() => setPendingOpenInvestmentId(null)}
             />
           </div>
         );
@@ -512,37 +529,44 @@ const Index = () => {
                 <div className="divide-y">
 
                   {/* Resumen semanal */}
-                  {weeklySummary && (
-                    <div className="px-6 py-4">
-                      <div className="rounded-lg border-2 border-primary/20 bg-primary/5 p-4 space-y-2">
-                        <div className="flex items-center justify-between">
-                          <div className="flex items-center gap-2">
-                            <BarChart3 className="h-4 w-4 text-primary" />
-                            <p className="text-sm font-semibold text-primary">{weeklySummary.title}</p>
+                  {weeklySummary && (() => {
+                    const cfg = getNotifConfig('weekly_summary');
+                    return (
+                      <div className="px-6 py-4">
+                        <div className={cn('p-4 space-y-2', cfg.cardClass)} style={cfg.cardStyle}>
+                          <div className="flex items-center justify-between">
+                            <div className="flex items-center gap-2">
+                              <BarChart3 className={cn('h-4 w-4', cfg.iconClass)} />
+                              <p className={cn('text-sm font-semibold', cfg.titleClass)}>{weeklySummary.title}</p>
+                            </div>
+                            <Button variant="ghost" size="icon" className="h-6 w-6" onClick={() => markAsRead(weeklySummary.id)}>
+                              <CheckCircle className="h-3.5 w-3.5" />
+                            </Button>
                           </div>
-                          <Button variant="ghost" size="icon" className="h-6 w-6" onClick={() => markAsRead(weeklySummary.id)}>
-                            <CheckCircle className="h-3.5 w-3.5" />
-                          </Button>
+                          <p className={cn('text-sm leading-relaxed', cfg.textClass)}>{weeklySummary.message}</p>
                         </div>
-                        <p className="text-sm text-muted-foreground leading-relaxed">{weeklySummary.message}</p>
                       </div>
-                    </div>
-                  )}
+                    );
+                  })()}
 
                   {/* Cobros esperados */}
                   {paymentDue.length > 0 && (
                     <div className="px-6 py-4 space-y-3">
                       <h3 className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">{t('notifications.paymentDue')}</h3>
                       {paymentDue.map(n => {
+                        const cfg = getNotifConfig(n.type);
                         const isSaving = savingNotificationId === n.id;
                         return (
-                          <div key={n.id} className="rounded-lg border bg-primary/5 p-3 space-y-2">
-                            <div>
-                              <p className="text-sm font-medium">{n.title}</p>
-                              <p className="text-xs text-muted-foreground mt-0.5 leading-snug">{n.message}</p>
+                          <div key={n.id} className={cn('p-3 space-y-2', cfg.cardClass)} style={cfg.cardStyle}>
+                            <div className="flex items-start gap-2">
+                              <Banknote className={cn('h-4 w-4 mt-0.5 shrink-0', cfg.iconClass)} />
+                              <div>
+                                <p className={cn('text-sm font-medium', cfg.titleClass)}>{n.title}</p>
+                                <p className={cn('text-xs mt-0.5 leading-snug', cfg.textClass)}>{n.message}</p>
+                              </div>
                             </div>
                             <div className="flex gap-2">
-                              <Button size="sm" className="min-h-[44px] text-xs" disabled={isSaving} onClick={() => handleSheetPaid(n)}>
+                              <Button size="sm" className="min-h-[44px] text-xs bg-[#253765] hover:bg-[#1a2847] text-white" disabled={isSaving} onClick={() => handleSheetPaid(n)}>
                                 <CheckCircle className="mr-1 h-3 w-3" />{t('notifications.yesPaid')}
                               </Button>
                               <Button size="sm" variant="outline" className="min-h-[44px] text-xs" disabled={isSaving} onClick={() => handleSheetNotPaid(n)}>
@@ -560,16 +584,15 @@ const Index = () => {
                     <div className="px-6 py-4 space-y-3">
                       <h3 className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">{t('notifications.maturities')}</h3>
                       {maturityNtfs.map(n => {
-                        const isOverdue = n.type === 'maturity_overdue';
+                        const cfg = getNotifConfig(n.type);
+                        const IconComp = n.type === 'maturity_overdue' ? Clock : AlertTriangle;
                         return (
-                          <div key={n.id} className={cn('rounded-lg border p-3 space-y-2', isOverdue ? 'bg-destructive/5 border-destructive/20' : 'bg-orange-500/5 border-orange-200')}>
+                          <div key={n.id} className={cn('p-3 space-y-2', cfg.cardClass)} style={cfg.cardStyle}>
                             <div className="flex items-start gap-2">
-                              {isOverdue
-                                ? <Clock className="h-4 w-4 text-destructive mt-0.5 shrink-0" />
-                                : <AlertTriangle className="h-4 w-4 text-orange-500 mt-0.5 shrink-0" />}
+                              <IconComp className={cn('h-4 w-4 mt-0.5 shrink-0', cfg.iconClass)} />
                               <div>
-                                <p className="text-sm font-medium">{n.title}</p>
-                                <p className="text-xs text-muted-foreground mt-0.5 leading-snug">{n.message}</p>
+                                <p className={cn('text-sm font-medium', cfg.titleClass)}>{n.title}</p>
+                                <p className={cn('text-xs mt-0.5 leading-snug', cfg.textClass)}>{n.message}</p>
                               </div>
                             </div>
                             <Button size="sm" variant="outline" className="min-h-[44px] text-xs ml-6" onClick={() => handleViewInvestment(n)}>

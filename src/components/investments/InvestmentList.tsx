@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { useLanguage } from '@/contexts/LanguageContext';
 import { toast } from 'sonner';
 import { format, parseISO } from 'date-fns';
@@ -98,13 +98,20 @@ export function InvestmentList({
   const [sortDirection, setSortDirection] = useState<SortDirection>('desc');
 
   const [deleteId, setDeleteId] = useState<string | null>(null);
-  const [viewingInvestment, setViewingInvestment] = useState<Investment | null>(null);
+  const [viewingInvestmentId, setViewingInvestmentId] = useState<string | null>(null);
+
+  // Derived in real-time so the detail dialog always reflects the latest data
+  // after addPayment / deletePayment / updateInvestment mutate the parent state.
+  const viewingInvestment = useMemo(
+    () => [...activeInvestments, ...completedInvestments].find(inv => inv.id === viewingInvestmentId) ?? null,
+    [viewingInvestmentId, activeInvestments, completedInvestments],
+  );
 
   useEffect(() => {
     if (!openInvestmentId) return;
     const match = [...activeInvestments, ...completedInvestments].find(inv => inv.id === openInvestmentId);
     if (match) {
-      setViewingInvestment(match);
+      setViewingInvestmentId(match.id);
       onInvestmentOpened?.();
     }
   }, [openInvestmentId]); // eslint-disable-line react-hooks/exhaustive-deps
@@ -323,7 +330,7 @@ export function InvestmentList({
                             </div>
                           </TableCell>
                           <TableCell>
-                            <Button variant="outline" size="sm" onClick={() => setViewingInvestment(inv)}>
+                            <Button variant="outline" size="sm" onClick={() => setViewingInvestmentId(inv.id)}>
                               <Eye className="h-4 w-4 mr-1.5" />{t('common.view')}
                             </Button>
                           </TableCell>
@@ -465,7 +472,7 @@ export function InvestmentList({
                         </div>
                       </div>
                       <div className="flex gap-2 shrink-0">
-                        <Button variant="outline" size="sm" onClick={() => setViewingInvestment(inv)}>
+                        <Button variant="outline" size="sm" onClick={() => setViewingInvestmentId(inv.id)}>
                           <Eye className="h-4 w-4 mr-1.5" />{t('common.view')}
                         </Button>
                         <Button variant="ghost" size="sm" onClick={() => setDeleteId(inv.id)}>
@@ -500,9 +507,9 @@ export function InvestmentList({
       <InvestmentDetail
         investment={viewingInvestment}
         schedule={viewingInvestment ? (scheduleMap[viewingInvestment.id] || []) : []}
-        onClose={() => setViewingInvestment(null)}
+        onClose={() => setViewingInvestmentId(null)}
         onUpdate={onUpdate}
-        onDelete={(id) => { onDelete(id); setViewingInvestment(null); }}
+        onDelete={(id) => { onDelete(id); setViewingInvestmentId(null); }}
         onAddPayment={onAddPayment}
         onDeletePayment={onDeletePayment}
       />

@@ -353,17 +353,9 @@ export function ImportExport({
     <div className="flex gap-2">
       <Dialog open={importOpen} onOpenChange={setImportOpen}>
         <DialogTrigger asChild>
-          <Button variant="outline" onClick={(e) => {
-            if (!canImport) {
-              e.preventDefault();
-              onProRequired?.();
-            }
-          }}>
+          <Button variant="outline">
             <Upload className="mr-2 h-4 w-4" />
             {t('investments.import')}
-            {!isPro && importsThisMonth >= 1 && (
-              <span className="ml-1 text-xs text-muted-foreground">(Pro)</span>
-            )}
           </Button>
         </DialogTrigger>
         <DialogContent>

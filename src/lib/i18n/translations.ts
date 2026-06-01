@@ -299,47 +299,40 @@ export const translations: Record<Lang, Record<string, string>> = {
     'subscription.startPro': 'Empezar con Pro',
     'subscription.noCommitment': 'Cancela cuando quieras. Sin compromisos.',
     'subscription.f1': 'Inversiones ilimitadas',
-    'subscription.f2': 'Importaciones masivas ilimitadas',
-    'subscription.f3': 'Avisos de apertura sin límites',
-    'subscription.f4': 'Informe fiscal unificado',
-    'subscription.f5': 'Exportación del informe fiscal',
+    'subscription.f2': 'Inversiones futuras ilimitadas',
+    'subscription.f3': 'Notificaciones ilimitadas',
+    'subscription.f4': 'Informe fiscal completo',
+    'subscription.f5': 'Exportación PDF y Excel',
 
     // Plan copy — Free features
-    'subscription.free.f1': 'Hasta 3 inversiones activas',
-    'subscription.free.f2': 'Hasta 3 inversiones futuras',
+    'subscription.free.f1': 'Hasta 3 inversiones activas o pendientes',
+    'subscription.free.f2': '1 inversión futura',
     'subscription.free.f3': '',
-    'subscription.free.f4': 'Hasta 3 avisos de apertura',
-    'subscription.free.f5': 'Resumen fiscal indicativo',
+    'subscription.free.f4': 'Notificaciones ilimitadas',
+    'subscription.free.f5': 'Resumen fiscal orientativo (sin exportar)',
     'subscription.free.f6': '',
 
     // Plan copy — Pro features
     'subscription.pro.f1': 'Inversiones activas ilimitadas',
     'subscription.pro.f2': 'Inversiones futuras ilimitadas',
     'subscription.pro.f3': '',
-    'subscription.pro.f4': 'Avisos de apertura sin límites',
-    'subscription.pro.f5': 'Informe fiscal unificado',
-    'subscription.pro.f6': 'Exportación del informe fiscal',
+    'subscription.pro.f4': 'Notificaciones ilimitadas',
+    'subscription.pro.f5': 'Informe fiscal completo + exportación PDF y Excel',
+    'subscription.pro.f6': '',
 
     // Contextual CTAs
     'subscription.cta.investments': 'Desbloquea inversiones ilimitadas',
     'subscription.cta.futureInvestments': 'Desbloquea inversiones futuras ilimitadas',
-    'subscription.cta.imports': 'Desbloquea importaciones masivas ilimitadas',
-    'subscription.cta.tax': 'Accede a un informe fiscal preparado para declarar',
-    'subscription.cta.taxExport': 'Accede a un informe fiscal preparado para declarar',
+    'subscription.cta.tax': 'Accede al informe fiscal completo con exportación',
+    'subscription.cta.taxExport': 'Desbloquea la exportación del informe fiscal',
     'subscription.cta.default': 'Desbloquea Crowdfolio Pro',
 
-    // Tax module — Free vs Pro banner
-    'subscription.tax.freeNote': 'Estás viendo una vista fiscal orientativa',
-    'subscription.tax.proNote': 'Con Pro accedes a un informe preparado para declarar, exportable en Excel y PDF',
-    'subscription.tax.upgradeCta': 'Accede a un informe fiscal preparado para declarar',
-
-    // Import counter
-    'subscription.import.used': 'Has usado tu importación mensual',
-    'subscription.import.remaining': 'Tienes 1 importación disponible este mes',
-    'subscription.import.upgradeDesc': 'Con Pro tienes importaciones masivas ilimitadas desde CSV o JSON',
+    // Tax module — export lock
+    'subscription.tax.exportLocked': 'Exportación disponible en Pro',
+    'subscription.tax.exportLockedDesc': 'Con Pro exportas el informe en PDF y Excel, listo para tu gestor o declaración',
 
     // Dashboard Free CTA
-    'subscription.dashboard.freeDesc': 'Gestiona hasta 3 inversiones activas, 3 inversiones futuras y 1 importación masiva al mes.',
+    'subscription.dashboard.freeDesc': 'Gestiona hasta 3 inversiones activas, 1 inversión futura y consulta tu resumen fiscal orientativo.',
     'subscription.dashboard.ctaBtn': 'Ver qué incluye Pro',
 
     'subscription.billing.title': 'Tu Plan',
@@ -347,7 +340,7 @@ export const translations: Record<Lang, Record<string, string>> = {
     'subscription.billing.freePlan': 'Plan Gratis',
     'subscription.billing.proPlan': 'Crowdfolio Pro',
     'subscription.billing.renewsOn': 'Se renueva el',
-    'subscription.billing.freeLimits': '3 inversiones, 3 futuras, 1 importación/mes',
+    'subscription.billing.freeLimits': '3 inversiones activas, 1 futura',
     'subscription.billing.manage': 'Gestionar',
     'subscription.billing.upgradeToPro': 'Actualizar a Pro',
     'subscription.billing.refreshStatus': 'Actualizar estado',
@@ -841,47 +834,40 @@ export const translations: Record<Lang, Record<string, string>> = {
     'subscription.startPro': 'Start with Pro',
     'subscription.noCommitment': 'Cancel anytime. No commitments.',
     'subscription.f1': 'Unlimited investments',
-    'subscription.f2': 'Unlimited bulk imports',
-    'subscription.f3': 'Unlimited opening alerts',
-    'subscription.f4': 'Unified tax report',
-    'subscription.f5': 'Tax report export',
+    'subscription.f2': 'Unlimited future investments',
+    'subscription.f3': 'Unlimited notifications',
+    'subscription.f4': 'Full tax report',
+    'subscription.f5': 'PDF and Excel export',
 
     // Plan copy — Free features
-    'subscription.free.f1': 'Up to 3 active investments',
-    'subscription.free.f2': 'Up to 3 future investments',
+    'subscription.free.f1': 'Up to 3 active or pending investments',
+    'subscription.free.f2': '1 future investment',
     'subscription.free.f3': '',
-    'subscription.free.f4': 'Up to 3 opening alerts',
-    'subscription.free.f5': 'Indicative tax summary',
+    'subscription.free.f4': 'Unlimited notifications',
+    'subscription.free.f5': 'Indicative tax summary (no export)',
     'subscription.free.f6': '',
 
     // Plan copy — Pro features
     'subscription.pro.f1': 'Unlimited active investments',
     'subscription.pro.f2': 'Unlimited future investments',
     'subscription.pro.f3': '',
-    'subscription.pro.f4': 'Unlimited opening alerts',
-    'subscription.pro.f5': 'Unified tax report',
-    'subscription.pro.f6': 'Tax report export',
+    'subscription.pro.f4': 'Unlimited notifications',
+    'subscription.pro.f5': 'Full tax report + PDF and Excel export',
+    'subscription.pro.f6': '',
 
     // Contextual CTAs
     'subscription.cta.investments': 'Unlock unlimited investments',
     'subscription.cta.futureInvestments': 'Unlock unlimited future investments',
-    'subscription.cta.imports': 'Unlock unlimited bulk imports',
-    'subscription.cta.tax': 'Access a tax report prepared for filing',
-    'subscription.cta.taxExport': 'Access a tax report prepared for filing',
+    'subscription.cta.tax': 'Access the full tax report with export',
+    'subscription.cta.taxExport': 'Unlock tax report export',
     'subscription.cta.default': 'Unlock Crowdfolio Pro',
 
-    // Tax module — Free vs Pro banner
-    'subscription.tax.freeNote': 'You are seeing an indicative tax overview',
-    'subscription.tax.proNote': 'With Pro you get a full report prepared for filing, exportable in Excel and PDF',
-    'subscription.tax.upgradeCta': 'Access a tax report prepared for filing',
-
-    // Import counter
-    'subscription.import.used': "You've used your monthly import",
-    'subscription.import.remaining': 'You have 1 import available this month',
-    'subscription.import.upgradeDesc': 'With Pro you get unlimited bulk imports from CSV or JSON',
+    // Tax module — export lock
+    'subscription.tax.exportLocked': 'Export available in Pro',
+    'subscription.tax.exportLockedDesc': 'With Pro you can export the report as PDF and Excel, ready for your advisor or tax filing',
 
     // Dashboard Free CTA
-    'subscription.dashboard.freeDesc': 'Manage up to 3 active investments, 3 future investments, and 1 bulk import per month.',
+    'subscription.dashboard.freeDesc': 'Manage up to 3 active investments, 1 future investment, and view your indicative tax summary.',
     'subscription.dashboard.ctaBtn': "See what's in Pro",
 
     'subscription.billing.title': 'Your Plan',
@@ -889,7 +875,7 @@ export const translations: Record<Lang, Record<string, string>> = {
     'subscription.billing.freePlan': 'Free Plan',
     'subscription.billing.proPlan': 'Crowdfolio Pro',
     'subscription.billing.renewsOn': 'Renews on',
-    'subscription.billing.freeLimits': '3 investments, 3 future investments, 1 import/month',
+    'subscription.billing.freeLimits': '3 active investments, 1 future',
     'subscription.billing.manage': 'Manage',
     'subscription.billing.upgradeToPro': 'Upgrade to Pro',
     'subscription.billing.refreshStatus': 'Refresh status',

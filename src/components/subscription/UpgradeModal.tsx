@@ -32,14 +32,12 @@ export function UpgradeModal({ open, onOpenChange, feature = 'default' }: Upgrad
     t('subscription.pro.f2'),
     t('subscription.pro.f4'),
     t('subscription.pro.f5'),
-    t('subscription.pro.f6'),
   ];
 
   const featureCtaMap: Record<string, string> = {
     export_irpf: t('subscription.cta.taxExport'),
     unlimited_investments: t('subscription.cta.investments'),
     unlimited_future_investments: t('subscription.cta.futureInvestments'),
-    unlimited_imports: t('subscription.cta.imports'),
     tax: t('subscription.cta.tax'),
     default: t('subscription.cta.default'),
   };

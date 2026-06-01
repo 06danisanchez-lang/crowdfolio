@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Receipt, Calculator, ArrowLeftRight, Crown, AlertTriangle, RefreshCw } from 'lucide-react';
+import { Receipt, Calculator, ArrowLeftRight, AlertTriangle, RefreshCw } from 'lucide-react';
 import { useTaxSummary } from '@/hooks/useTaxSummary';
 import { useTaxExpenses } from '@/hooks/useTaxExpenses';
 import { useLanguage } from '@/contexts/LanguageContext';
@@ -98,20 +98,6 @@ export function TaxDashboard({ isPro = false, onProRequired }: TaxDashboardProps
           />
         </div>
 
-        {/* Free vs Pro banner — shown even in empty state */}
-        {!isPro && (
-          <div className="rounded-lg border bg-muted/30 p-4 flex flex-col sm:flex-row items-start sm:items-center gap-3">
-            <div className="flex-1">
-              <p className="text-sm font-medium">{t('subscription.tax.freeNote')}</p>
-              <p className="text-sm text-muted-foreground">{t('subscription.tax.proNote')}</p>
-            </div>
-            <Button size="sm" variant="outline" onClick={onProRequired} className="shrink-0">
-              <Crown className="mr-2 h-4 w-4" />
-              {t('subscription.tax.upgradeCta')}
-            </Button>
-          </div>
-        )}
-
         {/* Empty State */}
         <TaxEmptyState year={selectedYear} />
       </div>
@@ -137,20 +123,6 @@ export function TaxDashboard({ isPro = false, onProRequired }: TaxDashboardProps
           />
         </div>
       </div>
-
-      {/* Free vs Pro banner */}
-      {!isPro && (
-        <div className="rounded-lg border bg-muted/30 p-4 flex flex-col sm:flex-row items-start sm:items-center gap-3">
-          <div className="flex-1">
-            <p className="text-sm font-medium">{t('subscription.tax.freeNote')}</p>
-            <p className="text-sm text-muted-foreground">{t('subscription.tax.proNote')}</p>
-          </div>
-          <Button size="sm" variant="outline" onClick={onProRequired} className="shrink-0">
-            <Crown className="mr-2 h-4 w-4" />
-            {t('subscription.tax.upgradeCta')}
-          </Button>
-        </div>
-      )}
 
       {/* KPI Summary Cards */}
       {excludedIncompleteCount > 0 && (

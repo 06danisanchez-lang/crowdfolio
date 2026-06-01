@@ -64,7 +64,7 @@ const Index = () => {
   const shareableCardRef = useRef<HTMLDivElement>(null);
   const isMobile = useIsMobile();
   
-  const { isPro, isLoading: subLoading, importCountThisMonth } = useSubscription();
+  const { isPro, isLoading: subLoading } = useSubscription();
   
   const {
     investments,
@@ -85,6 +85,9 @@ const Index = () => {
     importInvestments,
     exportInvestments,
   } = useInvestments();
+
+  // For Free plan limit: only active+pending count toward the 3-investment cap
+  const activePendingCount = investments.filter(i => i.status === 'active' || i.status === 'pending').length;
 
   const { alerts, alertCount, hasUrgentAlerts } = useAlerts(activeInvestments, scheduleMap);
 
@@ -420,11 +423,11 @@ const Index = () => {
             <div className="mb-8 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
               <div>
                 <h1 className="text-xl sm:text-2xl lg:text-3xl font-bold">{t('investments.title')}</h1>
-                <p className="text-muted-foreground">{t('investments.subtitle')}{!isPro && ` (${allInvestmentsCount}/3)`}</p>
+                <p className="text-muted-foreground">{t('investments.subtitle')}{!isPro && ` (${activePendingCount}/3)`}</p>
               </div>
               <div className="flex flex-wrap gap-2">
-                <ImportExport investments={investments} onImport={importInvestments} exportData={exportInvestments} isPro={isPro} onProRequired={() => openUpgradeModal('unlimited_imports')} importsThisMonth={importCountThisMonth} />
-                <InvestmentForm onSubmit={addInvestment} onSubmitDraft={addDraftInvestment} investmentCount={allInvestmentsCount} isPro={isPro} onProRequired={() => openUpgradeModal('unlimited_investments')} />
+                <ImportExport investments={investments} onImport={importInvestments} exportData={exportInvestments} />
+                <InvestmentForm onSubmit={addInvestment} onSubmitDraft={addDraftInvestment} investmentCount={activePendingCount} isPro={isPro} onProRequired={() => openUpgradeModal('unlimited_investments')} />
               </div>
             </div>
             <InvestmentList

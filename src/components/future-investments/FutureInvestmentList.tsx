@@ -3,6 +3,7 @@ import { useLanguage } from '@/contexts/LanguageContext';
 import { useFutureInvestments } from '@/hooks/useFutureInvestments';
 import { useInvestments } from '@/hooks/useInvestments';
 import { useSubscription } from '@/contexts/SubscriptionContext';
+import { PLAN_FEATURES } from '@/lib/stripe/config';
 import { FutureInvestment } from '@/types/futureInvestment';
 import { Investment, Platform, PLATFORMS } from '@/types/investment';
 import { InvestmentForm, FutureInvestmentFormData } from '@/components/investments/InvestmentForm';
@@ -231,7 +232,7 @@ export function FutureInvestmentList({ onAddInvestment, investmentCount: externa
   };
 
   const handleConvertClick = (fiId: string) => {
-    if (!isPro && investmentCount >= 3) {
+    if (!isPro && investmentCount >= PLAN_FEATURES.free.investments) {
       setUpgradeFeature('unlimited_investments');
       setUpgradeModalOpen(true);
       return;

@@ -32,7 +32,6 @@ export function PricingTable() {
     t('subscription.pro.f2'),
     t('subscription.pro.f4'),
     t('subscription.pro.f5'),
-    t('subscription.pro.f6'),
   ];
 
   const handleCheckout = async (plan: 'monthly' | 'yearly') => {

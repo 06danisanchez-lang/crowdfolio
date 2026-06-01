@@ -13,7 +13,6 @@ interface UseSubscriptionReturn {
   closeUpgradeModal: () => void;
   checkInvestmentLimit: (currentCount: number) => boolean;
   checkFutureInvestmentLimit: (currentCount: number) => boolean;
-  checkImportLimit: (importsThisMonth: number) => boolean;
   canExportTax: boolean;
 }
 
@@ -50,11 +49,6 @@ export function useSubscriptionHook(): UseSubscriptionReturn {
     return currentCount < PLAN_FEATURES.free.futureInvestments;
   }, [isPro]);
 
-  const checkImportLimit = useCallback((importsThisMonth: number): boolean => {
-    if (isPro) return true;
-    return importsThisMonth < PLAN_FEATURES.free.importsPerMonth;
-  }, [isPro]);
-
   const canExportTax = isPro;
 
   return {
@@ -68,7 +62,6 @@ export function useSubscriptionHook(): UseSubscriptionReturn {
     closeUpgradeModal,
     checkInvestmentLimit,
     checkFutureInvestmentLimit,
-    checkImportLimit,
     canExportTax,
   };
 }

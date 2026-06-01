@@ -28,9 +28,6 @@ interface ImportExportProps {
   investments: Investment[];
   onImport: (investments: Investment[], replace: boolean) => void;
   exportData: () => string;
-  isPro?: boolean;
-  onProRequired?: () => void;
-  importsThisMonth?: number;
 }
 
 // Helper to format Zod errors for user display
@@ -47,13 +44,10 @@ const formatZodError = (error: ZodError): string => {
   return messages.join('\n');
 };
 
-export function ImportExport({ 
-  investments, 
-  onImport, 
+export function ImportExport({
+  investments,
+  onImport,
   exportData,
-  isPro = true,
-  onProRequired,
-  importsThisMonth = 0
 }: ImportExportProps) {
   const { t } = useLanguage();
   const [importOpen, setImportOpen] = useState(false);
@@ -61,13 +55,7 @@ export function ImportExport({
   const fileInputRef = useRef<HTMLInputElement>(null);
   const csvInputRef = useRef<HTMLInputElement>(null);
 
-  const canImport = isPro || importsThisMonth < 1;
-
   const handleImportClick = () => {
-    if (!canImport) {
-      onProRequired?.();
-      return;
-    }
     setImportOpen(true);
   };
 

@@ -16,7 +16,7 @@ import { Button } from '@/components/ui/button';
 const BENEFITS = [
   'Inversiones activas ilimitadas',
   'Inversiones futuras ilimitadas',
-  'Informe fiscal listo para declarar',
+  'Informe fiscal completo + exportación PDF y Excel',
 ];
 
 export const FounderWelcomeModal = () => {

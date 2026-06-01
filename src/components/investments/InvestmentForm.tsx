@@ -7,6 +7,7 @@ import { CalendarIcon, Plus, AlertTriangle, Info } from 'lucide-react';
 import { Investment, Platform, InvestmentStatus, PLATFORMS, STATUS_OPTIONS, INCOME_MODEL_OPTIONS, PAYMENT_FREQUENCY_OPTIONS, PRINCIPAL_RETURN_TYPE_OPTIONS, IncomeModel, PaymentFrequency, PrincipalReturnType } from '@/types/investment';
 import { getInvestmentCompletionStatus } from '@/lib/investment/completeness';
 import { generateSchedule } from '@/lib/investment/scheduleGenerator';
+import { PLAN_FEATURES } from '@/lib/stripe/config';
 
 export interface FutureInvestmentFormData {
   platform: Platform;
@@ -163,7 +164,8 @@ export function InvestmentForm({
   const [draftRestored, setDraftRestored] = useState(false);
   const draftLoadedRef = useRef(false);
 
-  const canAddInvestment = isPro || investmentCount < 3 || !!initialData;
+  const freeLimit = isFuture ? PLAN_FEATURES.free.futureInvestments : PLAN_FEATURES.free.investments;
+  const canAddInvestment = isPro || investmentCount < freeLimit || !!initialData;
 
   const handleOpenChange = (newOpen: boolean) => {
     if (newOpen && !canAddInvestment) {

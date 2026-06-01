@@ -15,7 +15,6 @@ interface SubscriptionContextType {
   subscription: SubscriptionState;
   isLoading: boolean;
   isPro: boolean;
-  importCountThisMonth: number;
   refreshSubscription: () => Promise<void>;
   openCheckout: (plan: 'monthly' | 'yearly') => Promise<void>;
   openCustomerPortal: () => Promise<void>;
@@ -34,12 +33,10 @@ export function SubscriptionProvider({ children }: { children: ReactNode }) {
   const { user, session } = useAuth();
   const [subscription, setSubscription] = useState<SubscriptionState>(defaultSubscription);
   const [isLoading, setIsLoading] = useState(true);
-  const [importCountThisMonth, setImportCountThisMonth] = useState(0);
 
   const refreshSubscription = useCallback(async () => {
     if (!user?.id) {
       setSubscription(defaultSubscription);
-      setImportCountThisMonth(0);
       setIsLoading(false);
       return;
     }
@@ -47,7 +44,7 @@ export function SubscriptionProvider({ children }: { children: ReactNode }) {
     try {
       const { data: sub, error } = await supabase
         .from('subscriptions')
-        .select('plan, status, current_period_end, import_count_this_month, import_reset_date')
+        .select('plan, status, current_period_end')
         .eq('user_id', user.id)
         .maybeSingle();
 
@@ -55,7 +52,6 @@ export function SubscriptionProvider({ children }: { children: ReactNode }) {
 
       if (!sub) {
         setSubscription(defaultSubscription);
-        setImportCountThisMonth(0);
         return;
       }
 
@@ -71,22 +67,9 @@ export function SubscriptionProvider({ children }: { children: ReactNode }) {
         subscriptionEnd: sub.current_period_end ?? null,
         productId: null,
       });
-
-      // Monthly reset check for import counter
-      if (sub.import_count_this_month != null && sub.import_reset_date) {
-        const resetDate = new Date(sub.import_reset_date);
-        const now = new Date();
-        const isSameMonth =
-          resetDate.getFullYear() === now.getFullYear() &&
-          resetDate.getMonth() === now.getMonth();
-        setImportCountThisMonth(isSameMonth ? sub.import_count_this_month : 0);
-      } else {
-        setImportCountThisMonth(0);
-      }
     } catch (err) {
       console.error('[Subscription] Error reading subscription from DB:', err);
       setSubscription(defaultSubscription);
-      setImportCountThisMonth(0);
     } finally {
       setIsLoading(false);
     }
@@ -98,7 +81,6 @@ export function SubscriptionProvider({ children }: { children: ReactNode }) {
       refreshSubscription();
     } else {
       setSubscription(defaultSubscription);
-      setImportCountThisMonth(0);
       setIsLoading(false);
     }
   }, [user, refreshSubscription]);
@@ -230,7 +212,6 @@ export function SubscriptionProvider({ children }: { children: ReactNode }) {
         subscription,
         isLoading,
         isPro: isPro(subscription.plan),
-        importCountThisMonth,
         refreshSubscription,
         openCheckout,
         openCustomerPortal,

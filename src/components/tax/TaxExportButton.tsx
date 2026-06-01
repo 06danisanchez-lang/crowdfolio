@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { FileDown, FileSpreadsheet, FileText, Loader2 } from 'lucide-react';
+import { FileDown, FileSpreadsheet, FileText, Loader2, Lock } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import {
   DropdownMenu,
@@ -455,29 +455,43 @@ export function TaxExportButton({
   return (
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
-        <Button variant="outline" disabled={isExporting}>
+        <Button variant="outline" disabled={isExporting} className={!isPro ? 'border-dashed' : ''}>
           {isExporting ? (
             <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+          ) : !isPro ? (
+            <Lock className="mr-2 h-4 w-4 text-muted-foreground" />
           ) : (
             <FileDown className="mr-2 h-4 w-4" />
           )}
           Exportar resumen IRPF
+          {!isPro && (
+            <span className="ml-2 rounded-sm bg-primary/10 px-1 py-0.5 text-[10px] font-semibold text-primary">
+              Pro
+            </span>
+          )}
         </Button>
       </DropdownMenuTrigger>
       <DropdownMenuContent align="end" className="w-64">
-        <div className="px-2 py-1.5 text-xs text-muted-foreground">
-          Datos listos para tu declaración o tu gestor
-        </div>
+        {!isPro ? (
+          <div className="px-3 py-2 text-xs text-muted-foreground">
+            <p className="font-medium text-foreground">Exportación disponible en Pro</p>
+            <p className="mt-0.5">Exporta el informe en PDF y Excel, listo para tu gestor o declaración.</p>
+          </div>
+        ) : (
+          <div className="px-2 py-1.5 text-xs text-muted-foreground">
+            Datos listos para tu declaración o tu gestor
+          </div>
+        )}
         <DropdownMenuSeparator />
         <DropdownMenuItem onClick={() => handleExportClick(handleExportExcel)} disabled={isExporting}>
           <FileSpreadsheet className="mr-2 h-4 w-4" />
           Descargar Excel (.xlsx)
-          {!isPro && <span className="ml-auto text-xs text-muted-foreground">Pro</span>}
+          {!isPro && <Lock className="ml-auto h-3 w-3 text-muted-foreground" />}
         </DropdownMenuItem>
         <DropdownMenuItem onClick={() => handleExportClick(handleExportPDF)} disabled={isExporting}>
           <FileText className="mr-2 h-4 w-4" />
           Descargar PDF
-          {!isPro && <span className="ml-auto text-xs text-muted-foreground">Pro</span>}
+          {!isPro && <Lock className="ml-auto h-3 w-3 text-muted-foreground" />}
         </DropdownMenuItem>
       </DropdownMenuContent>
     </DropdownMenu>

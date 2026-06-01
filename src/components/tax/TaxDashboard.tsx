@@ -78,7 +78,7 @@ export function TaxDashboard({ isPro = false, onProRequired }: TaxDashboardProps
     <Alert className="border-blue-200 bg-blue-50 text-blue-900 dark:border-blue-800 dark:bg-blue-950/40 dark:text-blue-100">
       <Info className="h-4 w-4 text-blue-600 dark:text-blue-400" />
       <AlertDescription className="text-sm">
-        El informe fiscal está diseñado para inversores que tributan en España (IRPF 2025). Si tributas en otro país, los cálculos pueden no ser aplicables a tu situación fiscal.
+        El informe fiscal está diseñado para inversores que tributan en España (IRPF). Si tributas en otro país, los cálculos pueden no ser aplicables a tu situación fiscal.
       </AlertDescription>
     </Alert>
   );

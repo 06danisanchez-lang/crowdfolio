@@ -1,121 +1,120 @@
-import { useState } from "react";
+// ─── Shared helpers ────────────────────────────────────────────────────────────
+const WRAP: React.CSSProperties = { maxWidth: 1180, margin: '0 auto', padding: '0 clamp(16px,4vw,32px)' };
+const EYEBROW: React.CSSProperties = {
+  fontFamily: "'Hanken Grotesk', monospace", fontSize: 12.5, fontWeight: 600,
+  letterSpacing: '0.18em', textTransform: 'uppercase' as const,
+  color: '#79c6fa', display: 'block', marginBottom: 12,
+};
+const EYEBROW_BROWN: React.CSSProperties = { ...EYEBROW, color: '#837758' };
+const DISPLAY_FONT = "'Playfair Display', Georgia, serif";
 
-const IconChart = () => (
-  <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="#253765" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
-    <polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/>
-  </svg>
-);
-const IconShield = () => (
-  <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="#253765" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
-    <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/>
-  </svg>
-);
-const IconBell = () => (
-  <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="#253765" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
-    <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/>
-  </svg>
-);
-const IconFile = () => (
-  <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="#253765" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
-    <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/><polyline points="10 9 9 9 8 9"/>
-  </svg>
-);
-const IconUpload = () => (
-  <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="#253765" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
-    <polyline points="16 16 12 12 8 16"/><line x1="12" y1="12" x2="12" y2="21"/><path d="M20.39 18.39A5 5 0 0 0 18 9h-1.26A8 8 0 1 0 3 16.3"/>
-  </svg>
-);
-const IconCheck = () => (
-  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-    <polyline points="20 6 9 17 4 12"/>
-  </svg>
-);
-const IconX = () => (
-  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#9ca3af" strokeWidth="2.5" strokeLinecap="round">
-    <line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/>
-  </svg>
-);
-const IconChevron = ({ open }: { open: boolean }) => (
-  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#253765" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"
-    style={{ transform: open ? "rotate(180deg)" : "rotate(0deg)", transition: "transform 0.3s ease" }}>
-    <polyline points="6 9 12 15 18 9"/>
+const CheckSVG = ({ color = '#79c6fa' }: { color?: string }) => (
+  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" style={{ flexShrink: 0, marginTop: 2 }}>
+    <path d="M20 6 9 17l-5-5"/>
   </svg>
 );
 
-const features = [
+const LockSVG = () => (
+  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ width: 11, height: 11 }}>
+    <rect x="4" y="10" width="16" height="11" rx="2"/>
+    <path d="M8 10V7a4 4 0 0 1 8 0v3"/>
+  </svg>
+);
+
+// ─── Problem ────────────────────────────────────────────────────────────────────
+function Problem() {
+  return (
+    <section style={{ background: '#f1ece1', color: '#3f3623', padding: 'clamp(80px,10vw,110px) 0' }}>
+      <div style={WRAP}>
+        <span style={EYEBROW_BROWN}>El problema</span>
+        <div className="cf-reveal" style={{ maxWidth: 900, margin: '0 auto', textAlign: 'center' }}>
+          <p style={{
+            fontFamily: DISPLAY_FONT, fontWeight: 500,
+            fontSize: 'clamp(24px,3.4vw,40px)', lineHeight: 1.32,
+            color: '#3f3623', letterSpacing: '-0.01em',
+          }}>
+            Tienes inversiones en{' '}
+            <span style={{ color: '#837758' }}>cuatro plataformas distintas.</span>{' '}
+            Abres cuatro webs cada semana. Calculas rentabilidades{' '}
+            <span style={{ color: '#837758' }}>en una hoja de Excel</span>{' '}
+            que nunca está al día. Y cada primavera llegas a la Renta{' '}
+            <span style={{ color: '#837758' }}>sin saber exactamente cuánto has ganado.</span>
+            <span style={{ display: 'block', marginTop: 30, fontStyle: 'italic', color: '#253765' }}>
+              Diversificar tu patrimonio no debería costarte el control.
+            </span>
+          </p>
+        </div>
+        <div className="cf-reveal d1" style={{ textAlign: 'center', marginTop: 44 }}>
+          <a href="#funcionalidades" style={{
+            display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
+            background: '#253765', color: '#efe9dd',
+            fontFamily: "'Hanken Grotesk', sans-serif", fontWeight: 600, fontSize: '16.5px',
+            padding: '16px 28px', borderRadius: 9, textDecoration: 'none',
+            transition: 'background .18s, transform .18s',
+          }}
+            onMouseEnter={e => { const el = e.currentTarget as HTMLAnchorElement; el.style.background = '#1c2c54'; el.style.transform = 'translateY(-1px)'; }}
+            onMouseLeave={e => { const el = e.currentTarget as HTMLAnchorElement; el.style.background = '#253765'; el.style.transform = 'none'; }}
+          >Así lo resuelve CrowdFolio</a>
+        </div>
+      </div>
+    </section>
+  );
+}
+
+// ─── 4 Pillars ──────────────────────────────────────────────────────────────────
+const PILLARS = [
   {
-    icon: <IconChart />,
-    title: "Dashboard unificado",
-    desc: "Visualiza todas tus inversiones en crowdfunding y crowdlending en un único panel. Rentabilidad, estado y evolución de un vistazo.",
+    num: '01', title: 'Visualiza tu cartera',
+    desc: 'Toda tu inversión —capital, valor actual y rentabilidad— en un único panel, sea cual sea la plataforma donde inviertas.',
+    icon: <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="3" width="7" height="9" rx="1.5"/><rect x="14" y="3" width="7" height="5" rx="1.5"/><rect x="14" y="12" width="7" height="9" rx="1.5"/><rect x="3" y="16" width="7" height="5" rx="1.5"/></svg>,
   },
   {
-    icon: <IconBell />,
-    title: "Alertas inteligentes",
-    desc: "Recibe notificaciones cuando una plataforma actualiza el estado de tu inversión. Nunca más te pierdas un cobro o una incidencia.",
+    num: '02', title: 'Planifica a futuro',
+    desc: 'Guarda y planifica tus próximas inversiones. Anticipa cobros y vencimientos con un calendario claro.',
+    icon: <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="4" width="18" height="17" rx="2"/><path d="M3 9h18M8 2v4M16 2v4"/><path d="M8 14l2.5 2.5L16 11"/></svg>,
   },
   {
-    icon: <IconFile />,
-    title: "Informe fiscal automático",
-    desc: "Genera tu resumen fiscal listo para la Declaración de la Renta. Intereses, retenciones y rendimientos en un PDF organizado.",
+    num: '03', title: 'Recibe alertas',
+    desc: 'Avisos de cobros, cambios de estado y novedades de tus proyectos. Entérate sin tener que entrar a mirar.',
+    icon: <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round"><path d="M18 8a6 6 0 0 0-12 0c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.7 21a2 2 0 0 1-3.4 0"/></svg>,
   },
   {
-    icon: <IconUpload />,
-    title: "Importación desde PDF",
-    desc: "Sube los extractos de tus plataformas y Crowdfolio extrae automáticamente los datos de tus inversiones con IA.",
-  },
-  {
-    icon: <IconChart />,
-    title: "Seguimiento de cartera",
-    desc: "Planifica futuras inversiones, registra objetivos y sigue la evolución real de tu patrimonio invertido mes a mes.",
-  },
-  {
-    icon: <IconShield />,
-    title: "Datos seguros y privados",
-    desc: "Tu información nunca sale de tu cuenta. No nos conectamos a tus plataformas. Tú controlas cada dato que introduces.",
+    num: '04', title: 'Informe fiscal',
+    desc: 'Genera tu informe fiscal unificado para la Renta, con los rendimientos y retenciones de toda tu cartera.',
+    icon: <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round"><path d="M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8z"/><path d="M14 3v5h5M9 13h6M9 17h6"/></svg>,
   },
 ];
 
-function Features() {
+function Pillars() {
   return (
-    <section style={{ background: "#e4ddcf", padding: "clamp(48px,8vw,96px) clamp(16px,4vw,24px)" }}>
-      <div style={{ maxWidth: 1100, margin: "0 auto" }}>
-        <p style={{ color: "#79c6fa", fontWeight: 700, fontSize: 13, letterSpacing: "0.12em", textTransform: "uppercase", textAlign: "center", marginBottom: 12 }}>
-          Funcionalidades
-        </p>
-        <h2 style={{ color: "#253765", fontSize: "clamp(2rem, 4vw, 2.75rem)", fontWeight: 800, textAlign: "center", marginBottom: 16, lineHeight: 1.2 }}>
-          Todo lo que necesitas para gestionar<br />tus inversiones alternativas
-        </h2>
-        <p style={{ color: "#3f3623", opacity: 0.7, textAlign: "center", fontSize: 18, maxWidth: 600, margin: "0 auto 64px" }}>
-          Diseñado específicamente para inversores en plataformas españolas de crowdfunding inmobiliario y crowdlending.
-        </p>
-        <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(300px, 1fr))", gap: 24 }}>
-          {features.map((f, i) => (
-            <div key={i} style={{
-              background: "rgba(255,255,255,0.55)",
-              border: "1px solid rgba(37,55,101,0.1)",
-              borderRadius: 16,
-              padding: "28px 28px 32px",
-              transition: "transform 0.2s ease, box-shadow 0.2s ease",
+    <section id="funcionalidades" style={{ background: '#1c2c54', padding: 'clamp(72px,10vw,104px) 0' }}>
+      <div style={WRAP}>
+        <div className="cf-reveal" style={{ textAlign: 'center', marginBottom: 56 }}>
+          <span style={EYEBROW}>Funcionalidades</span>
+          <h2 style={{ fontFamily: DISPLAY_FONT, fontWeight: 600, fontSize: 'clamp(28px,3.8vw,46px)', color: '#eef2f9', margin: '16px 0', lineHeight: 1.08 }}>
+            Cuatro funciones. Una cartera bajo control.
+          </h2>
+          <p style={{ fontSize: 18.5, color: '#b6c2da', lineHeight: 1.6, maxWidth: 640, margin: '0 auto' }}>
+            Todo lo que hoy haces a mano, repartido entre pestañas y hojas de cálculo, reunido en un solo lugar — sea cual sea la plataforma en la que inviertas.
+          </p>
+        </div>
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: 20 }}>
+          {PILLARS.map((p, i) => (
+            <div key={p.num} className={`cf-reveal${i > 0 ? ` d${i}` : ''}`} style={{
+              background: 'linear-gradient(165deg, rgba(255,255,255,0.045), rgba(255,255,255,0.015))',
+              border: '1px solid rgba(150,176,224,0.16)',
+              borderRadius: 12, padding: '28px 24px 30px',
+              transition: 'transform .25s, border-color .25s, background .25s',
             }}
-              onMouseEnter={e => {
-                (e.currentTarget as HTMLDivElement).style.transform = "translateY(-4px)";
-                (e.currentTarget as HTMLDivElement).style.boxShadow = "0 12px 40px rgba(37,55,101,0.12)";
-              }}
-              onMouseLeave={e => {
-                (e.currentTarget as HTMLDivElement).style.transform = "translateY(0)";
-                (e.currentTarget as HTMLDivElement).style.boxShadow = "none";
-              }}
+              onMouseEnter={e => { const el = e.currentTarget as HTMLDivElement; el.style.transform = 'translateY(-4px)'; el.style.borderColor = 'rgba(121,198,250,0.4)'; }}
+              onMouseLeave={e => { const el = e.currentTarget as HTMLDivElement; el.style.transform = 'none'; el.style.borderColor = 'rgba(150,176,224,0.16)'; }}
             >
-              <div style={{
-                width: 52, height: 52, borderRadius: 12,
-                background: "rgba(37,55,101,0.08)",
-                display: "flex", alignItems: "center", justifyContent: "center",
-                marginBottom: 18,
-              }}>
-                {f.icon}
+              <div style={{ width: 50, height: 50, borderRadius: 13, background: 'rgba(121,198,250,0.12)', border: '1px solid rgba(121,198,250,0.28)', display: 'grid', placeItems: 'center', marginBottom: 22, color: '#79c6fa' }}>
+                <span style={{ width: 25, height: 25, display: 'block' }}>{p.icon}</span>
               </div>
-              <h3 style={{ color: "#253765", fontSize: 18, fontWeight: 700, marginBottom: 10 }}>{f.title}</h3>
-              <p style={{ color: "#3f3623", opacity: 0.75, lineHeight: 1.65, fontSize: 15 }}>{f.desc}</p>
+              <div style={{ fontFamily: "'Hanken Grotesk', monospace", fontSize: 12, color: '#8493b5', marginBottom: 10 }}>{p.num}</div>
+              <h3 style={{ fontFamily: DISPLAY_FONT, fontSize: 21, color: '#eef2f9', marginBottom: 10, lineHeight: 1.18 }}>{p.title}</h3>
+              <p style={{ fontSize: 14.5, color: '#b6c2da', lineHeight: 1.55 }}>{p.desc}</p>
             </div>
           ))}
         </div>
@@ -124,74 +123,36 @@ function Features() {
   );
 }
 
-const steps = [
-  {
-    num: "01",
-    title: "Crea tu cuenta gratis",
-    desc: "Regístrate en segundos con email o Google. Sin tarjeta de crédito. Empieza a registrar hasta 3 inversiones de forma gratuita.",
-  },
-  {
-    num: "02",
-    title: "Añade tus inversiones",
-    desc: "Introduce manualmente tus inversiones o importa los datos desde los PDFs de tus plataformas. Crowdfolio extrae todo automáticamente.",
-  },
-  {
-    num: "03",
-    title: "Controla y optimiza",
-    desc: "Visualiza tu cartera completa, recibe alertas, y genera tu informe fiscal cuando llegue la época de la Renta. Todo en un clic.",
-  },
+// ─── How It Works ───────────────────────────────────────────────────────────────
+const STEPS = [
+  { n: '1', title: 'Registra tus inversiones', desc: 'Añade tus proyectos de cada plataforma. Una sola vez, en minutos.' },
+  { n: '2', title: 'CrowdFolio lo analiza', desc: 'Consolida tu rentabilidad, calendario y fiscalidad de forma automática.' },
+  { n: '3', title: 'Tomas mejores decisiones', desc: 'Ves dónde estás de verdad y decides tu próxima inversión con datos.' },
 ];
 
 function HowItWorks() {
   return (
-    <section style={{ background: "#253765", padding: "clamp(48px,8vw,96px) clamp(16px,4vw,24px)" }}>
-      <div style={{ maxWidth: 1100, margin: "0 auto" }}>
-        <p style={{ color: "#79c6fa", fontWeight: 700, fontSize: 13, letterSpacing: "0.12em", textTransform: "uppercase", textAlign: "center", marginBottom: 12 }}>
-          Cómo funciona
-        </p>
-        <h2 style={{ color: "#e4ddcf", fontSize: "clamp(2rem, 4vw, 2.75rem)", fontWeight: 800, textAlign: "center", marginBottom: 64, lineHeight: 1.2 }}>
-          En 3 pasos, tu cartera bajo control
-        </h2>
-        <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(280px, 1fr))", gap: 32 }}>
-          {steps.map((s, i) => (
-            <div key={i} style={{ textAlign: "center", padding: "0 16px" }}>
-              <div style={{
-                width: 72, height: 72, borderRadius: "50%",
-                border: "2px solid rgba(121,198,250,0.4)",
-                background: "rgba(121,198,250,0.08)",
-                display: "flex", alignItems: "center", justifyContent: "center",
-                margin: "0 auto 24px",
-              }}>
-                <span style={{ color: "#79c6fa", fontWeight: 800, fontSize: 22 }}>{s.num}</span>
-              </div>
-              <h3 style={{ color: "#e4ddcf", fontSize: 20, fontWeight: 700, marginBottom: 12 }}>{s.title}</h3>
-              <p style={{ color: "rgba(228,221,207,0.7)", lineHeight: 1.7, fontSize: 15 }}>{s.desc}</p>
-            </div>
-          ))}
+    <section id="como-funciona" style={{ background: '#f1ece1', color: '#3f3623', padding: 'clamp(72px,10vw,104px) 0' }}>
+      <div style={WRAP}>
+        <div className="cf-reveal" style={{ textAlign: 'center', marginBottom: 56 }}>
+          <span style={EYEBROW_BROWN}>Así funciona</span>
+          <h2 style={{ fontFamily: DISPLAY_FONT, fontWeight: 600, fontSize: 'clamp(28px,3.8vw,46px)', color: '#3f3623', margin: '16px 0', lineHeight: 1.08 }}>
+            De cuatro pestañas a una decisión.
+          </h2>
         </div>
-        <div style={{
-          marginTop: 80,
-          display: "grid",
-          gridTemplateColumns: "repeat(auto-fit, minmax(180px, 1fr))",
-          gap: 1,
-          background: "rgba(121,198,250,0.15)",
-          borderRadius: 16,
-          overflow: "hidden",
-        }}>
-          {[
-            { val: "+500", label: "Inversores registrados" },
-            { val: "€2M+", label: "Cartera gestionada" },
-            { val: "15+", label: "Plataformas compatibles" },
-            { val: "100%", label: "Datos privados y seguros" },
-          ].map((stat, i) => (
-            <div key={i} style={{
-              padding: "32px 24px",
-              textAlign: "center",
-              background: "rgba(37,55,101,0.6)",
-              borderRight: i < 3 ? "1px solid rgba(121,198,250,0.15)" : "none",
-            }}>
-              <div style={{ color: "#79c6fa", fontSize: 36, fontWeight: 800, marginBottom: 6 }}>{stat.val}</div>
-              <div style={{ color: "rgba(228,221,207,0.7)", fontSize: 14 }}>{stat.label}</div>
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))', gap: 30, position: 'relative' }}>
+          {STEPS.map((s, i) => (
+            <div key={s.n} className={`cf-reveal${i > 0 ? ` d${i}` : ''}`} style={{ textAlign: 'center', padding: '0 8px', position: 'relative', zIndex: 1 }}>
+              <div style={{
+                width: 76, height: 76, margin: '0 auto 24px', borderRadius: '50%',
+                background: '#253765', color: '#e4ddcf',
+                fontFamily: DISPLAY_FONT, fontWeight: 600, fontSize: 32,
+                display: 'grid', placeItems: 'center',
+                boxShadow: '0 10px 24px rgba(37,55,101,0.28)',
+                border: '4px solid #f1ece1',
+              }}>{s.n}</div>
+              <h3 style={{ fontFamily: DISPLAY_FONT, fontSize: 22, color: '#3f3623', marginBottom: 10 }}>{s.title}</h3>
+              <p style={{ fontSize: 15.5, color: '#5e533c', maxWidth: 280, margin: '0 auto', lineHeight: 1.6 }}>{s.desc}</p>
             </div>
           ))}
         </div>
@@ -199,395 +160,297 @@ function HowItWorks() {
     </section>
   );
 }
+
+// ─── Fiscal Pro ─────────────────────────────────────────────────────────────────
+const FISCAL_FEATS = [
+  'Rendimientos y retenciones consolidados',
+  'Exportable en PDF y Excel, listo para el IRPF',
+  'Sin reunir certificados a mano nunca más',
+];
+
+function FiscalPro() {
+  return (
+    <section style={{ background: '#141f3e', position: 'relative', overflow: 'hidden', padding: 'clamp(72px,10vw,104px) 0' }}>
+      <div style={{ position: 'absolute', inset: 0, background: 'radial-gradient(620px 420px at 88% 16%, rgba(121,198,250,0.16), transparent 60%)', pointerEvents: 'none' }} />
+      <div style={WRAP}>
+        <div className="cf-reveal" style={{ maxWidth: 720, margin: '0 auto', textAlign: 'center', position: 'relative', zIndex: 1 }}>
+          <span style={{
+            display: 'inline-flex', alignItems: 'center', gap: 7,
+            fontFamily: "'Hanken Grotesk', monospace", fontSize: 11.5, fontWeight: 600,
+            letterSpacing: '0.08em', textTransform: 'uppercase' as const,
+            color: '#141f3e', background: '#79c6fa',
+            padding: '5px 11px', borderRadius: 7, marginBottom: 18,
+          }}>★ CrowdFolio Pro</span>
+          <h2 style={{ fontFamily: DISPLAY_FONT, fontWeight: 600, fontSize: 'clamp(28px,3.8vw,44px)', color: '#eef2f9', margin: '0 0 18px', lineHeight: 1.1 }}>
+            Cada año, la Renta. Cada año, el mismo{' '}
+            <em style={{ fontStyle: 'italic', color: '#79c6fa' }}>caos.</em>
+          </h2>
+          <p style={{ fontSize: 18, color: '#b6c2da', marginBottom: 30, maxWidth: 480, margin: '0 auto 30px' }}>
+            Con CrowdFolio Pro generas tu informe fiscal unificado en un clic: rendimientos y retenciones de toda tu cartera, listos para tu declaración.
+          </p>
+          <ul style={{ listStyle: 'none', padding: 0, display: 'inline-flex', flexDirection: 'column', gap: 14, textAlign: 'left', margin: '0 0 32px' }}>
+            {FISCAL_FEATS.map(feat => (
+              <li key={feat} style={{ display: 'flex', alignItems: 'center', gap: 12, fontSize: 15.5, color: '#eef2f9' }}>
+                <CheckSVG />
+                {feat}
+              </li>
+            ))}
+          </ul>
+          <div>
+            <a href="#precios" style={{
+              display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
+              background: '#79c6fa', color: '#141f3e',
+              fontFamily: "'Hanken Grotesk', sans-serif", fontWeight: 600, fontSize: '16.5px',
+              padding: '16px 28px', borderRadius: 9, textDecoration: 'none',
+              boxShadow: '0 6px 18px rgba(121,198,250,0.28)',
+              transition: 'background .18s, transform .18s',
+            }}
+              onMouseEnter={e => { const el = e.currentTarget as HTMLAnchorElement; el.style.background = '#9ad5ff'; el.style.transform = 'translateY(-1px)'; }}
+              onMouseLeave={e => { const el = e.currentTarget as HTMLAnchorElement; el.style.background = '#79c6fa'; el.style.transform = 'none'; }}
+            >Descubre CrowdFolio Pro</a>
+          </div>
+        </div>
+      </div>
+    </section>
+  );
+}
+
+// ─── Pricing ────────────────────────────────────────────────────────────────────
+const FREE_FEATS: Array<{ text: React.ReactNode }> = [
+  { text: 'Hasta 3 inversiones activas o pendientes' },
+  { text: '1 inversión futura' },
+  { text: <>Resumen fiscal orientativo{' '}<span style={{ display:'inline-flex', alignItems:'center', gap:4, fontFamily:"'Hanken Grotesk', monospace", fontSize:10, fontWeight:600, letterSpacing:'.07em', textTransform:'uppercase' as const, color:'#837758', background:'#e4ddcf', border:'1px solid #cabfa6', padding:'2px 8px 2px 6px', borderRadius:6, whiteSpace:'nowrap' as const, marginLeft:8 }}><LockSVG />{' '}Completo en Pro</span></> },
+  { text: 'Notificaciones ilimitadas' },
+];
+
+const PRO_FEATS = [
+  <><b>Inversiones activas ilimitadas</b></>,
+  <>Inversiones futuras ilimitadas</>,
+  <><b>Informe fiscal completo</b> + exportación PDF y Excel</>,
+  <>Notificaciones ilimitadas</>,
+];
 
 function Pricing() {
-  const [annual, setAnnual] = useState(false);
-
-  const freeFeatures = [
-    { text: "Hasta 3 inversiones", ok: true },
-    { text: "1 importación PDF al mes", ok: true },
-    { text: "Dashboard básico", ok: true },
-    { text: "Alertas de estado", ok: false },
-    { text: "Informe fiscal", ok: false },
-    { text: "Importaciones ilimitadas", ok: false },
-    { text: "Soporte prioritario", ok: false },
-  ];
-
-  const proFeatures = [
-    { text: "Inversiones ilimitadas", ok: true },
-    { text: "Importaciones ilimitadas", ok: true },
-    { text: "Dashboard avanzado", ok: true },
-    { text: "Alertas inteligentes", ok: true },
-    { text: "Informe fiscal completo", ok: true },
-    { text: "Exportación de datos", ok: true },
-    { text: "Soporte prioritario", ok: true },
-  ];
-
   return (
-    <section style={{ background: "#e4ddcf", padding: "clamp(48px,8vw,96px) clamp(16px,4vw,24px)" }}>
-      <div style={{ maxWidth: 900, margin: "0 auto" }}>
-        <p style={{ color: "#79c6fa", fontWeight: 700, fontSize: 13, letterSpacing: "0.12em", textTransform: "uppercase", textAlign: "center", marginBottom: 12 }}>
-          Precios
-        </p>
-        <h2 style={{ color: "#253765", fontSize: "clamp(2rem, 4vw, 2.75rem)", fontWeight: 800, textAlign: "center", marginBottom: 12, lineHeight: 1.2 }}>
-          Simple y transparente
-        </h2>
-        <p style={{ color: "#3f3623", opacity: 0.7, textAlign: "center", fontSize: 17, marginBottom: 40 }}>
-          Empieza gratis. Sin compromiso. Actualiza cuando quieras.
-        </p>
-        <div style={{ display: "flex", justifyContent: "center", alignItems: "center", gap: 12, marginBottom: 48 }}>
-          <span style={{ color: !annual ? "#253765" : "#3f3623", fontWeight: !annual ? 700 : 400, fontSize: 15 }}>Mensual</span>
-          <button
-            onClick={() => setAnnual(!annual)}
-            style={{
-              width: 48, height: 26, borderRadius: 999,
-              background: annual ? "#253765" : "rgba(37,55,101,0.2)",
-              border: "none", cursor: "pointer", position: "relative",
-              transition: "background 0.3s",
-            }}
-          >
-            <span style={{
-              position: "absolute", top: 3, left: annual ? 25 : 3,
-              width: 20, height: 20, borderRadius: "50%",
-              background: annual ? "#79c6fa" : "#253765",
-              transition: "left 0.3s",
-            }} />
-          </button>
-          <span style={{ color: annual ? "#253765" : "#3f3623", fontWeight: annual ? 700 : 400, fontSize: 15 }}>
-            Anual{" "}
-            <span style={{
-              background: "#253765", color: "#e4ddcf",
-              fontSize: 11, fontWeight: 700, padding: "2px 8px",
-              borderRadius: 999, marginLeft: 4,
-            }}>
-              −17%
-            </span>
-          </span>
+    <section id="precios" style={{ background: '#f1ece1', color: '#3f3623', padding: 'clamp(72px,10vw,104px) 0' }}>
+      <div style={WRAP}>
+        <div className="cf-reveal" style={{ textAlign: 'center', marginBottom: 56 }}>
+          <span style={EYEBROW_BROWN}>Precios</span>
+          <h2 style={{ fontFamily: DISPLAY_FONT, fontWeight: 600, fontSize: 'clamp(28px,3.8vw,46px)', color: '#3f3623', margin: '16px 0', lineHeight: 1.08 }}>
+            Empieza gratis. Sube a Pro cuando lo necesites.
+          </h2>
+          <p style={{ fontSize: 18, color: '#5e533c' }}>Sin permanencia. Cancela cuando quieras.</p>
         </div>
-        <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(280px, 1fr))", gap: 24 }}>
-          <div style={{
-            background: "rgba(255,255,255,0.6)",
-            border: "1px solid rgba(37,55,101,0.15)",
-            borderRadius: 20, padding: "40px 36px",
+
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', gap: 26, maxWidth: 880, margin: '0 auto' }}>
+          {/* Free */}
+          <div className="cf-reveal" style={{
+            background: '#f6f2ea', border: '1px solid #d9d0bd',
+            borderRadius: 18, padding: '34px 32px 36px',
+            boxShadow: '0 1px 2px rgba(63,54,35,.06), 0 14px 34px rgba(63,54,35,.10)',
           }}>
-            <div style={{ marginBottom: 32 }}>
-              <h3 style={{ color: "#253765", fontSize: 22, fontWeight: 700, marginBottom: 8 }}>Free</h3>
-              <div style={{ display: "flex", alignItems: "baseline", gap: 4 }}>
-                <span style={{ color: "#3f3623", fontSize: 48, fontWeight: 800, lineHeight: 1 }}>0€</span>
-                <span style={{ color: "#3f3623", opacity: 0.5, fontSize: 15 }}>/mes</span>
-              </div>
-              <p style={{ color: "#3f3623", opacity: 0.6, fontSize: 14, marginTop: 8 }}>Para empezar a explorar</p>
-            </div>
-            <ul style={{ listStyle: "none", padding: 0, margin: "0 0 36px", display: "flex", flexDirection: "column", gap: 12 }}>
-              {freeFeatures.map((f, i) => (
-                <li key={i} style={{ display: "flex", alignItems: "center", gap: 10, color: f.ok ? "#3f3623" : "#9ca3af", fontSize: 15 }}>
-                  <span style={{ color: f.ok ? "#253765" : "#9ca3af", flexShrink: 0 }}>
-                    {f.ok ? <IconCheck /> : <IconX />}
-                  </span>
-                  {f.text}
+            <div style={{ fontFamily: "'Hanken Grotesk', monospace", fontSize: 13, letterSpacing: '0.12em', textTransform: 'uppercase' as const, color: '#837758', fontWeight: 600, marginBottom: 16 }}>Free</div>
+            <div style={{ fontFamily: DISPLAY_FONT, fontWeight: 600, fontSize: 46, color: '#3f3623', lineHeight: 1, marginBottom: 4 }}>0 €</div>
+            <div style={{ fontSize: 13.5, color: '#837758', marginBottom: 24 }}>gratis para siempre</div>
+            <hr style={{ border: 'none', borderTop: '1px solid #d9d0bd', margin: '0 0 24px' }} />
+            <ul style={{ listStyle: 'none', padding: 0, display: 'flex', flexDirection: 'column', gap: 13, marginBottom: 30 }}>
+              {FREE_FEATS.map((f, i) => (
+                <li key={i} style={{ display: 'flex', alignItems: 'flex-start', gap: 11, fontSize: 15, color: '#5e533c' }}>
+                  <CheckSVG color="#253765" />
+                  <span>{f.text}</span>
                 </li>
               ))}
             </ul>
             <a href="/auth" style={{
-              display: "block", textAlign: "center",
-              border: "2px solid #253765", borderRadius: 10,
-              color: "#253765", fontWeight: 700, fontSize: 15,
-              padding: "14px 0", textDecoration: "none",
-              transition: "all 0.2s",
+              display: 'block', textAlign: 'center', width: '100%',
+              background: 'transparent', border: '1.5px solid #cabfa6', borderRadius: 10,
+              color: '#3f3623', fontFamily: "'Hanken Grotesk', sans-serif", fontWeight: 600, fontSize: 15,
+              padding: '14px 0', textDecoration: 'none', transition: 'border-color .2s, background .2s',
+              boxSizing: 'border-box' as const,
             }}
-              onMouseEnter={e => {
-                (e.currentTarget as HTMLAnchorElement).style.background = "#253765";
-                (e.currentTarget as HTMLAnchorElement).style.color = "#e4ddcf";
-              }}
-              onMouseLeave={e => {
-                (e.currentTarget as HTMLAnchorElement).style.background = "transparent";
-                (e.currentTarget as HTMLAnchorElement).style.color = "#253765";
-              }}
-            >
-              Empezar gratis
-            </a>
+              onMouseEnter={e => { const el = e.currentTarget as HTMLAnchorElement; el.style.borderColor = '#3f3623'; el.style.background = 'rgba(37,55,101,0.04)'; }}
+              onMouseLeave={e => { const el = e.currentTarget as HTMLAnchorElement; el.style.borderColor = '#cabfa6'; el.style.background = 'transparent'; }}
+            >Crear cuenta gratis</a>
           </div>
-          <div style={{
-            background: "#253765",
-            border: "1px solid rgba(121,198,250,0.3)",
-            borderRadius: 20, padding: "40px 36px",
-            position: "relative", overflow: "hidden",
+
+          {/* Pro */}
+          <div className="cf-reveal d1" style={{
+            background: '#253765', border: '1px solid rgba(121,198,250,0.2)',
+            borderRadius: 18, padding: '34px 32px 36px',
+            position: 'relative', overflow: 'hidden',
+            boxShadow: '0 1px 2px rgba(10,18,40,.20), 0 18px 40px rgba(10,18,40,.28)',
           }}>
-            <div style={{
-              position: "absolute", top: 20, right: 20,
-              background: "#79c6fa", color: "#253765",
-              fontSize: 11, fontWeight: 800, padding: "4px 12px",
-              borderRadius: 999, letterSpacing: "0.05em",
-            }}>
-              RECOMENDADO
+            <span style={{
+              position: 'absolute', top: 22, right: 24,
+              display: 'inline-flex', alignItems: 'center', gap: 7,
+              fontFamily: "'Hanken Grotesk', monospace", fontSize: 11.5, fontWeight: 600,
+              letterSpacing: '0.08em', textTransform: 'uppercase' as const,
+              color: '#141f3e', background: '#79c6fa',
+              padding: '5px 11px', borderRadius: 7,
+            }}>Recomendado</span>
+            <div style={{ fontFamily: "'Hanken Grotesk', monospace", fontSize: 13, letterSpacing: '0.12em', textTransform: 'uppercase' as const, color: '#79c6fa', fontWeight: 600, marginBottom: 16 }}>Pro</div>
+            <div style={{ fontFamily: DISPLAY_FONT, fontWeight: 600, lineHeight: 1, marginBottom: 4 }}>
+              <span style={{ fontSize: 46, color: '#eef2f9' }}>5,99 € </span>
+              <small style={{ fontFamily: "'Hanken Grotesk', sans-serif", fontSize: 16, fontWeight: 500, color: '#b6c2da', letterSpacing: 0 }}>/mes</small>
             </div>
-            <div style={{ marginBottom: 32 }}>
-              <h3 style={{ color: "#e4ddcf", fontSize: 22, fontWeight: 700, marginBottom: 8 }}>Pro</h3>
-              <div style={{ display: "flex", alignItems: "baseline", gap: 4 }}>
-                <span style={{ color: "#79c6fa", fontSize: 48, fontWeight: 800, lineHeight: 1 }}>
-                  {annual ? "4,92€" : "5,99€"}
-                </span>
-                <span style={{ color: "rgba(228,221,207,0.5)", fontSize: 15 }}>/mes</span>
-              </div>
-              {annual && (
-                <p style={{ color: "rgba(228,221,207,0.55)", fontSize: 13, marginTop: 4 }}>
-                  59€ facturado anualmente
-                </p>
-              )}
-              <p style={{ color: "rgba(228,221,207,0.6)", fontSize: 14, marginTop: 8 }}>Control total de tu cartera</p>
-            </div>
-            <ul style={{ listStyle: "none", padding: 0, margin: "0 0 36px", display: "flex", flexDirection: "column", gap: 12 }}>
-              {proFeatures.map((f, i) => (
-                <li key={i} style={{ display: "flex", alignItems: "center", gap: 10, color: "#e4ddcf", fontSize: 15 }}>
-                  <span style={{ color: "#79c6fa", flexShrink: 0 }}>
-                    <IconCheck />
-                  </span>
-                  {f.text}
+            <div style={{ fontSize: 13.5, color: '#b6c2da', marginBottom: 24 }}>o 59 €/año — ahorra 2 meses</div>
+            <hr style={{ border: 'none', borderTop: '1px solid rgba(150,176,224,0.16)', margin: '0 0 24px' }} />
+            <ul style={{ listStyle: 'none', padding: 0, display: 'flex', flexDirection: 'column', gap: 13, marginBottom: 30 }}>
+              {PRO_FEATS.map((feat, i) => (
+                <li key={i} style={{ display: 'flex', alignItems: 'flex-start', gap: 11, fontSize: 15, color: '#b6c2da' }}>
+                  <CheckSVG color="#79c6fa" />
+                  <span style={{ color: '#eef2f9' }}>{feat}</span>
                 </li>
               ))}
             </ul>
             <a href="/auth" style={{
-              display: "block", textAlign: "center",
-              background: "#79c6fa", border: "2px solid #79c6fa",
-              borderRadius: 10, color: "#253765",
-              fontWeight: 800, fontSize: 15,
-              padding: "14px 0", textDecoration: "none",
-              transition: "all 0.2s",
+              display: 'block', textAlign: 'center', width: '100%',
+              background: '#79c6fa', border: '2px solid #79c6fa', borderRadius: 10,
+              color: '#141f3e', fontFamily: "'Hanken Grotesk', sans-serif", fontWeight: 700, fontSize: 15,
+              padding: '14px 0', textDecoration: 'none', transition: 'background .18s, border-color .18s, transform .18s',
+              boxSizing: 'border-box' as const,
             }}
-              onMouseEnter={e => {
-                (e.currentTarget as HTMLAnchorElement).style.background = "#e4ddcf";
-                (e.currentTarget as HTMLAnchorElement).style.borderColor = "#e4ddcf";
-              }}
-              onMouseLeave={e => {
-                (e.currentTarget as HTMLAnchorElement).style.background = "#79c6fa";
-                (e.currentTarget as HTMLAnchorElement).style.borderColor = "#79c6fa";
-              }}
-            >
-              Empezar con Pro →
-            </a>
+              onMouseEnter={e => { const el = e.currentTarget as HTMLAnchorElement; el.style.background = '#9ad5ff'; el.style.borderColor = '#9ad5ff'; el.style.transform = 'translateY(-1px)'; }}
+              onMouseLeave={e => { const el = e.currentTarget as HTMLAnchorElement; el.style.background = '#79c6fa'; el.style.borderColor = '#79c6fa'; el.style.transform = 'none'; }}
+            >Empezar con Pro</a>
           </div>
         </div>
-        <p style={{ textAlign: "center", color: "#3f3623", opacity: 0.5, fontSize: 13, marginTop: 24 }}>
-          ¿Eres de los primeros? Usa el código <strong style={{ color: "#253765" }}>CROWDFOUNDER</strong> y obtén 1 año de Pro gratis.
-        </p>
       </div>
     </section>
   );
 }
 
-const faqs = [
+// ─── Final CTA ──────────────────────────────────────────────────────────────────
+function FinalCTA() {
+  return (
+    <section style={{ background: '#253765', position: 'relative', overflow: 'hidden', padding: 'clamp(72px,10vw,104px) 0', textAlign: 'center' }}>
+      <div style={{ position: 'absolute', inset: 0, background: 'radial-gradient(700px 380px at 50% -20%, rgba(121,198,250,0.18), transparent 62%)', pointerEvents: 'none' }} />
+      <div style={{ ...WRAP, position: 'relative', zIndex: 1, maxWidth: 640 }}>
+        <span className="cf-reveal" style={EYEBROW}>Empieza hoy</span>
+        <h2 className="cf-reveal d1" style={{ fontFamily: DISPLAY_FONT, fontWeight: 600, fontSize: 'clamp(32px,4.6vw,56px)', color: '#eef2f9', margin: '14px 0 16px', lineHeight: 1.08 }}>
+          Empieza gratis hoy.
+        </h2>
+        <p className="cf-reveal d2" style={{ fontSize: 19, color: '#b6c2da', marginBottom: 32 }}>
+          Sin tarjeta. Sin compromiso. En dos minutos tendrás toda tu cartera en un solo lugar.
+        </p>
+        <div className="cf-reveal d2">
+          <a href="/auth" style={{
+            display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
+            background: '#79c6fa', color: '#141f3e',
+            fontFamily: "'Hanken Grotesk', sans-serif", fontWeight: 600, fontSize: 18,
+            padding: '18px 40px', borderRadius: 9, textDecoration: 'none',
+            boxShadow: '0 6px 18px rgba(121,198,250,0.28)',
+            transition: 'background .18s, transform .18s',
+          }}
+            onMouseEnter={e => { const el = e.currentTarget as HTMLAnchorElement; el.style.background = '#9ad5ff'; el.style.transform = 'translateY(-1px)'; }}
+            onMouseLeave={e => { const el = e.currentTarget as HTMLAnchorElement; el.style.background = '#79c6fa'; el.style.transform = 'none'; }}
+          >Crear cuenta gratis</a>
+        </div>
+        <div className="cf-reveal d3" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 10, marginTop: 22, fontSize: 14, color: '#8493b5' }}>
+          <CheckSVG color="#79c6fa" />
+          <span>Gratis para empezar · Sin tarjeta · Cancela cuando quieras</span>
+        </div>
+      </div>
+    </section>
+  );
+}
+
+// ─── Footer ─────────────────────────────────────────────────────────────────────
+const FOOTER_COLS = [
   {
-    q: "¿Crowdfolio se conecta a mis plataformas de crowdfunding?",
-    a: "No. Crowdfolio no se conecta directamente a ninguna plataforma. Tú introduces los datos manualmente o importas los extractos PDF. Así tus credenciales siempre quedan fuera de nuestra plataforma.",
+    title: 'Producto',
+    links: [
+      { label: 'Funcionalidades', href: '#funcionalidades' },
+      { label: 'Cómo funciona', href: '#como-funciona' },
+      { label: 'Precios', href: '#precios' },
+      { label: 'Crear cuenta', href: '/auth' },
+    ],
   },
   {
-    q: "¿Qué plataformas son compatibles?",
-    a: "Crowdfolio es compatible con las principales plataformas españolas: Urbanitae, Housers, Civislend, Inversa, October, Mintos, y muchas más. Si usas una plataforma que no aparece, puedes añadir inversiones manualmente.",
+    title: 'Recursos',
+    links: [
+      { label: 'Guía fiscal de la Renta', href: '#' },
+      { label: 'Cómo registrar tus inversiones', href: '#' },
+      { label: 'Preguntas frecuentes', href: '#' },
+    ],
   },
   {
-    q: "¿Para qué sirve el informe fiscal?",
-    a: "Al hacer la Declaración de la Renta, necesitas declarar los rendimientos del capital mobiliario de tus inversiones en crowdfunding. Crowdfolio genera automáticamente un resumen con los intereses cobrados, retenciones y el desglose por plataforma.",
-  },
-  {
-    q: "¿Puedo probar Crowdfolio antes de pagar?",
-    a: "Sí. El plan Free es permanente y te permite registrar hasta 3 inversiones sin coste. Puedes actualizar a Pro en cualquier momento desde la configuración de tu cuenta.",
-  },
-  {
-    q: "¿Cómo funciona la importación por PDF?",
-    a: "Sube el extracto de movimientos en PDF de tu plataforma y nuestra IA identifica y extrae los datos de tus inversiones automáticamente. Compatible con la mayoría de formatos de exportación de plataformas españolas.",
+    title: 'Legal',
+    links: [
+      { label: 'Política de privacidad', href: '#' },
+      { label: 'Términos y condiciones', href: '#' },
+      { label: 'Política de cookies', href: '#' },
+      { label: 'Contacto', href: '#' },
+    ],
   },
 ];
 
-function FAQ() {
-  const [open, setOpen] = useState<number | null>(null);
-
+function Footer() {
   return (
-    <section style={{ background: "#f5f0e8", padding: "clamp(48px,8vw,96px) clamp(16px,4vw,24px)" }}>
-      <div style={{ maxWidth: 740, margin: "0 auto" }}>
-        <p style={{ color: "#79c6fa", fontWeight: 700, fontSize: 13, letterSpacing: "0.12em", textTransform: "uppercase", textAlign: "center", marginBottom: 12 }}>
-          Preguntas frecuentes
-        </p>
-        <h2 style={{ color: "#253765", fontSize: "clamp(1.8rem, 4vw, 2.5rem)", fontWeight: 800, textAlign: "center", marginBottom: 56, lineHeight: 1.2 }}>
-          Todo lo que necesitas saber
-        </h2>
-        <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
-          {faqs.map((faq, i) => (
-            <div key={i} style={{
-              background: "rgba(255,255,255,0.7)",
-              border: `1px solid ${open === i ? "rgba(37,55,101,0.3)" : "rgba(37,55,101,0.1)"}`,
-              borderRadius: 12,
-              overflow: "hidden",
-              transition: "border-color 0.2s",
-            }}>
-              <button
-                onClick={() => setOpen(open === i ? null : i)}
-                style={{
-                  width: "100%", display: "flex", justifyContent: "space-between",
-                  alignItems: "center", padding: "20px 24px",
-                  background: "none", border: "none", cursor: "pointer",
-                  textAlign: "left", gap: 16,
-                }}
-              >
-                <span style={{ color: "#253765", fontWeight: 600, fontSize: 16, lineHeight: 1.4 }}>{faq.q}</span>
-                <IconChevron open={open === i} />
-              </button>
-              <div style={{
-                maxHeight: open === i ? 300 : 0,
-                overflow: "hidden",
-                transition: "max-height 0.35s ease",
-              }}>
-                <p style={{ color: "#3f3623", opacity: 0.8, lineHeight: 1.7, fontSize: 15, padding: "0 24px 24px" }}>
-                  {faq.a}
-                </p>
+    <footer style={{ background: '#141f3e', color: '#8493b5', padding: '64px 0 32px' }}>
+      <div style={WRAP}>
+        {/* Top grid */}
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(150px, 1fr))', gap: 40, paddingBottom: 42, borderBottom: '1px solid rgba(150,176,224,0.16)', marginBottom: 24 }}>
+          {/* Brand col */}
+          <div>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 16 }}>
+              <span style={{ fontFamily: "'Hanken Grotesk', sans-serif", fontSize: 18, color: '#eef2f9' }}>
+                <b style={{ fontWeight: 700 }}>CROWD</b>
+                <span style={{ fontWeight: 300, color: '#b6c2da' }}>FOLIO</span>
+              </span>
+            </div>
+            <p style={{ fontSize: 14, maxWidth: 280, lineHeight: 1.6 }}>
+              Toda tu cartera de crowdfunding inmobiliario, en un solo lugar. Visión global, alertas e informe fiscal para la Renta.
+            </p>
+          </div>
+          {/* Link cols */}
+          {FOOTER_COLS.map(col => (
+            <div key={col.title}>
+              <h5 style={{ fontFamily: "'Hanken Grotesk', sans-serif", fontSize: 12.5, fontWeight: 700, color: '#eef2f9', letterSpacing: '0.05em', textTransform: 'uppercase' as const, marginBottom: 15 }}>{col.title}</h5>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 0 }}>
+                {col.links.map(l => (
+                  <a key={l.label} href={l.href} style={{ display: 'block', fontSize: 14.5, color: '#8493b5', padding: '5px 0', textDecoration: 'none', transition: 'color .15s' }}
+                    onMouseEnter={e => (e.currentTarget as HTMLAnchorElement).style.color = '#79c6fa'}
+                    onMouseLeave={e => (e.currentTarget as HTMLAnchorElement).style.color = '#8493b5'}
+                  >{l.label}</a>
+                ))}
               </div>
             </div>
           ))}
         </div>
-      </div>
-    </section>
-  );
-}
 
-function CTAFinal() {
-  return (
-    <section style={{ background: "#253765", padding: "clamp(48px,8vw,100px) clamp(16px,4vw,24px)" }}>
-      <div style={{ maxWidth: 700, margin: "0 auto", textAlign: "center" }}>
-        <h2 style={{
-          color: "#e4ddcf",
-          fontSize: "clamp(2rem, 5vw, 3.2rem)",
-          fontWeight: 800, lineHeight: 1.15, marginBottom: 24,
-        }}>
-          Tu cartera de crowdfunding,<br />
-          <span style={{ color: "#79c6fa" }}>por fin organizada.</span>
-        </h2>
-        <p style={{ color: "rgba(228,221,207,0.7)", fontSize: 18, lineHeight: 1.7, marginBottom: 48, maxWidth: 500, margin: "0 auto 48px" }}>
-          Únete a los inversores que ya controlan su cartera con Crowdfolio. Empieza gratis, sin tarjeta de crédito.
-        </p>
-        <div style={{ display: "flex", justifyContent: "center", gap: 16, flexWrap: "wrap" }}>
-          <a href="/auth" style={{
-            background: "#79c6fa", color: "#253765",
-            padding: "16px 36px", borderRadius: 12,
-            fontWeight: 800, fontSize: 16, textDecoration: "none",
-            transition: "transform 0.2s",
-            display: "inline-block",
-          }}
-            onMouseEnter={e => (e.currentTarget as HTMLAnchorElement).style.transform = "translateY(-2px)"}
-            onMouseLeave={e => (e.currentTarget as HTMLAnchorElement).style.transform = "translateY(0)"}
-          >
-            Crear cuenta gratis →
-          </a>
-          <a href="/pricing" style={{
-            border: "2px solid rgba(228,221,207,0.4)", color: "#e4ddcf",
-            padding: "16px 36px", borderRadius: 12,
-            fontWeight: 600, fontSize: 16, textDecoration: "none",
-            transition: "border-color 0.2s",
-            display: "inline-block",
-          }}
-            onMouseEnter={e => (e.currentTarget as HTMLAnchorElement).style.borderColor = "rgba(228,221,207,0.8)"}
-            onMouseLeave={e => (e.currentTarget as HTMLAnchorElement).style.borderColor = "rgba(228,221,207,0.4)"}
-          >
-            Ver precios
-          </a>
-        </div>
-      </div>
-    </section>
-  );
-}
-
-function Footer() {
-  return (
-    <footer style={{ background: "#1a2847", padding: "56px 24px 32px" }}>
-      <div style={{ maxWidth: 1100, margin: "0 auto" }}>
-        <div style={{
-          display: "grid",
-          gridTemplateColumns: "repeat(auto-fit, minmax(150px, 1fr))",
-          gap: 32, marginBottom: 48,
-        }}>
-          <div>
-            <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 16 }}>
-              <svg width="28" height="28" viewBox="0 0 40 40" fill="none">
-                <rect x="4" y="8" width="16" height="24" rx="2" fill="#253765" stroke="#79c6fa" strokeWidth="1"/>
-                <rect x="20" y="8" width="16" height="24" rx="2" fill="#e4ddcf"/>
-              </svg>
-              <span style={{ color: "#e4ddcf", fontWeight: 800, fontSize: 16, letterSpacing: "0.05em" }}>
-                CROWD<span style={{ fontWeight: 300 }}>FOLIO</span>
-              </span>
-            </div>
-            <p style={{ color: "rgba(228,221,207,0.55)", fontSize: 14, lineHeight: 1.7, maxWidth: 260 }}>
-              La plataforma para inversores españoles que quieren gestionar su cartera de crowdfunding e inversiones alternativas en un solo lugar.
-            </p>
+        {/* Bottom row */}
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 12, fontSize: 13 }}>
+          <span>© {new Date().getFullYear()} CrowdFolio. Todos los derechos reservados.</span>
+          <div style={{ display: 'flex', gap: 22, flexWrap: 'wrap' }}>
+            {['Privacidad','Términos','Cookies'].map(l => (
+              <a key={l} href="#" style={{ color: '#8493b5', textDecoration: 'none', transition: 'color .15s' }}
+                onMouseEnter={e => (e.currentTarget as HTMLAnchorElement).style.color = '#79c6fa'}
+                onMouseLeave={e => (e.currentTarget as HTMLAnchorElement).style.color = '#8493b5'}
+              >{l}</a>
+            ))}
           </div>
-          {[
-            {
-              title: "Producto",
-              links: [
-                { label: "Funcionalidades", href: "#features" },
-                { label: "Precios", href: "/pricing" },
-                { label: "Roadmap", href: "#" },
-              ],
-            },
-            {
-              title: "Cuenta",
-              links: [
-                { label: "Iniciar sesión", href: "/auth" },
-                { label: "Crear cuenta", href: "/auth" },
-                { label: "Panel de control", href: "/" },
-              ],
-            },
-            {
-              title: "Legal",
-              links: [
-                { label: "Privacidad", href: "#" },
-                { label: "Términos de uso", href: "#" },
-                { label: "Cookies", href: "#" },
-              ],
-            },
-          ].map((col, i) => (
-            <div key={i}>
-              <h4 style={{ color: "#e4ddcf", fontWeight: 700, fontSize: 13, letterSpacing: "0.1em", textTransform: "uppercase", marginBottom: 16 }}>
-                {col.title}
-              </h4>
-              <ul style={{ listStyle: "none", padding: 0, margin: 0, display: "flex", flexDirection: "column", gap: 10 }}>
-                {col.links.map((l, j) => (
-                  <li key={j}>
-                    <a href={l.href} style={{ color: "rgba(228,221,207,0.55)", fontSize: 14, textDecoration: "none", transition: "color 0.2s" }}
-                      onMouseEnter={e => (e.currentTarget as HTMLAnchorElement).style.color = "#79c6fa"}
-                      onMouseLeave={e => (e.currentTarget as HTMLAnchorElement).style.color = "rgba(228,221,207,0.55)"}
-                    >
-                      {l.label}
-                    </a>
-                  </li>
-                ))}
-              </ul>
-            </div>
-          ))}
         </div>
-        <div style={{
-          borderTop: "1px solid rgba(228,221,207,0.1)",
-          paddingTop: 28,
-          display: "flex", justifyContent: "space-between", alignItems: "center",
-          flexWrap: "wrap", gap: 12,
-        }}>
-          <p style={{ color: "rgba(228,221,207,0.35)", fontSize: 13 }}>
-            © {new Date().getFullYear()} Crowdfolio. Hecho con ♥ en España.
-          </p>
-          <p style={{ color: "rgba(228,221,207,0.35)", fontSize: 13 }}>
-            crowdfolio.es
-          </p>
-        </div>
+
+        {/* Disclaimer */}
+        <p style={{ fontSize: 12, color: 'rgba(132,147,181,0.55)', lineHeight: 1.5, marginTop: 18, maxWidth: 780 }}>
+          CrowdFolio es una herramienta de agregación y organización de inversiones. No es una entidad de inversión ni presta asesoramiento financiero o fiscal. Invertir en crowdfunding inmobiliario conlleva riesgos, incluida la posible pérdida del capital invertido.
+        </p>
       </div>
     </footer>
   );
 }
 
+// ─── Export ─────────────────────────────────────────────────────────────────────
 export default function LandingSections() {
   return (
     <>
-      <Features />
+      <Problem />
+      <Pillars />
       <HowItWorks />
+      <FiscalPro />
       <Pricing />
-      <FAQ />
-      <CTAFinal />
+      <FinalCTA />
       <Footer />
     </>
   );

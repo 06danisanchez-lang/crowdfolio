@@ -1,116 +1,98 @@
-import { useNavigate } from 'react-router-dom';
-import { ArrowRight, Check, Sparkles } from 'lucide-react';
-import { Button } from '@/components/ui/button';
-import AnimatedBackground from './AnimatedBackground';
-import dashboardImg from '@/assets/screenshots/dashboard.jpg';
 import crowdfolioLogo from '@/assets/logo_crowdfolio.svg';
-import { useLanguage } from '@/contexts/LanguageContext';
 
 export default function HeroSection() {
-  const navigate = useNavigate();
-  const { t } = useLanguage();
-
   return (
-    <section className="relative overflow-hidden py-12 md:py-16 lg:py-20">
-      <AnimatedBackground />
-      
-      <div className="container relative mx-auto px-4">
-        <div className="mx-auto max-w-4xl text-center">
-          {/* Central Logo */}
-          <div className="mb-6">
-            <img 
-              src={crowdfolioLogo} 
-              alt="Crowdfolio" 
-              className="mx-auto h-16 sm:h-20 md:h-32 lg:h-40"
-            />
-          </div>
+    <section id="top" style={{
+      position: 'relative', overflow: 'hidden',
+      padding: 'clamp(88px,13vh,148px) 0 clamp(92px,14vh,156px)',
+      background: '#253765',
+    }}>
+      {/* Radial glow */}
+      <div style={{
+        position: 'absolute', inset: 0, zIndex: 0, pointerEvents: 'none',
+        background: 'radial-gradient(720px 480px at 50% -6%, rgba(121,198,250,0.16), transparent 64%)',
+      }} />
 
-          {/* Badge */}
-          <div className="mb-4 inline-flex items-center gap-2 rounded-full border border-primary/20 bg-primary/10 px-4 py-2 text-sm font-medium text-primary backdrop-blur-sm animate-pulse-soft">
-            <Sparkles className="h-4 w-4" />
-            <span>{t('hero.badge')}</span>
-          </div>
-
-          {/* Main Headline */}
-          <h1 className="mb-4 text-2xl sm:text-3xl md:text-4xl lg:text-5xl xl:text-6xl font-bold tracking-tight">
-            {t('hero.headline1')}{' '}
-            <span className="bg-gradient-to-r from-brand-navy via-brand-sky to-brand-sky bg-clip-text text-transparent">
-                crowdfunding inmobiliario
-              </span>{' '}
-            <br className="hidden sm:block" />
-            {t('hero.headline2')}
-          </h1>
-
-          {/* Value bullets */}
-          <ul className="mx-auto mb-6 flex max-w-xl flex-col items-start gap-2 text-left text-muted-foreground">
-            <li className="flex items-center gap-2">
-              <Check className="h-5 w-5 shrink-0 text-primary" />
-              <span>{t('hero.bullet1')}</span>
-            </li>
-            <li className="flex items-center gap-2">
-              <Check className="h-5 w-5 shrink-0 text-primary" />
-              <span>{t('hero.bullet2')}</span>
-            </li>
-            <li className="flex items-center gap-2">
-              <Check className="h-5 w-5 shrink-0 text-primary" />
-              <span>{t('hero.bullet3')}</span>
-            </li>
-            <li className="flex items-center gap-2">
-              <Check className="h-5 w-5 shrink-0 text-primary" />
-              <span>{t('hero.bullet4')}</span>
-            </li>
-          </ul>
-
-          {/* CTAs */}
-          <div className="flex flex-col items-center justify-center gap-4 sm:flex-row">
-            <Button 
-              size="lg" 
-              className="group gap-2 text-lg shadow-lg shadow-primary/25 transition-all hover:shadow-xl hover:shadow-primary/30"
-              onClick={() => navigate('/auth')}
-            >
-              {t('hero.ctaPrimary')}
-              <ArrowRight className="h-5 w-5 transition-transform group-hover:translate-x-1" />
-            </Button>
-            <Button 
-              size="lg" 
-              variant="outline" 
-              className="text-lg backdrop-blur-sm"
-              onClick={() => navigate('/pricing')}
-            >
-              {t('hero.ctaSecondary')}
-            </Button>
-          </div>
-
-          {/* Trust line */}
-          <p className="mt-6 text-sm text-muted-foreground">
-            {t('hero.trustLine')}
-          </p>
+      <div style={{
+        position: 'relative', zIndex: 1,
+        maxWidth: 900, margin: '0 auto',
+        padding: '0 clamp(16px,4vw,32px)',
+        textAlign: 'center',
+        display: 'flex', flexDirection: 'column', alignItems: 'center',
+      }}>
+        {/* Logo badge */}
+        <div className="cf-reveal" style={{
+          background: '#ffffff', borderRadius: 18,
+          padding: 'clamp(14px,2vw,20px) clamp(16px,2.5vw,24px)',
+          boxShadow: '0 8px 20px rgba(10,18,40,0.18), 0 30px 60px rgba(10,18,40,0.30)',
+          marginBottom: 38,
+          display: 'inline-block',
+        }}>
+          <img src={crowdfolioLogo} alt="Crowdfolio" style={{ width: 'min(148px,62vw)', height: 'auto', display: 'block' }} />
         </div>
 
-        {/* Dashboard Mockup */}
-        <div className="relative mx-auto mt-10 max-w-5xl md:mt-12">
-          <div className="absolute -inset-4 rounded-3xl bg-gradient-to-r from-primary/20 via-blue-500/20 to-violet-500/20 blur-2xl" />
-          <div className="relative overflow-hidden rounded-2xl border bg-card shadow-2xl">
-            <div className="flex items-center gap-2 border-b bg-muted/50 px-4 py-3">
-              <div className="flex gap-1.5">
-                <div className="h-3 w-3 rounded-full bg-red-400" />
-                <div className="h-3 w-3 rounded-full bg-yellow-400" />
-                <div className="h-3 w-3 rounded-full bg-green-400" />
-              </div>
-              <div className="ml-4 flex-1">
-                <div className="mx-auto max-w-md rounded-md bg-background/50 px-4 py-1 text-center text-xs text-muted-foreground">
-                  app.crowdfolio.es
-                </div>
-              </div>
-            </div>
-            <img
-              src={dashboardImg}
-              alt="Crowdfolio Dashboard"
-              className="w-full"
-              loading="eager"
-            />
-          </div>
+        {/* H1 */}
+        <h1 className="cf-reveal d1" style={{
+          fontFamily: "'Playfair Display', Georgia, serif",
+          fontWeight: 600,
+          fontSize: 'clamp(38px,5.4vw,64px)',
+          lineHeight: 1.12,
+          letterSpacing: '-0.015em',
+          color: '#e4ddcf',
+          marginBottom: 26,
+          textWrap: 'balance',
+        } as React.CSSProperties}>
+          Tu cartera de crowdfunding inmobiliario,{' '}
+          <em style={{ fontStyle: 'italic', color: '#79c6fa' }}>en un solo lugar.</em>
+        </h1>
+
+        {/* Subtitle */}
+        <p className="cf-reveal d2" style={{
+          fontSize: 'clamp(17px,1.9vw,20px)',
+          lineHeight: 1.6,
+          color: 'rgba(255,255,255,0.72)',
+          maxWidth: 620,
+          margin: '0 auto 38px',
+          textWrap: 'pretty',
+        } as React.CSSProperties}>
+          Visualiza toda tu cartera, planifica tus próximas inversiones, recibe alertas de tus proyectos y genera tu informe fiscal para la Renta. Todo en un mismo lugar.
+        </p>
+
+        {/* CTAs */}
+        <div className="cf-reveal d2" style={{ display: 'flex', gap: 13, flexWrap: 'wrap', justifyContent: 'center' }}>
+          <a href="/auth" style={{
+            display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
+            background: '#79c6fa', color: '#141f3e',
+            fontFamily: "'Hanken Grotesk', sans-serif", fontWeight: 600, fontSize: '16.5px',
+            padding: '16px 28px', borderRadius: 9, textDecoration: 'none',
+            boxShadow: '0 6px 18px rgba(121,198,250,0.28)',
+            transition: 'background .18s, transform .18s, box-shadow .18s',
+          }}
+            onMouseEnter={e => { const el = e.currentTarget as HTMLAnchorElement; el.style.background = '#9ad5ff'; el.style.transform = 'translateY(-1px)'; el.style.boxShadow = '0 10px 26px rgba(121,198,250,.40)'; }}
+            onMouseLeave={e => { const el = e.currentTarget as HTMLAnchorElement; el.style.background = '#79c6fa'; el.style.transform = 'none'; el.style.boxShadow = '0 6px 18px rgba(121,198,250,.28)'; }}
+          >Crear cuenta gratis</a>
+
+          <a href="#funcionalidades" style={{
+            display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
+            background: 'transparent', color: '#eef2f9',
+            fontFamily: "'Hanken Grotesk', sans-serif", fontWeight: 600, fontSize: '16.5px',
+            padding: '16px 28px', borderRadius: 9, textDecoration: 'none',
+            border: '1px solid rgba(150,176,224,0.28)',
+            transition: 'border-color .18s, color .18s',
+          }}
+            onMouseEnter={e => { const el = e.currentTarget as HTMLAnchorElement; el.style.borderColor = '#79c6fa'; el.style.color = '#79c6fa'; }}
+            onMouseLeave={e => { const el = e.currentTarget as HTMLAnchorElement; el.style.borderColor = 'rgba(150,176,224,0.28)'; el.style.color = '#eef2f9'; }}
+          >Ver funcionalidades</a>
         </div>
+
+        {/* Trust line */}
+        <p className="cf-reveal d3" style={{
+          marginTop: 30,
+          fontFamily: "'Hanken Grotesk', monospace", fontSize: 13,
+          letterSpacing: '0.05em', color: '#8493b5',
+        }}>
+          Gratis para empezar · Sin tarjeta · En 2 minutos
+        </p>
       </div>
     </section>
   );

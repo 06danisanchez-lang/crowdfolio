@@ -1,5 +1,6 @@
 import { useState } from 'react';
-import { Receipt, Calculator, ArrowLeftRight, AlertTriangle, RefreshCw } from 'lucide-react';
+import { Receipt, Calculator, ArrowLeftRight, AlertTriangle, RefreshCw, Info } from 'lucide-react';
+import { Alert, AlertDescription } from '@/components/ui/alert';
 import { useTaxSummary } from '@/hooks/useTaxSummary';
 import { useTaxExpenses } from '@/hooks/useTaxExpenses';
 import { useLanguage } from '@/contexts/LanguageContext';
@@ -73,6 +74,15 @@ export function TaxDashboard({ isPro = false, onProRequired }: TaxDashboardProps
     );
   }
 
+  const spainTaxNotice = (
+    <Alert className="border-blue-200 bg-blue-50 text-blue-900 dark:border-blue-800 dark:bg-blue-950/40 dark:text-blue-100">
+      <Info className="h-4 w-4 text-blue-600 dark:text-blue-400" />
+      <AlertDescription className="text-sm">
+        El informe fiscal está diseñado para inversores que tributan en España (IRPF 2025). Si tributas en otro país, los cálculos pueden no ser aplicables a tu situación fiscal.
+      </AlertDescription>
+    </Alert>
+  );
+
   // Detectar si el ejercicio no tiene datos NI proyecciones
   const hasProjections = projection.byInvestment.length > 0;
   const hasNoData = summary.grossIncome === 0 && 
@@ -97,6 +107,8 @@ export function TaxDashboard({ isPro = false, onProRequired }: TaxDashboardProps
             availableYears={availableYears}
           />
         </div>
+
+        {spainTaxNotice}
 
         {/* Empty State */}
         <TaxEmptyState year={selectedYear} />
@@ -123,6 +135,8 @@ export function TaxDashboard({ isPro = false, onProRequired }: TaxDashboardProps
           />
         </div>
       </div>
+
+      {spainTaxNotice}
 
       {/* KPI Summary Cards */}
       {excludedIncompleteCount > 0 && (

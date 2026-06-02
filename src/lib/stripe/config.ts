@@ -21,7 +21,7 @@ export const STRIPE_PRICES = {
   },
 } as const;
 
-export type PlanType = 'free' | 'monthly' | 'yearly';
+export type PlanType = 'free' | 'monthly' | 'yearly' | 'pro';
 
 export const PLAN_FEATURES = {
   free: {
@@ -37,7 +37,7 @@ export const PLAN_FEATURES = {
 } as const;
 
 export const isPro = (plan: PlanType): boolean => {
-  return plan === 'monthly' || plan === 'yearly';
+  return plan === 'monthly' || plan === 'yearly' || plan === 'pro';
 };
 
 export const formatPrice = (amount: number, currency: string = 'eur'): string => {

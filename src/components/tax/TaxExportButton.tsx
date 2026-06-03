@@ -213,7 +213,7 @@ export function TaxExportButton({
       // ── Sheet 1: Resumen ──────────────────────────────────────────────────
       const wsR = workbook.addWorksheet('Resumen');
       wsR.properties.tabColor = { argb: NAVY };
-      wsR.columns = [{ width: 38 }, { width: 18 }];
+      wsR.columns = [{ width: 45 }, { width: 24 }];
       wsR.views = [{ state: 'frozen', ySplit: 1 }];
 
       addTitleRows(wsR, `RESUMEN FISCAL IRPF ${summary.year}`, BRANDING, 2);
@@ -241,14 +241,14 @@ export function TaxExportButton({
       const divRow = wsR.addRow(['  · Dividendos', summary.dividendIncome]);
       divRow.height = 20; applyStyle(divRow.getCell(1), { ...S.label, alignment: { horizontal: 'left', indent: 4 } } as XStyle); applyStyle(divRow.getCell(2), { ...S.dataOdd, alignment: { horizontal: 'right' }, numFmt: MONEY } as XStyle);
       addSummaryRow('Devoluciones de Principal (informativo)', summary.principalReturns, S.dataOdd as XStyle);
-      addSummaryRow('Gastos Deducibles', -summary.deductibleExpenses, S.valNeg);
+      addSummaryRow('Gastos Deducibles', -summary.deductibleExpenses, -summary.deductibleExpenses < 0 ? S.valNeg : S.valBold);
 
       addSectionSep('── Base Imponible ──');
       addSummaryRow('Base Imponible del Ahorro', summary.taxableBase, S.valBold);
 
       addSectionSep('── Cuota y Resultado ──');
       addSummaryRow('Cuota Íntegra Estimada', summary.estimatedTax, S.valBold);
-      addSummaryRow('Retenciones Practicadas', -summary.withholdingsApplied, S.valNeg);
+      addSummaryRow('Retenciones Practicadas', -summary.withholdingsApplied, -summary.withholdingsApplied < 0 ? S.valNeg : S.valBold);
       const resultado = summary.estimatedTax - summary.withholdingsApplied;
       addSummaryRow('Resultado Declaración', resultado, resultado >= 0 ? S.valPos : S.valNeg);
 
@@ -262,9 +262,9 @@ export function TaxExportButton({
       if (summary.totalGPPLosses < 0) {
         addSectionSep('── Pérdidas Patrimoniales (GPP) ──');
         addSummaryRow('Pérdidas por impago elegibles (art. 14.2.k LIRPF)', summary.totalGPPLosses, S.valNeg);
-        addSummaryRow('Compensación aplicada contra RCM (límite 25%)', -summary.compensacionGPPRCM, S.valNeg);
+        addSummaryRow('Compensación aplicada contra RCM (límite 25%)', -summary.compensacionGPPRCM, -summary.compensacionGPPRCM < 0 ? S.valNeg : S.valBold);
         addSummaryRow('Base imponible RCM ajustada', summary.baseImponibleRCMAjustada, S.valBold);
-        addSummaryRow('Pérdidas GPP pendientes de arrastrar (4 años)', -summary.perdidasGPPPendientes, S.valNeg);
+        addSummaryRow('Pérdidas GPP pendientes de arrastrar (4 años)', -summary.perdidasGPPPendientes, -summary.perdidasGPPPendientes < 0 ? S.valNeg : S.valBold);
       }
 
       // ── Sheet 2: Tramos IRPF ─────────────────────────────────────────────

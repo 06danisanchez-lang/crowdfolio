@@ -26,6 +26,7 @@ import crowdfolioIcon from '@/assets/icon_crowdfolio.svg';
 import crowdfolioWordmark from '@/assets/wordmark_crowdfolio.svg';
 import { useLanguage } from '@/contexts/LanguageContext';
 import { LanguageToggle } from '@/components/ui/LanguageToggle';
+import { FeedbackButton } from '@/components/common/FeedbackButton';
 
 
 interface AppLayoutProps {
@@ -225,6 +226,7 @@ export function AppLayout({
         </main>
       </div>
       <UpgradeModal open={upgradeOpen} onOpenChange={setUpgradeOpen} />
+      <FeedbackButton />
     </div>
   );
 }

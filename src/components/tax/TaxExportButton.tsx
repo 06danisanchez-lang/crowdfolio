@@ -325,12 +325,23 @@ export function TaxExportButton({
       // ── Sheet 4: Detalle de Pagos ─────────────────────────────────────────
       const wsP = workbook.addWorksheet('Detalle de Pagos');
       wsP.properties.tabColor = { argb: NAVY };
-      wsP.columns = [{ width: 13 }, { width: 32 }, { width: 18 }, { width: 12 }, { width: 16 }, { width: 16 }, { width: 16 }];
+      wsP.columns = [{ width: 13 }, { width: 32 }, { width: 18 }, { width: 20 }, { width: 16 }, { width: 16 }, { width: 16 }];
       wsP.views = [{ state: 'frozen', ySplit: 4 }];
 
       addTitleRows(wsP, `DETALLE DE PAGOS ${summary.year}`, 'Pagos de tipo interés y dividendo registrados en el ejercicio', 7);
-      const pHdrRow = addTableHeader(wsP, ['Fecha', 'Inversión', 'Plataforma', 'Tipo', 'Bruto (€)', 'Retención (€)', 'Neto (€)'], 7);
+      const pHdrRow = addTableHeader(wsP, ['Fecha', 'Inversión', 'Plataforma', 'Tipo / Origen', 'Bruto (€)', 'Retención (€)', 'Neto (€)'], 7);
       wsP.autoFilter = { from: { row: pHdrRow, column: 1 }, to: { row: pHdrRow, column: 7 } };
+
+      const EQUITY_TYPE_LABELS: Record<string, string> = {
+        plusvalia: 'Equity — Plusvalía',
+        rentas: 'Equity — Rentas',
+        liquidacion: 'Equity — Liquidación ⚠',
+      };
+      const getPaymentTypeLabel = (p: typeof enrichedPayments[0]) => {
+        if (p.type === 'interest') return 'Interés';
+        if (p.type === 'dividend' && p.equityType) return EQUITY_TYPE_LABELS[p.equityType] ?? 'Dividendo — Equity';
+        return 'Dividendo';
+      };
 
       const incomePayments = enrichedPayments.filter(p => p.type === 'interest' || p.type === 'dividend');
       let totalBruto = 0, totalRet = 0;
@@ -340,12 +351,17 @@ export function TaxExportButton({
         new Date(p.date).toLocaleDateString('es-ES'),
         p.investmentName,
         p.platform,
-        p.type === 'interest' ? 'Interés' : 'Dividendo',
+        getPaymentTypeLabel(p),
         p.amount,
         p.withholdingApplied,
         p.amount - p.withholdingApplied,
-      ], (cell, col) => {
-        if (col === 4) applyStyle(cell, { ...cell.style, alignment: { horizontal: 'center' } } as XStyle);
+      ], (cell, col, p) => {
+        if (col === 4) {
+          applyStyle(cell, { ...cell.style, alignment: { horizontal: 'center' } } as XStyle);
+          if (p.equityType === 'liquidacion' && p.withholdingApplied === 0) {
+            applyStyle(cell, { ...cell.style, font: { size: 10, bold: true, color: { argb: 'FFCC6600' } }, alignment: { horizontal: 'center' } } as XStyle);
+          }
+        }
         if (col === 5) { cell.numFmt = MONEY; applyStyle(cell, { ...cell.style, alignment: { horizontal: 'right' } } as XStyle); }
         if (col === 6) { cell.numFmt = MONEY; applyStyle(cell, { ...cell.style, font: { size: 10, color: { argb: RED_NEG } }, alignment: { horizontal: 'right' } } as XStyle); }
         if (col === 7) { cell.numFmt = MONEY; applyStyle(cell, { ...cell.style, alignment: { horizontal: 'right' } } as XStyle); }
@@ -353,6 +369,18 @@ export function TaxExportButton({
 
       addTotalRow(wsP, ['', '', '', 'TOTAL', totalBruto, totalRet, totalBruto - totalRet], 7);
       [5, 6, 7].forEach(c => { wsP.lastRow!.getCell(c).numFmt = MONEY; });
+
+      // Nota liquidacion sin retención
+      if (summary.liquidacionSinRetencion.length > 0) {
+        wsP.addRow([]).height = 4;
+        const liqNoteRow = wsP.addRow(['⚠ ATENCIÓN: Incluye pagos de cuota de liquidación sin retención practicada. Declaración manual requerida en tu IRPF.', '', '', '', '', '', '']);
+        liqNoteRow.height = 20;
+        wsP.mergeCells(liqNoteRow.number, 1, liqNoteRow.number, 7);
+        applyStyle(wsP.getCell(liqNoteRow.number, 1), {
+          font: { bold: true, size: 9, color: { argb: RED_NEG } },
+          alignment: { wrapText: true, vertical: 'middle' },
+        } as XStyle);
+      }
 
       // ── Sheet 5: Por Inversión ────────────────────────────────────────────
       const wsI = workbook.addWorksheet('Por Inversión');
@@ -597,6 +625,17 @@ export function TaxExportButton({
       }
 
       // ── Detalle de Pagos ─────────────────────────────────────────────────────
+      const PDF_EQUITY_LABELS: Record<string, string> = {
+        plusvalia: 'Div. Equity Plusvalía',
+        rentas: 'Div. Equity Rentas',
+        liquidacion: 'Div. Liquidación ⚠',
+      };
+      const getPdfTypeLabel = (p: typeof enrichedPayments[0]) => {
+        if (p.type === 'interest') return 'Interés';
+        if (p.type === 'dividend' && p.equityType) return PDF_EQUITY_LABELS[p.equityType] ?? 'Dividendo';
+        return 'Dividendo';
+      };
+
       const incomePayments = enrichedPayments.filter(p => p.type === 'interest' || p.type === 'dividend');
 
       if (incomePayments.length > 0) {
@@ -612,13 +651,13 @@ export function TaxExportButton({
 
         autoTable(doc, {
           startY: yPos,
-          head: [['Fecha', 'Inversión', 'Plataforma', 'Tipo', 'Bruto (€)', 'Retención (€)', 'Neto (€)']],
+          head: [['Fecha', 'Inversión', 'Plataforma', 'Tipo / Origen', 'Bruto (€)', 'Retención (€)', 'Neto (€)']],
           body: [
             ...incomePayments.map(p => [
               new Date(p.date).toLocaleDateString('es-ES'),
               p.investmentName,
               p.platform,
-              p.type === 'interest' ? 'Interés' : 'Dividendo',
+              getPdfTypeLabel(p),
               formatCurrency(p.amount),
               formatCurrency(p.withholdingApplied),
               formatCurrency(p.amount - p.withholdingApplied),
@@ -630,9 +669,9 @@ export function TaxExportButton({
           styles: { fontSize: 8 },
           columnStyles: {
             0: { cellWidth: 22 },
-            1: { cellWidth: 48 },
-            2: { cellWidth: 28 },
-            3: { cellWidth: 18 },
+            1: { cellWidth: 44 },
+            2: { cellWidth: 24 },
+            3: { cellWidth: 26 },
             4: { cellWidth: 22, halign: 'right' as const },
             5: { cellWidth: 22, halign: 'right' as const },
             6: { cellWidth: 22, halign: 'right' as const },
@@ -640,7 +679,22 @@ export function TaxExportButton({
         });
 
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        yPos = (doc as any).lastAutoTable.finalY + 15;
+        yPos = (doc as any).lastAutoTable.finalY + 6;
+
+        // Nota liquidacion sin retención
+        if (summary.liquidacionSinRetencion.length > 0) {
+          const liqNote = 'ATENCIÓN: Incluye pagos de cuota de liquidación sin retención practicada. Declaración manual requerida.';
+          doc.setFontSize(8);
+          doc.setFont('helvetica', 'bolditalic');
+          doc.setTextColor(163, 45, 45);
+          const noteLines = doc.splitTextToSize(liqNote, pageWidth - 28);
+          doc.text(noteLines, 14, yPos);
+          doc.setFont('helvetica', 'normal');
+          doc.setTextColor(0, 0, 0);
+          yPos += noteLines.length * 4 + 9;
+        } else {
+          yPos += 9;
+        }
       }
 
       // ── Detalle por Inversión ────────────────────────────────────────────────

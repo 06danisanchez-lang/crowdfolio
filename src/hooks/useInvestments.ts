@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
-import { Investment, InvestmentSummary, Platform, InvestmentStatus, Payment, DraftInvestment, IncomeModel, PaymentFrequency, PrincipalReturnType, InvestmentScheduleEntry } from '@/types/investment';
+import { Investment, InvestmentSummary, Platform, InvestmentStatus, Payment, DraftInvestment, IncomeModel, PaymentFrequency, PrincipalReturnType, EquityType, InvestmentScheduleEntry } from '@/types/investment';
 import { calculateInvestmentTotalReturn, calculateExpectedReturnFromSchedule, calculateAccruedReturn, calculateRemainingReturn } from '@/lib/investment/calculations';
 import { isInvestmentComplete, getInvestmentCompletionStatus } from '@/lib/investment/completeness';
 import { generateSchedule } from '@/lib/investment/scheduleGenerator';
@@ -26,6 +26,7 @@ interface RawInvestmentRow {
   source_url: string | null;
   defaulted_at: string | null;
   amount_recovered: number | null;
+  equity_type: string | null;
   created_at: string;
   updated_at: string;
   user_id: string;
@@ -146,6 +147,7 @@ export function useInvestments() {
         sourceUrl: inv.source_url || undefined,
         defaultedAt: inv.defaulted_at || undefined,
         amountRecovered: inv.amount_recovered != null ? Number(inv.amount_recovered) : undefined,
+        equityType: (inv.equity_type as EquityType) || undefined,
         createdAt: inv.created_at,
         updatedAt: inv.updated_at,
         payments: paymentsData
@@ -215,6 +217,7 @@ export function useInvestments() {
           incomeModel: raw.incomeModel as IncomeModel,
           paymentFrequency: raw.paymentFrequency || undefined,
           principalReturnType: raw.principalReturnType || undefined,
+          equityType: raw.equityType,
           status: raw.status,
           payments: raw.payments,
           notes: raw.notes,
@@ -251,6 +254,7 @@ export function useInvestments() {
     incomeModel: IncomeModel;
     paymentFrequency?: PaymentFrequency | null;
     principalReturnType?: PrincipalReturnType | null;
+    equityType?: EquityType | null;
     investmentDate: string;
     expectedEndDate?: string;
   }) => {
@@ -266,6 +270,7 @@ export function useInvestments() {
       incomeModel: investment.incomeModel,
       paymentFrequency: investment.paymentFrequency,
       principalReturnType: investment.principalReturnType,
+      equityType: investment.equityType,
       investmentDate: investment.investmentDate,
       expectedEndDate: investment.expectedEndDate,
     });
@@ -294,6 +299,7 @@ export function useInvestments() {
       income_model: investment.incomeModel || null,
       payment_frequency: investment.paymentFrequency || null,
       principal_return_type: investment.principalReturnType || null,
+      equity_type: investment.equityType || null,
       notes: investment.notes || null,
       source_url: investment.sourceUrl || null,
     }).select().single();
@@ -306,6 +312,7 @@ export function useInvestments() {
       incomeModel: investment.incomeModel,
       paymentFrequency: investment.paymentFrequency,
       principalReturnType: investment.principalReturnType,
+      equityType: investment.equityType,
       investmentDate: investment.investmentDate,
       expectedEndDate: investment.expectedEndDate,
     });
@@ -319,6 +326,7 @@ export function useInvestments() {
       incomeModel: (data as Record<string, unknown>).income_model as IncomeModel,
       paymentFrequency: (data as Record<string, unknown>).payment_frequency as PaymentFrequency || undefined,
       principalReturnType: (data as Record<string, unknown>).principal_return_type as PrincipalReturnType || undefined,
+      equityType: (data as Record<string, unknown>).equity_type as EquityType || undefined,
       sourceUrl: (data as Record<string, unknown>).source_url as string || undefined,
       notes: data.notes || undefined, createdAt: data.created_at, updatedAt: data.updated_at,
       payments: [],
@@ -380,18 +388,20 @@ export function useInvestments() {
     if (updates.incomeModel !== undefined) dbUpdates.income_model = updates.incomeModel || null;
     if (updates.paymentFrequency !== undefined) dbUpdates.payment_frequency = updates.paymentFrequency || null;
     if (updates.principalReturnType !== undefined) dbUpdates.principal_return_type = updates.principalReturnType || null;
+    if (updates.equityType !== undefined) dbUpdates.equity_type = updates.equityType || null;
     const { error } = await supabase.from('investments').update(dbUpdates).eq('id', id);
     if (error) { console.error('Error updating investment:', error); return { demotedToDraft: false }; }
 
     // Regenerate schedule if income model fields changed
     const current = allRawInvestments.find(inv => inv.id === id);
-    if (current && (updates.incomeModel || updates.paymentFrequency || updates.expectedReturn !== undefined || updates.expectedEndDate !== undefined || updates.amount !== undefined || updates.investmentDate !== undefined || updates.principalReturnType !== undefined)) {
+    if (current && (updates.incomeModel || updates.paymentFrequency || updates.expectedReturn !== undefined || updates.expectedEndDate !== undefined || updates.amount !== undefined || updates.investmentDate !== undefined || updates.principalReturnType !== undefined || updates.equityType !== undefined)) {
       const merged = {
         amount: updates.amount ?? current.amount ?? 0,
         expectedReturn: updates.expectedReturn ?? current.expectedReturn ?? 0,
         incomeModel: (updates.incomeModel ?? current.incomeModel) as IncomeModel,
         paymentFrequency: (updates.paymentFrequency ?? current.paymentFrequency) as PaymentFrequency | null,
         principalReturnType: (updates.principalReturnType ?? current.principalReturnType) as PrincipalReturnType | null,
+        equityType: (updates.equityType ?? current.equityType) as EquityType | null,
         investmentDate: updates.investmentDate ?? current.investmentDate ?? '',
         expectedEndDate: updates.expectedEndDate ?? current.expectedEndDate,
       };
@@ -515,9 +525,13 @@ export function useInvestments() {
   // ── 5B: Summary using separated arrays ──
   const summary: InvestmentSummary = useMemo(() => {
     // forecastReady: active investments with calculable return forecast.
-    // variable_or_unknown is always excluded — return depends on asset liquidation.
+    // variable_or_unknown always excluded. equity rentas excluded (variable amounts).
+    // equity plusvalia/liquidacion included (simple interest projection possible).
     const forecastReady = activeInvestments.filter(inv => {
       if (inv.incomeModel === 'variable_or_unknown') return false;
+      if (inv.incomeModel === 'equity') {
+        return inv.equityType === 'plusvalia' || inv.equityType === 'liquidacion';
+      }
       const status = getInvestmentCompletionStatus({
         platform: inv.platform,
         projectName: inv.projectName,

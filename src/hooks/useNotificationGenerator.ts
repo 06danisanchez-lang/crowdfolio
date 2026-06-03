@@ -39,6 +39,8 @@ export function useNotificationGenerator(
       // ── 1. payment_due ─────────────────────────────────────────────
       const paymentWindowStart = subDays(todayDate, 7);
       for (const inv of activeInvs) {
+        // Equity handled in its own block below
+        if (inv.incomeModel === 'equity') continue;
         const schedule = scheduleMap[inv.id] ?? [];
         for (const entry of schedule) {
           if (entry.type !== 'interest') continue;
@@ -61,6 +63,41 @@ export function useNotificationGenerator(
             title: `Cobro esperado en ${inv.projectName}`,
             message: `Según lo previsto, el ${dateStr} deberías haber recibido ${amountStr} €. ¿Lo has cobrado?`,
             data: { investmentId: inv.id, scheduleEntryDate: entry.expectedDate, expectedAmount: entry.expectedAmount, investmentName: inv.projectName },
+            read: false,
+          });
+        }
+      }
+
+      // ── 1b. payment_due para equity rentas ────────────────────────
+      // Genera una notificación por cada entrada trimestral vencida sin capital_return registrado.
+      const equityRentasInvs = activeInvs.filter(i => i.incomeModel === 'equity' && i.equityType === 'rentas');
+      const equityWindowStart = subDays(todayDate, 180);
+      for (const inv of equityRentasInvs) {
+        const schedule = scheduleMap[inv.id] ?? [];
+        for (const entry of schedule) {
+          if (entry.type !== 'interest') continue;
+          const entryDate = parseISO(entry.expectedDate);
+          if (entryDate > todayDate || entryDate < equityWindowStart) continue;
+
+          // Check if a capital_return payment has been registered on or after this entry date
+          const hasPaid = inv.payments.some(
+            p => p.type === 'capital_return' && parseISO(p.date) >= entryDate,
+          );
+          if (hasPaid) continue;
+
+          const alreadyExists = existingNotifications.some(
+            n => n.type === 'payment_due' &&
+              (n.data as Record<string, unknown>).investmentId === inv.id &&
+              (n.data as Record<string, unknown>).scheduleEntryDate === entry.expectedDate,
+          );
+          if (alreadyExists) continue;
+
+          toInsert.push({
+            user_id: user.id,
+            type: 'payment_due',
+            title: `¿Has recibido la renta trimestral de ${inv.projectName}?`,
+            message: `Recuerda registrar la renta trimestral en Crowdfolio cuando la recibas.`,
+            data: { investmentId: inv.id, scheduleEntryDate: entry.expectedDate, expectedAmount: 0, investmentName: inv.projectName, isEquityRent: true },
             read: false,
           });
         }
@@ -97,9 +134,10 @@ export function useNotificationGenerator(
         const maturityDate = parseISO(inv.expectedEndDate);
         if (maturityDate >= todayDate) continue;
 
-        // Exclude if there is already a principal payment on or after the maturity date
+        // Equity settlements are registered as 'dividend'; all others use 'principal'
+        const settlementType = inv.incomeModel === 'equity' ? 'dividend' : 'principal';
         const hasSettlement = inv.payments.some(
-          p => p.type === 'principal' && parseISO(p.date) >= maturityDate,
+          p => p.type === settlementType && parseISO(p.date) >= maturityDate,
         );
         if (hasSettlement) continue;
 

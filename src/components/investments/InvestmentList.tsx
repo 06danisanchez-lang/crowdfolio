@@ -57,7 +57,7 @@ interface InvestmentListProps {
   scheduleMap?: Record<string, InvestmentScheduleEntry[]>;
   onUpdate: (id: string, updates: Partial<Investment>) => Promise<{ demotedToDraft?: boolean } | void> | void;
   onDelete: (id: string) => void;
-  onAddPayment: (investmentId: string, payment: { date: string; amount: number; type: 'dividend' | 'principal' | 'interest'; notes?: string }) => void;
+  onAddPayment: (investmentId: string, payment: { date: string; amount: number; type: 'dividend' | 'principal' | 'interest' | 'capital_return'; notes?: string }) => Promise<unknown> | void;
   onDeletePayment: (investmentId: string, paymentId: string) => void;
   allowDraftSave?: boolean;
   initialStatusFilter?: InvestmentStatus | 'all';
@@ -572,6 +572,7 @@ export function InvestmentList({
         investment={confirmingMaturityInvestment}
         onClose={() => setConfirmingMaturityId(null)}
         onUpdate={onUpdate}
+        onAddPayment={onAddPayment}
       />
     </div>
   );

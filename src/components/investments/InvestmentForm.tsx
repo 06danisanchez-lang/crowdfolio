@@ -4,7 +4,7 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import { format } from 'date-fns';
 import { CalendarIcon, Plus, AlertTriangle, Info } from 'lucide-react';
-import { Investment, Platform, InvestmentStatus, PLATFORMS, STATUS_OPTIONS, INCOME_MODEL_OPTIONS, PAYMENT_FREQUENCY_OPTIONS, PRINCIPAL_RETURN_TYPE_OPTIONS, IncomeModel, PaymentFrequency, PrincipalReturnType } from '@/types/investment';
+import { Investment, Platform, InvestmentStatus, PLATFORMS, STATUS_OPTIONS, INCOME_MODEL_OPTIONS, PAYMENT_FREQUENCY_OPTIONS, PRINCIPAL_RETURN_TYPE_OPTIONS, EQUITY_TYPE_OPTIONS, IncomeModel, PaymentFrequency, PrincipalReturnType, EquityType } from '@/types/investment';
 import { getInvestmentCompletionStatus } from '@/lib/investment/completeness';
 import { generateSchedule } from '@/lib/investment/scheduleGenerator';
 import { PLAN_FEATURES } from '@/lib/stripe/config';
@@ -76,9 +76,10 @@ const investmentSchema = z.object({
   investmentDate: z.date(),
   expectedEndDate: z.date().optional(),
   expectedReturn: z.number().min(0, 'El rendimiento debe ser mayor o igual a 0'),
-  incomeModel: z.enum(['bullet', 'periodic_fixed', 'amortizing', 'variable_or_unknown'] as const),
+  incomeModel: z.enum(['bullet', 'periodic_fixed', 'amortizing', 'variable_or_unknown', 'equity'] as const),
   paymentFrequency: z.enum(['monthly', 'quarterly', 'semiannual', 'annual'] as const).optional(),
   principalReturnType: z.enum(['at_maturity', 'amortizing', 'unknown'] as const).optional(),
+  equityType: z.enum(['plusvalia', 'rentas', 'liquidacion'] as const).optional(),
   status: z.enum(['active', 'pending', 'completed', 'defaulted', 'draft'] as const),
   notes: z.string().optional(),
   sourceUrl: z.string().optional(),
@@ -88,6 +89,13 @@ const investmentSchema = z.object({
       code: z.ZodIssueCode.custom,
       path: ['expectedEndDate'],
       message: 'La fecha de vencimiento es obligatoria para este tipo de inversión',
+    });
+  }
+  if (data.incomeModel === 'equity' && !data.equityType) {
+    ctx.addIssue({
+      code: z.ZodIssueCode.custom,
+      path: ['equityType'],
+      message: 'Selecciona el tipo de inversión equity',
     });
   }
 });
@@ -100,9 +108,10 @@ const draftInvestmentSchema = z.object({
   investmentDate: z.date().optional(),
   expectedEndDate: z.date().optional(),
   expectedReturn: z.number().nullable().optional(),
-  incomeModel: z.enum(['bullet', 'periodic_fixed', 'amortizing', 'variable_or_unknown'] as const).optional(),
+  incomeModel: z.enum(['bullet', 'periodic_fixed', 'amortizing', 'variable_or_unknown', 'equity'] as const).optional(),
   paymentFrequency: z.enum(['monthly', 'quarterly', 'semiannual', 'annual'] as const).optional(),
   principalReturnType: z.enum(['at_maturity', 'amortizing', 'unknown'] as const).optional(),
+  equityType: z.enum(['plusvalia', 'rentas', 'liquidacion'] as const).optional(),
   status: z.enum(['active', 'pending', 'completed', 'defaulted', 'draft'] as const).optional(),
   notes: z.string().optional(),
   sourceUrl: z.string().optional(),
@@ -196,6 +205,7 @@ export function InvestmentForm({
           incomeModel: 'incomeModel' in initialData ? initialData.incomeModel || undefined : undefined,
           paymentFrequency: 'paymentFrequency' in initialData ? initialData.paymentFrequency : undefined,
           principalReturnType: 'principalReturnType' in initialData ? initialData.principalReturnType : undefined,
+          equityType: 'equityType' in initialData ? (initialData as Investment).equityType : undefined,
           status: 'status' in initialData ? initialData.status : undefined,
           notes: initialData.notes,
           sourceUrl: 'sourceUrl' in initialData ? initialData.sourceUrl : undefined,
@@ -214,6 +224,7 @@ export function InvestmentForm({
   const formRef = useRef<HTMLFormElement>(null);
   const watchPlatform = form.watch('platform');
   const watchIncomeModel = form.watch('incomeModel') as IncomeModel | undefined;
+  const watchEquityType = form.watch('equityType') as EquityType | undefined;
   const endDateRequired = !!watchIncomeModel &&
     (END_DATE_REQUIRED_MODELS as readonly string[]).includes(watchIncomeModel);
 
@@ -225,9 +236,12 @@ export function InvestmentForm({
       incomeModelMountRef.current = false;
       return;
     }
-    if (watchIncomeModel === 'bullet' || watchIncomeModel === 'variable_or_unknown') {
+    if (watchIncomeModel === 'bullet' || watchIncomeModel === 'variable_or_unknown' || watchIncomeModel === 'equity') {
       form.setValue('paymentFrequency', undefined);
       form.setValue('principalReturnType', undefined);
+    }
+    if (watchIncomeModel !== 'equity') {
+      form.setValue('equityType', undefined);
     }
   }, [watchIncomeModel, form]);
 
@@ -264,6 +278,7 @@ export function InvestmentForm({
         incomeModel:        values.incomeModel as string | undefined,
         paymentFrequency:   values.paymentFrequency as string | undefined,
         principalReturnType: values.principalReturnType as string | undefined,
+        equityType:         values.equityType as string | undefined,
       });
     });
 
@@ -424,6 +439,7 @@ export function InvestmentForm({
         incomeModel: data.incomeModel,
         paymentFrequency: data.paymentFrequency || null,
         principalReturnType: data.principalReturnType || null,
+        equityType: (data as any).equityType || null,
         status: finalStatus,
         notes: data.notes,
         sourceUrl: data.sourceUrl || undefined,
@@ -463,6 +479,7 @@ export function InvestmentForm({
         incomeModel: values.incomeModel || null,
         paymentFrequency: values.paymentFrequency || null,
         principalReturnType: values.principalReturnType || null,
+        equityType: values.equityType || null,
         status: 'draft',
         notes: values.notes,
         investmentDate: values.investmentDate?.toISOString() || null,
@@ -637,7 +654,7 @@ export function InvestmentForm({
                 <FormLabel>{t('investments.field.incomeModel')}</FormLabel>
                 <Select onValueChange={field.onChange} value={field.value}>
                   <FormControl>
-                    <SelectTrigger>
+                    <SelectTrigger aria-label={t('investments.field.incomeModel')}>
                       <SelectValue placeholder={t('investments.incomeModel.placeholder')} />
                     </SelectTrigger>
                   </FormControl>
@@ -704,6 +721,38 @@ export function InvestmentForm({
                       ))}
                     </SelectContent>
                   </Select>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+          )}
+
+          {watchIncomeModel === 'equity' && (
+            <FormField
+              control={form.control}
+              name="equityType"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>{t('investments.field.equityType')}</FormLabel>
+                  <Select onValueChange={field.onChange} value={field.value || ''}>
+                    <FormControl>
+                      <SelectTrigger>
+                        <SelectValue placeholder={t('common.noSelection')} />
+                      </SelectTrigger>
+                    </FormControl>
+                    <SelectContent>
+                      {EQUITY_TYPE_OPTIONS.map((opt) => (
+                        <SelectItem key={opt.value} value={opt.value}>
+                          {t(opt.labelKey)}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                  {watchEquityType && (
+                    <p className="text-xs text-muted-foreground mt-1">
+                      {t(EQUITY_TYPE_OPTIONS.find(o => o.value === watchEquityType)?.hintKey ?? '')}
+                    </p>
+                  )}
                   <FormMessage />
                 </FormItem>
               )}

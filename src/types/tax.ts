@@ -49,6 +49,8 @@ export interface TaxSummary {
   taxableBase: number;              // baseImponibleRCMAjustada − deductibleExpenses
   estimatedTax: number;
   effectiveRate: number;
+  // Equity liquidacion sin retención — declaración manual requerida
+  liquidacionSinRetencion: EnrichedPayment[];
 }
 
 export interface EnrichedPayment {
@@ -60,6 +62,7 @@ export interface EnrichedPayment {
   investmentId: string;
   investmentName: string;
   platform: string;
+  equityType?: string;
 }
 
 export interface TaxBracket {

@@ -103,6 +103,16 @@ export function calculateAccruedReturn(
 ): number {
   if (inv.incomeModel === 'variable_or_unknown') return 0;
 
+  if (inv.incomeModel === 'equity') {
+    if (inv.equityType === 'rentas') {
+      // Real cobrado: suma de pagos tipo dividend o capital_return
+      return (inv.payments ?? [])
+        .filter(p => p.type === 'dividend' || p.type === 'capital_return')
+        .reduce((sum, p) => sum + p.amount, 0);
+    }
+    // plusvalia y liquidacion: interés simple proporcional (mismo que bullet)
+  }
+
   const todayStr = today.toISOString().split('T')[0];
 
   if (inv.incomeModel === 'periodic_fixed' || inv.incomeModel === 'amortizing') {
@@ -117,7 +127,7 @@ export function calculateAccruedReturn(
       }, 0);
   }
 
-  // bullet y variable_or_unknown: interés simple desde investmentDate hasta hoy
+  // bullet, equity plusvalia/liquidacion: interés simple proporcional
   const start = new Date(inv.investmentDate);
   const end = today < new Date(inv.expectedEndDate ?? today) ? today : new Date(inv.expectedEndDate!);
   const yearsElapsed = Math.max((end.getTime() - start.getTime()) / (1000 * 60 * 60 * 24 * 365.25), 0);
@@ -130,10 +140,12 @@ export function calculateRemainingReturn(
   today: Date = new Date()
 ): number {
   if (inv.incomeModel === 'variable_or_unknown') return 0;
+  // rentas equity: importes variables, sin proyección futura
+  if (inv.incomeModel === 'equity' && inv.equityType === 'rentas') return 0;
 
   const total = inv.incomeModel === 'periodic_fixed' || inv.incomeModel === 'amortizing'
     ? calculateExpectedReturnFromSchedule(schedule, inv.amount, inv.incomeModel)
-    : calculateInvestmentTotalReturn(inv);
+    : calculateInvestmentTotalReturn(inv); // bullet y equity plusvalia/liquidacion
   const accrued = calculateAccruedReturn(inv, schedule, today);
   return Math.max(total - accrued, 0);
 }

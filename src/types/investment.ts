@@ -11,7 +11,9 @@ export type View = 'dashboard' | 'investments' | 'future-investments' | 'tax' | 
 
 export type InvestmentStatus = 'draft' | 'active' | 'pending' | 'completed' | 'defaulted';
 
-export type IncomeModel = 'bullet' | 'periodic_fixed' | 'amortizing' | 'variable_or_unknown';
+export type IncomeModel = 'bullet' | 'periodic_fixed' | 'amortizing' | 'variable_or_unknown' | 'equity';
+
+export type EquityType = 'plusvalia' | 'rentas' | 'liquidacion';
 
 export type PaymentFrequency = 'monthly' | 'quarterly' | 'semiannual' | 'annual';
 
@@ -21,7 +23,7 @@ export interface Payment {
   id: string;
   date: string;
   amount: number;
-  type: 'dividend' | 'principal' | 'interest';
+  type: 'dividend' | 'principal' | 'interest' | 'capital_return';
   notes?: string;
 }
 
@@ -43,6 +45,7 @@ export interface Investment {
   sourceUrl?: string;
   defaultedAt?: string;
   amountRecovered?: number;
+  equityType?: EquityType;
   createdAt: string;
   updatedAt: string;
 }
@@ -100,6 +103,7 @@ export interface DraftInvestment {
   sourceUrl?: string;
   defaultedAt?: string;
   amountRecovered?: number;
+  equityType?: EquityType;
   createdAt: string;
   updatedAt: string;
 }
@@ -127,6 +131,13 @@ export const INCOME_MODEL_OPTIONS: { value: IncomeModel; labelKey: string }[] = 
   { value: 'periodic_fixed', labelKey: 'investments.incomeModel.periodicFixed' },
   { value: 'amortizing', labelKey: 'investments.incomeModel.amortizing' },
   { value: 'variable_or_unknown', labelKey: 'investments.incomeModel.variableOrUnknown' },
+  { value: 'equity', labelKey: 'investments.incomeModel.equity' },
+];
+
+export const EQUITY_TYPE_OPTIONS: { value: EquityType; labelKey: string; hintKey: string }[] = [
+  { value: 'plusvalia', labelKey: 'investments.equityType.plusvalia', hintKey: 'investments.equityType.hint.plusvalia' },
+  { value: 'rentas', labelKey: 'investments.equityType.rentas', hintKey: 'investments.equityType.hint.rentas' },
+  { value: 'liquidacion', labelKey: 'investments.equityType.liquidacion', hintKey: 'investments.equityType.hint.liquidacion' },
 ];
 
 export const PAYMENT_FREQUENCY_OPTIONS: { value: PaymentFrequency; labelKey: string }[] = [

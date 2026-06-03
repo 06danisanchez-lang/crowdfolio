@@ -264,7 +264,7 @@ export function ImportExport({
             )?.value as InvestmentStatus || 'active';
 
             const rawIncomeModel = values[8]?.toLowerCase() || '';
-            const incomeModel = (['bullet', 'periodic_fixed', 'amortizing', 'variable_or_unknown'].includes(rawIncomeModel) ? rawIncomeModel : undefined) as IncomeModel | undefined;
+            const incomeModel = (['bullet', 'periodic_fixed', 'amortizing', 'variable_or_unknown', 'equity'].includes(rawIncomeModel) ? rawIncomeModel : undefined) as IncomeModel | undefined;
             const rawFrequency = values[9]?.toLowerCase() || '';
             const paymentFrequency = (['monthly', 'quarterly', 'semiannual', 'annual'].includes(rawFrequency) ? rawFrequency : undefined) as PaymentFrequency | undefined;
             const rawPrincipal = values[10]?.toLowerCase() || '';

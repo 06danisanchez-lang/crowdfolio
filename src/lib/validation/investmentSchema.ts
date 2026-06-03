@@ -15,10 +15,10 @@ const platformSchema = z.enum([
 const investmentStatusSchema = z.enum(['active', 'pending', 'completed', 'defaulted']);
 
 // Payment type enum validation
-const paymentTypeSchema = z.enum(['dividend', 'principal', 'interest']);
+const paymentTypeSchema = z.enum(['dividend', 'principal', 'interest', 'capital_return']);
 
 // Income model enum validation
-const incomeModelSchema = z.enum(['bullet', 'periodic_fixed', 'amortizing', 'variable_or_unknown']);
+const incomeModelSchema = z.enum(['bullet', 'periodic_fixed', 'amortizing', 'variable_or_unknown', 'equity']);
 
 // Payment frequency enum validation
 const paymentFrequencySchema = z.enum(['monthly', 'quarterly', 'semiannual', 'annual']);

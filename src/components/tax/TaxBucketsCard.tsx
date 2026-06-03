@@ -1,6 +1,6 @@
 import { TaxSummary } from '@/types/tax';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { ArrowLeftRight, TrendingDown } from 'lucide-react';
+import { ArrowLeftRight, TrendingDown, AlertTriangle } from 'lucide-react';
 
 interface TaxBucketsCardProps {
   summary: TaxSummary;
@@ -30,8 +30,19 @@ function Row({ label, value, sub, highlight, dimmed }: {
 export function TaxBucketsCard({ summary }: TaxBucketsCardProps) {
   const hasGPP = summary.totalGPPLosses < 0;
   const hasCompensacion = summary.compensacionGPPRCM > 0;
+  const liqCount = summary.liquidacionSinRetencion.length;
 
   return (
+    <div className="space-y-4">
+    {liqCount > 0 && (
+      <div className="flex gap-3 rounded-lg border border-amber-300 bg-amber-50 dark:border-amber-700 dark:bg-amber-950/30 p-3 text-sm text-amber-900 dark:text-amber-300">
+        <AlertTriangle className="h-4 w-4 shrink-0 mt-0.5 text-amber-600 dark:text-amber-400" />
+        <span>
+          Tienes {liqCount} pago{liqCount > 1 ? 's' : ''} de cuota de liquidación sin retención previa.
+          Deberás declararlos manualmente en tu IRPF — consulta con tu asesor fiscal o revisa el certificado fiscal de la plataforma.
+        </span>
+      </div>
+    )}
     <div className="grid gap-4 md:grid-cols-2">
       {/* ── RCM ── */}
       <Card>
@@ -96,6 +107,7 @@ export function TaxBucketsCard({ summary }: TaxBucketsCardProps) {
           )}
         </CardContent>
       </Card>
+    </div>
     </div>
   );
 }

@@ -79,29 +79,41 @@ export function useAlerts(
       }
 
       // Expected-payment alerts from the real schedule.
-      // Only fires for investments with a generated schedule (periodic_fixed, amortizing).
+      // Periodic_fixed / amortizing use matchedPaymentId; equity rentas check capital_return payments.
       // Bullet and variable_or_unknown have no schedule entries, so they're silently skipped.
       const schedule = scheduleMap[investment.id];
       if (!schedule || schedule.length === 0) return;
+
+      const isEquityRentas = investment.incomeModel === 'equity' && investment.equityType === 'rentas';
 
       for (const entry of schedule) {
         if (entry.status === 'matched' || entry.status === 'skipped') continue;
 
         const entryDate = parseISO(entry.expectedDate);
+
+        // For equity rentas: skip if a capital_return payment covers this period
+        if (isEquityRentas && entry.type === 'interest') {
+          const hasPaid = (investment.payments ?? []).some(
+            p => p.type === 'capital_return' && parseISO(p.date) >= entryDate,
+          );
+          if (hasPaid) continue;
+        }
+
         // positive = days in the future; negative = days past due
         const daysFromToday = differenceInDays(entryDate, today);
 
         if (daysFromToday < 0 && daysFromToday >= -60) {
-          // Past due within 60-day window
           const daysOverdue = Math.abs(daysFromToday);
           allAlerts.push({
             id: `payment-${investment.id}-${entry.id ?? entry.expectedDate}`,
             type: 'expected-payment',
             severity: daysOverdue > 30 ? 'warning' : 'info',
-            title: 'Pago esperado pendiente',
-            message: daysOverdue === 1
-              ? 'Se esperaba un pago ayer'
-              : `Se esperaba un pago hace ${daysOverdue} días`,
+            title: isEquityRentas ? 'Renta trimestral pendiente' : 'Pago esperado pendiente',
+            message: isEquityRentas
+              ? `Registra la renta trimestral de ${investment.projectName} cuando la recibas`
+              : daysOverdue === 1
+                ? 'Se esperaba un pago ayer'
+                : `Se esperaba un pago hace ${daysOverdue} días`,
             investmentId: investment.id,
             investmentName: investment.projectName,
             platform: investment.platform,
@@ -110,15 +122,20 @@ export function useAlerts(
             daysRemaining: daysFromToday,
           });
         } else if (daysFromToday >= 0 && daysFromToday <= 7) {
-          // Upcoming within 7 days
           allAlerts.push({
             id: `payment-upcoming-${investment.id}-${entry.id ?? entry.expectedDate}`,
             type: 'expected-payment',
             severity: 'info',
-            title: daysFromToday === 0 ? 'Pago esperado hoy' : 'Pago próximo',
-            message: daysFromToday === 0
-              ? `Se espera un pago hoy de ${entry.expectedAmount.toFixed(2)} €`
-              : `Se espera un pago en ${daysFromToday} ${daysFromToday === 1 ? 'día' : 'días'}`,
+            title: isEquityRentas
+              ? (daysFromToday === 0 ? 'Renta trimestral esperada hoy' : 'Renta trimestral próxima')
+              : (daysFromToday === 0 ? 'Pago esperado hoy' : 'Pago próximo'),
+            message: isEquityRentas
+              ? (daysFromToday === 0
+                ? `Hoy toca registrar la renta trimestral de ${investment.projectName}`
+                : `Renta trimestral de ${investment.projectName} en ${daysFromToday} ${daysFromToday === 1 ? 'día' : 'días'}`)
+              : (daysFromToday === 0
+                ? `Se espera un pago hoy de ${entry.expectedAmount.toFixed(2)} €`
+                : `Se espera un pago en ${daysFromToday} ${daysFromToday === 1 ? 'día' : 'días'}`),
             investmentId: investment.id,
             investmentName: investment.projectName,
             platform: investment.platform,

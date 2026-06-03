@@ -35,6 +35,7 @@ interface InvestmentRow {
   notes: string | null;
   defaulted_at: string | null;
   amount_recovered: number | null;
+  equity_type: string | null;
   created_at: string;
   updated_at: string;
 }
@@ -127,11 +128,12 @@ export function useTaxSummary(year: number) {
         const activeRows = allRows.filter(inv => inv.status === 'active');
         const excludedCount = activeRows.length - trackingReadyActive.length;
 
-        // Map investment id → display name + platform
+        // Map investment id → display name + platform + equityType
         const investmentMeta = new Map(
           allRows.map(inv => [inv.id, {
             name: inv.project_name,
             platform: inv.platform === 'custom' ? (inv.custom_platform_name || 'Personalizada') : inv.platform,
+            equityType: inv.equity_type || undefined,
           }])
         );
 
@@ -183,6 +185,7 @@ export function useTaxSummary(year: number) {
             investmentId: p.investment_id,
             investmentName: investmentMeta.get(p.investment_id)?.name ?? 'Inversión desconocida',
             platform: investmentMeta.get(p.investment_id)?.platform ?? '-',
+            equityType: investmentMeta.get(p.investment_id)?.equityType,
           }))
         );
       } catch (err) {
@@ -233,11 +236,38 @@ export function useTaxSummary(year: number) {
 
   // Tax summary — RCM + GPP + compensación (límite 25%, Ley 7/2024)
   const summary: TaxSummary = useMemo(() => {
-    const interestIncome = payments.filter((p) => p.type === 'interest').reduce((sum, p) => sum + p.amount, 0);
-    const dividendIncome = payments.filter((p) => p.type === 'dividend').reduce((sum, p) => sum + p.amount, 0);
-    const principalReturns = payments.filter((p) => p.type === 'principal').reduce((sum, p) => sum + p.amount, 0);
+    // capital_return (prima de emisión equity rentas) no tributa — excluir de todos los cálculos fiscales
+    const taxablePayments = payments.filter(p => p.type !== 'capital_return');
+
+    const interestIncome = taxablePayments.filter((p) => p.type === 'interest').reduce((sum, p) => sum + p.amount, 0);
+    const dividendIncome = taxablePayments.filter((p) => p.type === 'dividend').reduce((sum, p) => sum + p.amount, 0);
+    const principalReturns = taxablePayments.filter((p) => p.type === 'principal').reduce((sum, p) => sum + p.amount, 0);
     const grossIncome = interestIncome + dividendIncome;
-    const withholdingsApplied = payments.reduce((sum, p) => sum + (p.withholding_applied || 0), 0);
+    const withholdingsApplied = taxablePayments.reduce((sum, p) => sum + (p.withholding_applied || 0), 0);
+
+    // Equity liquidacion sin retención — debe declararse manualmente
+    const equityTypeMap = new Map(investmentRows.map(r => [r.id, r.equity_type]));
+    const invNameMap = new Map(investmentRows.map(r => [r.id, {
+      name: r.project_name,
+      platform: r.platform === 'custom' ? (r.custom_platform_name || 'Personalizada') : r.platform,
+    }]));
+    const liquidacionSinRetencion: EnrichedPayment[] = taxablePayments
+      .filter(p =>
+        p.type === 'dividend' &&
+        equityTypeMap.get(p.investment_id) === 'liquidacion' &&
+        (!p.withholding_applied || p.withholding_applied === 0)
+      )
+      .map(p => ({
+        id: p.id,
+        date: p.date,
+        amount: p.amount,
+        type: p.type,
+        withholdingApplied: p.withholding_applied ?? 0,
+        investmentId: p.investment_id,
+        investmentName: invNameMap.get(p.investment_id)?.name ?? 'Inversión desconocida',
+        platform: invNameMap.get(p.investment_id)?.platform ?? '-',
+        equityType: 'liquidacion',
+      }));
 
     // GPP totals
     const totalGPPLosses = defaultedInvestmentsWithLoss.reduce((sum, d) => sum + d.loss, 0);
@@ -259,8 +289,9 @@ export function useTaxSummary(year: number) {
       withholdingsApplied, deductibleExpenses: totalExpenses,
       totalGPPLosses, compensacionGPPRCM, perdidasGPPPendientes, baseImponibleRCMAjustada,
       taxableBase, estimatedTax, effectiveRate,
+      liquidacionSinRetencion,
     };
-  }, [payments, totalExpenses, year, defaultedInvestmentsWithLoss]);
+  }, [payments, totalExpenses, year, defaultedInvestmentsWithLoss, investmentRows]);
 
   // Projection — based only on active + tracking_ready investments
   const projection: TaxProjection = useMemo(() => {

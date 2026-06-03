@@ -5,7 +5,7 @@
  * for data consistency guarantees.
  */
 
-import { IncomeModel, PaymentFrequency, PrincipalReturnType, InvestmentScheduleEntry } from '@/types/investment';
+import { IncomeModel, PaymentFrequency, PrincipalReturnType, EquityType, InvestmentScheduleEntry } from '@/types/investment';
 
 interface ScheduleInput {
   id: string;
@@ -14,6 +14,7 @@ interface ScheduleInput {
   incomeModel: IncomeModel;
   paymentFrequency?: PaymentFrequency | null;
   principalReturnType?: PrincipalReturnType | null;
+  equityType?: EquityType | null;
   investmentDate: string;
   expectedEndDate: string;
 }
@@ -52,11 +53,38 @@ function toDateStr(d: Date): string {
 }
 
 export function generateSchedule(input: ScheduleInput): InvestmentScheduleEntry[] {
-  const { incomeModel, paymentFrequency, principalReturnType, amount, expectedReturn, investmentDate, expectedEndDate, id } = input;
+  const { incomeModel, paymentFrequency, principalReturnType, equityType, amount, expectedReturn, investmentDate, expectedEndDate, id } = input;
 
-  // Only generate for periodic_fixed and amortizing
+  // bullet and variable_or_unknown: no schedule entries
   if (incomeModel === 'bullet' || incomeModel === 'variable_or_unknown') {
     return [];
+  }
+
+  // equity: only 'rentas' generates a schedule (quarterly interest stubs + final principal)
+  if (incomeModel === 'equity') {
+    if (equityType !== 'rentas' || !expectedEndDate) return [];
+    const start = new Date(investmentDate);
+    const end = new Date(expectedEndDate);
+    const entries: InvestmentScheduleEntry[] = [];
+    let current = addMonths(start, 3);
+    while (current < end) {
+      entries.push({
+        investmentId: id,
+        expectedDate: toDateStr(current),
+        expectedAmount: 0,
+        type: 'interest',
+        status: 'pending',
+      });
+      current = addMonths(current, 3);
+    }
+    entries.push({
+      investmentId: id,
+      expectedDate: toDateStr(end),
+      expectedAmount: 0,
+      type: 'principal',
+      status: 'pending',
+    });
+    return entries;
   }
 
   if (!paymentFrequency || !expectedEndDate) {

@@ -1,7 +1,7 @@
 import { useState, useEffect, useMemo, useRef } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
-import { TaxSummary, EnrichedPayment } from '@/types/tax';
+import { TaxSummary, EnrichedPayment, DefaultedInvestmentLoss } from '@/types/tax';
 import { Investment } from '@/types/investment';
 import { calculateProgressiveTax, calculateEffectiveRate } from '@/lib/tax/calculations';
 import { calculateYearlyProjection, TaxProjection } from '@/lib/tax/projections';
@@ -33,6 +33,8 @@ interface InvestmentRow {
   principal_return_type: string | null;
   status: string;
   notes: string | null;
+  defaulted_at: string | null;
+  amount_recovered: number | null;
   created_at: string;
   updated_at: string;
 }
@@ -62,6 +64,7 @@ export function useTaxSummary(year: number) {
   const { user } = useAuth();
   const [payments, setPayments] = useState<PaymentWithInvestment[]>([]);
   const [projectionInvestments, setProjectionInvestments] = useState<Investment[]>([]);
+  const [investmentRows, setInvestmentRows] = useState<InvestmentRow[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [excludedIncompleteCount, setExcludedIncompleteCount] = useState(0);
@@ -77,6 +80,7 @@ export function useTaxSummary(year: number) {
       if (!user) {
         setPayments([]);
         setProjectionInvestments([]);
+        setInvestmentRows([]);
         setIsLoading(false);
         setError(null);
         return;
@@ -135,6 +139,7 @@ export function useTaxSummary(year: number) {
           clearTimeout(timeoutId);
           if (requestIdRef.current !== currentId) return;
           setProjectionInvestments(trackingReadyActive);
+          setInvestmentRows(allRows);
           setPayments([]);
           setEnrichedPayments([]);
           setExcludedIncompleteCount(excludedCount);
@@ -166,6 +171,7 @@ export function useTaxSummary(year: number) {
 
         setExcludedIncompleteCount(excludedCount);
         setProjectionInvestments(trackingReadyActive);
+        setInvestmentRows(allRows);
         setPayments(rawPayments);
         setEnrichedPayments(
           rawPayments.map((p) => ({
@@ -198,21 +204,63 @@ export function useTaxSummary(year: number) {
     return () => { ++requestIdRef.current; };
   }, [user, year, retryCount]);
 
-  // Tax summary — based on ALL real payments (no investment completeness filter)
+  // GPP — inversiones en default que cumplen el requisito de 6 meses (art. 14.2.k LIRPF)
+  const defaultedInvestmentsWithLoss: DefaultedInvestmentLoss[] = useMemo(() => {
+    const yearEnd = new Date(`${year}-12-31`);
+    return investmentRows
+      .filter(inv => {
+        if (inv.status !== 'defaulted' || !inv.expected_end_date) return false;
+        const cutoff = new Date(inv.expected_end_date);
+        cutoff.setMonth(cutoff.getMonth() + 6);
+        return cutoff <= yearEnd;
+      })
+      .map(inv => {
+        const amountInvested = Number(inv.amount);
+        const amountRecovered = inv.amount_recovered != null ? Number(inv.amount_recovered) : 0;
+        return {
+          investmentId: inv.id,
+          projectName: inv.project_name,
+          platform: inv.platform,
+          amountInvested,
+          amountRecovered,
+          loss: amountRecovered - amountInvested,
+          defaultedAt: inv.defaulted_at || undefined,
+          expectedEndDate: inv.expected_end_date || undefined,
+          qualifiesForDeduction: true,
+        };
+      });
+  }, [investmentRows, year]);
+
+  // Tax summary — RCM + GPP + compensación (límite 25%, Ley 7/2024)
   const summary: TaxSummary = useMemo(() => {
     const interestIncome = payments.filter((p) => p.type === 'interest').reduce((sum, p) => sum + p.amount, 0);
     const dividendIncome = payments.filter((p) => p.type === 'dividend').reduce((sum, p) => sum + p.amount, 0);
     const principalReturns = payments.filter((p) => p.type === 'principal').reduce((sum, p) => sum + p.amount, 0);
     const grossIncome = interestIncome + dividendIncome;
     const withholdingsApplied = payments.reduce((sum, p) => sum + (p.withholding_applied || 0), 0);
-    const taxableBase = Math.max(0, grossIncome - totalExpenses);
+
+    // GPP totals
+    const totalGPPLosses = defaultedInvestmentsWithLoss.reduce((sum, d) => sum + d.loss, 0);
+
+    // Compensación cruzada GPP ↔ RCM: máx. 25% del RCM bruto (Ley 7/2024)
+    let compensacionGPPRCM = 0;
+    if (totalGPPLosses < 0 && grossIncome > 0) {
+      compensacionGPPRCM = Math.min(Math.abs(totalGPPLosses), grossIncome * 0.25);
+    }
+    const perdidasGPPPendientes = Math.max(0, Math.abs(totalGPPLosses) - compensacionGPPRCM);
+    const baseImponibleRCMAjustada = Math.max(0, grossIncome - compensacionGPPRCM);
+
+    const taxableBase = Math.max(0, baseImponibleRCMAjustada - totalExpenses);
     const estimatedTax = calculateProgressiveTax(taxableBase);
     const effectiveRate = calculateEffectiveRate(taxableBase, estimatedTax);
+
     return {
       year, grossIncome, interestIncome, dividendIncome, principalReturns,
-      withholdingsApplied, deductibleExpenses: totalExpenses, taxableBase, estimatedTax, effectiveRate,
+      withholdingsApplied, deductibleExpenses: totalExpenses,
+      totalGPPLosses, compensacionGPPRCM, perdidasGPPPendientes, baseImponibleRCMAjustada,
+      taxableBase, estimatedTax, effectiveRate,
     };
-  }, [payments, totalExpenses, year]);
+  }, [payments, totalExpenses, year, defaultedInvestmentsWithLoss]);
 
   // Projection — based only on active + tracking_ready investments
   const projection: TaxProjection = useMemo(() => {
@@ -247,7 +295,9 @@ export function useTaxSummary(year: number) {
   }, [user]);
 
   return {
-    summary, projection, payments, enrichedPayments, expenses, error, excludedIncompleteCount,
+    summary, projection, payments, enrichedPayments, expenses,
+    defaultedInvestmentsWithLoss,
+    error, excludedIncompleteCount,
     isLoading: isLoading || expensesLoading, availableYears,
     refetch: () => setRetryCount(c => c + 1),
   };

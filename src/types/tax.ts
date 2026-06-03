@@ -19,15 +19,34 @@ export interface TaxExpense {
   updatedAt: string;
 }
 
+export interface DefaultedInvestmentLoss {
+  investmentId: string;
+  projectName: string;
+  platform: string;
+  amountInvested: number;
+  amountRecovered: number;
+  loss: number;              // negative: amountRecovered - amountInvested
+  defaultedAt?: string;
+  expectedEndDate?: string;
+  qualifiesForDeduction: boolean;
+}
+
 export interface TaxSummary {
   year: number;
+  // RCM — Rendimientos del Capital Mobiliario
   grossIncome: number;
   interestIncome: number;
   dividendIncome: number;
   principalReturns: number;
   withholdingsApplied: number;
   deductibleExpenses: number;
-  taxableBase: number;
+  // GPP — Ganancias y Pérdidas Patrimoniales (art. 14.2.k LIRPF)
+  totalGPPLosses: number;           // suma de pérdidas elegibles (negativo o 0)
+  compensacionGPPRCM: number;       // pérdida GPP compensada contra RCM (límite 25%)
+  perdidasGPPPendientes: number;    // pérdida no compensada, arrastrable 4 años
+  baseImponibleRCMAjustada: number; // grossIncome − compensacionGPPRCM
+  // Base y cuota
+  taxableBase: number;              // baseImponibleRCMAjustada − deductibleExpenses
   estimatedTax: number;
   effectiveRate: number;
 }

@@ -24,6 +24,8 @@ interface RawInvestmentRow {
   status: string;
   notes: string | null;
   source_url: string | null;
+  defaulted_at: string | null;
+  amount_recovered: number | null;
   created_at: string;
   updated_at: string;
   user_id: string;
@@ -142,6 +144,8 @@ export function useInvestments() {
         status: autoPendingIds.has(inv.id) ? 'pending' : ((inv.status as InvestmentStatus) || 'active'),
         notes: inv.notes || undefined,
         sourceUrl: inv.source_url || undefined,
+        defaultedAt: inv.defaulted_at || undefined,
+        amountRecovered: inv.amount_recovered != null ? Number(inv.amount_recovered) : undefined,
         createdAt: inv.created_at,
         updatedAt: inv.updated_at,
         payments: paymentsData
@@ -371,6 +375,8 @@ export function useInvestments() {
     if (updates.status !== undefined) dbUpdates.status = updates.status;
     if (updates.notes !== undefined) dbUpdates.notes = updates.notes;
     if (updates.sourceUrl !== undefined) dbUpdates.source_url = updates.sourceUrl || null;
+    if (updates.defaultedAt !== undefined) dbUpdates.defaulted_at = updates.defaultedAt;
+    if (updates.amountRecovered !== undefined) dbUpdates.amount_recovered = updates.amountRecovered;
     if (updates.incomeModel !== undefined) dbUpdates.income_model = updates.incomeModel || null;
     if (updates.paymentFrequency !== undefined) dbUpdates.payment_frequency = updates.paymentFrequency || null;
     if (updates.principalReturnType !== undefined) dbUpdates.principal_return_type = updates.principalReturnType || null;

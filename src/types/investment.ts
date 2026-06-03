@@ -41,6 +41,8 @@ export interface Investment {
   payments: Payment[];
   notes?: string;
   sourceUrl?: string;
+  defaultedAt?: string;
+  amountRecovered?: number;
   createdAt: string;
   updatedAt: string;
 }
@@ -96,6 +98,8 @@ export interface DraftInvestment {
   payments: Payment[];
   notes?: string;
   sourceUrl?: string;
+  defaultedAt?: string;
+  amountRecovered?: number;
   createdAt: string;
   updatedAt: string;
 }

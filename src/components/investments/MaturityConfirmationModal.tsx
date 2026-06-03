@@ -104,7 +104,7 @@ export function MaturityConfirmationModal({ investment, onClose, onUpdate }: Pro
         });
         break;
       case 'defaulted':
-        await onUpdate(investment.id, { status: 'defaulted' });
+        await onUpdate(investment.id, { status: 'defaulted', defaultedAt: new Date().toISOString() });
         break;
     }
     setSaving(false);

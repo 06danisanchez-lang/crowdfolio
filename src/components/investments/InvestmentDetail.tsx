@@ -174,11 +174,16 @@ export function InvestmentDetail({ investment, schedule = [], onClose, onUpdate,
 
   const handlePartialReturn = async () => {
     if (!investment || !partialAmount) return;
+    const amount = parseFloat(partialAmount);
     await onAddPayment(investment.id, {
       date: partialDate.toISOString(),
-      amount: parseFloat(partialAmount),
+      amount,
       type: 'principal',
     });
+    const existingPrincipal = investment.payments
+      .filter(p => p.type === 'principal')
+      .reduce((sum, p) => sum + p.amount, 0);
+    await onUpdate(investment.id, { amountRecovered: existingPrincipal + amount });
     resetForms();
   };
 

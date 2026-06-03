@@ -8,7 +8,7 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
-import { TaxSummary, TaxExpense, TAX_EXPENSE_CATEGORIES, EnrichedPayment } from '@/types/tax';
+import { TaxSummary, TaxExpense, TAX_EXPENSE_CATEGORIES, EnrichedPayment, DefaultedInvestmentLoss } from '@/types/tax';
 import { getTaxBreakdown, formatCurrency, formatPercentage } from '@/lib/tax/calculations';
 import { toast } from '@/hooks/use-toast';
 import ExcelJS from 'exceljs';
@@ -24,6 +24,7 @@ interface ExtendedTaxExportButtonProps {
   summary: TaxSummary;
   expenses: TaxExpense[];
   enrichedPayments: EnrichedPayment[];
+  defaultedInvestmentsWithLoss: DefaultedInvestmentLoss[];
   userEmail: string;
   onProRequired?: () => void;
   isPro?: boolean;
@@ -33,6 +34,7 @@ export function TaxExportButton({
   summary,
   expenses,
   enrichedPayments,
+  defaultedInvestmentsWithLoss,
   userEmail,
   onProRequired,
   isPro = true,
@@ -82,9 +84,19 @@ export function TaxExportButton({
       wsResumen.addRow([]);
       wsResumen.addRow(['Resultado Declaración', summary.estimatedTax - summary.withholdingsApplied]);
       wsResumen.addRow([]);
-      // Numeric value with percentage cell format (not a string)
-      const effectiveRateRow = wsResumen.addRow(['Tipo Efectivo', summary.effectiveRate]);
+      // ExcelJS '0.00%' multiplies by 100 — store as decimal (0.195), not percentage (19.5)
+      const effectiveRateRow = wsResumen.addRow(['Tipo Efectivo', summary.effectiveRate / 100]);
       effectiveRateRow.getCell(2).numFmt = '0.00%';
+
+      // GPP section in Sheet 1 (only if there are eligible losses)
+      if (summary.totalGPPLosses < 0) {
+        wsResumen.addRow([]);
+        wsResumen.addRow(['── PÉRDIDAS PATRIMONIALES (GPP) ──', '']);
+        wsResumen.addRow(['Pérdidas por impago elegibles (art. 14.2.k LIRPF)', summary.totalGPPLosses]);
+        wsResumen.addRow(['Compensación aplicada contra RCM (límite 25%)', -summary.compensacionGPPRCM]);
+        wsResumen.addRow(['Base imponible RCM ajustada', summary.baseImponibleRCMAjustada]);
+        wsResumen.addRow(['Pérdidas GPP pendientes de arrastrar (4 años)', -summary.perdidasGPPPendientes]);
+      }
 
       wsResumen.getRow(1).font = { bold: true, size: 14 };
       wsResumen.getRow(3).font = { bold: true };
@@ -183,6 +195,32 @@ export function TaxExportButton({
       });
       wsInv.getRow(1).font = { bold: true, size: 14 };
       wsInv.getRow(3).font = { bold: true };
+
+      // ── Sheet 6: Pérdidas GPP (only if applicable) ──────────────────────────
+      if (summary.totalGPPLosses < 0 && defaultedInvestmentsWithLoss.length > 0) {
+        const wsGPP = workbook.addWorksheet('Pérdidas GPP');
+        wsGPP.columns = [{ width: 40 }, { width: 20 }, { width: 20 }, { width: 20 }, { width: 20 }];
+
+        wsGPP.addRow(['PÉRDIDAS POR IMPAGO (GPP)', summary.year, '', '', '']);
+        wsGPP.addRow([]);
+        wsGPP.addRow(['Inversión', 'Plataforma', 'Invertido (€)', 'Recuperado (€)', 'Pérdida (€)']);
+        defaultedInvestmentsWithLoss.forEach(inv => {
+          wsGPP.addRow([inv.projectName, inv.platform, inv.amountInvested, inv.amountRecovered, inv.loss]);
+        });
+        wsGPP.addRow([]);
+        wsGPP.addRow(['TOTAL GPP', '', '', '', summary.totalGPPLosses]);
+        wsGPP.addRow([]);
+        wsGPP.addRow(['── Compensación cruzada RCM (Ley 7/2024) ──', '', '', '', '']);
+        wsGPP.addRow(['RCM bruto', '', '', '', summary.grossIncome]);
+        wsGPP.addRow(['Límite compensable (25% RCM)', '', '', '', summary.grossIncome * 0.25]);
+        wsGPP.addRow(['Compensación aplicada', '', '', '', -summary.compensacionGPPRCM]);
+        wsGPP.addRow(['Base imponible RCM ajustada', '', '', '', summary.baseImponibleRCMAjustada]);
+        wsGPP.addRow(['Pérdidas pendientes de arrastrar (4 años)', '', '', '', -summary.perdidasGPPPendientes]);
+
+        wsGPP.getRow(1).font = { bold: true, size: 14 };
+        wsGPP.getRow(3).font = { bold: true };
+        wsGPP.getRow(11).font = { bold: true };
+      }
 
       // ── Download ────────────────────────────────────────────────────────────
       const buffer = await workbook.xlsx.writeBuffer();
@@ -291,6 +329,67 @@ export function TaxExportButton({
           theme: 'striped',
           headStyles: { fillColor: [59, 130, 246] },
           styles: { fontSize: 10 },
+        });
+
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        yPos = (doc as any).lastAutoTable.finalY + 15;
+      }
+
+      // ── Pérdidas GPP (solo si existen pérdidas elegibles) ───────────────────
+      if (summary.totalGPPLosses < 0 && defaultedInvestmentsWithLoss.length > 0) {
+        if (yPos > 200) { doc.addPage(); yPos = 20; }
+
+        doc.setFontSize(14);
+        doc.setFont('helvetica', 'bold');
+        doc.text('Pérdidas por Impago (GPP)', 14, yPos);
+        yPos += 5;
+
+        autoTable(doc, {
+          startY: yPos,
+          head: [['Inversión', 'Plataforma', 'Invertido', 'Recuperado', 'Pérdida']],
+          body: [
+            ...defaultedInvestmentsWithLoss.map(inv => [
+              inv.projectName,
+              inv.platform,
+              formatCurrency(inv.amountInvested),
+              formatCurrency(inv.amountRecovered),
+              formatCurrency(inv.loss),
+            ]),
+            ['', '', '', 'Total GPP', formatCurrency(summary.totalGPPLosses)],
+          ],
+          theme: 'striped',
+          headStyles: { fillColor: [239, 68, 68] },
+          styles: { fontSize: 9 },
+          columnStyles: {
+            0: { cellWidth: 55 },
+            1: { cellWidth: 30 },
+            2: { cellWidth: 28, halign: 'right' as const },
+            3: { cellWidth: 28, halign: 'right' as const },
+            4: { cellWidth: 28, halign: 'right' as const },
+          },
+        });
+
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        yPos = (doc as any).lastAutoTable.finalY + 8;
+
+        // Compensation summary table
+        autoTable(doc, {
+          startY: yPos,
+          head: [['Compensación cruzada GPP ↔ RCM (Ley 7/2024)', 'Importe']],
+          body: [
+            ['RCM bruto', formatCurrency(summary.grossIncome)],
+            [`Límite compensable (25% × ${formatCurrency(summary.grossIncome)})`, formatCurrency(summary.grossIncome * 0.25)],
+            ['Compensación aplicada este ejercicio', formatCurrency(-summary.compensacionGPPRCM)],
+            ['Base imponible RCM ajustada', formatCurrency(summary.baseImponibleRCMAjustada)],
+            ['Pérdidas pendientes de arrastrar (4 años)', formatCurrency(-summary.perdidasGPPPendientes)],
+          ],
+          theme: 'striped',
+          headStyles: { fillColor: [100, 100, 100] },
+          styles: { fontSize: 9 },
+          columnStyles: {
+            0: { cellWidth: 130 },
+            1: { cellWidth: 40, halign: 'right' as const },
+          },
         });
 
         // eslint-disable-next-line @typescript-eslint/no-explicit-any

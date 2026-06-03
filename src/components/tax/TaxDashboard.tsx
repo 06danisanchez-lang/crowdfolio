@@ -34,7 +34,7 @@ export function TaxDashboard({ isPro = false, onProRequired }: TaxDashboardProps
   const { t } = useLanguage();
   const { user } = useAuth();
 
-  const { summary, projection, isLoading, availableYears, excludedIncompleteCount, enrichedPayments, error, refetch } = useTaxSummary(selectedYear);
+  const { summary, projection, isLoading, availableYears, excludedIncompleteCount, enrichedPayments, defaultedInvestmentsWithLoss, error, refetch } = useTaxSummary(selectedYear);
   const { 
     expenses, 
     addExpense, 
@@ -127,7 +127,7 @@ export function TaxDashboard({ isPro = false, onProRequired }: TaxDashboardProps
           </p>
         </div>
         <div className="flex items-center gap-3">
-          <TaxExportButton summary={summary} expenses={expenses} enrichedPayments={enrichedPayments} userEmail={user?.email ?? ''} isPro={isPro} onProRequired={onProRequired} />
+          <TaxExportButton summary={summary} expenses={expenses} enrichedPayments={enrichedPayments} defaultedInvestmentsWithLoss={defaultedInvestmentsWithLoss} userEmail={user?.email ?? ''} isPro={isPro} onProRequired={onProRequired} />
           <TaxYearSelector
             selectedYear={selectedYear}
             onYearChange={setSelectedYear}
@@ -171,9 +171,8 @@ export function TaxDashboard({ isPro = false, onProRequired }: TaxDashboardProps
         </TabsContent>
 
         <TabsContent value="buckets" className="space-y-4">
-          
-          <TaxBucketsCard taxResult={null} />
-          <CompensationBreakdown taxResult={null} />
+          <TaxBucketsCard summary={summary} />
+          <CompensationBreakdown summary={summary} defaultedInvestmentsWithLoss={defaultedInvestmentsWithLoss} />
         </TabsContent>
 
         <TabsContent value="expenses">

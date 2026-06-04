@@ -21,7 +21,7 @@ export function FeedbackButton() {
   }, [open]);
 
   const mailtoHref =
-    'mailto:soporte@crowsfolio.es' +
+    'mailto:soporte@crowdfolio.es' +
     '?subject=Sugerencia%20Crowdfolio' +
     '&body=Hola%20equipo%20de%20Crowdfolio%2C%0A%0AQuiero%20compartir%20mi%20opini%C3%B3n%3A%0A%0A';
 
@@ -54,6 +54,12 @@ export function FeedbackButton() {
           >
             Enviar sugerencia
           </a>
+          <p className="text-xs text-center text-muted-foreground">
+            O escríbenos directamente a{' '}
+            <a href={mailtoHref} className="underline hover:text-foreground transition-colors">
+              soporte@crowdfolio.es
+            </a>
+          </p>
         </div>
       )}
 

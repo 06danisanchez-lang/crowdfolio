@@ -285,7 +285,6 @@ export function ImportExport({
   const [pendingImport, setPendingImport] = useState<PendingImport | null>(null);
 
   const fileInputRef = useRef<HTMLInputElement>(null);
-  const jsonInputRef = useRef<HTMLInputElement>(null);
 
   const resetImportState = () => {
     setImportStep('idle');
@@ -348,68 +347,7 @@ export function ImportExport({
     toast.success(t('investments.exportCsvSuccess'));
   };
 
-  // ── Template download (unchanged) ─────────────────────────────────────────
-
-  const handleDownloadTemplate = () => {
-    const headers = [
-      'Plataforma', 'Nombre Proyecto', 'Monto', 'Fecha Inversión (YYYY-MM-DD)',
-      'Fecha Vencimiento (YYYY-MM-DD)', 'Rendimiento Esperado (%)', 'Estado', 'Notas',
-      'Modelo de Rendimiento', 'Frecuencia de Pago', 'Tipo Devolución Principal',
-    ];
-    const example = [
-      'Urbanitae', 'Promoción Residencial Madrid', '5000', '2024-01-15',
-      '2025-01-15', '10', 'Activo', 'Primera inversión en esta plataforma',
-      'bullet', '', 'at_maturity',
-    ];
-    const csv = [headers, example].map(row => row.map(cell => `"${cell}"`).join(',')).join('\n');
-    const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = 'plantilla-inversiones.csv';
-    document.body.appendChild(a);
-    a.click();
-    document.body.removeChild(a);
-    URL.revokeObjectURL(url);
-    toast.success('Plantilla descargada');
-  };
-
-  // ── Import: JSON (unchanged) ───────────────────────────────────────────────
-
-  const handleImportJSON = (event: React.ChangeEvent<HTMLInputElement>) => {
-    const file = event.target.files?.[0];
-    if (!file) return;
-    if (file.size > MAX_IMPORT_FILE_SIZE) {
-      setImportError(`El archivo es demasiado grande. Máximo permitido: ${MAX_IMPORT_FILE_SIZE / 1024 / 1024}MB`);
-      event.target.value = '';
-      return;
-    }
-    const reader = new FileReader();
-    reader.onload = (e) => {
-      try {
-        const text = e.target?.result as string;
-        let parsedData: unknown;
-        try { parsedData = JSON.parse(text); }
-        catch { throw new Error('El archivo no contiene JSON válido'); }
-        if (!Array.isArray(parsedData)) throw new Error('El archivo debe contener un array de inversiones');
-        if (parsedData.length > MAX_INVESTMENTS_PER_IMPORT)
-          throw new Error(`Demasiadas inversiones. Máximo permitido: ${MAX_INVESTMENTS_PER_IMPORT}`);
-        const validatedData = investmentsArraySchema.parse(parsedData) as Investment[];
-        onImport(validatedData, false);
-        setImportOpen(false);
-        setImportError(null);
-        toast.success(t('investments.importSuccess').replace('{n}', String(validatedData.length)));
-      } catch (error) {
-        if (error instanceof ZodError) setImportError(`Error de validación:\n${formatZodError(error)}`);
-        else if (error instanceof Error) setImportError(error.message);
-        else setImportError('Error al procesar el archivo JSON.');
-      }
-    };
-    reader.readAsText(file);
-    event.target.value = '';
-  };
-
-  // ── Import: CSV / XLSX — new implementation ────────────────────────────────
+  // ── Import: CSV / XLSX / JSON ─────────────────────────────────────────────
 
   const processRows = (rows: RawRow[]) => {
     const active: Investment[] = [];
@@ -447,8 +385,26 @@ export function ImportExport({
     }
 
     try {
+      const ext = file.name.toLowerCase().split('.').pop();
+
+      // JSON: delegate to the existing JSON handler path
+      if (ext === 'json') {
+        const text = await file.text();
+        let parsedData: unknown;
+        try { parsedData = JSON.parse(text); }
+        catch { throw new Error('El archivo no contiene JSON válido'); }
+        if (!Array.isArray(parsedData)) throw new Error('El archivo debe contener un array de inversiones');
+        if (parsedData.length > MAX_INVESTMENTS_PER_IMPORT)
+          throw new Error(`Demasiadas inversiones. Máximo permitido: ${MAX_INVESTMENTS_PER_IMPORT}`);
+        const validatedData = investmentsArraySchema.parse(parsedData) as Investment[];
+        onImport(validatedData, false);
+        setImportOpen(false);
+        toast.success(t('investments.importSuccess').replace('{n}', String(validatedData.length)));
+        return;
+      }
+
       let rows: RawRow[];
-      if (file.name.toLowerCase().endsWith('.xlsx')) {
+      if (ext === 'xlsx') {
         const buffer = await file.arrayBuffer();
         rows = await parseXlsxToRows(buffer);
       } else {
@@ -460,7 +416,9 @@ export function ImportExport({
         throw new Error(`Demasiadas filas. Máximo permitido: ${MAX_INVESTMENTS_PER_IMPORT}`);
       processRows(rows);
     } catch (error) {
-      setImportError(error instanceof Error ? error.message : 'Error al procesar el archivo');
+      if (error instanceof ZodError) setImportError(`Error de validación:\n${formatZodError(error)}`);
+      else if (error instanceof Error) setImportError(error.message);
+      else setImportError('Error al procesar el archivo');
     }
   };
 
@@ -507,41 +465,18 @@ export function ImportExport({
           )}
 
           {importStep === 'idle' ? (
-            <div className="space-y-4">
-              {/* JSON section — unchanged */}
-              <div className="rounded-lg border p-4">
-                <h4 className="mb-2 font-medium">{t('investments.fromJSON')}</h4>
-                <p className="mb-3 text-sm text-muted-foreground">{t('investments.fromJSONDesc')}</p>
-                <input ref={jsonInputRef} type="file" accept=".json" className="hidden" onChange={handleImportJSON} />
-                <Button variant="secondary" onClick={() => jsonInputRef.current?.click()}>
-                  <FileJson className="mr-2 h-4 w-4" />
-                  {t('investments.selectJSON')}
-                </Button>
-              </div>
-
-              {/* CSV / XLSX section — new */}
-              <div className="rounded-lg border p-4">
-                <h4 className="mb-2 font-medium">Desde CSV o Excel (.xlsx)</h4>
-                <p className="mb-3 text-sm text-muted-foreground">
-                  Las columnas se detectan por nombre de cabecera. Puedes usar el archivo exportado desde Crowdfolio o la plantilla.
-                </p>
-                <div className="flex gap-2 flex-wrap">
-                  <input
-                    ref={fileInputRef}
-                    type="file"
-                    accept=".csv,.xlsx"
-                    className="hidden"
-                    onChange={handleFileChange}
-                  />
-                  <Button variant="secondary" onClick={() => fileInputRef.current?.click()}>
-                    <FileSpreadsheet className="mr-2 h-4 w-4" />
-                    Seleccionar archivo
-                  </Button>
-                  <Button variant="ghost" onClick={handleDownloadTemplate}>
-                    {t('investments.downloadTemplate')}
-                  </Button>
-                </div>
-              </div>
+            <div className="pt-2">
+              <input
+                ref={fileInputRef}
+                type="file"
+                accept=".csv,.xlsx,.json"
+                className="hidden"
+                onChange={handleFileChange}
+              />
+              <Button className="w-full" onClick={() => fileInputRef.current?.click()}>
+                <FileSpreadsheet className="mr-2 h-4 w-4" />
+                {t('investments.selectFile')}
+              </Button>
             </div>
           ) : (
             /* Preview / confirmation step */

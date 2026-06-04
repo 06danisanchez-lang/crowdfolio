@@ -426,7 +426,7 @@ const Index = () => {
                 <p className="text-muted-foreground">{t('investments.subtitle')}{!isPro && ` (${activePendingCount}/3)`}</p>
               </div>
               <div className="flex flex-wrap gap-2">
-                <ImportExport investments={investments} onImport={importInvestments} exportData={exportInvestments} />
+                <ImportExport investments={investments} onImport={importInvestments} exportData={exportInvestments} isPro={isPro} currentActivePendingCount={activePendingCount} />
                 <InvestmentForm onSubmit={addInvestment} onSubmitDraft={addDraftInvestment} investmentCount={activePendingCount} isPro={isPro} onProRequired={() => openUpgradeModal('unlimited_investments')} />
               </div>
             </div>

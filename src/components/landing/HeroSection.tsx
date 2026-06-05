@@ -59,8 +59,8 @@ export default function HeroSection() {
         </p>
 
         {/* CTAs */}
-        <div className="cf-reveal d2" style={{ display: 'flex', gap: 13, flexWrap: 'wrap', justifyContent: 'center' }}>
-          <a href="/auth" style={{
+        <div className="cf-reveal d2 flex flex-col sm:flex-row items-stretch sm:items-center justify-center gap-3 w-full sm:w-auto">
+          <a href="/auth" className="w-full sm:w-auto" style={{
             display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
             background: '#79c6fa', color: '#141f3e',
             fontFamily: "'Hanken Grotesk', sans-serif", fontWeight: 600, fontSize: '16.5px',
@@ -72,7 +72,7 @@ export default function HeroSection() {
             onMouseLeave={e => { const el = e.currentTarget as HTMLAnchorElement; el.style.background = '#79c6fa'; el.style.transform = 'none'; el.style.boxShadow = '0 6px 18px rgba(121,198,250,.28)'; }}
           >Crear cuenta gratis</a>
 
-          <a href="#funcionalidades" style={{
+          <a href="/auth" className="w-full sm:w-auto" style={{
             display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
             background: 'transparent', color: '#eef2f9',
             fontFamily: "'Hanken Grotesk', sans-serif", fontWeight: 600, fontSize: '16.5px',
@@ -82,7 +82,7 @@ export default function HeroSection() {
           }}
             onMouseEnter={e => { const el = e.currentTarget as HTMLAnchorElement; el.style.borderColor = '#79c6fa'; el.style.color = '#79c6fa'; }}
             onMouseLeave={e => { const el = e.currentTarget as HTMLAnchorElement; el.style.borderColor = 'rgba(150,176,224,0.28)'; el.style.color = '#eef2f9'; }}
-          >Ver funcionalidades</a>
+          >Iniciar sesión</a>
         </div>
 
         {/* Trust line */}

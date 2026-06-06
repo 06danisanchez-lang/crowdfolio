@@ -476,7 +476,9 @@ export type Database = {
           id: string
           import_count_this_month: number
           import_reset_date: string
+          is_beta_pro: boolean
           plan: Database["public"]["Enums"]["subscription_plan"]
+          pro_until: string | null
           status: Database["public"]["Enums"]["subscription_status"]
           stripe_customer_id: string | null
           stripe_subscription_id: string | null
@@ -490,7 +492,9 @@ export type Database = {
           id?: string
           import_count_this_month?: number
           import_reset_date?: string
+          is_beta_pro?: boolean
           plan?: Database["public"]["Enums"]["subscription_plan"]
+          pro_until?: string | null
           status?: Database["public"]["Enums"]["subscription_status"]
           stripe_customer_id?: string | null
           stripe_subscription_id?: string | null
@@ -504,7 +508,9 @@ export type Database = {
           id?: string
           import_count_this_month?: number
           import_reset_date?: string
+          is_beta_pro?: boolean
           plan?: Database["public"]["Enums"]["subscription_plan"]
+          pro_until?: string | null
           status?: Database["public"]["Enums"]["subscription_status"]
           stripe_customer_id?: string | null
           stripe_subscription_id?: string | null

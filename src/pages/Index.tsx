@@ -1,9 +1,9 @@
 import { useState, useRef } from 'react';
 import { useLanguage } from '@/contexts/LanguageContext';
-import { Wallet, TrendingUp, PiggyBank, CalendarClock, Target, Crown, Bell, BarChart3, CheckCircle2, Banknote } from 'lucide-react';
+import { Wallet, TrendingUp, PiggyBank, CalendarClock, Target, Crown, Bell, BarChart3, CheckCircle2, Banknote, Lock } from 'lucide-react';
 import { ErrorBoundary } from '@/components/ErrorBoundary';
 import { ErrorState } from '@/components/ui/error-state';
-import { useInvestments } from '@/hooks/useInvestments';
+import { useActiveInvestments } from '@/hooks/useActiveInvestments';
 import { useAlerts } from '@/hooks/useAlerts';
 import { useNotifications } from '@/hooks/useNotifications';
 import { useNotificationGenerator } from '@/hooks/useNotificationGenerator';
@@ -72,6 +72,7 @@ const Index = () => {
     completedInvestments,
     incompleteInvestments,
     allInvestmentsCount,
+    allInvestments,
     isLoading,
     error: investmentsError,
     summary,
@@ -84,10 +85,12 @@ const Index = () => {
     deletePayment,
     importInvestments,
     exportInvestments,
-  } = useInvestments();
+    lockedInvestments,
+    isLimited,
+  } = useActiveInvestments();
 
-  // For Free plan limit: only active+pending count toward the 3-investment cap
-  const activePendingCount = investments.filter(i => i.status === 'active' || i.status === 'pending').length;
+  // For Free plan limit: count ALL active+pending (incl. locked) toward the 3-investment cap
+  const activePendingCount = allInvestments.filter(i => i.status === 'active' || i.status === 'pending').length;
 
   const { alerts, alertCount, hasUrgentAlerts } = useAlerts(activeInvestments, scheduleMap);
 
@@ -281,6 +284,23 @@ const Index = () => {
                   <ShareableCard ref={shareableCardRef} totalInvested={summary.totalInvested} totalReturns={summary.totalReturns} averageReturn={summary.averageReturn} />
                 </div>
 
+                {/* Free plan locked investments banner */}
+                {isLimited && (
+                  <div className="mb-5 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 rounded-lg border border-amber-300 bg-amber-50 px-4 py-3">
+                    <div className="flex items-center gap-2 text-sm text-amber-900">
+                      <Lock className="h-4 w-4 shrink-0 text-amber-600" />
+                      <span>
+                        <strong>Plan gratuito</strong> — el dashboard muestra solo tus 3 inversiones más antiguas.
+                        Tienes <strong>{lockedInvestments.length}</strong> inversión{lockedInvestments.length !== 1 ? 'es' : ''} bloqueada{lockedInvestments.length !== 1 ? 's' : ''}.
+                      </span>
+                    </div>
+                    <Button size="sm" variant="outline" className="border-amber-400 text-amber-900 hover:bg-amber-100 shrink-0" onClick={() => openUpgradeModal('unlimited_investments')}>
+                      <Crown className="mr-1.5 h-3.5 w-3.5" />
+                      Activar Pro
+                    </Button>
+                  </div>
+                )}
+
                 {/* Pro banner */}
                 {!isPro && (
                   <div className="mb-6 rounded-lg border bg-muted/30 p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
@@ -434,11 +454,13 @@ const Index = () => {
               activeInvestments={activeInvestments}
               completedInvestments={completedInvestments}
               incompleteInvestments={incompleteInvestments}
+              lockedInvestments={lockedInvestments}
               scheduleMap={scheduleMap}
               onUpdate={updateInvestment}
               onDelete={deleteInvestment}
               onAddPayment={addPayment}
               onDeletePayment={deletePayment}
+              onUpgrade={() => openUpgradeModal('unlimited_investments')}
               allowDraftSave
               initialStatusFilter={investmentsFilter}
               openInvestmentId={pendingOpenInvestmentId}

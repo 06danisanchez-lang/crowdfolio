@@ -9,6 +9,8 @@ export interface SubscriptionState {
   subscribed: boolean;
   subscriptionEnd: string | null;
   productId: string | null;
+  proUntil: string | null;
+  isBetaPro: boolean;
 }
 
 interface SubscriptionContextType {
@@ -25,6 +27,8 @@ const defaultSubscription: SubscriptionState = {
   subscribed: false,
   subscriptionEnd: null,
   productId: null,
+  proUntil: null,
+  isBetaPro: false,
 };
 
 const SubscriptionContext = createContext<SubscriptionContextType | undefined>(undefined);
@@ -44,7 +48,7 @@ export function SubscriptionProvider({ children }: { children: ReactNode }) {
     try {
       const { data: sub, error } = await supabase
         .from('subscriptions')
-        .select('plan, status, current_period_end')
+        .select('plan, status, current_period_end, pro_until, is_beta_pro')
         .eq('user_id', user.id)
         .maybeSingle();
 
@@ -66,6 +70,8 @@ export function SubscriptionProvider({ children }: { children: ReactNode }) {
         subscribed: isActive,
         subscriptionEnd: sub.current_period_end ?? null,
         productId: null,
+        proUntil: sub.pro_until ?? null,
+        isBetaPro: sub.is_beta_pro ?? false,
       });
     } catch (err) {
       console.error('[Subscription] Error reading subscription from DB:', err);
@@ -206,12 +212,17 @@ export function SubscriptionProvider({ children }: { children: ReactNode }) {
     }
   };
 
+  const isBetaProActive =
+    subscription.isBetaPro &&
+    !!subscription.proUntil &&
+    subscription.proUntil > new Date().toISOString();
+
   return (
     <SubscriptionContext.Provider
       value={{
         subscription,
         isLoading,
-        isPro: isPro(subscription.plan),
+        isPro: isPro(subscription.plan) || isBetaProActive,
         refreshSubscription,
         openCheckout,
         openCustomerPortal,

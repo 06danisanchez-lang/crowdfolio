@@ -13,6 +13,8 @@ import {
   ChevronDown,
   CheckCircle2,
   Wallet,
+  Lock,
+  Crown,
 } from 'lucide-react';
 import { Investment, DraftInvestment, PLATFORMS, STATUS_OPTIONS, Platform, InvestmentStatus, IncomeModel, InvestmentScheduleEntry } from '@/types/investment';
 import { getInvestmentCompletionStatus } from '@/lib/investment/completeness';
@@ -55,11 +57,13 @@ interface InvestmentListProps {
   activeInvestments: Investment[];
   completedInvestments: Investment[];
   incompleteInvestments?: DraftInvestment[];
+  lockedInvestments?: Investment[];
   scheduleMap?: Record<string, InvestmentScheduleEntry[]>;
   onUpdate: (id: string, updates: Partial<Investment>) => Promise<{ demotedToDraft?: boolean } | void> | void;
   onDelete: (id: string) => void;
   onAddPayment: (investmentId: string, payment: { date: string; amount: number; type: 'dividend' | 'principal' | 'interest' | 'capital_return'; notes?: string }) => Promise<unknown> | void;
   onDeletePayment: (investmentId: string, paymentId: string) => void;
+  onUpgrade?: () => void;
   allowDraftSave?: boolean;
   initialStatusFilter?: InvestmentStatus | 'all';
   openInvestmentId?: string | null;
@@ -75,11 +79,13 @@ export function InvestmentList({
   activeInvestments,
   completedInvestments,
   incompleteInvestments = [],
+  lockedInvestments = [],
   scheduleMap = {},
   onUpdate,
   onDelete,
   onAddPayment,
   onDeletePayment,
+  onUpgrade,
   allowDraftSave,
   initialStatusFilter = 'all',
   openInvestmentId,
@@ -577,6 +583,65 @@ export function InvestmentList({
           </CollapsibleContent>
         </div>
       </Collapsible>
+
+      {/* ── Inversiones bloqueadas (Free plan) ───────────────────── */}
+      {lockedInvestments.length > 0 && (
+        <Collapsible defaultOpen>
+          <div className="rounded-lg overflow-hidden border border-amber-300">
+            <CollapsibleTrigger className="w-full bg-amber-50 hover:bg-amber-100 transition-colors">
+              <div className="flex w-full items-center justify-between px-4 py-3 text-left">
+                <div className="flex items-center gap-2">
+                  <Lock className="h-4 w-4 text-amber-600 shrink-0" />
+                  <span className="font-semibold text-sm text-amber-900">
+                    Bloqueadas
+                    <span className="ml-1.5 font-normal text-amber-700">({lockedInvestments.length})</span>
+                  </span>
+                </div>
+                <ChevronDown className="h-4 w-4 text-amber-600" />
+              </div>
+            </CollapsibleTrigger>
+
+            <CollapsibleContent>
+              <div className="border-t border-amber-200 px-4 pt-3 pb-4 space-y-3">
+                <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2 rounded-md bg-amber-50 border border-amber-200 px-3 py-2.5">
+                  <p className="text-sm text-amber-900">
+                    <strong>Plan gratuito</strong> — estas inversiones están bloqueadas. Activa Pro para gestionarlas.
+                  </p>
+                  {onUpgrade && (
+                    <button
+                      type="button"
+                      onClick={onUpgrade}
+                      className="inline-flex items-center gap-1.5 rounded-md bg-amber-500 px-3 py-1.5 text-xs font-medium text-white hover:bg-amber-600 transition-colors shrink-0"
+                    >
+                      <Crown className="h-3 w-3" />
+                      Activar Pro
+                    </button>
+                  )}
+                </div>
+
+                <div className="space-y-1.5">
+                  {lockedInvestments.map(inv => (
+                    <div key={inv.id} className="flex items-center gap-3 rounded-md border border-dashed border-amber-300 bg-amber-50/50 px-3 py-2.5 opacity-70">
+                      <Lock className="h-3.5 w-3.5 text-amber-500 shrink-0" />
+                      <div className="flex-1 min-w-0">
+                        <p className="text-sm font-medium truncate text-foreground/80">{inv.projectName}</p>
+                        <p className="text-xs text-muted-foreground">
+                          {getPlatformLabel(inv.platform, inv.customPlatformName)} · ••••
+                        </p>
+                      </div>
+                      <div className="flex flex-wrap items-center gap-1 shrink-0">
+                        <span className="text-xs text-muted-foreground">
+                          {inv.status === 'active' ? 'Activa' : inv.status === 'pending' ? 'Pendiente' : inv.status === 'completed' ? 'Completada' : inv.status}
+                        </span>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            </CollapsibleContent>
+          </div>
+        </Collapsible>
+      )}
 
       {/* ── Diálogos ─────────────────────────────────────────────── */}
       <AlertDialog open={!!deleteId} onOpenChange={() => setDeleteId(null)}>

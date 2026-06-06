@@ -272,7 +272,7 @@ const Index = () => {
                       onAddPayment={async (investmentId, payment) => { await addPayment(investmentId, payment); }}
                       onOpenInvestment={openInvestmentDetail}
                     />
-                    <InvestmentForm onSubmit={addInvestment} onSubmitDraft={addDraftInvestment} investmentCount={allInvestmentsCount} isPro={isPro} onProRequired={() => openUpgradeModal('unlimited_investments')} />
+                    <InvestmentForm onSubmit={addInvestment} onSubmitDraft={addDraftInvestment} investmentCount={activePendingCount} isPro={isPro} onProRequired={() => openUpgradeModal('unlimited_investments')} />
                   </div>
                 </div>
 

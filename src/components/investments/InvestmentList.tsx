@@ -49,6 +49,7 @@ import { cn } from '@/lib/utils';
 import { InvestmentForm } from './InvestmentForm';
 import { InvestmentDetail } from './InvestmentDetail';
 import { MaturityConfirmationModal } from './MaturityConfirmationModal';
+import { CloseInvestmentModal } from './CloseInvestmentModal';
 
 interface InvestmentListProps {
   activeInvestments: Investment[];
@@ -101,6 +102,7 @@ export function InvestmentList({
   const [deleteId, setDeleteId] = useState<string | null>(null);
   const [viewingInvestmentId, setViewingInvestmentId] = useState<string | null>(null);
   const [confirmingMaturityId, setConfirmingMaturityId] = useState<string | null>(null);
+  const [closingInvestmentId, setClosingInvestmentId] = useState<string | null>(null);
 
   // Both derived in real-time so dialogs always reflect the latest data.
   const viewingInvestment = useMemo(
@@ -111,6 +113,11 @@ export function InvestmentList({
   const confirmingMaturityInvestment = useMemo(
     () => [...activeInvestments, ...completedInvestments].find(inv => inv.id === confirmingMaturityId) ?? null,
     [confirmingMaturityId, activeInvestments, completedInvestments],
+  );
+
+  const closingInvestment = useMemo(
+    () => activeInvestments.find(inv => inv.id === closingInvestmentId) ?? null,
+    [closingInvestmentId, activeInvestments],
   );
 
   useEffect(() => {
@@ -134,7 +141,8 @@ export function InvestmentList({
     return PLATFORMS.find(p => p.value === platform)?.label || platform;
   };
 
-  const getStatusBadge = (status: InvestmentStatus, investmentId?: string) => {
+  const getStatusBadge = (inv: Investment) => {
+    const { status } = inv;
     const colorMap: Record<InvestmentStatus, string> = {
       draft: 'bg-muted text-muted-foreground',
       active: 'bg-status-active text-white',
@@ -149,18 +157,36 @@ export function InvestmentList({
       completed: 'Completada',
       defaulted: 'Default',
     };
-    if (status === 'pending' && investmentId) {
-      return (
-        <Badge
-          className={colorMap.pending}
-          onClick={(e) => { e.stopPropagation(); setConfirmingMaturityId(investmentId); }}
-        >
-          {labelMap.pending}
-        </Badge>
+
+    const mainBadge = status === 'pending' ? (
+      <Badge
+        className={colorMap.pending}
+        onClick={(e) => { e.stopPropagation(); setConfirmingMaturityId(inv.id); }}
+      >
+        {labelMap.pending}
+      </Badge>
+    ) : (
+      <Badge className={colorMap[status]}>{labelMap[status] ?? status}</Badge>
+    );
+
+    const extraBadges: React.ReactNode[] = [];
+    if (status === 'completed' && inv.closeReason === 'early') {
+      extraBadges.push(
+        <Badge key="early" className="bg-amber-100 text-amber-800 border-amber-300 text-xs">Anticipada</Badge>
       );
     }
-    const statusOption = STATUS_OPTIONS.find(s => s.value === status);
-    return <Badge className={colorMap[status]}>{labelMap[status] ?? statusOption?.label ?? status}</Badge>;
+    if (status === 'completed' && inv.closeReason === 'sold') {
+      extraBadges.push(
+        <Badge key="sold" className="bg-purple-100 text-purple-800 border-purple-300 text-xs">Vendida</Badge>
+      );
+    }
+    if (inv.wasExtended && (status === 'active' || status === 'pending')) {
+      extraBadges.push(
+        <Badge key="extended" className="bg-orange-100 text-orange-800 border-orange-300 text-xs">Prorrogada</Badge>
+      );
+    }
+
+    return <>{mainBadge}{extraBadges}</>;
   };
 
   const getIncomeModelShortKey = (model: IncomeModel): string => {
@@ -345,7 +371,7 @@ export function InvestmentList({
                           <TableCell>{inv.expectedReturn.toFixed(1)}%</TableCell>
                           <TableCell>
                             <div className="flex flex-wrap items-center gap-1">
-                              {getStatusBadge(inv.status, inv.id)}
+                              {getStatusBadge(inv)}
                               {(inv.notes ?? '').includes('[DISPUTA]') && (
                                 <Badge className="bg-orange-100 text-orange-800 border-orange-200 text-xs">
                                   ⚠️ Disputa
@@ -362,9 +388,19 @@ export function InvestmentList({
                             </div>
                           </TableCell>
                           <TableCell>
-                            <Button variant="outline" size="sm" onClick={() => setViewingInvestmentId(inv.id)}>
-                              <Eye className="h-4 w-4 mr-1.5" />{t('common.view')}
-                            </Button>
+                            <div className="flex gap-1.5">
+                              <Button variant="outline" size="sm" onClick={() => setViewingInvestmentId(inv.id)}>
+                                <Eye className="h-4 w-4 mr-1.5" />{t('common.view')}
+                              </Button>
+                              <Button
+                                variant="outline"
+                                size="sm"
+                                className="text-muted-foreground hover:text-foreground"
+                                onClick={(e) => { e.stopPropagation(); setClosingInvestmentId(inv.id); }}
+                              >
+                                Cerrar
+                              </Button>
+                            </div>
                           </TableCell>
                         </TableRow>
                       ))
@@ -505,7 +541,7 @@ export function InvestmentList({
                           )}
                         </div>
                         <div className="flex flex-wrap items-center gap-1 mt-1">
-                          {getStatusBadge(inv.status, inv.id)}
+                          {getStatusBadge(inv)}
                           {(inv.notes ?? '').includes('[DISPUTA]') && (
                             <Badge className="bg-orange-100 text-orange-800 border-orange-200 text-xs">
                               ⚠️ Disputa
@@ -566,6 +602,13 @@ export function InvestmentList({
         onDelete={(id) => { onDelete(id); setViewingInvestmentId(null); }}
         onAddPayment={onAddPayment}
         onDeletePayment={onDeletePayment}
+        onOpenCloseModal={(id) => { setViewingInvestmentId(null); setClosingInvestmentId(id); }}
+      />
+
+      <CloseInvestmentModal
+        investment={closingInvestment}
+        onClose={() => setClosingInvestmentId(null)}
+        onUpdate={onUpdate}
       />
 
       <MaturityConfirmationModal

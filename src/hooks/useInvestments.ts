@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
-import { Investment, InvestmentSummary, Platform, InvestmentStatus, Payment, DraftInvestment, IncomeModel, PaymentFrequency, PrincipalReturnType, EquityType, InvestmentScheduleEntry } from '@/types/investment';
+import { Investment, InvestmentSummary, Platform, InvestmentStatus, Payment, DraftInvestment, IncomeModel, PaymentFrequency, PrincipalReturnType, EquityType, CloseReasonType, InvestmentScheduleEntry } from '@/types/investment';
 import { calculateInvestmentTotalReturn, calculateExpectedReturnFromSchedule, calculateAccruedReturn, calculateRemainingReturn } from '@/lib/investment/calculations';
 import { isInvestmentComplete, getInvestmentCompletionStatus } from '@/lib/investment/completeness';
 import { generateSchedule } from '@/lib/investment/scheduleGenerator';
@@ -27,6 +27,9 @@ interface RawInvestmentRow {
   defaulted_at: string | null;
   amount_recovered: number | null;
   equity_type: string | null;
+  actual_end_date: string | null;
+  close_reason: string | null;
+  was_extended: boolean | null;
   created_at: string;
   updated_at: string;
   user_id: string;
@@ -148,6 +151,9 @@ export function useInvestments() {
         defaultedAt: inv.defaulted_at || undefined,
         amountRecovered: inv.amount_recovered != null ? Number(inv.amount_recovered) : undefined,
         equityType: (inv.equity_type as EquityType) || undefined,
+        actualEndDate: inv.actual_end_date || undefined,
+        closeReason: (inv.close_reason as CloseReasonType) || undefined,
+        wasExtended: inv.was_extended ?? false,
         createdAt: inv.created_at,
         updatedAt: inv.updated_at,
         payments: paymentsData
@@ -221,6 +227,9 @@ export function useInvestments() {
           status: raw.status,
           payments: raw.payments,
           notes: raw.notes,
+          actualEndDate: raw.actualEndDate,
+          closeReason: raw.closeReason,
+          wasExtended: raw.wasExtended,
           createdAt: raw.createdAt,
           updatedAt: raw.updatedAt,
         };
@@ -385,6 +394,9 @@ export function useInvestments() {
     if (updates.sourceUrl !== undefined) dbUpdates.source_url = updates.sourceUrl || null;
     if (updates.defaultedAt !== undefined) dbUpdates.defaulted_at = updates.defaultedAt;
     if (updates.amountRecovered !== undefined) dbUpdates.amount_recovered = updates.amountRecovered;
+    if (updates.actualEndDate !== undefined) dbUpdates.actual_end_date = updates.actualEndDate;
+    if (updates.closeReason !== undefined) dbUpdates.close_reason = updates.closeReason;
+    if (updates.wasExtended !== undefined) dbUpdates.was_extended = updates.wasExtended;
     if (updates.incomeModel !== undefined) dbUpdates.income_model = updates.incomeModel || null;
     if (updates.paymentFrequency !== undefined) dbUpdates.payment_frequency = updates.paymentFrequency || null;
     if (updates.principalReturnType !== undefined) dbUpdates.principal_return_type = updates.principalReturnType || null;

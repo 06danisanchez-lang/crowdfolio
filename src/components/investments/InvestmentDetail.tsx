@@ -55,7 +55,7 @@ import {
 } from '@/components/ui/table';
 import { cn } from '@/lib/utils';
 
-type ActionForm = 'extend' | 'partial-return' | 'update-return' | 'close' | null;
+type ActionForm = 'extend' | 'partial-return' | 'update-return' | null;
 
 interface InvestmentDetailProps {
   investment: Investment | null;
@@ -65,9 +65,10 @@ interface InvestmentDetailProps {
   onDelete: (id: string) => void;
   onAddPayment: (investmentId: string, payment: { date: string; amount: number; type: 'dividend' | 'principal' | 'interest'; notes?: string }) => void;
   onDeletePayment: (investmentId: string, paymentId: string) => void;
+  onOpenCloseModal?: (id: string) => void;
 }
 
-export function InvestmentDetail({ investment, schedule = [], onClose, onUpdate, onDelete, onAddPayment, onDeletePayment }: InvestmentDetailProps) {
+export function InvestmentDetail({ investment, schedule = [], onClose, onUpdate, onDelete, onAddPayment, onDeletePayment, onOpenCloseModal }: InvestmentDetailProps) {
   const { t } = useLanguage();
   const [showAddPayment, setShowAddPayment] = useState(false);
   const [paymentDate, setPaymentDate] = useState<Date>(new Date());
@@ -83,8 +84,6 @@ export function InvestmentDetail({ investment, schedule = [], onClose, onUpdate,
   const [partialAmount, setPartialAmount] = useState('');
   const [partialDate, setPartialDate] = useState<Date>(new Date());
   const [newReturnRate, setNewReturnRate] = useState('');
-  const [closeAmount, setCloseAmount] = useState('');
-  const [closeDate, setCloseDate] = useState<Date>(new Date());
 
   const openForm = (form: ActionForm) => setActiveForm(prev => prev === form ? null : form);
   const resetForms = () => {
@@ -92,7 +91,6 @@ export function InvestmentDetail({ investment, schedule = [], onClose, onUpdate,
     setNewEndDate(undefined);
     setPartialAmount('');
     setNewReturnRate('');
-    setCloseAmount('');
   };
 
   const formatCurrency = (value: number) => {
@@ -191,17 +189,6 @@ export function InvestmentDetail({ investment, schedule = [], onClose, onUpdate,
     if (!investment || !newReturnRate) return;
     await onUpdate(investment.id, { expectedReturn: parseFloat(newReturnRate) });
     resetForms();
-  };
-
-  const handleCloseInvestment = async () => {
-    if (!investment || !closeAmount) return;
-    await onAddPayment(investment.id, {
-      date: closeDate.toISOString(),
-      amount: parseFloat(closeAmount),
-      type: 'principal',
-    });
-    await onUpdate(investment.id, { status: 'completed' });
-    onClose();
   };
 
   const handleAddPayment = () => {
@@ -541,7 +528,11 @@ export function InvestmentDetail({ investment, schedule = [], onClose, onUpdate,
                 <Button variant="outline" size="sm" onClick={() => openForm('update-return')}>
                   {t('investments.action.updateReturn')}
                 </Button>
-                <Button variant="destructive" size="sm" onClick={() => openForm('close')}>
+                <Button
+                  variant="destructive"
+                  size="sm"
+                  onClick={() => { onOpenCloseModal?.(investment.id); onClose(); }}
+                >
                   {t('investments.action.close')}
                 </Button>
               </div>
@@ -628,45 +619,6 @@ export function InvestmentDetail({ investment, schedule = [], onClose, onUpdate,
                 </div>
               )}
 
-              {/* Cerrar inversión */}
-              {activeForm === 'close' && (
-                <div className="mt-3 rounded-lg border border-destructive/30 bg-destructive/5 p-4 space-y-3">
-                  <p className="text-sm font-medium">{t('investments.action.closeTitle')}</p>
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                    <div className="space-y-1">
-                      <p className="text-xs text-muted-foreground">{t('investments.action.totalRecovered')}</p>
-                      <Input
-                        type="number"
-                        min="0"
-                        step="0.01"
-                        placeholder="0.00"
-                        value={closeAmount}
-                        onChange={e => setCloseAmount(e.target.value)}
-                      />
-                    </div>
-                    <div className="space-y-1">
-                      <p className="text-xs text-muted-foreground">{t('investments.action.closeDate')}</p>
-                      <Popover>
-                        <PopoverTrigger asChild>
-                          <Button variant="outline" className="w-full justify-start text-left font-normal">
-                            <CalendarIcon className="mr-2 h-4 w-4" />
-                            {format(closeDate, 'dd/MM/yyyy')}
-                          </Button>
-                        </PopoverTrigger>
-                        <PopoverContent className="w-auto p-0">
-                          <Calendar mode="single" selected={closeDate} onSelect={d => d && setCloseDate(d)} initialFocus />
-                        </PopoverContent>
-                      </Popover>
-                    </div>
-                  </div>
-                  <div className="flex gap-2">
-                    <Button size="sm" variant="destructive" onClick={handleCloseInvestment} disabled={!closeAmount}>
-                      {t('investments.action.confirmClose')}
-                    </Button>
-                    <Button size="sm" variant="ghost" onClick={resetForms}>{t('common.cancel')}</Button>
-                  </div>
-                </div>
-              )}
             </div>
           )}
           {/* Delete */}

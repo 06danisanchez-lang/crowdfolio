@@ -11,6 +11,8 @@ export type View = 'dashboard' | 'investments' | 'future-investments' | 'tax' | 
 
 export type InvestmentStatus = 'draft' | 'active' | 'pending' | 'completed' | 'defaulted';
 
+export type CloseReasonType = 'on_time' | 'early' | 'extended' | 'sold';
+
 export type IncomeModel = 'bullet' | 'periodic_fixed' | 'amortizing' | 'variable_or_unknown' | 'equity';
 
 export type EquityType = 'plusvalia' | 'rentas' | 'liquidacion';
@@ -46,6 +48,9 @@ export interface Investment {
   defaultedAt?: string;
   amountRecovered?: number;
   equityType?: EquityType;
+  actualEndDate?: string | null;
+  closeReason?: CloseReasonType | null;
+  wasExtended?: boolean;
   createdAt: string;
   updatedAt: string;
 }
@@ -104,6 +109,9 @@ export interface DraftInvestment {
   defaultedAt?: string;
   amountRecovered?: number;
   equityType?: EquityType;
+  actualEndDate?: string | null;
+  closeReason?: CloseReasonType | null;
+  wasExtended?: boolean;
   createdAt: string;
   updatedAt: string;
 }

@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import AnnouncementBanner from '@/components/landing/AnnouncementBanner';
 import HeroSection from '@/components/landing/HeroSection';
 import LandingSections from '@/components/landing/LandingSections';
 import crowdfolioMark from '@/assets/icon_crowdfolio.svg';
@@ -53,6 +54,8 @@ export default function Landing() {
 
   return (
     <div style={{ minHeight: '100vh', background: '#253765', fontFamily: "'Hanken Grotesk', system-ui, sans-serif" }}>
+      <AnnouncementBanner />
+
       {/* ── Nav ── */}
       <header style={{
         position: 'sticky', top: 0, zIndex: 60,

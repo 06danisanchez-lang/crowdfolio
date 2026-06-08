@@ -10,6 +10,9 @@ import {
   calculateInvestmentTotalReturnPercent,
   calculateExpectedReturnFromSchedule,
   calculateAccruedReturn,
+  calculateRealTAE,
+  calculateEstimatedTAEToday,
+  getDelayDays,
 } from '@/lib/investment/calculations';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -31,6 +34,7 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
+import { HelpTooltip } from '@/components/ui/help-tooltip';
 import { InvestmentForm } from './InvestmentForm';
 import { toast } from 'sonner';
 import {
@@ -230,6 +234,19 @@ export function InvestmentDetail({ investment, schedule = [], onClose, onUpdate,
   const accruedReturn = calculateAccruedReturn(investment, schedule);
   const actualReturn = investment.amount > 0 ? ((totalPayments / investment.amount) * 100) : 0;
 
+  // TAE ajustada por retraso (solo se muestra si hay retraso real)
+  const delayDays = getDelayDays(investment);
+  const today = new Date();
+  const isCompletedWithDelay = investment.status === 'completed' && !!investment.actualEndDate && delayDays > 0;
+  const isRunningWithDelay =
+    (investment.status === 'active' || investment.status === 'pending') &&
+    !!investment.expectedEndDate &&
+    today > new Date(investment.expectedEndDate) &&
+    delayDays > 0;
+  const realTAE = isCompletedWithDelay ? calculateRealTAE(investment, investment.payments) : 0;
+  const estimatedTAEToday = isRunningWithDelay ? calculateEstimatedTAEToday(investment, investment.payments, today) : 0;
+  const taeDiffPp = realTAE - investment.expectedReturn;
+
   const sortedSchedule = [...schedule].sort(
     (a, b) => new Date(a.expectedDate).getTime() - new Date(b.expectedDate).getTime()
   );
@@ -372,6 +389,46 @@ export function InvestmentDetail({ investment, schedule = [], onClose, onUpdate,
               </div>
             )}
           </div>
+
+          {/* TAE ajustada por retraso — solo si hay retraso real */}
+          {isCompletedWithDelay && (
+            <div className="rounded-lg border p-4" style={{ borderColor: '#e4ddcf' }}>
+              <div className="flex items-center justify-between gap-4">
+                <div className="space-y-1">
+                  <p className="text-xs text-muted-foreground">{t('investments.detail.expectedTAE')}</p>
+                  <p className="text-lg font-semibold" style={{ color: '#253765' }}>{investment.expectedReturn.toFixed(1)}%</p>
+                </div>
+                <div className="space-y-1 text-right">
+                  <p className="text-xs text-muted-foreground">{t('investments.detail.realTAE')}</p>
+                  <p className="text-lg font-semibold" style={{ color: '#253765' }}>{realTAE.toFixed(1)}%</p>
+                </div>
+              </div>
+              <p className={cn(
+                "mt-2 text-sm font-medium",
+                taeDiffPp >= 0 ? "text-emerald-600" : "text-red-600"
+              )}>
+                {taeDiffPp >= 0 ? '+' : ''}{taeDiffPp.toFixed(1)} pp
+              </p>
+              <p className="mt-1 text-sm text-muted-foreground">
+                {t('investments.detail.closedWithDelayPrefix')} {delayDays} {t('investments.detail.closedWithDelaySuffix')}
+              </p>
+            </div>
+          )}
+
+          {isRunningWithDelay && (
+            <div className="rounded-lg border p-4" style={{ borderColor: '#e4ddcf' }}>
+              <div className="flex items-center gap-2">
+                <span aria-hidden="true">⚠️</span>
+                <p className="text-sm font-semibold" style={{ color: '#79c6fa' }}>
+                  {t('investments.detail.estimatedTAEToday')}: {estimatedTAEToday.toFixed(1)}%
+                </p>
+                <HelpTooltip content={t('investments.detail.estimatedTAETooltip')} />
+              </div>
+              <p className="mt-1 text-sm text-muted-foreground">
+                {t('investments.detail.runningDelayPrefix')} {delayDays} {t('investments.detail.runningDelaySuffix')}
+              </p>
+            </div>
+          )}
 
           {/* D4: Expected Schedule (read-only) */}
           {sortedSchedule.length > 0 && (

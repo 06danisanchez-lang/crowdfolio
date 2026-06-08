@@ -2,7 +2,7 @@ import { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { Investment, InvestmentSummary, Platform, InvestmentStatus, Payment, DraftInvestment, IncomeModel, PaymentFrequency, PrincipalReturnType, EquityType, CloseReasonType, InvestmentScheduleEntry } from '@/types/investment';
-import { calculateInvestmentTotalReturn, calculateExpectedReturnFromSchedule, calculateAccruedReturn, calculateRemainingReturn } from '@/lib/investment/calculations';
+import { calculateInvestmentTotalReturn, calculateExpectedReturnFromSchedule, calculateAccruedReturn, calculateRemainingReturn, getEffectiveTAE } from '@/lib/investment/calculations';
 import { isInvestmentComplete, getInvestmentCompletionStatus } from '@/lib/investment/completeness';
 import { generateSchedule } from '@/lib/investment/scheduleGenerator';
 
@@ -593,7 +593,11 @@ export function useInvestments() {
       accruedReturns: accruedProfit,
       activeInvestments: activeInvestments.length,
       completedInvestments: completedInvestments.length,
-      averageReturn: forecastReady.length > 0 ? forecastReady.reduce((sum, inv) => sum + inv.expectedReturn, 0) / forecastReady.length : 0,
+      averageReturn: (() => {
+        const totalCapital = forecastReady.reduce((sum, inv) => sum + inv.amount, 0);
+        if (totalCapital <= 0) return 0;
+        return forecastReady.reduce((sum, inv) => sum + getEffectiveTAE(inv, inv.payments) * inv.amount, 0) / totalCapital;
+      })(),
       byPlatform: investments.reduce((acc, inv) => {
         if (!acc[inv.platform]) acc[inv.platform] = { invested: 0, returns: 0, count: 0 };
         acc[inv.platform].invested += inv.amount;

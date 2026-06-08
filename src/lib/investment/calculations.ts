@@ -1,4 +1,4 @@
-import { Investment, InvestmentScheduleEntry } from '@/types/investment';
+import { Investment, InvestmentScheduleEntry, Payment } from '@/types/investment';
 
 /**
  * Calcula la duración en años de una inversión
@@ -148,4 +148,94 @@ export function calculateRemainingReturn(
     : calculateInvestmentTotalReturn(inv); // bullet y equity plusvalia/liquidacion
   const accrued = calculateAccruedReturn(inv, schedule, today);
   return Math.max(total - accrued, 0);
+}
+
+/**
+ * Días de retraso de una inversión respecto a su fecha de vencimiento prevista.
+ * - Completada con actualEndDate: actualEndDate - expectedEndDate
+ * - Activa/pendiente: hoy - expectedEndDate
+ * Positivo = retraso, negativo o cero = a tiempo / anticipado.
+ */
+export function getDelayDays(investment: Investment, today: Date = new Date()): number {
+  if (!investment.expectedEndDate) return 0;
+  const expected = new Date(investment.expectedEndDate);
+
+  if (investment.status === 'completed' && investment.actualEndDate) {
+    const actual = new Date(investment.actualEndDate);
+    return Math.round((actual.getTime() - expected.getTime()) / (1000 * 60 * 60 * 24));
+  }
+
+  if (investment.status === 'active' || investment.status === 'pending') {
+    return Math.round((today.getTime() - expected.getTime()) / (1000 * 60 * 60 * 24));
+  }
+
+  return 0;
+}
+
+/**
+ * TAE real de una inversión completada, basada en la duración real
+ * (investmentDate -> actualEndDate) y el beneficio neto realmente cobrado
+ * (total de payments menos el capital invertido). Interés simple anualizado,
+ * mismo criterio que calculateTotalReturnPercent.
+ */
+export function calculateRealTAE(investment: Investment, payments: Payment[]): number {
+  if (!investment.actualEndDate || investment.amount <= 0) return investment.expectedReturn;
+
+  const start = new Date(investment.investmentDate);
+  const end = new Date(investment.actualEndDate);
+  const years = Math.max((end.getTime() - start.getTime()) / (1000 * 60 * 60 * 24 * 365.25), 0);
+  if (years <= 0) return investment.expectedReturn;
+
+  const totalCollected = payments.reduce((sum, p) => sum + p.amount, 0);
+  const profit = totalCollected - investment.amount;
+
+  return (profit / investment.amount / years) * 100;
+}
+
+/**
+ * TAE estimada "a hoy" para inversiones activas/pendientes que ya van con retraso
+ * (hoy > expectedEndDate). Se basa exclusivamente en pagos reales cobrados hasta hoy
+ * (dividend, interest, capital_return — excluye principal, que es devolución de capital,
+ * no rendimiento) sobre la duración real transcurrida. Es una estimación provisional,
+ * no una proyección con expectedReturn.
+ */
+export function calculateEstimatedTAEToday(
+  investment: Investment,
+  payments: Payment[],
+  today: Date = new Date()
+): number {
+  if (investment.amount <= 0) return investment.expectedReturn;
+
+  const start = new Date(investment.investmentDate);
+  const years = Math.max((today.getTime() - start.getTime()) / (1000 * 60 * 60 * 24 * 365.25), 0);
+  if (years <= 0) return investment.expectedReturn;
+
+  const todayStr = today.toISOString().split('T')[0];
+  const yieldCollected = payments
+    .filter(p => p.date <= todayStr && (p.type === 'dividend' || p.type === 'interest' || p.type === 'capital_return'))
+    .reduce((sum, p) => sum + p.amount, 0);
+
+  return (yieldCollected / investment.amount / years) * 100;
+}
+
+/**
+ * TAE más rigurosa disponible para una inversión:
+ * - Completada con actualEndDate -> TAE real (duración y cobros reales)
+ * - Activa/pendiente con retraso (hoy > expectedEndDate) -> TAE estimada a hoy
+ * - Sin retraso -> expectedReturn original, sin cambios
+ */
+export function getEffectiveTAE(investment: Investment, payments: Payment[], today: Date = new Date()): number {
+  if (investment.status === 'completed' && investment.actualEndDate) {
+    return calculateRealTAE(investment, payments);
+  }
+
+  if (
+    (investment.status === 'active' || investment.status === 'pending') &&
+    investment.expectedEndDate &&
+    today > new Date(investment.expectedEndDate)
+  ) {
+    return calculateEstimatedTAEToday(investment, payments, today);
+  }
+
+  return investment.expectedReturn;
 }

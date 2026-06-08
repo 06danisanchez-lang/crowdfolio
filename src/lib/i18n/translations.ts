@@ -498,6 +498,15 @@ export const translations: Record<Lang, Record<string, string>> = {
     'investments.detail.received': 'Recibido',
     'investments.detail.accrued': 'Acumulado hasta hoy',
     'investments.detail.variableNote': 'Inversión participativa — el rendimiento depende de la liquidación del activo',
+    // Delay-adjusted TAE
+    'investments.detail.expectedTAE': 'TAE prevista',
+    'investments.detail.realTAE': 'TAE real',
+    'investments.detail.estimatedTAEToday': 'TAE estimada a hoy',
+    'investments.detail.estimatedTAETooltip': 'Estimación provisional basada en pagos cobrados hasta hoy. Se actualizará cuando el proyecto se complete.',
+    'investments.detail.closedWithDelayPrefix': 'El proyecto se cerró con',
+    'investments.detail.closedWithDelaySuffix': 'días de retraso',
+    'investments.detail.runningDelayPrefix': 'Lleva',
+    'investments.detail.runningDelaySuffix': 'días de retraso sobre la fecha prevista',
     'investments.field.expectedReturnVariable': 'Rentabilidad orientativa (%)',
     'investments.form.variableReturnNote': 'El rendimiento final depende de la venta del activo. Puedes indicar una rentabilidad estimada orientativa.',
     // Action forms
@@ -1059,6 +1068,15 @@ export const translations: Record<Lang, Record<string, string>> = {
     'investments.detail.received': 'Received',
     'investments.detail.accrued': 'Accrued to date',
     'investments.detail.variableNote': 'Equity investment — return depends on asset liquidation',
+    // Delay-adjusted TAE
+    'investments.detail.expectedTAE': 'Expected APR',
+    'investments.detail.realTAE': 'Real APR',
+    'investments.detail.estimatedTAEToday': 'Estimated APR to date',
+    'investments.detail.estimatedTAETooltip': 'Provisional estimate based on payments collected so far. It will be updated once the project is completed.',
+    'investments.detail.closedWithDelayPrefix': 'The project closed with',
+    'investments.detail.closedWithDelaySuffix': 'days of delay',
+    'investments.detail.runningDelayPrefix': 'It is',
+    'investments.detail.runningDelaySuffix': 'days behind the expected date',
     'investments.field.expectedReturnVariable': 'Indicative return (%)',
     'investments.form.variableReturnNote': 'The final return depends on asset sale. You can enter an estimated indicative return.',
     // Action forms

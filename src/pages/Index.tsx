@@ -28,6 +28,7 @@ import { NotificationBell } from '@/components/layout/NotificationBell';
 import { BillingSettings } from '@/components/subscription/BillingSettings';
 import { UpgradeModal } from '@/components/subscription/UpgradeModal';
 import { FounderWelcomeModal } from '@/components/subscription/FounderWelcomeModal';
+import { BetaExpiredModal } from '@/components/subscription/BetaExpiredModal';
 import { AdminPanel } from '@/components/admin/AdminPanel';
 import { ProfileView } from '@/components/profile/ProfileView';
 import { SettingsView } from '@/components/settings/SettingsView';
@@ -521,6 +522,9 @@ const Index = () => {
 
       {/* Founder Welcome Modal - solo para usuarios Pro */}
       <FounderWelcomeModal />
+
+      {/* Beta Expired Modal - avisa a usuarios beta cuyo Pro ha caducado */}
+      <BetaExpiredModal />
 
       {/* Upgrade Modal */}
       <UpgradeModal

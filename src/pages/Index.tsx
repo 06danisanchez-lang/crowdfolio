@@ -21,6 +21,7 @@ import { InvestmentForm } from '@/components/investments/InvestmentForm';
 import { ImportExport } from '@/components/investments/ImportExport';
 
 import { TaxDashboard } from '@/components/tax/TaxDashboard';
+import { PaymentsView } from '@/components/payments/PaymentsView';
 import { FutureInvestmentList } from '@/components/future-investments/FutureInvestmentList';
 import { ShareableCard } from '@/components/dashboard/ShareableCard';
 import { ShareSuccessButton } from '@/components/dashboard/ShareSuccessButton';
@@ -467,6 +468,16 @@ const Index = () => {
               openInvestmentId={pendingOpenInvestmentId}
               onInvestmentOpened={() => setPendingOpenInvestmentId(null)}
             />
+          </div>
+        );
+      case 'payments':
+        return (
+          <div className="px-4 pt-4 pb-6 sm:px-6 lg:px-8">
+            <div className="mb-6">
+              <h1 className="text-xl sm:text-2xl lg:text-3xl font-bold">{t('payments.title')}</h1>
+              <p className="text-muted-foreground">{t('payments.subtitle')}</p>
+            </div>
+            <PaymentsView onProRequired={() => openUpgradeModal('unlimited_investments')} />
           </div>
         );
       case 'future-investments':

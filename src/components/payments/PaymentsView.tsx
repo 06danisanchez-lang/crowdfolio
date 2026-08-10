@@ -17,6 +17,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { cn } from '@/lib/utils';
 
 interface PaymentsViewProps {
@@ -170,96 +171,106 @@ export function PaymentsView({ onProRequired }: PaymentsViewProps) {
         )}
       </div>
 
-      {/* Recibidos */}
-      <Card>
-        <CardHeader className="flex flex-row items-center justify-between gap-3 pb-3">
-          <CardTitle className="flex items-center gap-2 text-base">
-            <Banknote className="h-4 w-4 text-status-active" />
+      {/* Recibidos / Esperados */}
+      <Tabs defaultValue="received" className="space-y-4">
+        <TabsList className="grid w-full grid-cols-2 lg:w-auto lg:grid-cols-none lg:flex">
+          <TabsTrigger value="received" className="flex items-center gap-2">
+            <Banknote className="h-4 w-4" />
             {t('payments.received.title')}
             <span className="font-normal text-muted-foreground">({filteredReceived.length})</span>
-          </CardTitle>
-          <div className="text-right">
-            <p className="text-xs text-muted-foreground">{t('payments.total.label')}</p>
-            <p className="text-lg font-semibold text-[#253765]">{formatCurrency(filteredReceivedTotal)}</p>
-          </div>
-        </CardHeader>
-        <CardContent>
-          {filteredReceived.length === 0 ? (
-            <p className="py-6 text-center text-sm text-muted-foreground">{t('payments.received.empty')}</p>
-          ) : (
-            <div className="space-y-2">
-              {filteredReceived.map((row: ReceivedPaymentRow) => (
-                <div key={row.id} className="flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-4 rounded-md border p-3">
-                  <div className="min-w-0 flex-1">
-                    <p className="truncate font-medium">{row.investmentName}</p>
-                    <div className="mt-1 flex flex-wrap items-center gap-1 text-xs text-muted-foreground">
-                      <span>{getPlatformLabel(row.platform, row.customPlatformName)}</span>
-                      <span>· {format(parseISO(row.date), 'dd/MM/yyyy', { locale: es })}</span>
-                    </div>
-                  </div>
-                  <div className="flex shrink-0 items-center gap-2">
-                    <Badge variant="outline" className="text-xs">{getReceivedTypeLabel(row.type)}</Badge>
-                    <span className={cn('font-semibold', row.type === 'capital_return' ? 'text-muted-foreground' : 'text-[#253765]')}>
-                      {formatCurrency(row.amount)}
-                    </span>
-                  </div>
-                </div>
-              ))}
-            </div>
-          )}
-        </CardContent>
-      </Card>
-
-      {/* Esperados */}
-      <Card>
-        <CardHeader className="flex flex-row items-center justify-between gap-3 pb-3">
-          <CardTitle className="flex items-center gap-2 text-base">
-            <CalendarClock className="h-4 w-4 text-amber-600" />
+          </TabsTrigger>
+          <TabsTrigger value="expected" className="flex items-center gap-2">
+            <CalendarClock className="h-4 w-4" />
             {t('payments.expected.title')}
             <span className="font-normal text-muted-foreground">({filteredExpected.length})</span>
-          </CardTitle>
-          <div className="text-right">
-            <p className="text-xs text-muted-foreground">{t('payments.total.label')}</p>
-            <p className="text-lg font-semibold text-[#253765]">{formatCurrency(filteredExpectedTotal)}</p>
-          </div>
-        </CardHeader>
-        <CardContent>
-          {filteredExpected.length === 0 ? (
-            <p className="py-6 text-center text-sm text-muted-foreground">{t('payments.expected.empty')}</p>
-          ) : (
-            <div className="space-y-2">
-              {filteredExpected.map((row: ExpectedPaymentRow) => (
-                <div
-                  key={row.id}
-                  className={cn(
-                    'flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-4 rounded-md border p-3',
-                    row.isOverdue && 'border-amber-300 bg-amber-50/50',
-                  )}
-                >
-                  <div className="min-w-0 flex-1">
-                    <p className="truncate font-medium">{row.investmentName}</p>
-                    <div className="mt-1 flex flex-wrap items-center gap-1 text-xs text-muted-foreground">
-                      <span>{getPlatformLabel(row.platform, row.customPlatformName)}</span>
-                      <span>· {format(parseISO(row.date), 'dd/MM/yyyy', { locale: es })}</span>
-                      <span className={row.isOverdue ? 'font-medium text-amber-700' : undefined}>
-                        · {row.isOverdue
-                          ? t('payments.overdueBy').replace('{days}', String(Math.abs(row.daysFromToday)))
-                          : row.daysFromToday === 0
-                            ? t('payments.dueToday')
-                            : t('payments.inDays').replace('{days}', String(row.daysFromToday))}
-                      </span>
+          </TabsTrigger>
+        </TabsList>
+
+        <TabsContent value="received">
+          <Card>
+            <CardHeader className="flex flex-row items-center justify-between gap-3 pb-3">
+              <CardTitle className="text-base">{t('payments.received.title')}</CardTitle>
+              <div className="text-right">
+                <p className="text-xs text-muted-foreground">{t('payments.total.label')}</p>
+                <p className="text-lg font-semibold text-[#253765]">{formatCurrency(filteredReceivedTotal)}</p>
+              </div>
+            </CardHeader>
+            <CardContent>
+              {filteredReceived.length === 0 ? (
+                <p className="py-6 text-center text-sm text-muted-foreground">{t('payments.received.empty')}</p>
+              ) : (
+                <div className="space-y-2">
+                  {filteredReceived.map((row: ReceivedPaymentRow) => (
+                    <div key={row.id} className="flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-4 rounded-md border p-3">
+                      <div className="min-w-0 flex-1">
+                        <p className="truncate font-medium">{row.investmentName}</p>
+                        <div className="mt-1 flex flex-wrap items-center gap-1 text-xs text-muted-foreground">
+                          <span>{getPlatformLabel(row.platform, row.customPlatformName)}</span>
+                          <span>· {format(parseISO(row.date), 'dd/MM/yyyy', { locale: es })}</span>
+                        </div>
+                      </div>
+                      <div className="flex shrink-0 items-center gap-2">
+                        <Badge variant="outline" className="text-xs">{getReceivedTypeLabel(row.type)}</Badge>
+                        <span className={cn('font-semibold', row.type === 'capital_return' ? 'text-muted-foreground' : 'text-[#253765]')}>
+                          {formatCurrency(row.amount)}
+                        </span>
+                      </div>
                     </div>
-                  </div>
-                  <div className="flex shrink-0 items-center gap-2">
-                    <Badge variant="outline" className="text-xs">{getExpectedTypeLabel(row.type)}</Badge>
-                    <span className="font-semibold text-muted-foreground">{formatCurrency(row.amount)}</span>
-                  </div>
+                  ))}
                 </div>
-              ))}
-            </div>
-          )}
-        </CardContent>
-      </Card>
+              )}
+            </CardContent>
+          </Card>
+        </TabsContent>
+
+        <TabsContent value="expected">
+          <Card>
+            <CardHeader className="flex flex-row items-center justify-between gap-3 pb-3">
+              <CardTitle className="text-base">{t('payments.expected.title')}</CardTitle>
+              <div className="text-right">
+                <p className="text-xs text-muted-foreground">{t('payments.total.label')}</p>
+                <p className="text-lg font-semibold text-[#253765]">{formatCurrency(filteredExpectedTotal)}</p>
+              </div>
+            </CardHeader>
+            <CardContent>
+              {filteredExpected.length === 0 ? (
+                <p className="py-6 text-center text-sm text-muted-foreground">{t('payments.expected.empty')}</p>
+              ) : (
+                <div className="space-y-2">
+                  {filteredExpected.map((row: ExpectedPaymentRow) => (
+                    <div
+                      key={row.id}
+                      className={cn(
+                        'flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-4 rounded-md border p-3',
+                        row.isOverdue && 'border-amber-300 bg-amber-50/50',
+                      )}
+                    >
+                      <div className="min-w-0 flex-1">
+                        <p className="truncate font-medium">{row.investmentName}</p>
+                        <div className="mt-1 flex flex-wrap items-center gap-1 text-xs text-muted-foreground">
+                          <span>{getPlatformLabel(row.platform, row.customPlatformName)}</span>
+                          <span>· {format(parseISO(row.date), 'dd/MM/yyyy', { locale: es })}</span>
+                          <span className={row.isOverdue ? 'font-medium text-amber-700' : undefined}>
+                            · {row.isOverdue
+                              ? t('payments.overdueBy').replace('{days}', String(Math.abs(row.daysFromToday)))
+                              : row.daysFromToday === 0
+                                ? t('payments.dueToday')
+                                : t('payments.inDays').replace('{days}', String(row.daysFromToday))}
+                          </span>
+                        </div>
+                      </div>
+                      <div className="flex shrink-0 items-center gap-2">
+                        <Badge variant="outline" className="text-xs">{getExpectedTypeLabel(row.type)}</Badge>
+                        <span className="font-semibold text-muted-foreground">{formatCurrency(row.amount)}</span>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </CardContent>
+          </Card>
+        </TabsContent>
+      </Tabs>
     </div>
   );
 }

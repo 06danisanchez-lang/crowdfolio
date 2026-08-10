@@ -89,6 +89,7 @@ export const translations: Record<Lang, Record<string, string>> = {
     // Nav (app interior)
     'nav.dashboard': 'Inicio',
     'nav.investments': 'Inversiones',
+    'nav.payments': 'Cobros',
     'nav.futureInvestments': 'Inversiones futuras',
     'nav.notifications': 'Notificaciones',
     'nav.tax': 'Fiscalidad',
@@ -534,6 +535,7 @@ export const translations: Record<Lang, Record<string, string>> = {
     'investments.detail.dividend': 'Dividendo',
     'investments.detail.principal': 'Principal',
     'investments.detail.interest': 'Intereses',
+    'investments.detail.capitalReturn': 'Devolución de capital',
     'investments.detail.years': 'años',
     'investments.detail.incomeModel': 'Tipo de rendimiento',
     'investments.detail.paymentFrequency': 'Frecuencia de cobros',
@@ -551,6 +553,23 @@ export const translations: Record<Lang, Record<string, string>> = {
     'investments.schedule.status.matched': 'Cobrado',
     'investments.schedule.status.missed': 'No recibido',
     'investments.schedule.status.skipped': 'Omitido',
+
+    // Payments view ("Cobros")
+    'payments.title': 'Cobros',
+    'payments.subtitle': 'Todos tus cobros, recibidos y esperados, en un único lugar.',
+    'payments.received.title': 'Recibidos',
+    'payments.received.empty': 'Todavía no has registrado ningún cobro.',
+    'payments.expected.title': 'Esperados',
+    'payments.expected.empty': 'No hay cobros pendientes.',
+    'payments.total.label': 'Total',
+    'payments.filters.investment': 'Inversión',
+    'payments.filters.allInvestments': 'Todas las inversiones',
+    'payments.filters.dateFrom': 'Desde',
+    'payments.filters.dateTo': 'Hasta',
+    'payments.overdueBy': 'con {days} días de retraso',
+    'payments.inDays': 'en {days} días',
+    'payments.dueToday': 'hoy',
+
     'tax.incomplete.warning': '{count} inversiones no se incluyen en este informe porque están pendientes de completar.',
     // Import / Export
     'investments.import': 'Importar',
@@ -659,6 +678,7 @@ export const translations: Record<Lang, Record<string, string>> = {
     // Nav (app interior)
     'nav.dashboard': 'Home',
     'nav.investments': 'Investments',
+    'nav.payments': 'Payments',
     'nav.futureInvestments': 'Future investments',
     'nav.notifications': 'Notifications',
     'nav.tax': 'Tax',
@@ -1104,6 +1124,7 @@ export const translations: Record<Lang, Record<string, string>> = {
     'investments.detail.dividend': 'Dividend',
     'investments.detail.principal': 'Principal',
     'investments.detail.interest': 'Interest',
+    'investments.detail.capitalReturn': 'Capital return',
     'investments.detail.years': 'years',
     'investments.detail.incomeModel': 'Income model',
     'investments.detail.paymentFrequency': 'Payment frequency',
@@ -1121,6 +1142,23 @@ export const translations: Record<Lang, Record<string, string>> = {
     'investments.schedule.status.matched': 'Matched',
     'investments.schedule.status.missed': 'Missed',
     'investments.schedule.status.skipped': 'Skipped',
+
+    // Payments view ("Cobros")
+    'payments.title': 'Payments',
+    'payments.subtitle': 'All your payments, received and expected, in one place.',
+    'payments.received.title': 'Received',
+    'payments.received.empty': 'You haven\'t recorded any payment yet.',
+    'payments.expected.title': 'Expected',
+    'payments.expected.empty': 'No pending payments.',
+    'payments.total.label': 'Total',
+    'payments.filters.investment': 'Investment',
+    'payments.filters.allInvestments': 'All investments',
+    'payments.filters.dateFrom': 'From',
+    'payments.filters.dateTo': 'To',
+    'payments.overdueBy': '{days} days overdue',
+    'payments.inDays': 'in {days} days',
+    'payments.dueToday': 'today',
+
     'tax.incomplete.warning': '{count} investments are not included in this report because they are pending completion.',
     // Import / Export
     'investments.import': 'Import',

@@ -1,6 +1,7 @@
 import { useMemo } from 'react';
 import { Investment, InvestmentScheduleEntry } from '@/types/investment';
 import { parseISO, differenceInDays } from 'date-fns';
+import { getPendingScheduleEntries } from '@/lib/investment/pendingPayments';
 
 export type AlertType = 'maturity' | 'overdue' | 'expected-payment';
 export type AlertSeverity = 'warning' | 'danger' | 'info';
@@ -85,23 +86,9 @@ export function useAlerts(
       if (!schedule || schedule.length === 0) return;
 
       const isEquityRentas = investment.incomeModel === 'equity' && investment.equityType === 'rentas';
+      const pendingEntries = getPendingScheduleEntries(investment, schedule, today);
 
-      for (const entry of schedule) {
-        if (entry.status === 'matched' || entry.status === 'skipped') continue;
-
-        const entryDate = parseISO(entry.expectedDate);
-
-        // For equity rentas: skip if a capital_return payment covers this period
-        if (isEquityRentas && entry.type === 'interest') {
-          const hasPaid = (investment.payments ?? []).some(
-            p => p.type === 'capital_return' && parseISO(p.date) >= entryDate,
-          );
-          if (hasPaid) continue;
-        }
-
-        // positive = days in the future; negative = days past due
-        const daysFromToday = differenceInDays(entryDate, today);
-
+      for (const { entry, date: entryDate, daysFromToday } of pendingEntries) {
         if (daysFromToday < 0 && daysFromToday >= -60) {
           const daysOverdue = Math.abs(daysFromToday);
           allAlerts.push({

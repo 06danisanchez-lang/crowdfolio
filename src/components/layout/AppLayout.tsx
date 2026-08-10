@@ -9,6 +9,7 @@ import {
   CalendarPlus,
   Bell,
   LogOut,
+  Banknote,
 } from 'lucide-react';
 import { useNavigate, Link } from 'react-router-dom';
 import { LEGAL_ROUTES } from '@/lib/legal/routes';
@@ -65,6 +66,7 @@ export function AppLayout({
   const navItemsBefore = [
     { id: 'dashboard' as View, label: t('nav.dashboard'), icon: LayoutDashboard },
     { id: 'investments' as View, label: t('nav.investments'), icon: Wallet },
+    { id: 'payments' as View, label: t('nav.payments'), icon: Banknote },
     { id: 'future-investments' as View, label: t('nav.futureInvestments'), icon: CalendarPlus },
   ];
   const navItemsAfter = [

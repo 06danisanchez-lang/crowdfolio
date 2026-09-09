@@ -23,6 +23,7 @@ export interface DefaultedInvestmentLoss {
   investmentId: string;
   projectName: string;
   platform: string;
+  customPlatformName?: string;
   amountInvested: number;
   amountRecovered: number;
   loss: number;              // negative: amountRecovered - amountInvested

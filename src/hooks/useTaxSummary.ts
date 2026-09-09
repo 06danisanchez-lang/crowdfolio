@@ -2,11 +2,18 @@ import { useState, useEffect, useMemo, useRef } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { TaxSummary, EnrichedPayment, DefaultedInvestmentLoss } from '@/types/tax';
-import { Investment } from '@/types/investment';
+import { Investment, PLATFORMS } from '@/types/investment';
 import { calculateProgressiveTax, calculateEffectiveRate } from '@/lib/tax/calculations';
 import { calculateYearlyProjection, TaxProjection } from '@/lib/tax/projections';
 import { useTaxExpenses } from './useTaxExpenses';
-import { isInvestmentComplete } from '@/lib/investment/completeness';
+import { isInvestmentComplete, RequirementsPayment } from '@/lib/investment/completeness';
+import {
+  resolvePaymentGrossEur,
+  resolvePrincipalGrossEur,
+  getExcludedForeignInvestments,
+  getForeignWithholdingTotalEur,
+  buildDoubleTaxationNote,
+} from '@/lib/tax/foreignIncome';
 
 const FETCH_TIMEOUT_MS = 15_000;
 
@@ -17,6 +24,15 @@ interface PaymentWithInvestment {
   type: string;
   withholding_applied: number | null;
   investment_id: string;
+  // Divisa extranjera (Fase 3/5)
+  original_amount: number | null;
+  original_currency: string | null;
+  exchange_rate: number | null;
+  exchange_rate_date: string | null;
+  exchange_rate_source: string | null;
+  amount_eur: number | null;
+  foreign_withholding_amount: number | null;
+  foreign_withholding_currency: string | null;
 }
 
 interface InvestmentRow {
@@ -36,6 +52,14 @@ interface InvestmentRow {
   defaulted_at: string | null;
   amount_recovered: number | null;
   equity_type: string | null;
+  currency: string | null;
+  country: string | null;
+  original_amount: number | null;
+  original_currency: string | null;
+  exchange_rate: number | null;
+  exchange_rate_date: string | null;
+  exchange_rate_source: string | null;
+  amount_eur: number | null;
   created_at: string;
   updated_at: string;
 }
@@ -55,6 +79,15 @@ function mapInvestmentRow(inv: InvestmentRow): Investment {
     paymentFrequency: (inv.payment_frequency || undefined) as Investment['paymentFrequency'],
     principalReturnType: (inv.principal_return_type || undefined) as Investment['principalReturnType'],
     notes: inv.notes || undefined,
+    amountRecovered: inv.amount_recovered != null ? Number(inv.amount_recovered) : undefined,
+    currency: inv.currency || 'EUR',
+    country: inv.country || undefined,
+    originalAmount: inv.original_amount != null ? Number(inv.original_amount) : undefined,
+    originalCurrency: inv.original_currency || undefined,
+    exchangeRate: inv.exchange_rate != null ? Number(inv.exchange_rate) : undefined,
+    exchangeRateDate: inv.exchange_rate_date || undefined,
+    exchangeRateSource: (inv.exchange_rate_source as 'ecb' | 'manual') || undefined,
+    amountEur: inv.amount_eur != null ? Number(inv.amount_eur) : undefined,
     payments: [],
     createdAt: inv.created_at,
     updatedAt: inv.updated_at,
@@ -155,7 +188,7 @@ export function useTaxSummary(year: number) {
 
         const { data, error: paymentsError } = await supabase
           .from('payments')
-          .select('id, date, amount, type, withholding_applied, investment_id')
+          .select('id, date, amount, type, withholding_applied, investment_id, original_amount, original_currency, exchange_rate, exchange_rate_date, exchange_rate_source, amount_eur, foreign_withholding_amount, foreign_withholding_currency')
           .in('investment_id', allIds)
           .gte('date', startDate)
           .lte('date', endDate)
@@ -169,6 +202,10 @@ export function useTaxSummary(year: number) {
           ...p,
           amount: Number(p.amount),
           withholding_applied: p.withholding_applied ? Number(p.withholding_applied) : null,
+          original_amount: p.original_amount != null ? Number(p.original_amount) : null,
+          exchange_rate: p.exchange_rate != null ? Number(p.exchange_rate) : null,
+          amount_eur: p.amount_eur != null ? Number(p.amount_eur) : null,
+          foreign_withholding_amount: p.foreign_withholding_amount != null ? Number(p.foreign_withholding_amount) : null,
         }));
 
         setExcludedIncompleteCount(excludedCount);
@@ -207,18 +244,67 @@ export function useTaxSummary(year: number) {
     return () => { ++requestIdRef.current; };
   }, [user, year, retryCount]);
 
+  // Fase 5 — inversiones extranjeras a excluir del informe fiscal definitivo:
+  // cualquiera con al menos un fiscal_blocker (Fase 4: tipo de cambio o
+  // retención sin base coherente). Se excluye la inversión ENTERA, no solo
+  // el pago que falla — nunca se trata una divisa extranjera como EUR 1:1.
+  const excludedForeignInvestments = useMemo(() => {
+    const paymentsByInvestment = new Map<string, RequirementsPayment[]>();
+    for (const p of payments) {
+      const list = paymentsByInvestment.get(p.investment_id) ?? [];
+      list.push({
+        type: p.type,
+        amount: p.amount,
+        originalCurrency: p.original_currency,
+        exchangeRate: p.exchange_rate,
+        amountEur: p.amount_eur,
+        foreignWithholdingAmount: p.foreign_withholding_amount,
+        foreignWithholdingCurrency: p.foreign_withholding_currency,
+      });
+      paymentsByInvestment.set(p.investment_id, list);
+    }
+
+    const investmentsForCheck = investmentRows.map(inv => ({
+      id: inv.id,
+      projectName: inv.project_name,
+      platform: inv.platform,
+      status: inv.status,
+      currency: inv.currency,
+      country: inv.country,
+      exchangeRate: inv.exchange_rate,
+      amountEur: inv.amount_eur,
+      amountRecovered: inv.amount_recovered,
+    }));
+
+    return getExcludedForeignInvestments(
+      investmentsForCheck,
+      paymentsByInvestment,
+      (platformValue) => PLATFORMS.find(p => p.value === platformValue),
+    );
+  }, [investmentRows, payments]);
+
+  const excludedForeignInvestmentIds = useMemo(
+    () => new Set(excludedForeignInvestments.map(e => e.investmentId)),
+    [excludedForeignInvestments],
+  );
+
   // GPP — inversiones en default que cumplen el requisito de 6 meses (art. 14.2.k LIRPF)
   const defaultedInvestmentsWithLoss: DefaultedInvestmentLoss[] = useMemo(() => {
     const yearEnd = new Date(`${year}-12-31`);
     return investmentRows
       .filter(inv => {
+        if (excludedForeignInvestmentIds.has(inv.id)) return false;
         if (inv.status !== 'defaulted' || !inv.expected_end_date) return false;
         const cutoff = new Date(inv.expected_end_date);
         cutoff.setMonth(cutoff.getMonth() + 6);
         return cutoff <= yearEnd;
       })
       .map(inv => {
-        const amountInvested = Number(inv.amount);
+        const amountInvested = resolvePrincipalGrossEur({
+          amount: Number(inv.amount),
+          currency: inv.currency,
+          amountEur: inv.amount_eur != null ? Number(inv.amount_eur) : null,
+        }) ?? Number(inv.amount);
         const amountRecovered = inv.amount_recovered != null ? Number(inv.amount_recovered) : 0;
         return {
           investmentId: inv.id,
@@ -232,18 +318,51 @@ export function useTaxSummary(year: number) {
           qualifiesForDeduction: true,
         };
       });
-  }, [investmentRows, year]);
+  }, [investmentRows, year, excludedForeignInvestmentIds]);
 
   // Tax summary — RCM + GPP + compensación (límite 25%, Ley 7/2024)
   const summary: TaxSummary = useMemo(() => {
-    // capital_return (prima de emisión equity rentas) no tributa — excluir de todos los cálculos fiscales
-    const taxablePayments = payments.filter(p => p.type !== 'capital_return');
+    // capital_return (prima de emisión equity rentas) no tributa — excluir de todos los cálculos fiscales.
+    // Fase 5: además se excluyen los pagos de inversiones con fiscal_blocker
+    // pendiente (divisa extranjera sin tipo de cambio, o retención sin base
+    // coherente) — esa inversión entera queda fuera del total definitivo.
+    const taxablePayments = payments.filter(
+      p => p.type !== 'capital_return' && !excludedForeignInvestmentIds.has(p.investment_id),
+    );
 
-    const interestIncome = taxablePayments.filter((p) => p.type === 'interest').reduce((sum, p) => sum + p.amount, 0);
-    const dividendIncome = taxablePayments.filter((p) => p.type === 'dividend').reduce((sum, p) => sum + p.amount, 0);
-    const principalReturns = taxablePayments.filter((p) => p.type === 'principal').reduce((sum, p) => sum + p.amount, 0);
+    // Importe bruto en EUR de un pago: si no es divisa extranjera, `amount`
+    // ya es EUR (sin cambios respecto a antes). Si lo es, la única fuente de
+    // verdad es `amount_eur` — nunca se asume `amount` a ciegas. Como estos
+    // pagos ya vienen filtrados por excludedForeignInvestmentIds, en la
+    // práctica esto nunca debería devolver null aquí, pero el `?? 0` es
+    // defensivo, no una suposición.
+    const grossEur = (p: PaymentWithInvestment) =>
+      resolvePaymentGrossEur({ amount: p.amount, originalCurrency: p.original_currency, amountEur: p.amount_eur }) ?? 0;
+
+    const interestIncome = taxablePayments.filter((p) => p.type === 'interest').reduce((sum, p) => sum + grossEur(p), 0);
+    const dividendIncome = taxablePayments.filter((p) => p.type === 'dividend').reduce((sum, p) => sum + grossEur(p), 0);
+    const principalReturns = taxablePayments.filter((p) => p.type === 'principal').reduce((sum, p) => sum + grossEur(p), 0);
     const grossIncome = interestIncome + dividendIncome;
     const withholdingsApplied = taxablePayments.reduce((sum, p) => sum + (p.withholding_applied || 0), 0);
+
+    // Doble imposición internacional (art. 80 LIRPF) — SOLO el dato (a),
+    // fiable: retención efectiva en origen, en EUR. El dato (b) — tipo medio
+    // efectivo de gravamen — requeriría ver el resto de la declaración del
+    // usuario (rentas fuera de Crowdfolio, base general...), que esta app no
+    // tiene. Por eso NUNCA se aplica una deducción automática: se marca
+    // pendiente de revisión manual. Nunca sobre-deducir en silencio.
+    const foreignWithholdingTotalEur = getForeignWithholdingTotalEur(
+      taxablePayments.map(p => ({
+        foreignWithholdingAmount: p.foreign_withholding_amount,
+        foreignWithholdingCurrency: p.foreign_withholding_currency,
+        exchangeRate: p.exchange_rate,
+      })),
+    );
+    const doubleTaxation: TaxSummary['doubleTaxation'] = {
+      foreignWithholdingTotalEur,
+      deductionStatus: foreignWithholdingTotalEur > 0 ? 'pending_manual_review' : 'not_applicable',
+      note: buildDoubleTaxationNote(foreignWithholdingTotalEur),
+    };
 
     // Equity liquidacion sin retención — debe declararse manualmente
     const equityTypeMap = new Map(investmentRows.map(r => [r.id, r.equity_type]));
@@ -290,8 +409,11 @@ export function useTaxSummary(year: number) {
       totalGPPLosses, compensacionGPPRCM, perdidasGPPPendientes, baseImponibleRCMAjustada,
       taxableBase, estimatedTax, effectiveRate,
       liquidacionSinRetencion,
+      isIncomplete: excludedForeignInvestments.length > 0,
+      excludedForeignInvestments,
+      doubleTaxation,
     };
-  }, [payments, totalExpenses, year, defaultedInvestmentsWithLoss, investmentRows]);
+  }, [payments, totalExpenses, year, defaultedInvestmentsWithLoss, investmentRows, excludedForeignInvestmentIds, excludedForeignInvestments]);
 
   // Projection — based only on active + tracking_ready investments
   const projection: TaxProjection = useMemo(() => {

@@ -17,7 +17,7 @@ import {
   Crown,
 } from 'lucide-react';
 import { Investment, DraftInvestment, PLATFORMS, STATUS_OPTIONS, Platform, InvestmentStatus, IncomeModel, InvestmentScheduleEntry } from '@/types/investment';
-import { getInvestmentCompletionStatus } from '@/lib/investment/completeness';
+import { getInvestmentCompletionStatus, getInvestmentDataRequirements } from '@/lib/investment/completeness';
 import { getStatusLabel } from '@/lib/labels';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -190,6 +190,22 @@ export function InvestmentList({
     if (inv.wasExtended && (status === 'active' || status === 'pending')) {
       extraBadges.push(
         <Badge key="extended" className="bg-orange-100 text-orange-800 border-orange-300 text-xs">Prorrogada</Badge>
+      );
+    }
+
+    // Fase 4 — datos fiscales pendientes de revisar (divisa extranjera).
+    const platformMeta = PLATFORMS.find(p => p.value === inv.platform);
+    const fiscalBlockers = getInvestmentDataRequirements(inv, inv.payments, platformMeta)
+      .filter(r => r.severity === 'fiscal_blocker');
+    if (fiscalBlockers.length > 0) {
+      extraBadges.push(
+        <Badge
+          key="fiscal-blocker"
+          className="bg-red-100 text-red-800 border-red-300 text-xs"
+          title={fiscalBlockers[0].message}
+        >
+          ⚠ Revisar datos fiscales
+        </Badge>
       );
     }
 

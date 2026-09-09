@@ -1,9 +1,13 @@
-import { useState } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useLanguage } from '@/contexts/LanguageContext';
 import { format, parseISO } from 'date-fns';
 import { es } from 'date-fns/locale';
-import { Plus, Trash2, CalendarIcon, Pencil } from 'lucide-react';
+import { Plus, Trash2, CalendarIcon, Pencil, Loader2, Info, AlertTriangle } from 'lucide-react';
 import { Investment, Payment, PLATFORMS, STATUS_OPTIONS, InvestmentScheduleEntry, IncomeModel } from '@/types/investment';
+import { convertToEur } from '@/lib/tax/currency';
+import { getInvestmentDataRequirements } from '@/lib/investment/completeness';
+import { fetchExchangeRateSuggestion } from '@/lib/tax/exchangeRateClient';
+import { Switch } from '@/components/ui/switch';
 import {
   getInvestmentDurationYears,
   calculateInvestmentTotalReturn,
@@ -67,7 +71,7 @@ interface InvestmentDetailProps {
   onClose: () => void;
   onUpdate: (id: string, updates: Partial<Investment>) => Promise<unknown>;
   onDelete: (id: string) => void;
-  onAddPayment: (investmentId: string, payment: { date: string; amount: number; type: 'dividend' | 'principal' | 'interest'; notes?: string }) => void;
+  onAddPayment: (investmentId: string, payment: Omit<Payment, 'id'>) => void;
   onDeletePayment: (investmentId: string, paymentId: string) => void;
   onOpenCloseModal?: (id: string) => void;
 }
@@ -78,6 +82,19 @@ export function InvestmentDetail({ investment, schedule = [], onClose, onUpdate,
   const [paymentDate, setPaymentDate] = useState<Date>(new Date());
   const [paymentAmount, setPaymentAmount] = useState('');
   const [paymentType, setPaymentType] = useState<'dividend' | 'principal' | 'interest'>('dividend');
+
+  // Divisa extranjera y retención en origen (Fase 3 — inversiones extranjeras).
+  const [paymentOriginalAmount, setPaymentOriginalAmount] = useState('');
+  const [paymentExchangeRate, setPaymentExchangeRate] = useState('');
+  const [paymentExchangeRateDate, setPaymentExchangeRateDate] = useState<string | undefined>(undefined);
+  const [paymentExchangeRateSource, setPaymentExchangeRateSource] = useState<'ecb' | 'manual' | undefined>(undefined);
+  const [rateFellBack, setRateFellBack] = useState(false);
+  const [isFetchingRate, setIsFetchingRate] = useState(false);
+  const [rateFetchError, setRateFetchError] = useState<string | null>(null);
+  const [hasForeignWithholding, setHasForeignWithholding] = useState(false);
+  const [paymentForeignWithholding, setPaymentForeignWithholding] = useState('');
+  const rateRequestIdRef = useRef(0);
+  const lastFetchedRateDateRef = useRef<string | null>(null);
 
   // Delete confirmation
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
@@ -195,16 +212,104 @@ export function InvestmentDetail({ investment, schedule = [], onClose, onUpdate,
     resetForms();
   };
 
+  // Divisa extranjera / retención en origen (Fase 3): el país y la divisa
+  // "efectivos" de la inversión caen al catálogo estático de la plataforma
+  // si no hay override explícito en la inversión — misma convención que el
+  // resto del proyecto (ver src/types/investment.ts, PLATFORMS).
+  const paymentPlatformMeta = PLATFORMS.find(p => p.value === investment?.platform);
+  const effectiveCountry = investment?.country || paymentPlatformMeta?.country || 'ES';
+  const effectiveCurrency = investment?.currency || paymentPlatformMeta?.defaultCurrency || 'EUR';
+  const isForeignInvestment = effectiveCountry !== 'ES' || effectiveCurrency !== 'EUR';
+  const needsCurrencyConversion = effectiveCurrency !== 'EUR';
+
+  // Fase 4 — huecos fiscales de ESTA inversión, en lenguaje llano. Al abrirla
+  // (aquí) mostramos solo lo que falta, no un formulario nuevo.
+  const fiscalRequirements = investment
+    ? getInvestmentDataRequirements(investment, investment.payments, paymentPlatformMeta)
+        .filter(r => r.severity === 'fiscal_blocker' || r.severity === 'informative')
+    : [];
+
+  const resetPaymentFxState = () => {
+    setPaymentOriginalAmount('');
+    setPaymentExchangeRate('');
+    setPaymentExchangeRateDate(undefined);
+    setPaymentExchangeRateSource(undefined);
+    setRateFellBack(false);
+    setRateFetchError(null);
+    setHasForeignWithholding(false);
+    setPaymentForeignWithholding('');
+    lastFetchedRateDateRef.current = null;
+  };
+
+  // Auto-sugiere el tipo de cambio del BCE al abrir el formulario o cambiar
+  // de fecha, si la inversión está en divisa distinta de EUR. Solo vuelve a
+  // pedirlo cuando la fecha cambia de verdad — una edición manual del importe
+  // o del tipo no dispara un refetch que la pise.
+  useEffect(() => {
+    if (!showAddPayment || !needsCurrencyConversion) return;
+    const dateStr = paymentDate.toISOString().split('T')[0];
+    if (lastFetchedRateDateRef.current === dateStr) return;
+    lastFetchedRateDateRef.current = dateStr;
+
+    const requestId = ++rateRequestIdRef.current;
+    setIsFetchingRate(true);
+    setRateFetchError(null);
+
+    fetchExchangeRateSuggestion(effectiveCurrency, dateStr).then((result) => {
+      if (rateRequestIdRef.current !== requestId) return; // respuesta obsoleta, se ignora
+      setIsFetchingRate(false);
+      if (result.ok) {
+        setPaymentExchangeRate(String(result.data.rate));
+        setPaymentExchangeRateDate(result.data.rateDate);
+        setPaymentExchangeRateSource('ecb');
+        setRateFellBack(result.data.fellBack);
+      } else {
+        setPaymentExchangeRateSource(undefined);
+        setRateFetchError(result.error.message);
+      }
+    });
+  }, [showAddPayment, paymentDate, needsCurrencyConversion, effectiveCurrency]);
+
+  const originalAmountNum = parseFloat(paymentOriginalAmount);
+  const exchangeRateNum = parseFloat(paymentExchangeRate);
+  const amountEurPreview =
+    needsCurrencyConversion && Number.isFinite(originalAmountNum) && Number.isFinite(exchangeRateNum) && exchangeRateNum > 0
+      ? convertToEur(originalAmountNum, exchangeRateNum)
+      : undefined;
+
+  const foreignWithholdingNum = parseFloat(paymentForeignWithholding);
+  const canSubmitPayment = needsCurrencyConversion
+    ? amountEurPreview !== undefined && (!hasForeignWithholding || Number.isFinite(foreignWithholdingNum))
+    : !!paymentAmount && (!hasForeignWithholding || Number.isFinite(foreignWithholdingNum));
+
   const handleAddPayment = () => {
-    if (investment && paymentAmount) {
-      onAddPayment(investment.id, {
-        date: paymentDate.toISOString(),
-        amount: parseFloat(paymentAmount),
-        type: paymentType,
-      });
-      setPaymentAmount('');
-      setShowAddPayment(false);
-    }
+    if (!investment || !canSubmitPayment) return;
+
+    const base = {
+      date: paymentDate.toISOString(),
+      type: paymentType,
+    };
+
+    const fx = needsCurrencyConversion
+      ? {
+          amount: amountEurPreview!, // amount SIEMPRE en EUR: el resto de la app lo asume así
+          originalAmount: originalAmountNum,
+          originalCurrency: effectiveCurrency,
+          exchangeRate: exchangeRateNum,
+          exchangeRateDate: paymentExchangeRateDate,
+          exchangeRateSource: paymentExchangeRateSource,
+          amountEur: amountEurPreview!,
+        }
+      : { amount: parseFloat(paymentAmount) };
+
+    const withholding = hasForeignWithholding
+      ? { foreignWithholdingAmount: foreignWithholdingNum, foreignWithholdingCurrency: effectiveCurrency }
+      : {};
+
+    onAddPayment(investment.id, { ...base, ...fx, ...withholding });
+    setPaymentAmount('');
+    resetPaymentFxState();
+    setShowAddPayment(false);
   };
 
   if (!investment) return null;
@@ -275,6 +380,26 @@ export function InvestmentDetail({ investment, schedule = [], onClose, onUpdate,
         </DialogHeader>
 
         <div className="space-y-6">
+          {/* Fase 4 — avisos fiscales de esta inversión (divisa extranjera) */}
+          {fiscalRequirements.length > 0 && (
+            <div className="space-y-2">
+              {fiscalRequirements.map((req, i) => (
+                <div
+                  key={`${req.rule}-${i}`}
+                  className={cn(
+                    'flex items-start gap-2 p-3 rounded-lg border text-sm',
+                    req.severity === 'fiscal_blocker'
+                      ? 'bg-red-50 border-red-300 text-red-800'
+                      : 'bg-amber-50 border-amber-200 text-amber-800',
+                  )}
+                >
+                  <AlertTriangle className="h-4 w-4 mt-0.5 shrink-0" />
+                  <p>{req.message}</p>
+                </div>
+              ))}
+            </div>
+          )}
+
           {/* Investment Details */}
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div className="space-y-1">
@@ -471,13 +596,17 @@ export function InvestmentDetail({ investment, schedule = [], onClose, onUpdate,
           <div>
             <div className="mb-3 flex items-center justify-between">
               <h4 className="font-semibold">{t('investments.detail.payments')}</h4>
-              <Button size="sm" variant="outline" onClick={() => setShowAddPayment(true)}>
+              <Button
+                size="sm"
+                variant="outline"
+                onClick={() => { resetPaymentFxState(); setShowAddPayment(true); }}
+              >
                 <Plus className="mr-2 h-4 w-4" />
                 {t('investments.detail.addPayment')}
               </Button>
             </div>
 
-            {showAddPayment && (
+            {showAddPayment && !isForeignInvestment && (
               <div className="mb-4 rounded-lg border bg-card p-4">
                 <div className="grid gap-4 sm:grid-cols-4">
                   <Popover>
@@ -512,13 +641,121 @@ export function InvestmentDetail({ investment, schedule = [], onClose, onUpdate,
                     </SelectContent>
                   </Select>
                   <div className="flex gap-2">
-                    <Button onClick={handleAddPayment} disabled={!paymentAmount}>
+                    <Button onClick={handleAddPayment} disabled={!canSubmitPayment}>
                       {t('common.add')}
                     </Button>
-                    <Button variant="ghost" onClick={() => setShowAddPayment(false)}>
+                    <Button variant="ghost" onClick={() => { setShowAddPayment(false); resetPaymentFxState(); }}>
                       {t('common.cancel')}
                     </Button>
                   </div>
+                </div>
+              </div>
+            )}
+
+            {/* Inversión extranjera (divisa != EUR y/o país != ES): mismo formulario
+                de siempre + conversión a EUR y retención en origen, en lenguaje llano. */}
+            {showAddPayment && isForeignInvestment && (
+              <div className="mb-4 rounded-lg border bg-card p-4 space-y-3">
+                <div className="grid gap-4 sm:grid-cols-2">
+                  <Popover>
+                    <PopoverTrigger asChild>
+                      <Button variant="outline" className="justify-start text-left font-normal">
+                        <CalendarIcon className="mr-2 h-4 w-4" />
+                        {format(paymentDate, 'dd/MM/yyyy')}
+                      </Button>
+                    </PopoverTrigger>
+                    <PopoverContent className="w-auto p-0">
+                      <Calendar
+                        mode="single"
+                        selected={paymentDate}
+                        onSelect={(date) => date && setPaymentDate(date)}
+                      />
+                    </PopoverContent>
+                  </Popover>
+                  <Select value={paymentType} onValueChange={(v) => setPaymentType(v as typeof paymentType)}>
+                    <SelectTrigger>
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="dividend">{t('investments.detail.dividend')}</SelectItem>
+                      <SelectItem value="principal">{t('investments.detail.principal')}</SelectItem>
+                      <SelectItem value="interest">{t('investments.detail.interest')}</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                {needsCurrencyConversion ? (
+                  <>
+                    <div className="grid gap-4 sm:grid-cols-2">
+                      <Input
+                        type="number"
+                        placeholder={`Importe en ${effectiveCurrency}`}
+                        value={paymentOriginalAmount}
+                        onChange={(e) => setPaymentOriginalAmount(e.target.value)}
+                      />
+                      <div className="flex items-center gap-2">
+                        <Input
+                          type="number"
+                          step="0.000001"
+                          placeholder="Tipo de cambio a EUR"
+                          value={paymentExchangeRate}
+                          onChange={(e) => {
+                            setPaymentExchangeRate(e.target.value);
+                            setPaymentExchangeRateSource('manual');
+                          }}
+                        />
+                        {isFetchingRate && <Loader2 className="h-4 w-4 animate-spin text-muted-foreground shrink-0" />}
+                      </div>
+                    </div>
+                    <div className="flex items-start gap-1.5 text-xs text-muted-foreground">
+                      <Info className="h-3.5 w-3.5 mt-0.5 shrink-0" />
+                      <span>
+                        {rateFetchError
+                          ? `No hemos podido traer el tipo de cambio del BCE (${rateFetchError}). Introdúcelo tú a mano.`
+                          : paymentExchangeRateSource === 'ecb'
+                            ? `Tipo de cambio del BCE del ${paymentExchangeRateDate}${rateFellBack ? ' (último día publicado antes de esta fecha)' : ''}. Puedes cambiarlo si lo tuyo fue distinto.`
+                            : paymentExchangeRateSource === 'manual'
+                              ? 'Tipo de cambio introducido a mano.'
+                              : `Esta inversión está en ${effectiveCurrency} — dinos el importe y el tipo de cambio, y lo convertimos a euros por ti.`}
+                        {amountEurPreview !== undefined && ` Equivale a ${formatCurrency(amountEurPreview)}.`}
+                      </span>
+                    </div>
+                  </>
+                ) : (
+                  <Input
+                    type="number"
+                    placeholder={t('investments.detail.amount')}
+                    value={paymentAmount}
+                    onChange={(e) => setPaymentAmount(e.target.value)}
+                  />
+                )}
+
+                <div className="flex items-center justify-between rounded-md border px-3 py-2">
+                  <div className="pr-3">
+                    <p className="text-sm font-medium">¿Hubo retención en origen?</p>
+                    <p className="text-xs text-muted-foreground">
+                      Si te retuvieron impuestos antes de pagarte (fuera de España).
+                    </p>
+                  </div>
+                  <Switch checked={hasForeignWithholding} onCheckedChange={setHasForeignWithholding} />
+                </div>
+
+                {hasForeignWithholding && (
+                  <Input
+                    type="number"
+                    placeholder={`Retención en origen (${effectiveCurrency})`}
+                    value={paymentForeignWithholding}
+                    onChange={(e) => setPaymentForeignWithholding(e.target.value)}
+                  />
+                )}
+
+                <div className="flex gap-2 justify-end">
+                  <Button onClick={handleAddPayment} disabled={!canSubmitPayment}>
+                    {t('common.add')}
+                  </Button>
+                  <Button variant="ghost" onClick={() => { setShowAddPayment(false); resetPaymentFxState(); setPaymentAmount(''); }}>
+                    {t('common.cancel')}
+                  </Button>
                 </div>
               </div>
             )}

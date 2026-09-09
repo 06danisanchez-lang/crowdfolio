@@ -126,6 +126,9 @@ export const translations: Record<Lang, Record<string, string>> = {
     'common.optional': 'Opcional',
     'common.select': 'Seleccionar',
     'common.all': 'Todos',
+    'common.allStatuses': 'Todos los estados',
+    'common.platform': 'Plataforma',
+    'common.status': 'Estado',
     'common.yes': 'Sí',
     'common.no': 'No',
 
@@ -715,6 +718,9 @@ export const translations: Record<Lang, Record<string, string>> = {
     'common.optional': 'Optional',
     'common.select': 'Select',
     'common.all': 'All',
+    'common.allStatuses': 'All statuses',
+    'common.platform': 'Platform',
+    'common.status': 'Status',
     'common.yes': 'Yes',
     'common.no': 'No',
 

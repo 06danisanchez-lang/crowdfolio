@@ -15,6 +15,7 @@ export interface Alert {
   investmentId: string;
   investmentName: string;
   platform: string;
+  customPlatformName?: string;
   date: Date;
   amount: number;
   daysRemaining?: number;
@@ -56,6 +57,7 @@ export function useAlerts(
             investmentId: investment.id,
             investmentName: investment.projectName,
             platform: investment.platform,
+            customPlatformName: investment.customPlatformName,
             date: endDate,
             amount: investment.amount,
             daysRemaining: daysUntilMaturity,
@@ -72,6 +74,7 @@ export function useAlerts(
             investmentId: investment.id,
             investmentName: investment.projectName,
             platform: investment.platform,
+            customPlatformName: investment.customPlatformName,
             date: endDate,
             amount: investment.amount,
             daysRemaining: daysUntilMaturity,
@@ -104,6 +107,7 @@ export function useAlerts(
             investmentId: investment.id,
             investmentName: investment.projectName,
             platform: investment.platform,
+            customPlatformName: investment.customPlatformName,
             date: entryDate,
             amount: entry.expectedAmount,
             daysRemaining: daysFromToday,
@@ -126,6 +130,7 @@ export function useAlerts(
             investmentId: investment.id,
             investmentName: investment.projectName,
             platform: investment.platform,
+            customPlatformName: investment.customPlatformName,
             date: entryDate,
             amount: entry.expectedAmount,
             daysRemaining: daysFromToday,

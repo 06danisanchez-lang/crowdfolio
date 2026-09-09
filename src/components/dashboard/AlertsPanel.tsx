@@ -12,6 +12,7 @@ import {
   ChevronRight
 } from 'lucide-react';
 import { Alert, AlertType, AlertSeverity } from '@/hooks/useAlerts';
+import { getPlatformLabel } from '@/lib/labels';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { ScrollArea } from '@/components/ui/scroll-area';
@@ -122,7 +123,7 @@ function AlertItem({
           <p className="mb-2 text-sm opacity-90">{alert.message}</p>
           <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-xs opacity-75">
             <span className="font-medium">{alert.investmentName}</span>
-            <span>{alert.platform}</span>
+            <span>{getPlatformLabel(alert.platform, alert.customPlatformName)}</span>
             <span>{formatCurrency(alert.amount)}</span>
             <span>{format(alert.date, 'dd MMM yyyy', { locale: es })}</span>
           </div>

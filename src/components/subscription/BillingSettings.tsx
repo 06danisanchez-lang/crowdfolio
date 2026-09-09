@@ -76,10 +76,10 @@ export function BillingSettings() {
         <CardHeader>
         <CardTitle className="flex items-center gap-2">
             <CreditCard className="h-5 w-5" />
-            {t('billing.yourPlan')}
+            {t('subscription.billing.title')}
           </CardTitle>
           <CardDescription>
-            {t('billing.manageDesc')}
+            {t('subscription.billing.desc')}
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
@@ -95,7 +95,7 @@ export function BillingSettings() {
               <div>
                 <div className="flex items-center gap-2">
                   <h3 className="font-semibold">
-                    {isPro ? 'Crowdfolio Pro' : t('billing.freePlan')}
+                    {isPro ? 'Crowdfolio Pro' : t('subscription.billing.freePlan')}
                   </h3>
                   {isPro && (
                     <Badge variant="secondary">
@@ -116,7 +116,7 @@ export function BillingSettings() {
                 )}
                 {!isPro && (
                   <p className="text-sm text-muted-foreground">
-                    {t('billing.freeLimit')}
+                    {t('subscription.billing.freeLimits')}
                   </p>
                 )}
               </div>
@@ -131,7 +131,7 @@ export function BillingSettings() {
                   {isProcessing === 'portal' && (
                     <Loader2 className="mr-2 h-4 w-4 animate-spin" />
                   )}
-                  {t('billing.manage')}
+                  {t('subscription.billing.manage')}
                 </Button>
               ) : (
                 <Button onClick={() => handleCheckout('yearly')} disabled={isProcessing !== null}>
@@ -139,7 +139,7 @@ export function BillingSettings() {
                     <Loader2 className="mr-2 h-4 w-4 animate-spin" />
                   )}
                   <Crown className="mr-2 h-4 w-4" />
-                  {t('billing.upgradePro')}
+                  {t('subscription.billing.upgradeToPro')}
                 </Button>
               )}
             </div>
@@ -154,7 +154,7 @@ export function BillingSettings() {
             {isProcessing === 'refresh' && (
               <Loader2 className="mr-2 h-4 w-4 animate-spin" />
             )}
-            {t('billing.refreshStatus')}
+            {t('subscription.billing.refreshStatus')}
           </Button>
         </CardContent>
       </Card>
@@ -165,21 +165,21 @@ export function BillingSettings() {
           <CardHeader>
           <CardTitle className="flex items-center gap-2">
               <Crown className="h-5 w-5 text-primary" />
-              {t('billing.upgradePro')}
+              {t('subscription.billing.upgradeToPro')}
             </CardTitle>
             <CardDescription>
-              {t('billing.upgradeDesc')}
+              {t('subscription.billing.upgradeDesc')}
             </CardDescription>
           </CardHeader>
           <CardContent className="grid gap-4 md:grid-cols-2">
             <div className="rounded-lg border p-4">
               <div className="mb-2 flex items-baseline justify-between">
-                <h4 className="font-medium">{t('billing.monthly')}</h4>
+                <h4 className="font-medium">{t('subscription.monthly')}</h4>
                 <span className="text-2xl font-bold">
                   {formatPrice(STRIPE_PRICES.monthly.amount)}
                 </span>
               </div>
-              <p className="mb-4 text-sm text-muted-foreground">/{t('billing.perMonth')}</p>
+              <p className="mb-4 text-sm text-muted-foreground">/{t('subscription.perMonth')}</p>
               <Button
                 variant="outline"
                 className="w-full"
@@ -189,7 +189,7 @@ export function BillingSettings() {
                 {isProcessing === 'monthly' && (
                   <Loader2 className="mr-2 h-4 w-4 animate-spin" />
                 )}
-                {t('billing.chooseMonthly')}
+                {t('subscription.billing.chooseMonthly')}
                 <ArrowRight className="ml-2 h-4 w-4" />
               </Button>
             </div>
@@ -197,12 +197,12 @@ export function BillingSettings() {
             <div className="relative rounded-lg border-2 border-primary p-4">
               <Badge className="absolute -top-2 right-4">Ahorra 17%</Badge>
               <div className="mb-2 flex items-baseline justify-between">
-                <h4 className="font-medium">{t('billing.yearly')}</h4>
+                <h4 className="font-medium">{t('subscription.yearly')}</h4>
                 <span className="text-2xl font-bold">
                   {formatPrice(STRIPE_PRICES.yearly.amount)}
                 </span>
               </div>
-              <p className="mb-4 text-sm text-muted-foreground">/{t('billing.perYear')} (4,92€/{t('billing.perMonth')})</p>
+              <p className="mb-4 text-sm text-muted-foreground">/{t('subscription.perYear')} (4,92€/{t('subscription.perMonth')})</p>
               <Button
                 className="w-full"
                 onClick={() => handleCheckout('yearly')}
@@ -211,7 +211,7 @@ export function BillingSettings() {
                 {isProcessing === 'yearly' && (
                   <Loader2 className="mr-2 h-4 w-4 animate-spin" />
                 )}
-                {t('billing.chooseYearly')}
+                {t('subscription.billing.chooseYearly')}
                 <ArrowRight className="ml-2 h-4 w-4" />
               </Button>
             </div>

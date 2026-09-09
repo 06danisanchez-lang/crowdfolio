@@ -125,6 +125,7 @@ export function InvestmentDetail({ investment, schedule = [], onClose, onUpdate,
       periodic_fixed: 'investments.incomeModel.periodicFixed',
       amortizing: 'investments.incomeModel.amortizing',
       variable_or_unknown: 'investments.incomeModel.variableOrUnknown',
+      equity: 'investments.incomeModel.equity',
     };
     return t(map[model]);
   };
@@ -564,7 +565,7 @@ export function InvestmentDetail({ investment, schedule = [], onClose, onUpdate,
           {/* Notes */}
           {investment.notes && (
             <div>
-              <h4 className="mb-2 font-semibold">{t('common.notes')}</h4>
+              <h4 className="mb-2 font-semibold">{t('investments.form.notes')}</h4>
               <p className="text-muted-foreground">{investment.notes}</p>
             </div>
           )}

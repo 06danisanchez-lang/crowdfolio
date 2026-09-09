@@ -202,6 +202,7 @@ export function InvestmentList({
       periodic_fixed: 'investments.incomeModel.short.periodicFixed',
       amortizing: 'investments.incomeModel.short.amortizing',
       variable_or_unknown: 'investments.incomeModel.short.variableOrUnknown',
+      equity: 'investments.incomeModel.short.equity',
     };
     return map[model];
   };

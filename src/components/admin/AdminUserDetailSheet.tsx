@@ -32,6 +32,7 @@ import {
 import { Briefcase, Hash, TrendingUp, Trash2, Loader2 } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
+import { getStatusLabel } from '@/lib/labels';
 
 function formatCurrency(value: number) {
   return new Intl.NumberFormat('es-ES', { style: 'currency', currency: 'EUR' }).format(value);
@@ -42,7 +43,7 @@ function StatusBadge({ status }: { status: string }) {
   const isActive = status === 'active';
   return (
     <Badge variant={isActive ? 'default' : 'secondary'} className={isActive ? 'bg-emerald-500/10 text-emerald-600 hover:bg-emerald-500/20 border-emerald-500/30' : ''}>
-      {status === 'active' ? 'Activo' : status === 'completed' ? 'Completado' : status}
+      {getStatusLabel(status)}
     </Badge>
   );
 }

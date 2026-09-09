@@ -23,6 +23,7 @@ export interface DefaultedInvestmentLoss {
   investmentId: string;
   projectName: string;
   platform: string;
+  customPlatformName?: string;
   amountInvested: number;
   amountRecovered: number;
   loss: number;              // negative: amountRecovered - amountInvested
@@ -51,6 +52,20 @@ export interface TaxSummary {
   effectiveRate: number;
   // Equity liquidacion sin retención — declaración manual requerida
   liquidacionSinRetencion: EnrichedPayment[];
+  // Inversiones extranjeras (Fase 5)
+  isIncomplete: boolean;
+  excludedForeignInvestments: { investmentId: string; projectName: string; reasons: string[] }[];
+  doubleTaxation: {
+    /** Dato (a) del art. 80 LIRPF: retención efectiva en origen, en EUR. Fiable. */
+    foreignWithholdingTotalEur: number;
+    /**
+     * SIEMPRE 'pending_manual_review' cuando hay retención: Crowdfolio no ve
+     * el resto de tu declaración (dato (b)), así que nunca aplica la
+     * deducción de forma automática. 'not_applicable' = no hubo retención.
+     */
+    deductionStatus: 'pending_manual_review' | 'not_applicable';
+    note: string;
+  };
 }
 
 export interface EnrichedPayment {

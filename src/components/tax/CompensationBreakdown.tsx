@@ -1,4 +1,5 @@
 import { TaxSummary, DefaultedInvestmentLoss } from '@/types/tax';
+import { getPlatformLabel } from '@/lib/labels';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Scale } from 'lucide-react';
@@ -33,7 +34,7 @@ export function CompensationBreakdown({ summary, defaultedInvestmentsWithLoss }:
               <div key={inv.investmentId} className="flex items-start justify-between gap-4 px-3 py-2.5">
                 <div>
                   <p className="font-medium">{inv.projectName}</p>
-                  <p className="text-xs text-muted-foreground capitalize">{inv.platform}</p>
+                  <p className="text-xs text-muted-foreground">{getPlatformLabel(inv.platform, inv.customPlatformName)}</p>
                   <div className="flex gap-2 mt-1 flex-wrap">
                     <Badge variant="outline" className="text-xs">
                       Invertido: {fmt(inv.amountInvested)}

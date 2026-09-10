@@ -224,6 +224,7 @@ export function useTaxSummary(year: number) {
           investmentId: inv.id,
           projectName: inv.project_name,
           platform: inv.platform,
+          customPlatformName: inv.custom_platform_name || undefined,
           amountInvested,
           amountRecovered,
           loss: amountRecovered - amountInvested,

@@ -18,6 +18,7 @@ import {
 } from 'lucide-react';
 import { Investment, DraftInvestment, PLATFORMS, STATUS_OPTIONS, Platform, InvestmentStatus, IncomeModel, InvestmentScheduleEntry } from '@/types/investment';
 import { getInvestmentCompletionStatus } from '@/lib/investment/completeness';
+import { getStatusLabel } from '@/lib/labels';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
@@ -201,6 +202,7 @@ export function InvestmentList({
       periodic_fixed: 'investments.incomeModel.short.periodicFixed',
       amortizing: 'investments.incomeModel.short.amortizing',
       variable_or_unknown: 'investments.incomeModel.short.variableOrUnknown',
+      equity: 'investments.incomeModel.short.equity',
     };
     return map[model];
   };
@@ -631,7 +633,7 @@ export function InvestmentList({
                       </div>
                       <div className="flex flex-wrap items-center gap-1 shrink-0">
                         <span className="text-xs text-muted-foreground">
-                          {inv.status === 'active' ? 'Activa' : inv.status === 'pending' ? 'Pendiente' : inv.status === 'completed' ? 'Completada' : inv.status}
+                          {getStatusLabel(inv.status)}
                         </span>
                       </div>
                     </div>

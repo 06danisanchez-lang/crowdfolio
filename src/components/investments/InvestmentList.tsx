@@ -1,7 +1,7 @@
 import { useState, useEffect, useMemo } from 'react';
 import { useLanguage } from '@/contexts/LanguageContext';
 import { toast } from 'sonner';
-import { format, parseISO } from 'date-fns';
+import { format, parseISO, differenceInDays } from 'date-fns';
 import { es } from 'date-fns/locale';
 import {
   Trash2,
@@ -18,6 +18,8 @@ import {
 } from 'lucide-react';
 import { Investment, DraftInvestment, PLATFORMS, STATUS_OPTIONS, Platform, InvestmentStatus, IncomeModel, InvestmentScheduleEntry } from '@/types/investment';
 import { getInvestmentCompletionStatus } from '@/lib/investment/completeness';
+import { calculateExpectedTotalReturn, sumIncomePayments } from '@/lib/investment/calculations';
+import { getMaturitySeverity } from '@/hooks/useAlerts';
 import { getStatusLabel } from '@/lib/labels';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -207,6 +209,49 @@ export function InvestmentList({
     return map[model];
   };
 
+  // Columna "Vencimiento": misma clasificación de urgencia (umbral de 30 días) que las
+  // notificaciones de vencimiento de useAlerts — ver getMaturitySeverity. Solo tiene
+  // sentido marcar urgencia en active/pending (aún no resueltas); completed/defaulted
+  // muestran la fecha en gris, sin badge, igual que useAlerts no genera alertas para ellas.
+  const getMaturityInfo = (inv: Investment): { label: string; severity: 'danger' | 'warning' | null } => {
+    if (!inv.expectedEndDate) return { label: '—', severity: null };
+    const label = format(parseISO(inv.expectedEndDate), 'dd/MM/yy', { locale: es });
+    if (inv.status !== 'active' && inv.status !== 'pending') return { label, severity: null };
+    const daysUntilMaturity = differenceInDays(parseISO(inv.expectedEndDate), new Date());
+    return { label, severity: getMaturitySeverity(daysUntilMaturity) };
+  };
+
+  const maturityBadgeClass = (severity: 'danger' | 'warning') =>
+    severity === 'danger' ? 'bg-orange-100 text-orange-700 border-0' : 'bg-amber-100 text-amber-700 border-0';
+
+  // Columna "Beneficio": importe bruto (sin retención), nunca mezclado con el cálculo
+  // fiscal de useTaxSummary (que además excluye inversiones extranjeras incompletas y
+  // resuelve divisa). active/pending = proyección (fórmula de calculateExpectedTotalReturn,
+  // marcada con "~"); completed = real cobrado (interest/dividend, sin capital_return);
+  // defaulted = recuperado - capital invertido (puede ser negativo).
+  const getProfitInfo = (inv: Investment): { label: string; className: string } => {
+    if (inv.status === 'active' || inv.status === 'pending') {
+      const expected = calculateExpectedTotalReturn(inv, scheduleMap[inv.id] ?? []);
+      return { label: `~${formatCurrency(expected)}`, className: 'text-muted-foreground' };
+    }
+    if (inv.status === 'completed') {
+      const real = sumIncomePayments(inv.payments);
+      return {
+        label: formatCurrency(real),
+        className: real >= 0 ? 'text-green-700 dark:text-green-400' : 'text-destructive',
+      };
+    }
+    if (inv.status === 'defaulted') {
+      const profit = (inv.amountRecovered ?? 0) - inv.amount;
+      const sign = profit > 0 ? '+' : '';
+      return {
+        label: `${sign}${formatCurrency(profit)}`,
+        className: profit >= 0 ? 'text-green-700 dark:text-green-400' : 'text-destructive',
+      };
+    }
+    return { label: '—', className: 'text-muted-foreground' };
+  };
+
   const isNoForecast = (inv: Investment): boolean => {
     const status = getInvestmentCompletionStatus({
       platform: inv.platform,
@@ -354,6 +399,8 @@ export function InvestmentList({
                           {t('investments.table.return')}<ArrowUpDown className="ml-2 h-4 w-4" />
                         </Button>
                       </TableHead>
+                      <TableHead>{t('investments.table.maturity')}</TableHead>
+                      <TableHead>{t('investments.table.profit')}</TableHead>
                       <TableHead>
                         <Button variant="ghost" size="sm" onClick={() => handleSort('status')}>
                           {t('investments.table.status')}<ArrowUpDown className="ml-2 h-4 w-4" />
@@ -365,18 +412,31 @@ export function InvestmentList({
                   <TableBody>
                     {filteredAndSortedInvestments.length === 0 ? (
                       <TableRow>
-                        <TableCell colSpan={7} className="h-24 text-center text-muted-foreground">
+                        <TableCell colSpan={9} className="h-24 text-center text-muted-foreground">
                           {t('investments.empty')}
                         </TableCell>
                       </TableRow>
                     ) : (
-                      filteredAndSortedInvestments.map(inv => (
+                      filteredAndSortedInvestments.map(inv => {
+                        const maturity = getMaturityInfo(inv);
+                        const profit = getProfitInfo(inv);
+                        return (
                         <TableRow key={inv.id} className="cursor-pointer hover:bg-accent/50">
                           <TableCell className="font-medium">{inv.projectName}</TableCell>
                           <TableCell>{getPlatformLabel(inv.platform, inv.customPlatformName)}</TableCell>
                           <TableCell>{formatCurrency(inv.amount)}</TableCell>
                           <TableCell>{format(parseISO(inv.investmentDate), 'dd/MM/yyyy', { locale: es })}</TableCell>
                           <TableCell>{inv.expectedReturn.toFixed(1)}%</TableCell>
+                          <TableCell>
+                            {maturity.severity ? (
+                              <Badge className={cn('text-xs', maturityBadgeClass(maturity.severity))}>
+                                {maturity.label}
+                              </Badge>
+                            ) : (
+                              <span className="text-muted-foreground">{maturity.label}</span>
+                            )}
+                          </TableCell>
+                          <TableCell className={cn('font-medium', profit.className)}>{profit.label}</TableCell>
                           <TableCell>
                             <div className="flex flex-wrap items-center gap-1">
                               {getStatusBadge(inv)}
@@ -411,7 +471,7 @@ export function InvestmentList({
                             </div>
                           </TableCell>
                         </TableRow>
-                      ))
+                      );})
                     )}
                   </TableBody>
                 </Table>
@@ -530,7 +590,10 @@ export function InvestmentList({
                 <div className="space-y-2">
                   {[...completedInvestments]
                     .sort((a, b) => (a.status === 'pending' ? -1 : b.status === 'pending' ? 1 : 0))
-                    .map(inv => (
+                    .map(inv => {
+                      const maturity = getMaturityInfo(inv);
+                      const profit = getProfitInfo(inv);
+                      return (
                     <div
                       key={inv.id}
                       className={cn(
@@ -545,8 +608,17 @@ export function InvestmentList({
                           <span>· {formatCurrency(inv.amount)}</span>
                           <span>· {inv.expectedReturn.toFixed(1)}%</span>
                           {inv.expectedEndDate && (
-                            <span>· {format(parseISO(inv.expectedEndDate), 'dd/MM/yyyy', { locale: es })}</span>
+                            maturity.severity ? (
+                              <Badge className={cn('text-xs', maturityBadgeClass(maturity.severity))}>
+                                {t('investments.table.maturity')}: {maturity.label}
+                              </Badge>
+                            ) : (
+                              <span>· {maturity.label}</span>
+                            )
                           )}
+                          <span className={cn('font-medium', profit.className)}>
+                            · {t('investments.table.profit')}: {profit.label}
+                          </span>
                         </div>
                         <div className="flex flex-wrap items-center gap-1 mt-1">
                           {getStatusBadge(inv)}
@@ -578,7 +650,7 @@ export function InvestmentList({
                         </Button>
                       </div>
                     </div>
-                  ))}
+                  );})}
                 </div>
               )}
             </div>

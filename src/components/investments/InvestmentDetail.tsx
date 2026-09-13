@@ -10,9 +10,8 @@ import { fetchExchangeRateSuggestion } from '@/lib/tax/exchangeRateClient';
 import { Switch } from '@/components/ui/switch';
 import {
   getInvestmentDurationYears,
-  calculateInvestmentTotalReturn,
   calculateInvestmentTotalReturnPercent,
-  calculateExpectedReturnFromSchedule,
+  calculateExpectedTotalReturn,
   calculateAccruedReturn,
   calculateRealTAE,
   calculateEstimatedTAEToday,
@@ -318,23 +317,17 @@ export function InvestmentDetail({ investment, schedule = [], onClose, onUpdate,
   const totalPayments = investment.payments.reduce((sum, p) => sum + p.amount, 0);
   const durationYears = getInvestmentDurationYears(investment.investmentDate, investment.expectedEndDate);
 
-  // D5: Calculate returns based on income model
-  let totalReturnAmount: number;
-  let totalReturnPercent: number;
-
-  if (
-    (investment.incomeModel === 'periodic_fixed' || investment.incomeModel === 'amortizing') &&
-    schedule.length > 0
-  ) {
-    totalReturnAmount = calculateExpectedReturnFromSchedule(schedule, investment.amount, investment.incomeModel);
-    totalReturnPercent = investment.amount > 0 ? (totalReturnAmount / investment.amount) * 100 : 0;
-  } else if (investment.incomeModel === 'variable_or_unknown') {
-    totalReturnAmount = 0;
-    totalReturnPercent = 0;
-  } else {
-    totalReturnAmount = calculateInvestmentTotalReturn(investment);
-    totalReturnPercent = calculateInvestmentTotalReturnPercent(investment);
-  }
+  // D5: Calculate returns based on income model.
+  // totalReturnAmount extraído a calculateExpectedTotalReturn (src/lib/investment/calculations.ts)
+  // — se reutiliza también en la columna "Beneficio" de InvestmentList. El % se deja igual
+  // que antes (mismas 3 ramas), solo cambia de dónde sale el importe.
+  const totalReturnAmount = calculateExpectedTotalReturn(investment, schedule);
+  const totalReturnPercent =
+    (investment.incomeModel === 'periodic_fixed' || investment.incomeModel === 'amortizing') && schedule.length > 0
+      ? (investment.amount > 0 ? (totalReturnAmount / investment.amount) * 100 : 0)
+      : investment.incomeModel === 'variable_or_unknown'
+        ? 0
+        : calculateInvestmentTotalReturnPercent(investment);
 
   const expectedTotal = investment.amount + totalReturnAmount;
   const accruedReturn = calculateAccruedReturn(investment, schedule);

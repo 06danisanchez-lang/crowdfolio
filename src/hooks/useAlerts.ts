@@ -6,6 +6,20 @@ import { getPendingScheduleEntries } from '@/lib/investment/pendingPayments';
 export type AlertType = 'maturity' | 'overdue' | 'expected-payment';
 export type AlertSeverity = 'warning' | 'danger' | 'info';
 
+/**
+ * Clasifica la urgencia de un vencimiento según días restantes (umbral de 30 días).
+ * Mismo criterio que las alertas de vencimiento de este hook — se exporta para que
+ * otras vistas (ej. la columna "Vencimiento" de InvestmentList) usen exactamente la
+ * misma clasificación en vez de reimplementar el umbral.
+ * null = fuera de ventana de alerta (más de 30 días o sin fecha), sin urgencia que marcar.
+ */
+export function getMaturitySeverity(daysUntilMaturity: number): 'danger' | 'warning' | null {
+  if (daysUntilMaturity < 0) return 'danger';
+  if (daysUntilMaturity <= 7) return 'danger';
+  if (daysUntilMaturity <= 30) return 'warning';
+  return null;
+}
+
 export interface Alert {
   id: string;
   type: AlertType;
@@ -51,7 +65,7 @@ export function useAlerts(
           allAlerts.push({
             id: `overdue-${investment.id}`,
             type: 'overdue',
-            severity: 'danger',
+            severity: getMaturitySeverity(daysUntilMaturity)!,
             title: 'Inversión vencida',
             message: `Esta inversión venció hace ${Math.abs(daysUntilMaturity)} días`,
             investmentId: investment.id,
@@ -66,7 +80,7 @@ export function useAlerts(
           allAlerts.push({
             id: `maturity-${investment.id}`,
             type: 'maturity',
-            severity: daysUntilMaturity <= 7 ? 'danger' : 'warning',
+            severity: getMaturitySeverity(daysUntilMaturity)!,
             title: daysUntilMaturity === 0 ? 'Vence hoy' : 'Vencimiento próximo',
             message: daysUntilMaturity === 0
               ? 'Esta inversión vence hoy'

@@ -96,6 +96,48 @@ export function calculateExpectedReturnFromSchedule(
   return totalPayments - amount;
 }
 
+/**
+ * Rendimiento total esperado (proyección) de una inversión, en €. Mismo criterio que ya
+ * usaba InvestmentDetail para "Rentabilidad Total": schedule real (investment_schedule)
+ * para periodic_fixed/amortizing si ya existe, fórmula de interés simple para el resto
+ * (bullet, equity, y fallback si aún no hay schedule cargado). variable_or_unknown no
+ * proyecta nada (0) — importe variable/desconocido, sin base para estimar.
+ *
+ * Se usa tanto en la ficha de detalle como en la columna "Beneficio" de InvestmentList
+ * (estados active/pending) — extraído aquí para no duplicar la lógica en ambos sitios.
+ */
+export function calculateExpectedTotalReturn(
+  investment: Investment,
+  schedule: InvestmentScheduleEntry[]
+): number {
+  if (
+    (investment.incomeModel === 'periodic_fixed' || investment.incomeModel === 'amortizing') &&
+    schedule.length > 0
+  ) {
+    return calculateExpectedReturnFromSchedule(schedule, investment.amount, investment.incomeModel);
+  }
+  if (investment.incomeModel === 'variable_or_unknown') {
+    return 0;
+  }
+  return calculateInvestmentTotalReturn(investment);
+}
+
+/**
+ * Suma el importe bruto (sin retención) de los pagos de renta (interest/dividend) de una
+ * inversión — excluye capital_return (prima de emisión equity rentas, no es rendimiento)
+ * y principal (devolución de capital, no rendimiento).
+ *
+ * OJO: esto NO es el cálculo fiscal (ver useTaxSummary.ts) — ese además excluye
+ * inversiones extranjeras con datos incompletos y resuelve divisa/retención. Aquí se usa
+ * siempre payment.amount tal cual (ya está en EUR por convención del proyecto), pensado
+ * para el "beneficio real" que se muestra en el listado de inversiones (completed).
+ */
+export function sumIncomePayments(payments: Payment[]): number {
+  return payments
+    .filter(p => p.type === 'interest' || p.type === 'dividend')
+    .reduce((sum, p) => sum + p.amount, 0);
+}
+
 export function calculateAccruedReturn(
   inv: Investment,
   schedule: InvestmentScheduleEntry[],

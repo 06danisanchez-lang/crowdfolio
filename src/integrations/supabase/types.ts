@@ -164,14 +164,22 @@ export type Database = {
       investments: {
         Row: {
           amount: number | null
+          amount_eur: number | null
+          country: string | null
           created_at: string
+          currency: string
           custom_platform_name: string | null
+          exchange_rate: number | null
+          exchange_rate_date: string | null
+          exchange_rate_source: string | null
           expected_end_date: string | null
           expected_return: number | null
           id: string
           income_model: string | null
           investment_date: string | null
           notes: string | null
+          original_amount: number | null
+          original_currency: string | null
           payment_frequency: string | null
           platform: string | null
           principal_return_type: string | null
@@ -183,14 +191,22 @@ export type Database = {
         }
         Insert: {
           amount?: number | null
+          amount_eur?: number | null
+          country?: string | null
           created_at?: string
+          currency?: string
           custom_platform_name?: string | null
+          exchange_rate?: number | null
+          exchange_rate_date?: string | null
+          exchange_rate_source?: string | null
           expected_end_date?: string | null
           expected_return?: number | null
           id?: string
           income_model?: string | null
           investment_date?: string | null
           notes?: string | null
+          original_amount?: number | null
+          original_currency?: string | null
           payment_frequency?: string | null
           platform?: string | null
           principal_return_type?: string | null
@@ -202,14 +218,22 @@ export type Database = {
         }
         Update: {
           amount?: number | null
+          amount_eur?: number | null
+          country?: string | null
           created_at?: string
+          currency?: string
           custom_platform_name?: string | null
+          exchange_rate?: number | null
+          exchange_rate_date?: string | null
+          exchange_rate_source?: string | null
           expected_end_date?: string | null
           expected_return?: number | null
           id?: string
           income_model?: string | null
           investment_date?: string | null
           notes?: string | null
+          original_amount?: number | null
+          original_currency?: string | null
           payment_frequency?: string | null
           platform?: string | null
           principal_return_type?: string | null
@@ -397,31 +421,55 @@ export type Database = {
       payments: {
         Row: {
           amount: number
+          amount_eur: number | null
           created_at: string
           date: string
+          exchange_rate: number | null
+          exchange_rate_date: string | null
+          exchange_rate_source: string | null
+          foreign_withholding_amount: number | null
+          foreign_withholding_currency: string | null
           id: string
           investment_id: string
           notes: string | null
+          original_amount: number | null
+          original_currency: string | null
           type: string
           withholding_applied: number | null
         }
         Insert: {
           amount: number
+          amount_eur?: number | null
           created_at?: string
           date: string
+          exchange_rate?: number | null
+          exchange_rate_date?: string | null
+          exchange_rate_source?: string | null
+          foreign_withholding_amount?: number | null
+          foreign_withholding_currency?: string | null
           id?: string
           investment_id: string
           notes?: string | null
+          original_amount?: number | null
+          original_currency?: string | null
           type: string
           withholding_applied?: number | null
         }
         Update: {
           amount?: number
+          amount_eur?: number | null
           created_at?: string
           date?: string
+          exchange_rate?: number | null
+          exchange_rate_date?: string | null
+          exchange_rate_source?: string | null
+          foreign_withholding_amount?: number | null
+          foreign_withholding_currency?: string | null
           id?: string
           investment_id?: string
           notes?: string | null
+          original_amount?: number | null
+          original_currency?: string | null
           type?: string
           withholding_applied?: number | null
         }

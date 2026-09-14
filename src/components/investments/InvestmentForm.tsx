@@ -3,11 +3,13 @@ import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import { format } from 'date-fns';
-import { CalendarIcon, Plus, AlertTriangle, Info } from 'lucide-react';
+import { CalendarIcon, Plus, AlertTriangle, Info, Loader2 } from 'lucide-react';
 import { Investment, Platform, InvestmentStatus, PLATFORMS, STATUS_OPTIONS, INCOME_MODEL_OPTIONS, PAYMENT_FREQUENCY_OPTIONS, PRINCIPAL_RETURN_TYPE_OPTIONS, EQUITY_TYPE_OPTIONS, IncomeModel, PaymentFrequency, PrincipalReturnType, EquityType } from '@/types/investment';
 import { getInvestmentCompletionStatus } from '@/lib/investment/completeness';
 import { generateSchedule } from '@/lib/investment/scheduleGenerator';
 import { PLAN_FEATURES } from '@/lib/stripe/config';
+import { ECB_SUPPORTED_CURRENCIES, convertToEur } from '@/lib/tax/currency';
+import { fetchExchangeRateSuggestion } from '@/lib/tax/exchangeRateClient';
 
 export interface FutureInvestmentFormData {
   platform: Platform;
@@ -83,6 +85,8 @@ const investmentSchema = z.object({
   status: z.enum(['active', 'pending', 'completed', 'defaulted', 'draft'] as const),
   notes: z.string().optional(),
   sourceUrl: z.string().optional(),
+  currency: z.string().optional(),
+  country: z.string().optional(),
 }).superRefine((data, ctx) => {
   if ((END_DATE_REQUIRED_MODELS as readonly string[]).includes(data.incomeModel) && !data.expectedEndDate) {
     ctx.addIssue({
@@ -96,6 +100,15 @@ const investmentSchema = z.object({
       code: z.ZodIssueCode.custom,
       path: ['equityType'],
       message: 'Selecciona el tipo de inversión equity',
+    });
+  }
+  // 'other' no tiene divisa por defecto en el catálogo (Fase 1, Decisión 1):
+  // exige elegirla explícitamente en vez de asumir EUR en silencio.
+  if (data.platform === 'other' && !data.currency) {
+    ctx.addIssue({
+      code: z.ZodIssueCode.custom,
+      path: ['currency'],
+      message: 'Selecciona la divisa de esta plataforma',
     });
   }
 });
@@ -115,6 +128,8 @@ const draftInvestmentSchema = z.object({
   status: z.enum(['active', 'pending', 'completed', 'defaulted', 'draft'] as const).optional(),
   notes: z.string().optional(),
   sourceUrl: z.string().optional(),
+  currency: z.string().optional(),
+  country: z.string().optional(),
 });
 
 const futureInvestmentSchema = z.object({
@@ -209,13 +224,15 @@ export function InvestmentForm({
           status: 'status' in initialData ? initialData.status : undefined,
           notes: initialData.notes,
           sourceUrl: 'sourceUrl' in initialData ? initialData.sourceUrl : undefined,
+          currency: 'currency' in initialData ? (initialData as Investment).currency : undefined,
+          country: 'country' in initialData ? (initialData as Investment).country : undefined,
         }
       : isFuture
         ? {}
         : {
             status: 'active',
             investmentDate: new Date(),
-            
+
           },
   });
 
@@ -223,6 +240,8 @@ export function InvestmentForm({
   const [blockingModal, setBlockingModal] = useState<string[] | null>(null);
   const formRef = useRef<HTMLFormElement>(null);
   const watchPlatform = form.watch('platform');
+  const watchCurrency = form.watch('currency') as string | undefined;
+  const watchInvestmentDate = form.watch('investmentDate') as Date | undefined;
   const watchIncomeModel = form.watch('incomeModel') as IncomeModel | undefined;
   const watchEquityType = form.watch('equityType') as EquityType | undefined;
   const endDateRequired = !!watchIncomeModel &&
@@ -244,6 +263,133 @@ export function InvestmentForm({
       form.setValue('equityType', undefined);
     }
   }, [watchIncomeModel, form]);
+
+  // Autorrelleno de divisa/país desde el catálogo estático de plataformas
+  // (Fase 3, Decisión 1) al elegir/cambiar de plataforma. Solo pisa el
+  // campo si sigue vacío o si aún tiene el último valor que autorrellenamos
+  // nosotros — así nunca se sobrescribe algo que el usuario haya tecleado
+  // a mano, pero sí se actualiza correctamente si cambia de plataforma
+  // varias veces antes de tocar el campo (p.ej. urbanitae -> crowdcube).
+  const platformFxMountRef = useRef(true);
+  const lastAutoCurrencyRef = useRef<string | undefined>(undefined);
+  const lastAutoCountryRef = useRef<string | undefined>(undefined);
+  useEffect(() => {
+    if (platformFxMountRef.current) {
+      platformFxMountRef.current = false;
+      lastAutoCurrencyRef.current = form.getValues('currency');
+      lastAutoCountryRef.current = form.getValues('country');
+      return;
+    }
+    if (!watchPlatform) return;
+    const meta = PLATFORMS.find(p => p.value === watchPlatform);
+
+    const currentCurrency = form.getValues('currency');
+    if (meta?.defaultCurrency && (currentCurrency === undefined || currentCurrency === lastAutoCurrencyRef.current)) {
+      form.setValue('currency', meta.defaultCurrency);
+      lastAutoCurrencyRef.current = meta.defaultCurrency;
+    } else if (!meta?.defaultCurrency && currentCurrency === lastAutoCurrencyRef.current) {
+      // 'other': no hay default que ofrecer, se deja vacío para forzar elección explícita.
+      form.setValue('currency', undefined);
+      lastAutoCurrencyRef.current = undefined;
+    }
+
+    const currentCountry = form.getValues('country');
+    if (meta?.country && (currentCountry === undefined || currentCountry === lastAutoCountryRef.current)) {
+      form.setValue('country', meta.country);
+      lastAutoCountryRef.current = meta.country;
+    } else if (!meta?.country && currentCountry === lastAutoCountryRef.current) {
+      form.setValue('country', undefined);
+      lastAutoCountryRef.current = undefined;
+    }
+  }, [watchPlatform, form]);
+
+  // ─── Fase 4.5: principal en divisa extranjera ───────────────────
+  // Mismo patrón que el pago en InvestmentDetail.tsx: reutiliza
+  // fetchExchangeRateSuggestion + convertToEur, nunca duplica la fórmula.
+  const [principalOriginalAmount, setPrincipalOriginalAmount] = useState('');
+  const [principalExchangeRate, setPrincipalExchangeRate] = useState('');
+  const [principalExchangeRateDate, setPrincipalExchangeRateDate] = useState<string | undefined>(undefined);
+  const [principalExchangeRateSource, setPrincipalExchangeRateSource] = useState<'ecb' | 'manual' | undefined>(undefined);
+  const [principalRateFellBack, setPrincipalRateFellBack] = useState(false);
+  const [isFetchingPrincipalRate, setIsFetchingPrincipalRate] = useState(false);
+  const [principalRateFetchError, setPrincipalRateFetchError] = useState<string | null>(null);
+  const principalRateRequestIdRef = useRef(0);
+  const lastFetchedPrincipalRateDateRef = useRef<string | null>(null);
+
+  // Al abrir el diálogo: si edita una inversión extranjera existente, precarga
+  // su rastro de conversión; si es nueva, arranca en blanco.
+  useEffect(() => {
+    if (!open) return;
+    if (initialData && 'originalAmount' in initialData) {
+      const inv = initialData as Investment;
+      setPrincipalOriginalAmount(inv.originalAmount != null ? String(inv.originalAmount) : '');
+      setPrincipalExchangeRate(inv.exchangeRate != null ? String(inv.exchangeRate) : '');
+      setPrincipalExchangeRateDate(inv.exchangeRateDate);
+      setPrincipalExchangeRateSource(inv.exchangeRateSource);
+      setPrincipalRateFellBack(false);
+      setPrincipalRateFetchError(null);
+      lastFetchedPrincipalRateDateRef.current = inv.investmentDate ? String(inv.investmentDate).slice(0, 10) : null;
+    } else if (!initialData) {
+      setPrincipalOriginalAmount('');
+      setPrincipalExchangeRate('');
+      setPrincipalExchangeRateDate(undefined);
+      setPrincipalExchangeRateSource(undefined);
+      setPrincipalRateFellBack(false);
+      setPrincipalRateFetchError(null);
+      lastFetchedPrincipalRateDateRef.current = null;
+    }
+  }, [open, initialData]);
+
+  // Autosugiere el tipo de cambio del BCE para el principal cuando la divisa
+  // no es EUR, igual que en el pago: solo vuelve a pedirlo si cambia la fecha.
+  useEffect(() => {
+    if (!open || isFuture) return;
+    if (!watchCurrency || watchCurrency === 'EUR') return;
+    if (!(watchInvestmentDate instanceof Date)) return;
+
+    const dateStr = watchInvestmentDate.toISOString().split('T')[0];
+    if (lastFetchedPrincipalRateDateRef.current === dateStr) return;
+    lastFetchedPrincipalRateDateRef.current = dateStr;
+
+    const requestId = ++principalRateRequestIdRef.current;
+    setIsFetchingPrincipalRate(true);
+    setPrincipalRateFetchError(null);
+
+    fetchExchangeRateSuggestion(watchCurrency, dateStr).then((result) => {
+      if (principalRateRequestIdRef.current !== requestId) return;
+      setIsFetchingPrincipalRate(false);
+      if (result.ok) {
+        setPrincipalExchangeRate(String(result.data.rate));
+        setPrincipalExchangeRateDate(result.data.rateDate);
+        setPrincipalExchangeRateSource('ecb');
+        setPrincipalRateFellBack(result.data.fellBack);
+      } else {
+        setPrincipalExchangeRateSource(undefined);
+        setPrincipalRateFetchError(result.error.message);
+      }
+    });
+  }, [open, isFuture, watchCurrency, watchInvestmentDate]);
+
+  const principalOriginalAmountNum = parseFloat(principalOriginalAmount);
+  const principalExchangeRateNum = parseFloat(principalExchangeRate);
+  const principalAmountEurPreview =
+    !isFuture && watchCurrency && watchCurrency !== 'EUR' &&
+    Number.isFinite(principalOriginalAmountNum) && Number.isFinite(principalExchangeRateNum) && principalExchangeRateNum > 0
+      ? convertToEur(principalOriginalAmountNum, principalExchangeRateNum)
+      : undefined;
+
+  // amount (RHF) SIEMPRE en EUR — nunca se sobrescribe con undefined, para no
+  // pisar un valor ya cargado (edición) mientras el estado local del principal
+  // aún no se ha inicializado en este render.
+  useEffect(() => {
+    if (!isFuture && watchCurrency && watchCurrency !== 'EUR' && principalAmountEurPreview !== undefined) {
+      form.setValue('amount', principalAmountEurPreview, { shouldValidate: false });
+    }
+  }, [principalAmountEurPreview, watchCurrency, isFuture, form]);
+
+  // Bloqueo en el punto de entrada (mismo criterio que el pago): si es
+  // extranjera y falta el tipo de cambio del principal, no se puede guardar.
+  const principalFxBlocked = !isFuture && !!watchCurrency && watchCurrency !== 'EUR' && principalAmountEurPreview === undefined;
 
   // Clear validation error when form changes
   useEffect(() => {
@@ -338,6 +484,8 @@ export function InvestmentForm({
           status: 'status' in initialData ? initialData.status : undefined,
           notes: initialData.notes,
           sourceUrl: 'sourceUrl' in initialData ? initialData.sourceUrl : undefined,
+          currency: 'currency' in initialData ? (initialData as Investment).currency : undefined,
+          country: 'country' in initialData ? (initialData as Investment).country : undefined,
         });
       }
       // new investment: intentionally NO form.reset() — draft survives close/reopen
@@ -443,6 +591,18 @@ export function InvestmentForm({
         status: finalStatus,
         notes: data.notes,
         sourceUrl: data.sourceUrl || undefined,
+        currency: data.currency || 'EUR',
+        country: data.country || undefined,
+        ...(data.currency && data.currency !== 'EUR'
+          ? {
+              originalAmount: principalOriginalAmountNum,
+              originalCurrency: data.currency,
+              exchangeRate: principalExchangeRateNum,
+              exchangeRateDate: principalExchangeRateDate,
+              exchangeRateSource: principalExchangeRateSource,
+              amountEur: principalAmountEurPreview,
+            }
+          : {}),
         investmentDate: data.investmentDate.toISOString(),
         expectedEndDate: data.expectedEndDate?.toISOString(),
       });
@@ -482,6 +642,18 @@ export function InvestmentForm({
         equityType: values.equityType || null,
         status: 'draft',
         notes: values.notes,
+        currency: values.currency || null,
+        country: values.country || null,
+        ...(values.currency && values.currency !== 'EUR'
+          ? {
+              originalAmount: Number.isFinite(principalOriginalAmountNum) ? principalOriginalAmountNum : null,
+              originalCurrency: values.currency,
+              exchangeRate: Number.isFinite(principalExchangeRateNum) ? principalExchangeRateNum : null,
+              exchangeRateDate: principalExchangeRateDate ?? null,
+              exchangeRateSource: principalExchangeRateSource ?? null,
+              amountEur: principalAmountEurPreview ?? null,
+            }
+          : {}),
         investmentDate: values.investmentDate?.toISOString() || null,
         expectedEndDate: values.expectedEndDate?.toISOString() || null,
       });
@@ -625,6 +797,69 @@ export function InvestmentForm({
         />
       )}
 
+      {/* Divisa/país: se autorrellenan desde el catálogo de la plataforma al
+          elegirla; el usuario siempre puede cambiarlos. No aplica a inversiones
+          futuras (todavía no hay pagos que convertir). */}
+      {!isFuture && (
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+          <FormField
+            control={form.control}
+            name="currency"
+            render={({ field }) => (
+              <FormItem>
+                <FormLabel>Divisa</FormLabel>
+                <Select onValueChange={field.onChange} value={field.value || ''}>
+                  <FormControl>
+                    <SelectTrigger>
+                      <SelectValue placeholder="Selecciona una divisa" />
+                    </SelectTrigger>
+                  </FormControl>
+                  <SelectContent>
+                    {ECB_SUPPORTED_CURRENCIES.map((c) => (
+                      <SelectItem key={c.code} value={c.code}>
+                        {c.label}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                {watchCurrency && watchCurrency !== 'EUR' && (
+                  <p className="text-xs text-muted-foreground mt-1">
+                    Esta inversión está en {watchCurrency} — al registrar pagos te pediremos el importe en {watchCurrency} y lo convertimos a euros por ti.
+                  </p>
+                )}
+                <FormMessage />
+              </FormItem>
+            )}
+          />
+
+          <FormField
+            control={form.control}
+            name="country"
+            render={({ field }) => (
+              <FormItem>
+                <FormLabel>
+                  País
+                  <span className="text-muted-foreground text-xs font-normal ml-1">(Opcional)</span>
+                </FormLabel>
+                <FormControl>
+                  <Input
+                    placeholder="Ej: FR"
+                    maxLength={2}
+                    {...field}
+                    value={field.value || ''}
+                    onChange={(e) => field.onChange(e.target.value.toUpperCase() || undefined)}
+                  />
+                </FormControl>
+                <p className="text-xs text-muted-foreground mt-1">
+                  Solo si es distinto del país de la plataforma (código de 2 letras, ej. FR, DE, PT).
+                </p>
+                <FormMessage />
+              </FormItem>
+            )}
+          />
+        </div>
+      )}
+
       <FormField
         control={form.control}
         name="projectName"
@@ -761,35 +996,88 @@ export function InvestmentForm({
         </>
       )}
 
-      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-        <FormField
-          control={form.control}
-          name="amount"
-          render={({ field }) => (
+      {/* Principal en divisa extranjera (Fase 4.5): sustituye el campo "Monto (€)"
+          por importe original + tipo de cambio, igual patrón que el pago. Para
+          ES+EUR y futuras, el bloque de abajo queda exactamente como estaba. */}
+      {!isFuture && watchCurrency && watchCurrency !== 'EUR' && (
+        <div className="space-y-2">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <FormItem>
-              <FormLabel>
-                {isFuture ? t('future.form.estimatedAmount') : 'Monto (€)'}
-              </FormLabel>
+              <FormLabel>{`Importe en ${watchCurrency}`}</FormLabel>
               <FormControl>
                 <Input
                   type="number"
-                  placeholder={isFuture ? '' : '1000'}
-                  value={field.value != null ? field.value : ''}
-                  onChange={(e) => {
-                    const raw = e.target.value;
-                    if (raw === '') {
-                      field.onChange(isFuture ? null : undefined);
-                    } else {
-                      const parsed = parseFloat(raw);
-                      field.onChange(isNaN(parsed) ? undefined : parsed);
-                    }
-                  }}
+                  placeholder="1000"
+                  value={principalOriginalAmount}
+                  onChange={(e) => setPrincipalOriginalAmount(e.target.value)}
                 />
               </FormControl>
-              <FormMessage />
             </FormItem>
-          )}
-        />
+            <FormItem>
+              <FormLabel>Tipo de cambio a EUR</FormLabel>
+              <FormControl>
+                <div className="flex items-center gap-2">
+                  <Input
+                    type="number"
+                    step="0.000001"
+                    value={principalExchangeRate}
+                    onChange={(e) => {
+                      setPrincipalExchangeRate(e.target.value);
+                      setPrincipalExchangeRateSource('manual');
+                    }}
+                  />
+                  {isFetchingPrincipalRate && <Loader2 className="h-4 w-4 animate-spin text-muted-foreground shrink-0" />}
+                </div>
+              </FormControl>
+            </FormItem>
+          </div>
+          <div className="flex items-start gap-1.5 text-xs text-muted-foreground">
+            <Info className="h-3.5 w-3.5 mt-0.5 shrink-0" />
+            <span>
+              {principalRateFetchError
+                ? `No hemos podido traer el tipo de cambio del BCE (${principalRateFetchError}). Introdúcelo tú a mano.`
+                : principalExchangeRateSource === 'ecb'
+                  ? `Tipo de cambio del BCE del ${principalExchangeRateDate}${principalRateFellBack ? ' (último día publicado antes de esta fecha)' : ''}. Puedes cambiarlo.`
+                  : principalExchangeRateSource === 'manual'
+                    ? 'Tipo de cambio introducido a mano.'
+                    : `Esta inversión está en ${watchCurrency} — dinos cuánto invertiste en esa divisa y el tipo de cambio, y lo convertimos a euros por ti.`}
+              {principalAmountEurPreview !== undefined && ` Equivale a ${new Intl.NumberFormat('es-ES', { style: 'currency', currency: 'EUR' }).format(principalAmountEurPreview)}.`}
+            </span>
+          </div>
+        </div>
+      )}
+
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+        {(isFuture || !watchCurrency || watchCurrency === 'EUR') && (
+          <FormField
+            control={form.control}
+            name="amount"
+            render={({ field }) => (
+              <FormItem>
+                <FormLabel>
+                  {isFuture ? t('future.form.estimatedAmount') : 'Monto (€)'}
+                </FormLabel>
+                <FormControl>
+                  <Input
+                    type="number"
+                    placeholder={isFuture ? '' : '1000'}
+                    value={field.value != null ? field.value : ''}
+                    onChange={(e) => {
+                      const raw = e.target.value;
+                      if (raw === '') {
+                        field.onChange(isFuture ? null : undefined);
+                      } else {
+                        const parsed = parseFloat(raw);
+                        field.onChange(isNaN(parsed) ? undefined : parsed);
+                      }
+                    }}
+                  />
+                </FormControl>
+                <FormMessage />
+              </FormItem>
+            )}
+          />
+        )}
 
         <FormField
           control={form.control}
@@ -998,7 +1286,7 @@ export function InvestmentForm({
             {t('investments.form.saveDraft')}
           </Button>
         )}
-        <Button type="submit">
+        <Button type="submit" disabled={principalFxBlocked}>
           {isFuture
             ? t('future.form.save')
             : isDraft ? t('investments.incomplete.cta') : (initialData ? t('investments.form.save.edit') : t('investments.form.save.new'))}

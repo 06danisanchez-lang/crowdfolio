@@ -30,6 +30,14 @@ interface RawInvestmentRow {
   actual_end_date: string | null;
   close_reason: string | null;
   was_extended: boolean | null;
+  currency: string | null;
+  country: string | null;
+  original_amount: number | null;
+  original_currency: string | null;
+  exchange_rate: number | null;
+  exchange_rate_date: string | null;
+  exchange_rate_source: string | null;
+  amount_eur: number | null;
   created_at: string;
   updated_at: string;
   user_id: string;
@@ -154,14 +162,30 @@ export function useInvestments() {
         actualEndDate: inv.actual_end_date || undefined,
         closeReason: (inv.close_reason as CloseReasonType) || undefined,
         wasExtended: inv.was_extended ?? false,
+        currency: inv.currency || 'EUR',
+        country: inv.country || undefined,
+        originalAmount: inv.original_amount != null ? Number(inv.original_amount) : undefined,
+        originalCurrency: inv.original_currency || undefined,
+        exchangeRate: inv.exchange_rate != null ? Number(inv.exchange_rate) : undefined,
+        exchangeRateDate: inv.exchange_rate_date || undefined,
+        exchangeRateSource: (inv.exchange_rate_source as 'ecb' | 'manual') || undefined,
+        amountEur: inv.amount_eur != null ? Number(inv.amount_eur) : undefined,
         createdAt: inv.created_at,
         updatedAt: inv.updated_at,
         payments: paymentsData
           .filter(p => p.investment_id === inv.id)
           .map(p => ({
-            id: p.id, date: p.date, amount: Number(p.amount),
+            id: p.id as string, date: p.date as string, amount: Number(p.amount),
             type: p.type as 'dividend' | 'principal' | 'interest',
-            notes: p.notes || undefined,
+            notes: (p.notes as string) || undefined,
+            originalAmount: p.original_amount != null ? Number(p.original_amount) : undefined,
+            originalCurrency: (p.original_currency as string) || undefined,
+            exchangeRate: p.exchange_rate != null ? Number(p.exchange_rate) : undefined,
+            exchangeRateDate: (p.exchange_rate_date as string) || undefined,
+            exchangeRateSource: (p.exchange_rate_source as 'ecb' | 'manual') || undefined,
+            amountEur: p.amount_eur != null ? Number(p.amount_eur) : undefined,
+            foreignWithholdingAmount: p.foreign_withholding_amount != null ? Number(p.foreign_withholding_amount) : undefined,
+            foreignWithholdingCurrency: (p.foreign_withholding_currency as string) || undefined,
           })),
       }));
 
@@ -311,6 +335,14 @@ export function useInvestments() {
       equity_type: investment.equityType || null,
       notes: investment.notes || null,
       source_url: investment.sourceUrl || null,
+      currency: investment.currency || 'EUR',
+      country: investment.country || null,
+      original_amount: investment.originalAmount ?? null,
+      original_currency: investment.originalCurrency ?? null,
+      exchange_rate: investment.exchangeRate ?? null,
+      exchange_rate_date: investment.exchangeRateDate ?? null,
+      exchange_rate_source: investment.exchangeRateSource ?? null,
+      amount_eur: investment.amountEur ?? null,
     }).select().single();
     if (error) { console.error('Error adding investment:', error); return null; }
 
@@ -337,6 +369,14 @@ export function useInvestments() {
       principalReturnType: (data as Record<string, unknown>).principal_return_type as PrincipalReturnType || undefined,
       equityType: (data as Record<string, unknown>).equity_type as EquityType || undefined,
       sourceUrl: (data as Record<string, unknown>).source_url as string || undefined,
+      currency: (data as Record<string, unknown>).currency as string || 'EUR',
+      country: (data as Record<string, unknown>).country as string || undefined,
+      originalAmount: (data as Record<string, unknown>).original_amount != null ? Number((data as Record<string, unknown>).original_amount) : undefined,
+      originalCurrency: (data as Record<string, unknown>).original_currency as string || undefined,
+      exchangeRate: (data as Record<string, unknown>).exchange_rate != null ? Number((data as Record<string, unknown>).exchange_rate) : undefined,
+      exchangeRateDate: (data as Record<string, unknown>).exchange_rate_date as string || undefined,
+      exchangeRateSource: (data as Record<string, unknown>).exchange_rate_source as 'ecb' | 'manual' || undefined,
+      amountEur: (data as Record<string, unknown>).amount_eur != null ? Number((data as Record<string, unknown>).amount_eur) : undefined,
       notes: data.notes || undefined, createdAt: data.created_at, updatedAt: data.updated_at,
       payments: [],
     };
@@ -358,6 +398,14 @@ export function useInvestments() {
     principalReturnType?: string | null;
     status?: string;
     notes?: string | null;
+    currency?: string | null;
+    country?: string | null;
+    originalAmount?: number | null;
+    originalCurrency?: string | null;
+    exchangeRate?: number | null;
+    exchangeRateDate?: string | null;
+    exchangeRateSource?: string | null;
+    amountEur?: number | null;
   }) => {
     if (!user) return null;
     const { data, error } = await supabase.from('investments').insert({
@@ -374,6 +422,14 @@ export function useInvestments() {
       principal_return_type: draft.principalReturnType || null,
       status: draft.status || 'active',
       notes: draft.notes || null,
+      currency: draft.currency || 'EUR',
+      country: draft.country || null,
+      original_amount: draft.originalAmount ?? null,
+      original_currency: draft.originalCurrency ?? null,
+      exchange_rate: draft.exchangeRate ?? null,
+      exchange_rate_date: draft.exchangeRateDate ?? null,
+      exchange_rate_source: draft.exchangeRateSource ?? null,
+      amount_eur: draft.amountEur ?? null,
     }).select().single();
     if (error) { console.error('Error adding draft investment:', error); return null; }
     await fetchInvestments();
@@ -401,6 +457,14 @@ export function useInvestments() {
     if (updates.paymentFrequency !== undefined) dbUpdates.payment_frequency = updates.paymentFrequency || null;
     if (updates.principalReturnType !== undefined) dbUpdates.principal_return_type = updates.principalReturnType || null;
     if (updates.equityType !== undefined) dbUpdates.equity_type = updates.equityType || null;
+    if (updates.currency !== undefined) dbUpdates.currency = updates.currency || 'EUR';
+    if (updates.country !== undefined) dbUpdates.country = updates.country || null;
+    if (updates.originalAmount !== undefined) dbUpdates.original_amount = updates.originalAmount ?? null;
+    if (updates.originalCurrency !== undefined) dbUpdates.original_currency = updates.originalCurrency ?? null;
+    if (updates.exchangeRate !== undefined) dbUpdates.exchange_rate = updates.exchangeRate ?? null;
+    if (updates.exchangeRateDate !== undefined) dbUpdates.exchange_rate_date = updates.exchangeRateDate ?? null;
+    if (updates.exchangeRateSource !== undefined) dbUpdates.exchange_rate_source = updates.exchangeRateSource ?? null;
+    if (updates.amountEur !== undefined) dbUpdates.amount_eur = updates.amountEur ?? null;
     const { error } = await supabase.from('investments').update(dbUpdates).eq('id', id);
     if (error) { console.error('Error updating investment:', error); return { demotedToDraft: false }; }
 
@@ -457,11 +521,27 @@ export function useInvestments() {
     const { data, error } = await supabase.from('payments').insert({
       investment_id: investmentId, date: payment.date, amount: payment.amount,
       type: payment.type, notes: payment.notes || null,
+      original_amount: payment.originalAmount ?? null,
+      original_currency: payment.originalCurrency ?? null,
+      exchange_rate: payment.exchangeRate ?? null,
+      exchange_rate_date: payment.exchangeRateDate ?? null,
+      exchange_rate_source: payment.exchangeRateSource ?? null,
+      amount_eur: payment.amountEur ?? null,
+      foreign_withholding_amount: payment.foreignWithholdingAmount ?? null,
+      foreign_withholding_currency: payment.foreignWithholdingCurrency ?? null,
     }).select().single();
     if (error) { console.error('Error adding payment:', error); return null; }
     const newPayment: Payment = {
       id: data.id, date: data.date, amount: Number(data.amount),
       type: data.type as 'dividend' | 'principal' | 'interest', notes: data.notes || undefined,
+      originalAmount: data.original_amount != null ? Number(data.original_amount) : undefined,
+      originalCurrency: data.original_currency || undefined,
+      exchangeRate: data.exchange_rate != null ? Number(data.exchange_rate) : undefined,
+      exchangeRateDate: data.exchange_rate_date || undefined,
+      exchangeRateSource: (data.exchange_rate_source as 'ecb' | 'manual') || undefined,
+      amountEur: data.amount_eur != null ? Number(data.amount_eur) : undefined,
+      foreignWithholdingAmount: data.foreign_withholding_amount != null ? Number(data.foreign_withholding_amount) : undefined,
+      foreignWithholdingCurrency: data.foreign_withholding_currency || undefined,
     };
     setAllRawInvestments(prev => prev.map(inv =>
       inv.id === investmentId

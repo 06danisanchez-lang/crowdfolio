@@ -4,7 +4,9 @@ export type NotificationType =
   | 'payment_due'
   | 'maturity_soon'
   | 'maturity_overdue'
-  | 'weekly_summary';
+  | 'weekly_summary'
+  | 'fiscal_blocker'
+  | 'foreign_720_radar';
 
 export interface NotificationRenderConfig {
   /** Tailwind classes for the card wrapper */
@@ -56,6 +58,24 @@ const CONFIG: Record<NotificationType, NotificationRenderConfig> = {
     titleClass: 'text-[#3f3623]',
     textClass: 'text-[#3f3623]/70',
     dotClass: 'bg-[#253765]',
+    icon: 'BarChart3',
+  },
+  // Fiscal — inversiones extranjeras (Fase 4). Rojo: bloquea el informe hasta resolverlo.
+  fiscal_blocker: {
+    cardClass: 'bg-red-50 border border-red-300 rounded-lg',
+    iconClass: 'text-red-600',
+    titleClass: 'text-red-800',
+    textClass: 'text-red-800/80',
+    dotClass: 'bg-red-500',
+    icon: 'AlertTriangle',
+  },
+  // Fiscal — radar Modelo 720 (Fase 4). Solo aviso por umbral, nunca genera el formulario.
+  foreign_720_radar: {
+    cardClass: 'bg-amber-50 border border-amber-200 rounded-lg',
+    iconClass: 'text-amber-600',
+    titleClass: 'text-amber-800',
+    textClass: 'text-amber-800/80',
+    dotClass: 'bg-amber-400',
     icon: 'BarChart3',
   },
 };

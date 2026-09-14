@@ -1,6 +1,6 @@
 import { TaxSummary } from '@/types/tax';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { ArrowLeftRight, TrendingDown, AlertTriangle } from 'lucide-react';
+import { ArrowLeftRight, TrendingDown, AlertTriangle, Globe } from 'lucide-react';
 
 interface TaxBucketsCardProps {
   summary: TaxSummary;
@@ -41,6 +41,17 @@ export function TaxBucketsCard({ summary }: TaxBucketsCardProps) {
           Tienes {liqCount} pago{liqCount > 1 ? 's' : ''} de cuota de liquidación sin retención previa.
           Deberás declararlos manualmente en tu IRPF — consulta con tu asesor fiscal o revisa el certificado fiscal de la plataforma.
         </span>
+      </div>
+    )}
+    {summary.doubleTaxation.deductionStatus === 'pending_manual_review' && (
+      <div className="flex gap-3 rounded-lg border border-blue-200 bg-blue-50 dark:border-blue-800 dark:bg-blue-950/30 p-3 text-sm text-blue-900 dark:text-blue-300">
+        <Globe className="h-4 w-4 shrink-0 mt-0.5 text-blue-600 dark:text-blue-400" />
+        <div>
+          <p className="font-medium">
+            Retención en origen: {fmt(summary.doubleTaxation.foreignWithholdingTotalEur)}
+          </p>
+          <p className="mt-0.5">{summary.doubleTaxation.note}</p>
+        </div>
       </div>
     )}
     <div className="grid gap-4 md:grid-cols-2">

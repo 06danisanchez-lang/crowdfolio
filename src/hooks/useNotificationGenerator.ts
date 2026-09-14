@@ -3,9 +3,10 @@ import { format, parseISO, subDays, addDays, getISOWeek, getISOWeekYear, startOf
 import { es } from 'date-fns/locale';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
-import { Investment, InvestmentScheduleEntry } from '@/types/investment';
+import { Investment, InvestmentScheduleEntry, PLATFORMS } from '@/types/investment';
 import { Notification } from './useNotifications';
 import { calculateAccruedReturn } from '@/lib/investment/calculations';
+import { getInvestmentDataRequirements, getForeign720Radar } from '@/lib/investment/completeness';
 
 function getWeekKey(date: Date): string {
   const year = getISOWeekYear(date);
@@ -201,6 +202,56 @@ export function useNotificationGenerator(
             title: 'Resumen semanal de tu cartera',
             message: `Esta semana tu cartera ha acumulado ${accruedStr} €. Tienes ${expectedPaymentsCount} cobros esperados y ${upcomingMaturitiesCount} vencimientos en los próximos 30 días.`,
             data: { weekKey, accruedThisWeek, expectedPaymentsCount, upcomingMaturitiesCount },
+            read: false,
+          });
+        }
+      }
+
+      // ── 5. fiscal_blocker (Fase 4 — inversiones extranjeras) ────────
+      // Una notificación por inversión con algún bloqueo fiscal pendiente
+      // (p.ej. un pago en divisa sin tipo de cambio). Dedupe por investmentId,
+      // igual que maturity_overdue: no se repite mientras siga bloqueada.
+      for (const inv of investments) {
+        const platformMeta = PLATFORMS.find(p => p.value === inv.platform);
+        const requirements = getInvestmentDataRequirements(inv, inv.payments, platformMeta);
+        const blockers = requirements.filter(r => r.severity === 'fiscal_blocker');
+        if (blockers.length === 0) continue;
+
+        const alreadyExists = existingNotifications.some(
+          n => n.type === 'fiscal_blocker' && (n.data as Record<string, unknown>).investmentId === inv.id,
+        );
+        if (alreadyExists) continue;
+
+        toInsert.push({
+          user_id: user.id,
+          type: 'fiscal_blocker',
+          title: `Revisar datos fiscales: ${inv.projectName}`,
+          message: blockers[0].message,
+          data: { investmentId: inv.id, investmentName: inv.projectName, rules: blockers.map(b => b.rule) },
+          read: false,
+        });
+      }
+
+      // ── 6. foreign_720_radar (Fase 4 — SOLO aviso por umbral) ───────
+      // No genera el Modelo 720 (fuera de alcance). Dedupe por si ya se
+      // notificó exactamente este nivel (acercándose vs. superado), para
+      // avisar una vez al acercarse y otra vez al superar 50.000€.
+      const radar = getForeign720Radar(
+        investments,
+        (platformValue) => PLATFORMS.find(p => p.value === platformValue),
+        Object.fromEntries(investments.map(inv => [inv.id, inv.platform])),
+      );
+      if (radar.requirement) {
+        const alreadyExists = existingNotifications.some(
+          n => n.type === 'foreign_720_radar' && (n.data as Record<string, unknown>).limitExceeded === radar.limitExceeded,
+        );
+        if (!alreadyExists) {
+          toInsert.push({
+            user_id: user.id,
+            type: 'foreign_720_radar',
+            title: radar.limitExceeded ? 'Umbral del Modelo 720 superado' : 'Cerca del umbral del Modelo 720',
+            message: radar.requirement.message,
+            data: { totalForeignEur: radar.totalForeignEur, limitExceeded: radar.limitExceeded },
             read: false,
           });
         }

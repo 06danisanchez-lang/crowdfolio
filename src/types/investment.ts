@@ -27,6 +27,18 @@ export interface Payment {
   amount: number;
   type: 'dividend' | 'principal' | 'interest' | 'capital_return';
   notes?: string;
+  // Divisa extranjera y retención en origen (fase inversiones extranjeras).
+  // Todos opcionales: un pago en EUR sin retención no los usa y se comporta como hasta ahora.
+  originalAmount?: number;
+  originalCurrency?: string; // ISO 4217, p.ej. 'USD'. undefined = pago en EUR.
+  // divisa -> EUR aplicado. Convención (única, ver src/lib/tax/currency.ts): EUR por
+  // 1 unidad de originalCurrency, es decir amountEur = originalAmount * exchangeRate.
+  exchangeRate?: number;
+  exchangeRateDate?: string; // fecha de referencia del tipo de cambio
+  exchangeRateSource?: 'ecb' | 'manual'; // procedencia: sugerido por la Edge Function sin editar, o introducido/modificado a mano
+  amountEur?: number; // importe BRUTO convertido a EUR, listo para RCM/GPP
+  foreignWithholdingAmount?: number; // retención practicada en origen (país de la plataforma)
+  foreignWithholdingCurrency?: string; // ISO 4217 de foreignWithholdingAmount
 }
 
 export interface Investment {
@@ -36,6 +48,19 @@ export interface Investment {
   projectName: string;
   amount: number;
   investmentDate: string;
+  // Opcionales a propósito: hasta que Fase 3 rellene la lectura/escritura en los hooks,
+  // el código existente que construye Investment sin estos campos sigue compilando igual.
+  // En BD currency es NOT NULL DEFAULT 'EUR' — ausencia aquí = tratar como 'EUR'.
+  currency?: string; // ISO 4217, default 'EUR'; se autorrellena desde el catálogo de la plataforma en el formulario
+  country?: string; // ISO 3166-1 alpha-2; override manual, si no está usa el país del catálogo de la plataforma
+  // Principal en divisa extranjera (Fase 4.5): mismo patrón que Payment.
+  // `amount` arriba SIGUE siendo SIEMPRE EUR (= amountEur cuando currency != EUR).
+  originalAmount?: number;
+  originalCurrency?: string;
+  exchangeRate?: number; // EUR por 1 unidad de originalCurrency — ver src/lib/tax/currency.ts
+  exchangeRateDate?: string;
+  exchangeRateSource?: 'ecb' | 'manual';
+  amountEur?: number;
   expectedEndDate?: string;
   expectedReturn: number; // percentage
   incomeModel: IncomeModel;
@@ -80,13 +105,26 @@ export interface InvestmentSummary {
   };
 }
 
-export const PLATFORMS: { value: Platform; label: string; color: string }[] = [
-  { value: 'urbanitae', label: 'Urbanitae', color: 'platform-urbanitae' },
-  { value: 'housers', label: 'Housers', color: 'platform-housers' },
-  { value: 'estateguru', label: 'Estateguru', color: 'platform-estateguru' },
-  { value: 'crowdcube', label: 'Crowdcube', color: 'platform-crowdcube' },
-  { value: 'brickstarter', label: 'Brickstarter', color: 'platform-brickstarter' },
-  { value: 'wecity', label: 'Wecity', color: 'platform-wecity' },
+/**
+ * Catálogo estático de plataformas. `country` (ISO 3166-1 alpha-2) y `defaultCurrency`
+ * (ISO 4217) son los valores que el formulario de inversión autorrellena al elegir
+ * plataforma; el usuario puede sobrescribirlos siempre en la propia inversión
+ * (Investment.country / Investment.currency).
+ *
+ * 'other' no tiene defaults a propósito: fuerza a elegir divisa/país a mano.
+ *
+ * Verificado (ago-2026):
+ * - urbanitae, housers, brickstarter, wecity: plataformas españolas → ES / EUR.
+ * - estateguru: con sede en Tallin, Estonia → EE / EUR (Estonia usa el euro).
+ * - crowdcube: con sede en Exeter, Reino Unido → GB / GBP (capta en libras).
+ */
+export const PLATFORMS: { value: Platform; label: string; color: string; country?: string; defaultCurrency?: string }[] = [
+  { value: 'urbanitae', label: 'Urbanitae', color: 'platform-urbanitae', country: 'ES', defaultCurrency: 'EUR' },
+  { value: 'housers', label: 'Housers', color: 'platform-housers', country: 'ES', defaultCurrency: 'EUR' },
+  { value: 'estateguru', label: 'Estateguru', color: 'platform-estateguru', country: 'EE', defaultCurrency: 'EUR' },
+  { value: 'crowdcube', label: 'Crowdcube', color: 'platform-crowdcube', country: 'GB', defaultCurrency: 'GBP' },
+  { value: 'brickstarter', label: 'Brickstarter', color: 'platform-brickstarter', country: 'ES', defaultCurrency: 'EUR' },
+  { value: 'wecity', label: 'Wecity', color: 'platform-wecity', country: 'ES', defaultCurrency: 'EUR' },
   { value: 'other', label: 'Otra', color: 'platform-other' },
 ];
 
@@ -97,6 +135,14 @@ export interface DraftInvestment {
   projectName?: string | null;
   amount?: number | null;
   investmentDate?: string | null;
+  currency?: string;
+  country?: string;
+  originalAmount?: number;
+  originalCurrency?: string;
+  exchangeRate?: number;
+  exchangeRateDate?: string;
+  exchangeRateSource?: 'ecb' | 'manual';
+  amountEur?: number;
   expectedEndDate?: string;
   expectedReturn?: number | null;
   incomeModel?: IncomeModel | null;

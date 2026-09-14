@@ -144,6 +144,25 @@ export function TaxDashboard({ isPro = false, onProRequired }: TaxDashboardProps
           <span>{t('tax.incomplete.warning').replace('{count}', String(excludedIncompleteCount))}</span>
         </div>
       )}
+      {summary.isIncomplete && (
+        <div className="flex items-start gap-2 p-3 rounded-lg border border-red-300 bg-red-50 dark:border-red-700 dark:bg-red-950/30 text-sm text-red-900 dark:text-red-300">
+          <AlertTriangle className="h-4 w-4 shrink-0 mt-0.5 text-red-600 dark:text-red-400" />
+          <div>
+            <p className="font-medium">
+              Informe incompleto: {summary.excludedForeignInvestments.length} inversión
+              {summary.excludedForeignInvestments.length > 1 ? 'es' : ''} excluida
+              {summary.excludedForeignInvestments.length > 1 ? 's' : ''} de los totales por falta de datos de conversión.
+            </p>
+            <ul className="mt-1 list-disc list-inside space-y-0.5">
+              {summary.excludedForeignInvestments.map((exc) => (
+                <li key={exc.investmentId}>
+                  <span className="font-medium">{exc.projectName}</span>: {exc.reasons[0]}
+                </li>
+              ))}
+            </ul>
+          </div>
+        </div>
+      )}
       <TaxSummaryCards summary={summary} />
 
       {/* Projection Card for Current Year */}

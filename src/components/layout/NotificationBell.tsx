@@ -85,6 +85,7 @@ export function NotificationBell({
   const paymentDue    = notifications.filter(n => n.type === 'payment_due');
   const maturityNtfs  = notifications.filter(n => n.type === 'maturity_soon' || n.type === 'maturity_overdue');
   const weeklySummary = notifications.find(n => n.type === 'weekly_summary');
+  const fiscalNtfs    = notifications.filter(n => n.type === 'fiscal_blocker' || n.type === 'foreign_720_radar');
 
   const totalCount = unreadCount + activeCount;
   const hasContent = notifications.length > 0 || reminders.length > 0;
@@ -207,6 +208,44 @@ export function NotificationBell({
                           </div>
                         </div>
                         {onOpenInvestment && (
+                          <div className="pl-6">
+                            <Button size="sm" variant="outline" className="h-7 text-xs" onClick={() => handleViewInvestment(n)}>
+                              <ExternalLink className="mr-1 h-3 w-3" />
+                              {lang === 'es' ? 'Ver inversión' : 'View investment'}
+                            </Button>
+                          </div>
+                        )}
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
+
+              {/* ── Avisos fiscales (inversiones extranjeras) ─────── */}
+              {fiscalNtfs.length > 0 && (
+                <div>
+                  <p className="px-4 pt-3 pb-1 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+                    {lang === 'es' ? 'Avisos fiscales' : 'Tax alerts'}
+                  </p>
+                  {fiscalNtfs.map(n => {
+                    const cfg = getNotifConfig(n.type);
+                    const IconComp = ICONS[cfg.icon];
+                    const investmentId = (n.data as Record<string, unknown>).investmentId as string | undefined;
+                    return (
+                      <div key={n.id} className={cn('px-4 py-2.5 space-y-2', cfg.cardClass)} style={cfg.cardStyle}>
+                        <div className="flex items-start gap-2">
+                          <IconComp className={cn('h-4 w-4 mt-0.5 shrink-0', cfg.iconClass)} />
+                          <div className="min-w-0">
+                            <p className={cn('text-sm font-medium leading-tight', cfg.titleClass)}>{n.title}</p>
+                            <p className={cn('text-xs mt-0.5', cfg.textClass)}>{n.message}</p>
+                          </div>
+                          {onMarkAsRead && (
+                            <Button variant="ghost" size="icon" className="h-5 w-5 shrink-0 ml-auto" onClick={() => onMarkAsRead(n.id)}>
+                              <X className="h-3 w-3" />
+                            </Button>
+                          )}
+                        </div>
+                        {investmentId && onOpenInvestment && (
                           <div className="pl-6">
                             <Button size="sm" variant="outline" className="h-7 text-xs" onClick={() => handleViewInvestment(n)}>
                               <ExternalLink className="mr-1 h-3 w-3" />

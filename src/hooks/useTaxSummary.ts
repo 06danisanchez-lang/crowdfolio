@@ -7,6 +7,7 @@ import { calculateProgressiveTax, calculateEffectiveRate } from '@/lib/tax/calcu
 import { calculateYearlyProjection, TaxProjection } from '@/lib/tax/projections';
 import { useTaxExpenses } from './useTaxExpenses';
 import { isInvestmentComplete } from '@/lib/investment/completeness';
+import { getPrincipalReturned } from '@/lib/tax/principalReturned';
 
 const FETCH_TIMEOUT_MS = 15_000;
 
@@ -66,6 +67,10 @@ export function useTaxSummary(year: number) {
   const [payments, setPayments] = useState<PaymentWithInvestment[]>([]);
   const [projectionInvestments, setProjectionInvestments] = useState<Investment[]>([]);
   const [investmentRows, setInvestmentRows] = useState<InvestmentRow[]>([]);
+  // Pagos 'principal' de inversiones defaulted, histórico completo (sin acotar por año
+  // ni por el ejercicio fiscal seleccionado) — necesario para calcular cuánto capital
+  // se ha devuelto en total, no solo lo cobrado en el año en curso. Ver getPrincipalReturned.
+  const [defaultedPrincipalPayments, setDefaultedPrincipalPayments] = useState<Record<string, { type: string; amount: number; date: string }[]>>({});
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [excludedIncompleteCount, setExcludedIncompleteCount] = useState(0);
@@ -82,6 +87,7 @@ export function useTaxSummary(year: number) {
         setPayments([]);
         setProjectionInvestments([]);
         setInvestmentRows([]);
+        setDefaultedPrincipalPayments({});
         setIsLoading(false);
         setError(null);
         return;
@@ -144,9 +150,29 @@ export function useTaxSummary(year: number) {
           setInvestmentRows(allRows);
           setPayments([]);
           setEnrichedPayments([]);
+          setDefaultedPrincipalPayments({});
           setExcludedIncompleteCount(excludedCount);
           setIsLoading(false);
           return;
+        }
+
+        // Pagos 'principal' de inversiones defaulted — histórico completo, sin
+        // acotar por año, para poder sumar todo el capital devuelto (getPrincipalReturned).
+        const defaultedIds = allRows.filter(r => r.status === 'defaulted').map(r => r.id);
+        const defaultedPrincipalMap: Record<string, { type: string; amount: number; date: string }[]> = {};
+        if (defaultedIds.length > 0) {
+          const { data: principalData, error: principalError } = await supabase
+            .from('payments')
+            .select('investment_id, amount, date, type')
+            .in('investment_id', defaultedIds)
+            .eq('type', 'principal');
+
+          if (principalError) throw principalError;
+
+          for (const p of principalData || []) {
+            const list = defaultedPrincipalMap[p.investment_id] ?? (defaultedPrincipalMap[p.investment_id] = []);
+            list.push({ type: p.type, amount: Number(p.amount), date: p.date });
+          }
         }
 
         // Fetch ALL payments for the year — no completeness filter
@@ -174,6 +200,7 @@ export function useTaxSummary(year: number) {
         setExcludedIncompleteCount(excludedCount);
         setProjectionInvestments(trackingReadyActive);
         setInvestmentRows(allRows);
+        setDefaultedPrincipalPayments(defaultedPrincipalMap);
         setPayments(rawPayments);
         setEnrichedPayments(
           rawPayments.map((p) => ({
@@ -207,35 +234,34 @@ export function useTaxSummary(year: number) {
     return () => { ++requestIdRef.current; };
   }, [user, year, retryCount]);
 
-  // GPP — inversiones en default que cumplen el requisito de 6 meses (art. 14.2.k LIRPF)
+  // Pérdidas de cartera por impago — Fase 1: la calificación fiscal (qué hecho la
+  // hace imputable y en qué ejercicio) se implementa en la Fase 2. Por ahora se
+  // muestran TODAS las inversiones defaulted con pérdida > 0, sin filtro por
+  // fechas ni por ejercicio. Este resultado NO se usa en ningún cálculo de cuota,
+  // base ni compensación — solo se expone para mostrarlo sin calificación fiscal,
+  // con el aviso correspondiente (ver TaxBucketsCard/TaxExportButton).
   const defaultedInvestmentsWithLoss: DefaultedInvestmentLoss[] = useMemo(() => {
-    const yearEnd = new Date(`${year}-12-31`);
     return investmentRows
-      .filter(inv => {
-        if (inv.status !== 'defaulted' || !inv.expected_end_date) return false;
-        const cutoff = new Date(inv.expected_end_date);
-        cutoff.setMonth(cutoff.getMonth() + 6);
-        return cutoff <= yearEnd;
-      })
+      .filter(inv => inv.status === 'defaulted')
       .map(inv => {
         const amountInvested = Number(inv.amount);
-        const amountRecovered = inv.amount_recovered != null ? Number(inv.amount_recovered) : 0;
+        const principalReturned = getPrincipalReturned(defaultedPrincipalPayments[inv.id] ?? []);
         return {
           investmentId: inv.id,
           projectName: inv.project_name,
           platform: inv.platform,
           customPlatformName: inv.custom_platform_name || undefined,
           amountInvested,
-          amountRecovered,
-          loss: amountRecovered - amountInvested,
+          amountRecovered: principalReturned,
+          loss: principalReturned - amountInvested,
           defaultedAt: inv.defaulted_at || undefined,
           expectedEndDate: inv.expected_end_date || undefined,
-          qualifiesForDeduction: true,
         };
-      });
-  }, [investmentRows, year]);
+      })
+      .filter(d => d.loss < 0);
+  }, [investmentRows, defaultedPrincipalPayments]);
 
-  // Tax summary — RCM + GPP + compensación (límite 25%, Ley 7/2024)
+  // Tax summary — RCM + pérdidas de cartera por impago (sin efecto en cuota, Fase 1)
   const summary: TaxSummary = useMemo(() => {
     // capital_return (prima de emisión equity rentas) no tributa — excluir de todos los cálculos fiscales
     const taxablePayments = payments.filter(p => p.type !== 'capital_return');
@@ -270,16 +296,21 @@ export function useTaxSummary(year: number) {
         equityType: 'liquidacion',
       }));
 
-    // GPP totals
+    // Importe total de pérdidas de cartera por impago — solo para mostrar en
+    // pantalla (ver comentario en defaultedInvestmentsWithLoss). NO participa en
+    // ningún cálculo de cuota/base a partir de aquí.
     const totalGPPLosses = defaultedInvestmentsWithLoss.reduce((sum, d) => sum + d.loss, 0);
 
-    // Compensación cruzada GPP ↔ RCM: máx. 25% del RCM bruto (Ley 7/2024)
-    let compensacionGPPRCM = 0;
-    if (totalGPPLosses < 0 && grossIncome > 0) {
-      compensacionGPPRCM = Math.min(Math.abs(totalGPPLosses), grossIncome * 0.25);
-    }
-    const perdidasGPPPendientes = Math.max(0, Math.abs(totalGPPLosses) - compensacionGPPRCM);
-    const baseImponibleRCMAjustada = Math.max(0, grossIncome - compensacionGPPRCM);
+    // Compensación cruzada GPP ↔ RCM: en este código, la única pérdida que podía
+    // alimentar esta compensación era la de impago por defaulted, y esas pérdidas
+    // se han sacado de todo cálculo de cuota/base/compensación (Fase 1 — su
+    // tratamiento fiscal real depende de hechos formales aún no implementados,
+    // ver Fase 2/3). No hay ninguna otra fuente de pérdida GPP en el código hoy
+    // (no se calculan pérdidas por transmisión de participaciones equity), así
+    // que esta compensación es siempre 0 hasta que se implemente correctamente.
+    const compensacionGPPRCM = 0;
+    const perdidasGPPPendientes = 0;
+    const baseImponibleRCMAjustada = grossIncome;
 
     const taxableBase = Math.max(0, baseImponibleRCMAjustada - totalExpenses);
     const estimatedTax = calculateProgressiveTax(taxableBase);

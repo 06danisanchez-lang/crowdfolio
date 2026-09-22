@@ -38,8 +38,8 @@ export const HELP_CONTENT = {
   tax: {
     devengo: 'Los impuestos se calculan cuando el dinero está disponible en la plataforma, no cuando lo retiras al banco.',
     rcm: 'Rendimientos del Capital Mobiliario: intereses y dividendos que tributas en la base del ahorro.',
-    gpp: 'Ganancias y Pérdidas Patrimoniales: resultados de ventas de participaciones o pérdidas por impago.',
-    compensation25: 'Puedes compensar pérdidas de un cajón (RCM/GPP) con beneficios del otro, hasta el 25% del beneficio.',
+    gpp: 'Ganancias y Pérdidas Patrimoniales: resultados de ventas de participaciones. Crowdfolio todavía no las calcula. Las pérdidas por impago de un préstamo no van aquí: se declaran en la base general y tienen reglas propias.',
+    compensation25: 'En la base del ahorro, las pérdidas por venta de participaciones pueden compensarse con los intereses y dividendos hasta el 25 % del saldo positivo de estos. Crowdfolio todavía no calcula esta compensación. Las pérdidas por impago no se compensan así: se declaran en la base general, con reglas propias.',
     lossCarryforward: 'Las pérdidas no compensadas se arrastran hasta 4 años para usarlas en declaraciones futuras.',
     deductibleExpenses: 'Gastos directamente relacionados con tus inversiones que reducen la base imponible (comisiones, asesoría, etc.).',
     withholdings: 'Retenciones ya pagadas a Hacienda por las plataformas. Se descuentan del impuesto final.',

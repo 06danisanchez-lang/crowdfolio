@@ -260,6 +260,16 @@ export const translations: Record<Lang, Record<string, string>> = {
     'tax.title': 'Fiscalidad',
     'tax.subtitle': 'Gestión fiscal de tus inversiones (España)',
 
+    // Tax — Pérdidas de cartera por impago (Fase 1, fix/fiscal-default-loss-texts)
+    'tax.buckets.gpp.empty': 'No tienes pérdidas de cartera por impago.',
+    'tax.buckets.gpp.notCalculated': 'Crowdfolio todavía no calcula ganancias y pérdidas por venta de participaciones.',
+    'tax.buckets.gpp.defaultLossesLabel': 'Pérdidas de cartera por impago',
+    'tax.buckets.gpp.defaultLossesDisclaimer': 'Estas pérdidas son reales en tu cartera, pero su tratamiento fiscal depende de hechos formales (concurso, quita o ejecución judicial). Estamos actualizando este cálculo. Consulta con tu asesor antes de declararlas.',
+    'tax.info.buckets.gppLine1': 'Ganancias y pérdidas por la venta de participaciones. Se calculan como precio de venta menos coste de adquisición. Crowdfolio todavía no las calcula.',
+    'tax.info.buckets.gppLine2': 'Las pérdidas por impago de un préstamo no van aquí: se declaran en la base general y tienen reglas propias (ver "Pérdidas de cartera por impago").',
+    'tax.info.compensation25.disclaimer': 'Esta regla se aplica a las ganancias y pérdidas de la base del ahorro, como la venta de participaciones, que Crowdfolio todavía no calcula. Las pérdidas por impago no se compensan así: se declaran en la base general, con reglas propias.',
+    'tax.info.carryforward.disclaimer': 'Las pérdidas por impago, que se declaran en la base general, también pueden compensarse en los cuatro años siguientes, pero con otras rentas distintas de los intereses. Crowdfolio no calcula esta compensación.',
+
     // Profile
     'profile.title': 'Mi Perfil',
     'profile.subtitle': 'Gestiona tu información personal',
@@ -853,6 +863,16 @@ export const translations: Record<Lang, Record<string, string>> = {
     // Tax
     'tax.title': 'Tax',
     'tax.subtitle': 'Tax management for your investments (Spain)',
+
+    // Tax — Portfolio losses from loan defaults (Phase 1, fix/fiscal-default-loss-texts)
+    'tax.buckets.gpp.empty': "You don't have any portfolio losses from loan defaults.",
+    'tax.buckets.gpp.notCalculated': "Crowdfolio doesn't calculate gains and losses from selling equity stakes yet.",
+    'tax.buckets.gpp.defaultLossesLabel': 'Portfolio losses from loan defaults',
+    'tax.buckets.gpp.defaultLossesDisclaimer': "These losses are real in your portfolio, but their tax treatment depends on formal events (insolvency proceedings, debt write-off, or legal enforcement). We're updating this calculation. Consult your tax advisor before declaring them.",
+    'tax.info.buckets.gppLine1': "Gains and losses from selling equity stakes. Calculated as sale price minus acquisition cost. Crowdfolio doesn't calculate these yet.",
+    'tax.info.buckets.gppLine2': 'Losses from loan defaults don\'t belong here: they\'re declared in the general tax base and follow their own rules (see "Portfolio losses from loan defaults").',
+    'tax.info.compensation25.disclaimer': "This rule applies to gains and losses in the savings tax base, such as selling equity stakes, which Crowdfolio doesn't calculate yet. Losses from loan defaults aren't offset this way: they're declared in the general tax base, with their own rules.",
+    'tax.info.carryforward.disclaimer': "Losses from loan defaults, declared in the general tax base, can also be offset over the following four years, but against income other than interest. Crowdfolio doesn't calculate this offset.",
 
     // Profile
     'profile.title': 'My Profile',

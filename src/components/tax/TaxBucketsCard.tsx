@@ -1,4 +1,5 @@
 import { TaxSummary } from '@/types/tax';
+import { useLanguage } from '@/contexts/LanguageContext';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { ArrowLeftRight, TrendingDown, AlertTriangle } from 'lucide-react';
 
@@ -28,8 +29,8 @@ function Row({ label, value, sub, highlight, dimmed }: {
 }
 
 export function TaxBucketsCard({ summary }: TaxBucketsCardProps) {
-  const hasGPP = summary.totalGPPLosses < 0;
-  const hasCompensacion = summary.compensacionGPPRCM > 0;
+  const { t } = useLanguage();
+  const hasDefaultLosses = summary.totalGPPLosses < 0;
   const liqCount = summary.liquidacionSinRetencion.length;
 
   return (
@@ -56,22 +57,15 @@ export function TaxBucketsCard({ summary }: TaxBucketsCardProps) {
           <Row label="Intereses (crowdlending)" value={fmt(summary.interestIncome)} />
           <Row label="Dividendos" value={fmt(summary.dividendIncome)} />
           <Row label="RCM Bruto" value={fmt(summary.grossIncome)} highlight />
-          {hasCompensacion && (
-            <Row
-              label="Compensación GPP aplicada"
-              value={`− ${fmt(summary.compensacionGPPRCM)}`}
-              sub="Pérdidas por impago compensadas (límite 25% RCM)"
-            />
-          )}
           <Row
-            label={hasCompensacion ? 'Base imponible RCM ajustada' : 'Base imponible RCM'}
+            label="Base imponible RCM"
             value={fmt(summary.baseImponibleRCMAjustada)}
             highlight
           />
         </CardContent>
       </Card>
 
-      {/* ── GPP ── */}
+      {/* ── GPP (venta de participaciones — Crowdfolio no lo calcula todavía) ── */}
       <Card>
         <CardHeader className="pb-2">
           <CardTitle className="flex items-center gap-2 text-base">
@@ -80,34 +74,39 @@ export function TaxBucketsCard({ summary }: TaxBucketsCardProps) {
           </CardTitle>
         </CardHeader>
         <CardContent>
-          {!hasGPP ? (
-            <p className="text-sm text-muted-foreground py-4 text-center">
-              Sin pérdidas por impago deducibles en este ejercicio.
-            </p>
-          ) : (
-            <>
-              <Row
-                label="Pérdidas por impago elegibles"
-                value={fmt(summary.totalGPPLosses)}
-                sub="Inversiones con ≥ 6 meses desde vencimiento (art. 14.2.k LIRPF)"
-              />
-              <Row
-                label="Compensación aplicada contra RCM"
-                value={hasCompensacion ? fmt(-summary.compensacionGPPRCM) : '0,00 €'}
-                sub="Máximo: 25% del RCM bruto (Ley 7/2024)"
-                highlight={hasCompensacion}
-              />
-              <Row
-                label="Pérdidas pendientes de arrastrar"
-                value={fmt(-summary.perdidasGPPPendientes)}
-                sub="Aplicables en los 4 ejercicios fiscales siguientes"
-                dimmed={summary.perdidasGPPPendientes === 0}
-              />
-            </>
-          )}
+          <p className="text-sm text-muted-foreground py-4 text-center">
+            {t('tax.buckets.gpp.notCalculated')}
+          </p>
         </CardContent>
       </Card>
     </div>
+
+    {/* ── Pérdidas de cartera por impago — bloque propio, NO es GPP ── */}
+    <Card>
+      <CardHeader className="pb-2">
+        <CardTitle className="flex items-center gap-2 text-base">
+          <TrendingDown className="h-4 w-4 text-destructive" />
+          {t('tax.buckets.gpp.defaultLossesLabel')}
+        </CardTitle>
+      </CardHeader>
+      <CardContent>
+        {!hasDefaultLosses ? (
+          <p className="text-sm text-muted-foreground py-4 text-center">
+            {t('tax.buckets.gpp.empty')}
+          </p>
+        ) : (
+          <div className="space-y-2">
+            <Row
+              label={t('tax.buckets.gpp.defaultLossesLabel')}
+              value={fmt(summary.totalGPPLosses)}
+            />
+            <p className="text-xs text-muted-foreground">
+              {t('tax.buckets.gpp.defaultLossesDisclaimer')}
+            </p>
+          </div>
+        )}
+      </CardContent>
+    </Card>
     </div>
   );
 }

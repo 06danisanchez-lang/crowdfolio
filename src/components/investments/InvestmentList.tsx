@@ -19,6 +19,7 @@ import {
 import { Investment, DraftInvestment, PLATFORMS, STATUS_OPTIONS, Platform, InvestmentStatus, IncomeModel, InvestmentScheduleEntry } from '@/types/investment';
 import { getInvestmentCompletionStatus } from '@/lib/investment/completeness';
 import { calculateExpectedTotalReturn, sumIncomePayments } from '@/lib/investment/calculations';
+import { getPrincipalReturned } from '@/lib/tax/principalReturned';
 import { getMaturitySeverity } from '@/hooks/useAlerts';
 import { getStatusLabel } from '@/lib/labels';
 import { Button } from '@/components/ui/button';
@@ -242,7 +243,7 @@ export function InvestmentList({
       };
     }
     if (inv.status === 'defaulted') {
-      const profit = (inv.amountRecovered ?? 0) - inv.amount;
+      const profit = getPrincipalReturned(inv.payments) - inv.amount;
       const sign = profit > 0 ? '+' : '';
       return {
         label: `${sign}${formatCurrency(profit)}`,

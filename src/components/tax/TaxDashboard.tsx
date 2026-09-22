@@ -13,7 +13,6 @@ import { TaxExpenseForm } from './TaxExpenseForm';
 import { TaxYearSelector } from './TaxYearSelector';
 import { TaxExportButton } from './TaxExportButton';
 import { TaxBucketsCard } from './TaxBucketsCard';
-import { CompensationBreakdown } from './CompensationBreakdown';
 import { TaxInfoCard } from './TaxInfoCard';
 import { SuggestedExpenses } from './SuggestedExpenses';
 import { TaxEmptyState } from './TaxEmptyState';
@@ -172,7 +171,10 @@ export function TaxDashboard({ isPro = false, onProRequired }: TaxDashboardProps
 
         <TabsContent value="buckets" className="space-y-4">
           <TaxBucketsCard summary={summary} />
-          <CompensationBreakdown summary={summary} defaultedInvestmentsWithLoss={defaultedInvestmentsWithLoss} />
+          {/* CompensationBreakdown oculto (Fase 1): la compensación GPP↔RCM para
+              impagos era incorrecta y ahora siempre es 0 (ver useTaxSummary.ts).
+              El componente no se borra — se reescribirá en Fase 5 cuando el
+              motor de pérdidas por impago esté correctamente implementado. */}
         </TabsContent>
 
         <TabsContent value="expenses">

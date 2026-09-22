@@ -25,11 +25,10 @@ export interface DefaultedInvestmentLoss {
   platform: string;
   customPlatformName?: string;
   amountInvested: number;
-  amountRecovered: number;
+  amountRecovered: number;   // suma de payments type 'principal' (getPrincipalReturned) — NO investments.amount_recovered
   loss: number;              // negative: amountRecovered - amountInvested
   defaultedAt?: string;
   expectedEndDate?: string;
-  qualifiesForDeduction: boolean;
 }
 
 export interface TaxSummary {
@@ -41,11 +40,16 @@ export interface TaxSummary {
   principalReturns: number;
   withholdingsApplied: number;
   deductibleExpenses: number;
-  // GPP — Ganancias y Pérdidas Patrimoniales (art. 14.2.k LIRPF)
-  totalGPPLosses: number;           // suma de pérdidas elegibles (negativo o 0)
-  compensacionGPPRCM: number;       // pérdida GPP compensada contra RCM (límite 25%)
-  perdidasGPPPendientes: number;    // pérdida no compensada, arrastrable 4 años
-  baseImponibleRCMAjustada: number; // grossIncome − compensacionGPPRCM
+  // Pérdidas de cartera por impago — Fase 1: el tratamiento fiscal real de estas
+  // pérdidas depende de hechos formales (quita, conclusión de concurso, ejecución
+  // judicial) que la app todavía no recoge. Por eso, mientras se implementa
+  // correctamente (ver Fase 2/3), estos 4 campos NUNCA afectan a taxableBase ni a
+  // estimatedTax: totalGPPLosses es solo el importe a mostrar en pantalla (sin
+  // calificación fiscal), y los otros 3 son siempre 0.
+  totalGPPLosses: number;           // suma de pérdidas de cartera por impago (negativo o 0) — solo display
+  compensacionGPPRCM: number;       // siempre 0 (Fase 1)
+  perdidasGPPPendientes: number;    // siempre 0 (Fase 1)
+  baseImponibleRCMAjustada: number; // = grossIncome (sin compensación aplicada, Fase 1)
   // Base y cuota
   taxableBase: number;              // baseImponibleRCMAjustada − deductibleExpenses
   estimatedTax: number;

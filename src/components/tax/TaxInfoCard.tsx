@@ -2,8 +2,10 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
 import { FileText, Info, AlertCircle, Calculator, ArrowLeftRight, Clock, Receipt } from 'lucide-react';
 import { DEDUCTIBLE_INFO } from '@/lib/tax/suggestedExpenses';
+import { useLanguage } from '@/contexts/LanguageContext';
 
 export function TaxInfoCard() {
+  const { t } = useLanguage();
   return (
     <Card>
       <CardHeader>
@@ -79,9 +81,8 @@ export function TaxInfoCard() {
                     GPP - Ganancias y Pérdidas Patrimoniales
                   </h4>
                   <ul className="text-purple-700 dark:text-purple-300 text-xs space-y-1">
-                    <li>• Ganancias por venta de participaciones</li>
-                    <li>• Pérdidas por ventas o impagos</li>
-                    <li>• Se calcula: precio venta - coste adquisición</li>
+                    <li>• {t('tax.info.buckets.gppLine1')}</li>
+                    <li>• {t('tax.info.buckets.gppLine2')}</li>
                   </ul>
                 </div>
               </div>
@@ -98,8 +99,9 @@ export function TaxInfoCard() {
             </AccordionTrigger>
             <AccordionContent>
               <div className="space-y-3 text-sm text-muted-foreground">
+                <p>{t('tax.info.compensation25.disclaimer')}</p>
                 <p>
-                  <strong className="text-foreground">¿Qué es?</strong> Si tienes pérdidas en un cajón (RCM o GPP), 
+                  <strong className="text-foreground">¿Qué es?</strong> Si tienes pérdidas en un cajón (RCM o GPP),
                   puedes usarlas para reducir los beneficios del otro cajón.
                 </p>
                 <div className="rounded-lg bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-900 p-3">
@@ -126,8 +128,9 @@ export function TaxInfoCard() {
             </AccordionTrigger>
             <AccordionContent>
               <div className="space-y-3 text-sm text-muted-foreground">
+                <p>{t('tax.info.carryforward.disclaimer')}</p>
                 <p>
-                  Las pérdidas que no puedas compensar en un año pueden arrastrarse a los 
+                  Las pérdidas que no puedas compensar en un año pueden arrastrarse a los
                   <strong className="text-foreground"> 4 años siguientes</strong>.
                 </p>
                 <p>

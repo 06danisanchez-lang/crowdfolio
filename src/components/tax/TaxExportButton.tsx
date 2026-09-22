@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { useLanguage } from '@/contexts/LanguageContext';
 import { FileDown, FileSpreadsheet, FileText, Loader2, Lock } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import {
@@ -39,6 +40,7 @@ export function TaxExportButton({
   onProRequired,
   isPro = true,
 }: ExtendedTaxExportButtonProps) {
+  const { t } = useLanguage();
   const [isExporting, setIsExporting] = useState(false);
 
   const handleExportClick = (exportFn: () => Promise<void>) => {
@@ -258,13 +260,17 @@ export function TaxExportButton({
       applyStyle(erRow.getCell(1), S.creamLabel);
       applyStyle(erRow.getCell(2), S.creamVal);
 
-      // GPP section (conditional)
+      // Pérdidas de cartera por impago (conditional) — Fase 1: sin calificación
+      // fiscal, no entran en ningún cálculo de cuota/base/compensación (ver
+      // useTaxSummary.ts). No se muestra ninguna tabla de compensación: siempre
+      // es 0 mientras se implementa correctamente (Fase 2/3).
       if (summary.totalGPPLosses < 0) {
-        addSectionSep('── Pérdidas Patrimoniales (GPP) ──');
-        addSummaryRow('Pérdidas por impago elegibles (art. 14.2.k LIRPF)', summary.totalGPPLosses, S.valNeg);
-        addSummaryRow('Compensación aplicada contra RCM (límite 25%)', -summary.compensacionGPPRCM, -summary.compensacionGPPRCM < 0 ? S.valNeg : S.valBold);
-        addSummaryRow('Base imponible RCM ajustada', summary.baseImponibleRCMAjustada, S.valBold);
-        addSummaryRow('Pérdidas GPP pendientes de arrastrar (4 años)', -summary.perdidasGPPPendientes, -summary.perdidasGPPPendientes < 0 ? S.valNeg : S.valBold);
+        addSectionSep('── Pérdidas de Cartera por Impago ──');
+        addSummaryRow(t('tax.buckets.gpp.defaultLossesLabel'), summary.totalGPPLosses, S.valNeg);
+        const gppNoteRow = wsR.addRow([t('tax.buckets.gpp.defaultLossesDisclaimer'), '']);
+        gppNoteRow.height = 48;
+        wsR.mergeCells(gppNoteRow.number, 1, gppNoteRow.number, 2);
+        applyStyle(wsR.getCell(gppNoteRow.number, 1), S.legalNote);
       }
 
       // ── Sheet 2: Tramos IRPF ─────────────────────────────────────────────
@@ -412,11 +418,11 @@ export function TaxExportButton({
 
       // ── Sheet 6: Pérdidas GPP (conditional) ──────────────────────────────
       if (summary.totalGPPLosses < 0 && defaultedInvestmentsWithLoss.length > 0) {
-        const wsGPP = workbook.addWorksheet('Pérdidas GPP');
+        const wsGPP = workbook.addWorksheet('Pérdidas por impago');
         wsGPP.properties.tabColor = { argb: RED_NEG };
         wsGPP.columns = [{ width: 38 }, { width: 20 }, { width: 18 }, { width: 18 }, { width: 18 }];
 
-        addTitleRows(wsGPP, `PÉRDIDAS POR IMPAGO (GPP) ${summary.year}`, 'Pérdidas patrimoniales por impago deducibles — art. 14.2.k Ley IRPF', 5, S.sheetTitleRed);
+        addTitleRows(wsGPP, `PÉRDIDAS POR IMPAGO ${summary.year}`, t('tax.buckets.gpp.defaultLossesDisclaimer'), 5, S.sheetTitleRed);
         addTableHeader(wsGPP, ['Inversión', 'Plataforma', 'Invertido (€)', 'Recuperado (€)', 'Pérdida (€)'], 5);
 
         addDataRows(wsGPP, defaultedInvestmentsWithLoss, inv => [
@@ -426,28 +432,11 @@ export function TaxExportButton({
           if (col === 5) applyStyle(cell, { ...cell.style, font: { bold: true, size: 10, color: { argb: RED_NEG } } } as XStyle);
         });
 
-        const gppTotRow = addTotalRow(wsGPP, ['TOTAL GPP', '', '', '', summary.totalGPPLosses], 5);
+        const gppTotRow = addTotalRow(wsGPP, [t('tax.buckets.gpp.defaultLossesLabel'), '', '', '', summary.totalGPPLosses], 5);
         wsGPP.getRow(gppTotRow).getCell(5).numFmt = MONEY;
-
-        // Sección compensación — calculada dinámicamente
-        const compSepRow = wsGPP.addRow(['Compensación cruzada GPP ↔ RCM (límite 25%)', '', '', '', '']);
-        compSepRow.height = 22;
-        wsGPP.mergeCells(compSepRow.number, 1, compSepRow.number, 5);
-        applyStyle(wsGPP.getCell(compSepRow.number, 1), S.sectionHeader);
-
-        const addCompRow = (label: string, value: number) => {
-          const r = wsGPP.addRow([label, '', '', '', value]);
-          r.height = 20;
-          applyStyle(r.getCell(1), S.label);
-          const vc = r.getCell(5);
-          applyStyle(vc, S.valBold);
-          vc.numFmt = MONEY;
-        };
-        addCompRow('RCM bruto', summary.grossIncome);
-        addCompRow(`Límite compensable (25% × ${formatCurrency(summary.grossIncome)})`, summary.grossIncome * 0.25);
-        addCompRow('Compensación aplicada este ejercicio', -summary.compensacionGPPRCM);
-        addCompRow('Base imponible RCM ajustada', summary.baseImponibleRCMAjustada);
-        addCompRow('Pérdidas pendientes de arrastrar (4 años)', -summary.perdidasGPPPendientes);
+        // Fase 1 — sin sección de compensación: estas pérdidas no entran en
+        // ningún cálculo de cuota/base/compensación (ver useTaxSummary.ts).
+        // La sección de compensación se reintroducirá, correctamente, en Fase 5.
       }
 
       // ── Download ──────────────────────────────────────────────────────────
@@ -563,13 +552,16 @@ export function TaxExportButton({
         yPos = (doc as any).lastAutoTable.finalY + 15;
       }
 
-      // ── Pérdidas GPP (solo si existen pérdidas elegibles) ───────────────────
+      // ── Pérdidas de cartera por impago — Fase 1: sin calificación fiscal,
+      // no entran en ningún cálculo de cuota/base/compensación (ver
+      // useTaxSummary.ts). Sin tabla de compensación: se reintroducirá,
+      // correctamente, en Fase 5. ────────────────────────────────────────────
       if (summary.totalGPPLosses < 0 && defaultedInvestmentsWithLoss.length > 0) {
-        if (yPos > 200) { doc.addPage(); yPos = 20; }
+        if (yPos > 190) { doc.addPage(); yPos = 20; }
 
         doc.setFontSize(14);
         doc.setFont('helvetica', 'bold');
-        doc.text('Pérdidas por Impago (GPP)', 14, yPos);
+        doc.text('Pérdidas de Cartera por Impago', 14, yPos);
         yPos += 5;
 
         autoTable(doc, {
@@ -583,7 +575,7 @@ export function TaxExportButton({
               formatCurrency(inv.amountRecovered),
               formatCurrency(inv.loss),
             ]),
-            ['', '', '', 'Total GPP', formatCurrency(summary.totalGPPLosses)],
+            ['', '', '', t('tax.buckets.gpp.defaultLossesLabel'), formatCurrency(summary.totalGPPLosses)],
           ],
           theme: 'striped',
           headStyles: { fillColor: [239, 68, 68] },
@@ -600,28 +592,12 @@ export function TaxExportButton({
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
         yPos = (doc as any).lastAutoTable.finalY + 8;
 
-        // Compensation summary table
-        autoTable(doc, {
-          startY: yPos,
-          head: [['Compensación cruzada GPP ↔ RCM (Ley 7/2024)', 'Importe']],
-          body: [
-            ['RCM bruto', formatCurrency(summary.grossIncome)],
-            [`Límite compensable (25% × ${formatCurrency(summary.grossIncome)})`, formatCurrency(summary.grossIncome * 0.25)],
-            ['Compensación aplicada este ejercicio', formatCurrency(-summary.compensacionGPPRCM)],
-            ['Base imponible RCM ajustada', formatCurrency(summary.baseImponibleRCMAjustada)],
-            ['Pérdidas pendientes de arrastrar (4 años)', formatCurrency(-summary.perdidasGPPPendientes)],
-          ],
-          theme: 'striped',
-          headStyles: { fillColor: [100, 100, 100] },
-          styles: { fontSize: 9 },
-          columnStyles: {
-            0: { cellWidth: 130 },
-            1: { cellWidth: 40, halign: 'right' as const },
-          },
-        });
-
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        yPos = (doc as any).lastAutoTable.finalY + 15;
+        const gppNoteLines = doc.splitTextToSize(t('tax.buckets.gpp.defaultLossesDisclaimer'), pageWidth - 28);
+        doc.setFontSize(8);
+        doc.setFont('helvetica', 'italic');
+        doc.text(gppNoteLines, 14, yPos);
+        doc.setFont('helvetica', 'normal');
+        yPos += gppNoteLines.length * 4 + 12;
       }
 
       // ── Detalle de Pagos ─────────────────────────────────────────────────────

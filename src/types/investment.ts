@@ -21,6 +21,12 @@ export type PaymentFrequency = 'monthly' | 'quarterly' | 'semiannual' | 'annual'
 
 export type PrincipalReturnType = 'at_maturity' | 'amortizing' | 'unknown';
 
+// Calificación fiscal de la pérdida por impago (art. 14.2.k LIRPF) — Fase 2/3.
+// Ver src/lib/tax/defaultLoss.ts (motor) y src/lib/tax/answersToLossColumns.ts
+// (cuestionario → estas columnas).
+export type LossInsolvencyStatus = 'none' | 'open' | 'concluded_unpaid' | 'unknown';
+export type LossEnforcementInitiator = 'user' | 'platform';
+
 export interface Payment {
   id: string;
   date: string;
@@ -51,6 +57,15 @@ export interface Investment {
   actualEndDate?: string | null;
   closeReason?: CloseReasonType | null;
   wasExtended?: boolean;
+  lossInsolvencyStatus?: LossInsolvencyStatus | null;
+  lossInsolvencyConcludedDate?: string | null;
+  lossQuitaAmount?: number | null;
+  lossQuitaDate?: string | null;
+  lossEnforcementStarted?: boolean | null;
+  lossEnforcementDate?: string | null;
+  lossEnforcementInitiator?: LossEnforcementInitiator | null;
+  lossAssessedAt?: string | null;
+  lossRulesVersion?: number | null;
   createdAt: string;
   updatedAt: string;
 }
@@ -112,6 +127,15 @@ export interface DraftInvestment {
   actualEndDate?: string | null;
   closeReason?: CloseReasonType | null;
   wasExtended?: boolean;
+  lossInsolvencyStatus?: LossInsolvencyStatus | null;
+  lossInsolvencyConcludedDate?: string | null;
+  lossQuitaAmount?: number | null;
+  lossQuitaDate?: string | null;
+  lossEnforcementStarted?: boolean | null;
+  lossEnforcementDate?: string | null;
+  lossEnforcementInitiator?: LossEnforcementInitiator | null;
+  lossAssessedAt?: string | null;
+  lossRulesVersion?: number | null;
   createdAt: string;
   updatedAt: string;
 }

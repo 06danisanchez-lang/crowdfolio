@@ -23,6 +23,9 @@ interface Props {
   onClose: () => void;
   onUpdate: (id: string, updates: Partial<Investment>) => Promise<unknown>;
   onAddPayment?: (investmentId: string, payment: Omit<Payment, 'id'>) => Promise<unknown>;
+  /** 'Pérdida total o parcial' no guarda directamente: abre el cuestionario de
+   * calificación fiscal (DefaultLossQuestionnaire), que es quien guarda. */
+  onDefaulted: (investment: Investment) => void;
 }
 
 const REJECT_OPTIONS: {
@@ -62,7 +65,7 @@ const REJECT_OPTIONS: {
   },
 ];
 
-export function MaturityConfirmationModal({ investment, onClose, onUpdate, onAddPayment }: Props) {
+export function MaturityConfirmationModal({ investment, onClose, onUpdate, onAddPayment, onDefaulted }: Props) {
   const [step, setStep] = useState<'confirm' | 'equity-close' | 'reject'>('confirm');
   const [selectedOption, setSelectedOption] = useState<RejectOption | null>(null);
   const [newDate, setNewDate] = useState<Date | undefined>();
@@ -93,6 +96,17 @@ export function MaturityConfirmationModal({ investment, onClose, onUpdate, onAdd
   const handleRejectConfirm = async () => {
     if (!selectedOption || !investment) return;
     if (currentOption?.needsDate && !newDate) return;
+
+    // 'defaulted' no se guarda aquí: abre el cuestionario de calificación
+    // fiscal, que es quien hace la actualización real (status + loss_*).
+    if (selectedOption === 'defaulted') {
+      const inv = investment;
+      reset();
+      onClose();
+      onDefaulted(inv);
+      return;
+    }
+
     setSaving(true);
     const newDateStr = newDate ? format(newDate, 'yyyy-MM-dd') : undefined;
 
@@ -106,9 +120,6 @@ export function MaturityConfirmationModal({ investment, onClose, onUpdate, onAdd
           status: 'active',
           notes: `[DISPUTA] ${investment.notes ?? ''}`.trim(),
         });
-        break;
-      case 'defaulted':
-        await onUpdate(investment.id, { status: 'defaulted', defaultedAt: new Date().toISOString() });
         break;
     }
     setSaving(false);

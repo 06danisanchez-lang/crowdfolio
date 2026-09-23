@@ -9,6 +9,12 @@ import { getInvestmentCompletionStatus } from '@/lib/investment/completeness';
 import { generateSchedule } from '@/lib/investment/scheduleGenerator';
 import { PLAN_FEATURES } from '@/lib/stripe/config';
 
+// 'Impago' no es seleccionable desde este formulario genérico: solo se puede
+// llegar a 'defaulted' completando el cuestionario de calificación fiscal
+// (DefaultLossQuestionnaire), que guarda las columnas loss_* que esta
+// pantalla no conoce. Ver isBlockedDefaultedTransition.
+const EDITABLE_STATUS_OPTIONS = STATUS_OPTIONS.filter(s => s.value !== 'defaulted');
+
 export interface FutureInvestmentFormData {
   platform: Platform;
   customPlatformName?: string;
@@ -935,20 +941,29 @@ export function InvestmentForm({
           render={({ field }) => (
             <FormItem>
               <FormLabel>Estado</FormLabel>
-              <Select onValueChange={field.onChange} value={field.value}>
+              <Select
+                onValueChange={field.onChange}
+                value={field.value}
+                disabled={field.value === 'defaulted'}
+              >
                 <FormControl>
                   <SelectTrigger>
                     <SelectValue placeholder="Selecciona un estado" />
                   </SelectTrigger>
                 </FormControl>
                 <SelectContent>
-                  {STATUS_OPTIONS.map((status) => (
+                  {(field.value === 'defaulted' ? STATUS_OPTIONS : EDITABLE_STATUS_OPTIONS).map((status) => (
                     <SelectItem key={status.value} value={status.value}>
                       {status.label}
                     </SelectItem>
                   ))}
                 </SelectContent>
               </Select>
+              {field.value === 'defaulted' && (
+                <p className="text-xs text-muted-foreground">
+                  El estado de impago se gestiona desde el cuestionario de calificación fiscal, no desde aquí.
+                </p>
+              )}
               <FormMessage />
             </FormItem>
           )}

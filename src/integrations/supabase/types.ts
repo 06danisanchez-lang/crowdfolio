@@ -435,6 +435,7 @@ export type Database = {
           status: string
           stripe_customer_id: string | null
           stripe_subscription_id: string | null
+          updated_at: string
           user_id: string | null
         }
         Insert: {
@@ -450,6 +451,7 @@ export type Database = {
           status?: string
           stripe_customer_id?: string | null
           stripe_subscription_id?: string | null
+          updated_at?: string
           user_id?: string | null
         }
         Update: {
@@ -465,6 +467,7 @@ export type Database = {
           status?: string
           stripe_customer_id?: string | null
           stripe_subscription_id?: string | null
+          updated_at?: string
           user_id?: string | null
         }
         Relationships: []
@@ -505,6 +508,30 @@ export type Database = {
           updated_at?: string
           user_id?: string
           year?: number
+        }
+        Relationships: []
+      }
+      used_promo_codes: {
+        Row: {
+          applied_at: string
+          expires_at: string
+          id: string
+          promo_code: string
+          user_id: string
+        }
+        Insert: {
+          applied_at?: string
+          expires_at: string
+          id?: string
+          promo_code: string
+          user_id: string
+        }
+        Update: {
+          applied_at?: string
+          expires_at?: string
+          id?: string
+          promo_code?: string
+          user_id?: string
         }
         Relationships: []
       }

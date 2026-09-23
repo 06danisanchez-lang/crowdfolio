@@ -42,7 +42,7 @@ type ExpenseFormData = z.infer<typeof expenseSchema>;
 
 interface TaxExpenseFormProps {
   year: number;
-  onSubmit: (expense: Omit<TaxExpense, 'id' | 'userId' | 'createdAt' | 'updatedAt'>) => void;
+  onSubmit: (expense: Omit<TaxExpense, 'id' | 'userId' | 'createdAt' | 'updatedAt'>) => Promise<boolean>;
   prefillCategory?: TaxExpenseCategory;
   prefillDescription?: string;
   open?: boolean;
@@ -82,8 +82,8 @@ export function TaxExpenseForm({
     if (description) form.setValue('description', description);
   };
 
-  const handleSubmit = (data: ExpenseFormData) => {
-    onSubmit({
+  const handleSubmit = async (data: ExpenseFormData) => {
+    const success = await onSubmit({
       year,
       category: data.category as TaxExpenseCategory,
       description: data.description,
@@ -91,8 +91,10 @@ export function TaxExpenseForm({
       date: data.date,
       notes: data.notes || undefined,
     });
-    form.reset();
-    setOpen(false);
+    if (success) {
+      form.reset();
+      setOpen(false);
+    }
   };
 
   // Expose method to open with prefill

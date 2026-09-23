@@ -10,61 +10,10 @@ export type Database = {
   // Allows to automatically instantiate createClient with right options
   // instead of createClient<Database, { PostgrestVersion: 'XX' }>(URL, KEY)
   __InternalSupabase: {
-    PostgrestVersion: "14.4"
+    PostgrestVersion: "14.5"
   }
   public: {
     Tables: {
-      assets: {
-        Row: {
-          acquisition_cost: number
-          asset_type: Database["public"]["Enums"]["asset_type"]
-          country_code: string
-          created_at: string
-          expected_end_date: string | null
-          expected_return: number | null
-          id: string
-          investment_date: string
-          notes: string | null
-          platform_name: string
-          project_name: string
-          status: string
-          updated_at: string
-          user_id: string
-        }
-        Insert: {
-          acquisition_cost: number
-          asset_type: Database["public"]["Enums"]["asset_type"]
-          country_code?: string
-          created_at?: string
-          expected_end_date?: string | null
-          expected_return?: number | null
-          id?: string
-          investment_date: string
-          notes?: string | null
-          platform_name: string
-          project_name: string
-          status?: string
-          updated_at?: string
-          user_id: string
-        }
-        Update: {
-          acquisition_cost?: number
-          asset_type?: Database["public"]["Enums"]["asset_type"]
-          country_code?: string
-          created_at?: string
-          expected_end_date?: string | null
-          expected_return?: number | null
-          id?: string
-          investment_date?: string
-          notes?: string | null
-          platform_name?: string
-          project_name?: string
-          status?: string
-          updated_at?: string
-          user_id?: string
-        }
-        Relationships: []
-      }
       future_investments: {
         Row: {
           created_at: string
@@ -163,61 +112,103 @@ export type Database = {
       }
       investments: {
         Row: {
-          amount: number | null
+          actual_end_date: string | null
+          amount: number
+          amount_eur: number | null
+          amount_recovered: number | null
+          close_reason: Database["public"]["Enums"]["close_reason_type"] | null
+          country: string | null
           created_at: string
+          currency: string
           custom_platform_name: string | null
+          defaulted_at: string | null
+          equity_type: string | null
+          exchange_rate: number | null
+          exchange_rate_date: string | null
+          exchange_rate_source: string | null
           expected_end_date: string | null
-          expected_return: number | null
+          expected_return: number
           id: string
           income_model: string | null
-          investment_date: string | null
+          investment_date: string
           notes: string | null
+          original_amount: number | null
+          original_currency: string | null
           payment_frequency: string | null
-          platform: string | null
+          platform: string
           principal_return_type: string | null
-          project_name: string | null
+          project_name: string
           source_url: string | null
           status: string
           updated_at: string
           user_id: string
+          was_extended: boolean
         }
         Insert: {
-          amount?: number | null
+          actual_end_date?: string | null
+          amount: number
+          amount_eur?: number | null
+          amount_recovered?: number | null
+          close_reason?: Database["public"]["Enums"]["close_reason_type"] | null
+          country?: string | null
           created_at?: string
+          currency?: string
           custom_platform_name?: string | null
+          defaulted_at?: string | null
+          equity_type?: string | null
+          exchange_rate?: number | null
+          exchange_rate_date?: string | null
+          exchange_rate_source?: string | null
           expected_end_date?: string | null
-          expected_return?: number | null
+          expected_return: number
           id?: string
           income_model?: string | null
-          investment_date?: string | null
+          investment_date: string
           notes?: string | null
+          original_amount?: number | null
+          original_currency?: string | null
           payment_frequency?: string | null
-          platform?: string | null
+          platform: string
           principal_return_type?: string | null
-          project_name?: string | null
+          project_name: string
           source_url?: string | null
           status?: string
           updated_at?: string
           user_id: string
+          was_extended?: boolean
         }
         Update: {
-          amount?: number | null
+          actual_end_date?: string | null
+          amount?: number
+          amount_eur?: number | null
+          amount_recovered?: number | null
+          close_reason?: Database["public"]["Enums"]["close_reason_type"] | null
+          country?: string | null
           created_at?: string
+          currency?: string
           custom_platform_name?: string | null
+          defaulted_at?: string | null
+          equity_type?: string | null
+          exchange_rate?: number | null
+          exchange_rate_date?: string | null
+          exchange_rate_source?: string | null
           expected_end_date?: string | null
-          expected_return?: number | null
+          expected_return?: number
           id?: string
           income_model?: string | null
-          investment_date?: string | null
+          investment_date?: string
           notes?: string | null
+          original_amount?: number | null
+          original_currency?: string | null
           payment_frequency?: string | null
-          platform?: string | null
+          platform?: string
           principal_return_type?: string | null
-          project_name?: string | null
+          project_name?: string
           source_url?: string | null
           status?: string
           updated_at?: string
           user_id?: string
+          was_extended?: boolean
         }
         Relationships: []
       }
@@ -227,30 +218,30 @@ export type Database = {
           data: Json | null
           id: string
           message: string
-          read: boolean
+          read: boolean | null
           title: string
-          type: string
-          user_id: string
+          type: string | null
+          user_id: string | null
         }
         Insert: {
           created_at?: string
           data?: Json | null
           id?: string
           message: string
-          read?: boolean
+          read?: boolean | null
           title: string
-          type?: string
-          user_id: string
+          type?: string | null
+          user_id?: string | null
         }
         Update: {
           created_at?: string
           data?: Json | null
           id?: string
           message?: string
-          read?: boolean
+          read?: boolean | null
           title?: string
-          type?: string
-          user_id?: string
+          type?: string | null
+          user_id?: string | null
         }
         Relationships: []
       }
@@ -332,96 +323,58 @@ export type Database = {
         }
         Relationships: []
       }
-      opportunity_alerts: {
-        Row: {
-          created_at: string
-          enabled: boolean
-          id: string
-          locations: string[] | null
-          max_min_investment: number | null
-          max_return: number | null
-          max_term: number | null
-          min_return: number | null
-          name: string
-          opportunity_id: string | null
-          platforms: string[] | null
-          project_types: string[] | null
-          risk_levels: string[] | null
-          updated_at: string
-          user_id: string
-        }
-        Insert: {
-          created_at?: string
-          enabled?: boolean
-          id?: string
-          locations?: string[] | null
-          max_min_investment?: number | null
-          max_return?: number | null
-          max_term?: number | null
-          min_return?: number | null
-          name: string
-          opportunity_id?: string | null
-          platforms?: string[] | null
-          project_types?: string[] | null
-          risk_levels?: string[] | null
-          updated_at?: string
-          user_id: string
-        }
-        Update: {
-          created_at?: string
-          enabled?: boolean
-          id?: string
-          locations?: string[] | null
-          max_min_investment?: number | null
-          max_return?: number | null
-          max_term?: number | null
-          min_return?: number | null
-          name?: string
-          opportunity_id?: string | null
-          platforms?: string[] | null
-          project_types?: string[] | null
-          risk_levels?: string[] | null
-          updated_at?: string
-          user_id?: string
-        }
-        Relationships: [
-          {
-            foreignKeyName: "opportunity_alerts_opportunity_id_fkey"
-            columns: ["opportunity_id"]
-            isOneToOne: false
-            referencedRelation: "opportunities"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
       payments: {
         Row: {
           amount: number
+          amount_eur: number | null
           created_at: string
           date: string
+          exchange_rate: number | null
+          exchange_rate_date: string | null
+          exchange_rate_source: string | null
+          foreign_withholding_amount: number | null
+          foreign_withholding_currency: string | null
           id: string
           investment_id: string
           notes: string | null
+          original_amount: number | null
+          original_currency: string | null
           type: string
           withholding_applied: number | null
         }
         Insert: {
           amount: number
+          amount_eur?: number | null
           created_at?: string
           date: string
+          exchange_rate?: number | null
+          exchange_rate_date?: string | null
+          exchange_rate_source?: string | null
+          foreign_withholding_amount?: number | null
+          foreign_withholding_currency?: string | null
           id?: string
           investment_id: string
           notes?: string | null
+          original_amount?: number | null
+          original_currency?: string | null
           type: string
           withholding_applied?: number | null
         }
         Update: {
           amount?: number
+          amount_eur?: number | null
           created_at?: string
           date?: string
+          exchange_rate?: number | null
+          exchange_rate_date?: string | null
+          exchange_rate_source?: string | null
+          foreign_withholding_amount?: number | null
+          foreign_withholding_currency?: string | null
           id?: string
           investment_id?: string
           notes?: string | null
+          original_amount?: number | null
+          original_currency?: string | null
           type?: string
           withholding_applied?: number | null
         }
@@ -438,33 +391,33 @@ export type Database = {
       profiles: {
         Row: {
           avatar_url: string | null
-          created_at: string | null
+          created_at: string
           email: string | null
           full_name: string | null
           id: string
           pro_welcome_shown: boolean
           stripe_customer_id: string | null
-          updated_at: string | null
+          updated_at: string
         }
         Insert: {
           avatar_url?: string | null
-          created_at?: string | null
+          created_at?: string
           email?: string | null
           full_name?: string | null
           id: string
           pro_welcome_shown?: boolean
           stripe_customer_id?: string | null
-          updated_at?: string | null
+          updated_at?: string
         }
         Update: {
           avatar_url?: string | null
-          created_at?: string | null
+          created_at?: string
           email?: string | null
           full_name?: string | null
           id?: string
           pro_welcome_shown?: boolean
           stripe_customer_id?: string | null
-          updated_at?: string | null
+          updated_at?: string
         }
         Relationships: []
       }
@@ -474,60 +427,56 @@ export type Database = {
           current_period_end: string | null
           current_period_start: string | null
           id: string
-          import_count_this_month: number
-          import_reset_date: string
+          import_count_this_month: number | null
+          import_reset_date: string | null
           is_beta_pro: boolean
-          plan: Database["public"]["Enums"]["subscription_plan"]
+          plan: string
           pro_until: string | null
-          status: Database["public"]["Enums"]["subscription_status"]
+          status: string
           stripe_customer_id: string | null
           stripe_subscription_id: string | null
-          updated_at: string
-          user_id: string
+          user_id: string | null
         }
         Insert: {
           created_at?: string
           current_period_end?: string | null
           current_period_start?: string | null
           id?: string
-          import_count_this_month?: number
-          import_reset_date?: string
+          import_count_this_month?: number | null
+          import_reset_date?: string | null
           is_beta_pro?: boolean
-          plan?: Database["public"]["Enums"]["subscription_plan"]
+          plan?: string
           pro_until?: string | null
-          status?: Database["public"]["Enums"]["subscription_status"]
+          status?: string
           stripe_customer_id?: string | null
           stripe_subscription_id?: string | null
-          updated_at?: string
-          user_id: string
+          user_id?: string | null
         }
         Update: {
           created_at?: string
           current_period_end?: string | null
           current_period_start?: string | null
           id?: string
-          import_count_this_month?: number
-          import_reset_date?: string
+          import_count_this_month?: number | null
+          import_reset_date?: string | null
           is_beta_pro?: boolean
-          plan?: Database["public"]["Enums"]["subscription_plan"]
+          plan?: string
           pro_until?: string | null
-          status?: Database["public"]["Enums"]["subscription_status"]
+          status?: string
           stripe_customer_id?: string | null
           stripe_subscription_id?: string | null
-          updated_at?: string
-          user_id?: string
+          user_id?: string | null
         }
         Relationships: []
       }
       tax_expenses: {
         Row: {
           amount: number
-          category: Database["public"]["Enums"]["tax_expense_category"]
-          created_at: string
-          date: string
-          description: string
+          category: string
+          created_at: string | null
+          date: string | null
+          description: string | null
           id: string
-          investment_id: string | null
           notes: string | null
           updated_at: string
           user_id: string
@@ -535,12 +484,11 @@ export type Database = {
         }
         Insert: {
           amount: number
-          category: Database["public"]["Enums"]["tax_expense_category"]
-          created_at?: string
-          date: string
-          description: string
+          category: string
+          created_at?: string | null
+          date?: string | null
+          description?: string | null
           id?: string
-          investment_id?: string | null
           notes?: string | null
           updated_at?: string
           user_id: string
@@ -548,173 +496,15 @@ export type Database = {
         }
         Update: {
           amount?: number
-          category?: Database["public"]["Enums"]["tax_expense_category"]
-          created_at?: string
-          date?: string
-          description?: string
+          category?: string
+          created_at?: string | null
+          date?: string | null
+          description?: string | null
           id?: string
-          investment_id?: string | null
           notes?: string | null
           updated_at?: string
           user_id?: string
           year?: number
-        }
-        Relationships: [
-          {
-            foreignKeyName: "tax_expenses_investment_id_fkey"
-            columns: ["investment_id"]
-            isOneToOne: false
-            referencedRelation: "investments"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
-      tax_years: {
-        Row: {
-          created_at: string
-          gpp_losses_carried: number | null
-          id: string
-          rcm_losses_carried: number | null
-          updated_at: string
-          user_id: string
-          year: number
-        }
-        Insert: {
-          created_at?: string
-          gpp_losses_carried?: number | null
-          id?: string
-          rcm_losses_carried?: number | null
-          updated_at?: string
-          user_id: string
-          year: number
-        }
-        Update: {
-          created_at?: string
-          gpp_losses_carried?: number | null
-          id?: string
-          rcm_losses_carried?: number | null
-          updated_at?: string
-          user_id?: string
-          year?: number
-        }
-        Relationships: []
-      }
-      transactions: {
-        Row: {
-          asset_id: string
-          created_at: string
-          currency: string | null
-          date: string
-          gross_amount: number
-          id: string
-          notes: string | null
-          type: Database["public"]["Enums"]["transaction_type"]
-          withholding_amount: number | null
-        }
-        Insert: {
-          asset_id: string
-          created_at?: string
-          currency?: string | null
-          date: string
-          gross_amount: number
-          id?: string
-          notes?: string | null
-          type: Database["public"]["Enums"]["transaction_type"]
-          withholding_amount?: number | null
-        }
-        Update: {
-          asset_id?: string
-          created_at?: string
-          currency?: string | null
-          date?: string
-          gross_amount?: number
-          id?: string
-          notes?: string | null
-          type?: Database["public"]["Enums"]["transaction_type"]
-          withholding_amount?: number | null
-        }
-        Relationships: [
-          {
-            foreignKeyName: "transactions_asset_id_fkey"
-            columns: ["asset_id"]
-            isOneToOne: false
-            referencedRelation: "assets"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
-      used_promo_codes: {
-        Row: {
-          applied_at: string
-          expires_at: string
-          id: string
-          promo_code: string
-          user_id: string
-        }
-        Insert: {
-          applied_at?: string
-          expires_at: string
-          id?: string
-          promo_code: string
-          user_id: string
-        }
-        Update: {
-          applied_at?: string
-          expires_at?: string
-          id?: string
-          promo_code?: string
-          user_id?: string
-        }
-        Relationships: []
-      }
-      user_platforms: {
-        Row: {
-          country_code: string
-          created_at: string
-          default_withholding: number | null
-          id: string
-          logo_url: string | null
-          name: string
-          notes: string | null
-          platform_type: Database["public"]["Enums"]["platform_type"]
-          registration_date: string | null
-          status: Database["public"]["Enums"]["platform_status"]
-          updated_at: string
-          user_id: string
-          username: string | null
-          website_url: string | null
-        }
-        Insert: {
-          country_code?: string
-          created_at?: string
-          default_withholding?: number | null
-          id?: string
-          logo_url?: string | null
-          name: string
-          notes?: string | null
-          platform_type?: Database["public"]["Enums"]["platform_type"]
-          registration_date?: string | null
-          status?: Database["public"]["Enums"]["platform_status"]
-          updated_at?: string
-          user_id: string
-          username?: string | null
-          website_url?: string | null
-        }
-        Update: {
-          country_code?: string
-          created_at?: string
-          default_withholding?: number | null
-          id?: string
-          logo_url?: string | null
-          name?: string
-          notes?: string | null
-          platform_type?: Database["public"]["Enums"]["platform_type"]
-          registration_date?: string | null
-          status?: Database["public"]["Enums"]["platform_status"]
-          updated_at?: string
-          user_id?: string
-          username?: string | null
-          website_url?: string | null
         }
         Relationships: []
       }
@@ -722,20 +512,20 @@ export type Database = {
         Row: {
           created_at: string
           id: string
-          role: Database["public"]["Enums"]["app_role"]
-          user_id: string
+          role: string
+          user_id: string | null
         }
         Insert: {
           created_at?: string
           id?: string
-          role?: Database["public"]["Enums"]["app_role"]
-          user_id: string
+          role?: string
+          user_id?: string | null
         }
         Update: {
           created_at?: string
           id?: string
-          role?: Database["public"]["Enums"]["app_role"]
-          user_id?: string
+          role?: string
+          user_id?: string | null
         }
         Relationships: []
       }
@@ -744,35 +534,10 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
-      get_user_email: { Args: { _user_id: string }; Returns: string }
-      has_role: {
-        Args: {
-          _role: Database["public"]["Enums"]["app_role"]
-          _user_id: string
-        }
-        Returns: boolean
-      }
-      is_user_pro: { Args: { _user_id: string }; Returns: boolean }
+      [_ in never]: never
     }
     Enums: {
-      app_role: "admin" | "user"
-      asset_type: "LENDING" | "EQUITY"
-      platform_status: "active" | "inactive" | "pending_verification"
-      platform_type: "equity" | "lending" | "real_estate" | "mixed"
-      subscription_plan: "free" | "monthly" | "yearly"
-      subscription_status:
-        | "free"
-        | "active"
-        | "past_due"
-        | "canceled"
-        | "trialing"
-      tax_expense_category:
-        | "platform_fees"
-        | "advisory"
-        | "management"
-        | "travel"
-        | "other"
-      transaction_type: "INTEREST" | "DIVIDEND" | "SALE" | "LOSS"
+      close_reason_type: "on_time" | "early" | "extended" | "sold"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -788,12 +553,12 @@ export type Tables<
   DefaultSchemaTableNameOrOptions extends
     | keyof (DefaultSchema["Tables"] & DefaultSchema["Views"])
     | { schema: keyof DatabaseWithoutInternals },
-  TableName extends DefaultSchemaTableNameOrOptions extends {
+  TableName extends (DefaultSchemaTableNameOrOptions extends {
     schema: keyof DatabaseWithoutInternals
   }
     ? keyof (DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"] &
         DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Views"])
-    : never = never,
+    : never) = never,
 > = DefaultSchemaTableNameOrOptions extends {
   schema: keyof DatabaseWithoutInternals
 }
@@ -817,11 +582,11 @@ export type TablesInsert<
   DefaultSchemaTableNameOrOptions extends
     | keyof DefaultSchema["Tables"]
     | { schema: keyof DatabaseWithoutInternals },
-  TableName extends DefaultSchemaTableNameOrOptions extends {
+  TableName extends (DefaultSchemaTableNameOrOptions extends {
     schema: keyof DatabaseWithoutInternals
   }
     ? keyof DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"]
-    : never = never,
+    : never) = never,
 > = DefaultSchemaTableNameOrOptions extends {
   schema: keyof DatabaseWithoutInternals
 }
@@ -842,11 +607,11 @@ export type TablesUpdate<
   DefaultSchemaTableNameOrOptions extends
     | keyof DefaultSchema["Tables"]
     | { schema: keyof DatabaseWithoutInternals },
-  TableName extends DefaultSchemaTableNameOrOptions extends {
+  TableName extends (DefaultSchemaTableNameOrOptions extends {
     schema: keyof DatabaseWithoutInternals
   }
     ? keyof DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"]
-    : never = never,
+    : never) = never,
 > = DefaultSchemaTableNameOrOptions extends {
   schema: keyof DatabaseWithoutInternals
 }
@@ -867,11 +632,11 @@ export type Enums<
   DefaultSchemaEnumNameOrOptions extends
     | keyof DefaultSchema["Enums"]
     | { schema: keyof DatabaseWithoutInternals },
-  EnumName extends DefaultSchemaEnumNameOrOptions extends {
+  EnumName extends (DefaultSchemaEnumNameOrOptions extends {
     schema: keyof DatabaseWithoutInternals
   }
     ? keyof DatabaseWithoutInternals[DefaultSchemaEnumNameOrOptions["schema"]]["Enums"]
-    : never = never,
+    : never) = never,
 > = DefaultSchemaEnumNameOrOptions extends {
   schema: keyof DatabaseWithoutInternals
 }
@@ -884,11 +649,11 @@ export type CompositeTypes<
   PublicCompositeTypeNameOrOptions extends
     | keyof DefaultSchema["CompositeTypes"]
     | { schema: keyof DatabaseWithoutInternals },
-  CompositeTypeName extends PublicCompositeTypeNameOrOptions extends {
+  CompositeTypeName extends (PublicCompositeTypeNameOrOptions extends {
     schema: keyof DatabaseWithoutInternals
   }
     ? keyof DatabaseWithoutInternals[PublicCompositeTypeNameOrOptions["schema"]]["CompositeTypes"]
-    : never = never,
+    : never) = never,
 > = PublicCompositeTypeNameOrOptions extends {
   schema: keyof DatabaseWithoutInternals
 }
@@ -900,26 +665,7 @@ export type CompositeTypes<
 export const Constants = {
   public: {
     Enums: {
-      app_role: ["admin", "user"],
-      asset_type: ["LENDING", "EQUITY"],
-      platform_status: ["active", "inactive", "pending_verification"],
-      platform_type: ["equity", "lending", "real_estate", "mixed"],
-      subscription_plan: ["free", "monthly", "yearly"],
-      subscription_status: [
-        "free",
-        "active",
-        "past_due",
-        "canceled",
-        "trialing",
-      ],
-      tax_expense_category: [
-        "platform_fees",
-        "advisory",
-        "management",
-        "travel",
-        "other",
-      ],
-      transaction_type: ["INTEREST", "DIVIDEND", "SALE", "LOSS"],
+      close_reason_type: ["on_time", "early", "extended", "sold"],
     },
   },
 } as const

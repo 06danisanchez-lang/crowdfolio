@@ -131,6 +131,15 @@ export type Database = {
           id: string
           income_model: string | null
           investment_date: string
+          loss_assessed_at: string | null
+          loss_enforcement_date: string | null
+          loss_enforcement_initiator: string | null
+          loss_enforcement_started: boolean | null
+          loss_insolvency_concluded_date: string | null
+          loss_insolvency_status: string | null
+          loss_quita_amount: number | null
+          loss_quita_date: string | null
+          loss_rules_version: number | null
           notes: string | null
           original_amount: number | null
           original_currency: string | null
@@ -164,6 +173,15 @@ export type Database = {
           id?: string
           income_model?: string | null
           investment_date: string
+          loss_assessed_at?: string | null
+          loss_enforcement_date?: string | null
+          loss_enforcement_initiator?: string | null
+          loss_enforcement_started?: boolean | null
+          loss_insolvency_concluded_date?: string | null
+          loss_insolvency_status?: string | null
+          loss_quita_amount?: number | null
+          loss_quita_date?: string | null
+          loss_rules_version?: number | null
           notes?: string | null
           original_amount?: number | null
           original_currency?: string | null
@@ -197,6 +215,15 @@ export type Database = {
           id?: string
           income_model?: string | null
           investment_date?: string
+          loss_assessed_at?: string | null
+          loss_enforcement_date?: string | null
+          loss_enforcement_initiator?: string | null
+          loss_enforcement_started?: boolean | null
+          loss_insolvency_concluded_date?: string | null
+          loss_insolvency_status?: string | null
+          loss_quita_amount?: number | null
+          loss_quita_date?: string | null
+          loss_rules_version?: number | null
           notes?: string | null
           original_amount?: number | null
           original_currency?: string | null

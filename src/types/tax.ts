@@ -13,7 +13,6 @@ export interface TaxExpense {
   description: string;
   amount: number;
   date: string;
-  investmentId?: string;
   notes?: string;
   createdAt: string;
   updatedAt: string;

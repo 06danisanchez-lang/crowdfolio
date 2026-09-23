@@ -232,7 +232,8 @@ export function useTaxSummary(year: number) {
 
     // eslint-disable-next-line react-hooks/exhaustive-deps
     return () => { ++requestIdRef.current; };
-  }, [user, year, retryCount]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [user?.id, year, retryCount]);
 
   // Pérdidas de cartera por impago — Fase 1: la calificación fiscal (qué hecho la
   // hace imputable y en qué ejercicio) se implementa en la Fase 2. Por ahora se

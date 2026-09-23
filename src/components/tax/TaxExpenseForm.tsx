@@ -33,7 +33,13 @@ import {
 const expenseSchema = z.object({
   category: z.enum(['platform_fees', 'advisory', 'management', 'travel', 'other']),
   description: z.string().min(1, 'La descripción es obligatoria').max(200, 'Máximo 200 caracteres'),
-  amount: z.number().min(0.01, 'El importe debe ser mayor que 0'),
+  amount: z
+    .string()
+    .min(1, 'El importe es obligatorio')
+    .refine((val) => {
+      const parsed = parseFloat(val.replace(',', '.'));
+      return !isNaN(parsed) && parsed > 0;
+    }, 'El importe debe ser mayor que 0'),
   date: z.string().min(1, 'La fecha es obligatoria'),
   notes: z.string().max(500, 'Máximo 500 caracteres').optional(),
 });
@@ -70,7 +76,7 @@ export function TaxExpenseForm({
     defaultValues: {
       category: prefillCategory || 'platform_fees',
       description: prefillDescription || '',
-      amount: 0,
+      amount: '',
       date: new Date().toISOString().split('T')[0],
       notes: '',
     },
@@ -87,7 +93,7 @@ export function TaxExpenseForm({
       year,
       category: data.category as TaxExpenseCategory,
       description: data.description,
-      amount: data.amount,
+      amount: parseFloat(data.amount.replace(',', '.')),
       date: data.date,
       notes: data.notes || undefined,
     });
@@ -170,12 +176,10 @@ export function TaxExpenseForm({
                   <FormLabel>Importe (€)</FormLabel>
                   <FormControl>
                     <Input
-                      type="number"
-                      step="0.01"
-                      min="0.01"
-                      placeholder="0.00"
+                      type="text"
+                      inputMode="decimal"
+                      placeholder="0,00"
                       {...field}
-                      onChange={(e) => field.onChange(parseFloat(e.target.value) || 0)}
                     />
                   </FormControl>
                   <FormMessage />

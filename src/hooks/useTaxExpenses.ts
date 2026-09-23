@@ -70,7 +70,8 @@ export function useTaxExpenses(year?: number) {
         setIsLoading(false);
       }
     }
-  }, [user, year]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [user?.id, year]);
 
   useEffect(() => {
     fetchExpenses();

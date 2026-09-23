@@ -53,7 +53,7 @@ export function useTaxExpenses(year?: number) {
         id: expense.id, userId: expense.user_id, year: expense.year,
         category: expense.category as TaxExpenseCategory,
         description: expense.description, amount: Number(expense.amount),
-        date: expense.date, investmentId: expense.investment_id || undefined,
+        date: expense.date,
         notes: expense.notes || undefined,
         createdAt: expense.created_at, updatedAt: expense.updated_at,
       }));
@@ -70,7 +70,8 @@ export function useTaxExpenses(year?: number) {
         setIsLoading(false);
       }
     }
-  }, [user, year]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [user?.id, year]);
 
   useEffect(() => {
     fetchExpenses();
@@ -78,28 +79,30 @@ export function useTaxExpenses(year?: number) {
     return () => { ++requestIdRef.current; };
   }, [fetchExpenses]);
 
-  const addExpense = async (expense: Omit<TaxExpense, 'id' | 'userId' | 'createdAt' | 'updatedAt'>) => {
-    if (!user) return;
+  const addExpense = async (expense: Omit<TaxExpense, 'id' | 'userId' | 'createdAt' | 'updatedAt'>): Promise<boolean> => {
+    if (!user) return false;
     try {
       const { data, error } = await supabase.from('tax_expenses').insert({
         user_id: user.id, year: expense.year, category: expense.category,
         description: expense.description, amount: expense.amount, date: expense.date,
-        investment_id: expense.investmentId || null, notes: expense.notes || null,
+        notes: expense.notes || null,
       }).select().single();
       if (error) throw error;
       const newExpense: TaxExpense = {
         id: data.id, userId: data.user_id, year: data.year,
         category: data.category as TaxExpenseCategory,
         description: data.description, amount: Number(data.amount),
-        date: data.date, investmentId: data.investment_id || undefined,
+        date: data.date,
         notes: data.notes || undefined,
         createdAt: data.created_at, updatedAt: data.updated_at,
       };
       setExpenses((prev) => [newExpense, ...prev]);
       toast.success('Gasto deducible añadido');
+      return true;
     } catch (error) {
       console.error('Error adding tax expense:', error);
       toast.error('Error al añadir el gasto');
+      return false;
     }
   };
 
@@ -112,7 +115,6 @@ export function useTaxExpenses(year?: number) {
       if (updates.description !== undefined) updateData.description = updates.description;
       if (updates.amount !== undefined) updateData.amount = updates.amount;
       if (updates.date !== undefined) updateData.date = updates.date;
-      if (updates.investmentId !== undefined) updateData.investment_id = updates.investmentId || null;
       if (updates.notes !== undefined) updateData.notes = updates.notes || null;
 
       const { error } = await supabase.from('tax_expenses').update(updateData).eq('id', id).eq('user_id', user.id);

@@ -37,7 +37,15 @@ interface InvestmentRow {
   defaulted_at: string | null;
   amount_recovered: number | null;
   equity_type: string | null;
+  loss_insolvency_status: string | null;
+  loss_insolvency_concluded_date: string | null;
+  loss_quita_amount: number | null;
+  loss_quita_date: string | null;
+  loss_enforcement_started: boolean | null;
+  loss_enforcement_date: string | null;
+  loss_enforcement_initiator: string | null;
   loss_assessed_at: string | null;
+  loss_rules_version: number | null;
   created_at: string;
   updated_at: string;
 }
@@ -58,6 +66,18 @@ function mapInvestmentRow(inv: InvestmentRow): Investment {
     principalReturnType: (inv.principal_return_type || undefined) as Investment['principalReturnType'],
     notes: inv.notes || undefined,
     payments: [],
+    defaultedAt: inv.defaulted_at || undefined,
+    amountRecovered: inv.amount_recovered != null ? Number(inv.amount_recovered) : undefined,
+    equityType: (inv.equity_type || undefined) as Investment['equityType'],
+    lossInsolvencyStatus: (inv.loss_insolvency_status as Investment['lossInsolvencyStatus']) ?? null,
+    lossInsolvencyConcludedDate: inv.loss_insolvency_concluded_date,
+    lossQuitaAmount: inv.loss_quita_amount != null ? Number(inv.loss_quita_amount) : null,
+    lossQuitaDate: inv.loss_quita_date,
+    lossEnforcementStarted: inv.loss_enforcement_started,
+    lossEnforcementDate: inv.loss_enforcement_date,
+    lossEnforcementInitiator: inv.loss_enforcement_initiator as Investment['lossEnforcementInitiator'],
+    lossAssessedAt: inv.loss_assessed_at,
+    lossRulesVersion: inv.loss_rules_version,
     createdAt: inv.created_at,
     updatedAt: inv.updated_at,
   };

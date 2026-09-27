@@ -16,7 +16,7 @@ import { getPrincipalReturned } from '@/lib/tax/principalReturned';
 import { useLanguage } from '@/contexts/LanguageContext';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 import { cn } from '@/lib/utils';
 
@@ -331,6 +331,7 @@ export function DefaultLossQuestionnaire({ investment, onClose, onUpdate, onAddP
         <DialogContent className="sm:max-w-md">
           <DialogHeader>
             <DialogTitle>{t('defaultLoss.title')}</DialogTitle>
+            <DialogDescription>{t('defaultLoss.description')}</DialogDescription>
           </DialogHeader>
           <p className="text-sm">{t('defaultLoss.equity.text')}</p>
           <p className="text-xs text-muted-foreground">{t('defaultLoss.disclaimer')}</p>
@@ -358,6 +359,7 @@ export function DefaultLossQuestionnaire({ investment, onClose, onUpdate, onAddP
       <DialogContent className="sm:max-w-md max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle>{t('defaultLoss.title')}</DialogTitle>
+          <DialogDescription>{t('defaultLoss.description')}</DialogDescription>
         </DialogHeader>
 
         {step === 'p0' && (

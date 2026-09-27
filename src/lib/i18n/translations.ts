@@ -273,6 +273,7 @@ export const translations: Record<Lang, Record<string, string>> = {
 
     // Fase 3 — cuestionario de calificación fiscal de pérdidas por impago (art. 14.2.k LIRPF)
     'defaultLoss.title': 'Calificación fiscal del impago',
+    'defaultLoss.description': 'Responde a las preguntas para calificar fiscalmente esta pérdida por impago.',
     'defaultLoss.nav.back': 'Atrás',
     'defaultLoss.nav.continue': 'Continuar',
     'defaultLoss.nav.confirm': 'Confirmar',
@@ -932,6 +933,7 @@ export const translations: Record<Lang, Record<string, string>> = {
 
     // Phase 3 — tax qualification questionnaire for loan default losses (art. 14.2.k LIRPF)
     'defaultLoss.title': 'Tax qualification of the default',
+    'defaultLoss.description': 'Answer the questions to give this default loss its tax qualification.',
     'defaultLoss.nav.back': 'Back',
     'defaultLoss.nav.continue': 'Continue',
     'defaultLoss.nav.confirm': 'Confirm',

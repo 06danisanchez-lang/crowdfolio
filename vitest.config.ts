@@ -1,9 +1,19 @@
 import { defineConfig } from 'vitest/config';
+import path from 'path';
 
-// Configuración mínima — solo para los tests de lógica pura de src/lib/tax/.
-// Sin entorno DOM ni alias: los tests usan imports relativos a propósito.
+// Los tests de lógica pura (.test.ts, en src/lib/) siguen sin entorno DOM ni
+// alias, a propósito: rápidos, con imports relativos. Los tests de
+// componentes (.test.tsx) sí necesitan jsdom y el alias @/ (igual que
+// vite.config.ts) para poder montar componentes reales con React Testing
+// Library — se añadieron en el hotfix de DefaultLossQuestionnaire.
 export default defineConfig({
+  resolve: {
+    alias: {
+      '@': path.resolve(__dirname, './src'),
+    },
+  },
   test: {
-    include: ['src/**/*.test.ts'],
+    include: ['src/**/*.test.{ts,tsx}'],
+    environmentMatchGlobs: [['**/*.test.tsx', 'jsdom']],
   },
 });

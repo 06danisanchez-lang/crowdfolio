@@ -115,6 +115,16 @@ export function InvestmentList({
   const [confirmingMaturityId, setConfirmingMaturityId] = useState<string | null>(null);
   const [closingInvestmentId, setClosingInvestmentId] = useState<string | null>(null);
   const [questionnaireInvestmentId, setQuestionnaireInvestmentId] = useState<string | null>(null);
+  // Se incrementa en cada apertura del cuestionario (openQuestionnaire), para
+  // forzar un remontaje fresco de DefaultLossQuestionnaire vía `key` incluso
+  // cuando se reabre la MISMA inversión (mismo id) — por ejemplo, si primero
+  // se marcó como equity y se cambió después a otro modelo de ingreso, o si
+  // se cerró a medias y se reabre para volver a empezar desde P0.
+  const [questionnaireOpenSeq, setQuestionnaireOpenSeq] = useState(0);
+  const openQuestionnaire = (id: string) => {
+    setQuestionnaireOpenSeq((n) => n + 1);
+    setQuestionnaireInvestmentId(id);
+  };
 
   // Both derived in real-time so dialogs always reflect the latest data.
   const viewingInvestment = useMemo(
@@ -763,10 +773,11 @@ export function InvestmentList({
         onClose={() => setConfirmingMaturityId(null)}
         onUpdate={onUpdate}
         onAddPayment={onAddPayment}
-        onDefaulted={(inv) => setQuestionnaireInvestmentId(inv.id)}
+        onDefaulted={(inv) => openQuestionnaire(inv.id)}
       />
 
       <DefaultLossQuestionnaire
+        key={questionnaireInvestmentId ? `${questionnaireInvestmentId}-${questionnaireOpenSeq}` : 'closed'}
         investment={questionnaireInvestment}
         onClose={() => setQuestionnaireInvestmentId(null)}
         onUpdate={onUpdate}

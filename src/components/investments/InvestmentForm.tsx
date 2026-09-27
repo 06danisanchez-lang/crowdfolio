@@ -8,6 +8,7 @@ import { Investment, Platform, InvestmentStatus, PLATFORMS, STATUS_OPTIONS, INCO
 import { getInvestmentCompletionStatus } from '@/lib/investment/completeness';
 import { generateSchedule } from '@/lib/investment/scheduleGenerator';
 import { PLAN_FEATURES } from '@/lib/stripe/config';
+import { toDateOnlyString } from '@/lib/dateOnly';
 
 // 'Impago' no es seleccionable desde este formulario genérico: solo se puede
 // llegar a 'defaulted' completando el cuestionario de calificación fiscal
@@ -361,8 +362,8 @@ export function InvestmentForm({
         projectName: data.projectName,
         amount: data.amount || null,
         expectedReturn: data.expectedReturn || null,
-        investmentDate: data.investmentDate?.toISOString(),
-        expectedEndDate: data.expectedEndDate?.toISOString(),
+        investmentDate: data.investmentDate ? toDateOnlyString(data.investmentDate) : undefined,
+        expectedEndDate: data.expectedEndDate ? toDateOnlyString(data.expectedEndDate) : undefined,
         sourceUrl: data.sourceUrl,
         notes: data.notes,
       });
@@ -406,8 +407,8 @@ export function InvestmentForm({
           incomeModel: model as IncomeModel,
           paymentFrequency: data.paymentFrequency,
           principalReturnType: data.principalReturnType,
-          investmentDate: data.investmentDate instanceof Date ? data.investmentDate.toISOString().split('T')[0] : data.investmentDate,
-          expectedEndDate: data.expectedEndDate instanceof Date ? data.expectedEndDate.toISOString().split('T')[0] : (data.expectedEndDate || ''),
+          investmentDate: data.investmentDate instanceof Date ? toDateOnlyString(data.investmentDate) : data.investmentDate,
+          expectedEndDate: data.expectedEndDate instanceof Date ? toDateOnlyString(data.expectedEndDate) : (data.expectedEndDate || ''),
         });
         hasSchedule = dryRunEntries.length > 0;
       }
@@ -416,9 +417,9 @@ export function InvestmentForm({
         platform: data.platform,
         projectName: data.projectName,
         amount: data.amount,
-        investmentDate: data.investmentDate instanceof Date ? data.investmentDate.toISOString() : data.investmentDate,
+        investmentDate: data.investmentDate instanceof Date ? toDateOnlyString(data.investmentDate) : data.investmentDate,
         expectedReturn: data.expectedReturn,
-        expectedEndDate: data.expectedEndDate instanceof Date ? data.expectedEndDate.toISOString() : data.expectedEndDate,
+        expectedEndDate: data.expectedEndDate instanceof Date ? toDateOnlyString(data.expectedEndDate) : data.expectedEndDate,
         incomeModel: data.incomeModel,
         paymentFrequency: data.paymentFrequency,
         hasSchedule,
@@ -449,8 +450,8 @@ export function InvestmentForm({
         status: finalStatus,
         notes: data.notes,
         sourceUrl: data.sourceUrl || undefined,
-        investmentDate: data.investmentDate.toISOString(),
-        expectedEndDate: data.expectedEndDate?.toISOString(),
+        investmentDate: toDateOnlyString(data.investmentDate),
+        expectedEndDate: data.expectedEndDate ? toDateOnlyString(data.expectedEndDate) : undefined,
       });
     }
 
@@ -488,8 +489,8 @@ export function InvestmentForm({
         equityType: values.equityType || null,
         status: 'draft',
         notes: values.notes,
-        investmentDate: values.investmentDate?.toISOString() || null,
-        expectedEndDate: values.expectedEndDate?.toISOString() || null,
+        investmentDate: values.investmentDate ? toDateOnlyString(values.investmentDate) : null,
+        expectedEndDate: values.expectedEndDate ? toDateOnlyString(values.expectedEndDate) : null,
       });
       draft.clear();
       setDraftExists(false);
@@ -506,11 +507,11 @@ export function InvestmentForm({
     projectName: initialData.projectName,
     amount: initialData.amount,
     investmentDate: initialData.investmentDate
-      ? (initialData.investmentDate instanceof Date ? initialData.investmentDate.toISOString() : initialData.investmentDate as string)
+      ? (initialData.investmentDate instanceof Date ? toDateOnlyString(initialData.investmentDate) : initialData.investmentDate as string)
       : null,
     expectedReturn: initialData.expectedReturn,
     expectedEndDate: initialData.expectedEndDate
-      ? (initialData.expectedEndDate instanceof Date ? initialData.expectedEndDate.toISOString() : initialData.expectedEndDate as string)
+      ? (initialData.expectedEndDate instanceof Date ? toDateOnlyString(initialData.expectedEndDate) : initialData.expectedEndDate as string)
       : null,
     incomeModel: 'incomeModel' in initialData ? (initialData as Investment).incomeModel : null,
     status: 'status' in initialData ? (initialData as Investment).status : null,

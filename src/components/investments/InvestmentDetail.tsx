@@ -4,6 +4,7 @@ import { format, parseISO } from 'date-fns';
 import { es } from 'date-fns/locale';
 import { Plus, Trash2, CalendarIcon, Pencil } from 'lucide-react';
 import { Investment, Payment, PLATFORMS, STATUS_OPTIONS, InvestmentScheduleEntry, IncomeModel } from '@/types/investment';
+import { toDateOnlyString } from '@/lib/dateOnly';
 import {
   getInvestmentDurationYears,
   calculateInvestmentTotalReturnPercent,
@@ -170,7 +171,7 @@ export function InvestmentDetail({ investment, schedule = [], onClose, onUpdate,
 
   const handleExtend = async () => {
     if (!investment || !newEndDate) return;
-    await onUpdate(investment.id, { expectedEndDate: newEndDate.toISOString().split('T')[0] });
+    await onUpdate(investment.id, { expectedEndDate: toDateOnlyString(newEndDate) });
     resetForms();
   };
 
@@ -178,7 +179,7 @@ export function InvestmentDetail({ investment, schedule = [], onClose, onUpdate,
     if (!investment || !partialAmount) return;
     const amount = parseFloat(partialAmount);
     await onAddPayment(investment.id, {
-      date: partialDate.toISOString(),
+      date: toDateOnlyString(partialDate),
       amount,
       type: 'principal',
     });
@@ -198,7 +199,7 @@ export function InvestmentDetail({ investment, schedule = [], onClose, onUpdate,
   const handleAddPayment = () => {
     if (investment && paymentAmount) {
       onAddPayment(investment.id, {
-        date: paymentDate.toISOString(),
+        date: toDateOnlyString(paymentDate),
         amount: parseFloat(paymentAmount),
         type: paymentType,
       });

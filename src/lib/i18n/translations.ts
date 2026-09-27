@@ -131,6 +131,7 @@ export const translations: Record<Lang, Record<string, string>> = {
     'common.status': 'Estado',
     'common.yes': 'Sí',
     'common.no': 'No',
+    'common.dontKnow': 'No lo sé',
 
     // Dashboard
     'dashboard.title': 'Inicio',
@@ -269,6 +270,60 @@ export const translations: Record<Lang, Record<string, string>> = {
     'tax.info.buckets.gppLine2': 'Las pérdidas por impago de un préstamo no van aquí: se declaran en la base general y tienen reglas propias (ver "Pérdidas de cartera por impago").',
     'tax.info.compensation25.disclaimer': 'Esta regla se aplica a las ganancias y pérdidas de la base del ahorro, como la venta de participaciones, que Crowdfolio todavía no calcula. Las pérdidas por impago no se compensan así: se declaran en la base general, con reglas propias.',
     'tax.info.carryforward.disclaimer': 'Las pérdidas por impago, que se declaran en la base general, también pueden compensarse en los cuatro años siguientes, pero con otras rentas distintas de los intereses. Crowdfolio no calcula esta compensación.',
+
+    // Fase 3 — cuestionario de calificación fiscal de pérdidas por impago (art. 14.2.k LIRPF)
+    'defaultLoss.title': 'Calificación fiscal del impago',
+    'defaultLoss.nav.back': 'Atrás',
+    'defaultLoss.nav.continue': 'Continuar',
+    'defaultLoss.nav.confirm': 'Confirmar',
+    'defaultLoss.q.whyWeAsk': '¿Por qué te preguntamos esto?',
+
+    'defaultLoss.q.p0.title': '¿Has recuperado algo de esta inversión?',
+    'defaultLoss.q.p0.capitalReceived': 'Capital recibido hasta ahora: {amount} €',
+    'defaultLoss.q.p0.addRecoveryButton': 'Añadir una recuperación',
+    'defaultLoss.q.p0.removeRecovery': 'Quitar la recuperación',
+    'defaultLoss.q.p0.recoveryAmountLabel': 'Importe recuperado (€)',
+    'defaultLoss.q.p0.recoveryDateLabel': 'Fecha de la recuperación',
+    'defaultLoss.q.p0.help': 'Incluye cualquier cantidad de capital que la plataforma te haya devuelto después del impago. Si no has recuperado nada, continúa sin añadir nada.',
+
+    'defaultLoss.q.p1.title': '¿La sociedad que recibió el préstamo está en concurso de acreedores?',
+    'defaultLoss.q.p1.help': 'Hacienda solo permite declarar una pérdida por impago cuando ha ocurrido un hecho formal que demuestra que el dinero no se va a recuperar. El concurso de acreedores es uno de ellos. Puedes comprobarlo gratis en publicidadconcursal.es buscando el nombre o el NIF de la sociedad, o preguntando a la plataforma.',
+
+    'defaultLoss.q.p2.title': '¿En qué situación está el concurso?',
+    'defaultLoss.q.p2.concludedOption': 'Ha terminado y no he cobrado',
+    'defaultLoss.q.p2.openOption': 'Sigue abierto',
+    'defaultLoss.q.p2.dateLabel': 'Fecha en que terminó el concurso',
+    'defaultLoss.q.p2.help': 'Mientras el concurso está abierto todavía puede haber pagos a los acreedores, así que la pérdida no es definitiva. Se puede declarar cuando el concurso termina sin que hayas cobrado.',
+
+    'defaultLoss.q.pq.title': '¿Se ha aprobado alguna quita, es decir, una reducción de la deuda?',
+    'defaultLoss.q.pq.amountLabel': 'Importe de la quita que te corresponde',
+    'defaultLoss.q.pq.dateLabel': 'Fecha en que la quita se hizo efectiva',
+    'defaultLoss.q.pq.help': 'La quita puede aprobarse dentro de un concurso, en el convenio con los acreedores, o fuera de él, en un acuerdo de refinanciación. Si se aprueba, puedes declarar como pérdida el importe de esa reducción en el año en que se hace efectiva. La plataforma debería informarte del importe que te corresponde.',
+
+    'defaultLoss.q.p3.title': '¿Se ha iniciado una reclamación judicial para ejecutar el préstamo (por ejemplo, una ejecución hipotecaria)?',
+    'defaultLoss.q.p3.userOption': 'Sí, la he iniciado yo',
+    'defaultLoss.q.p3.platformOption': 'Sí, la ha iniciado la plataforma en nombre de los inversores',
+    'defaultLoss.q.p3.help': 'Si no hay concurso, la otra vía que permite la ley es que haya pasado un año desde que empezó un procedimiento judicial para cobrar el préstamo sin haberlo cobrado. En crowdfunding inmobiliario suele iniciarlo la plataforma cuando el préstamo tiene garantía hipotecaria. Si no lo sabes, pregúntale a la plataforma.',
+
+    'defaultLoss.q.p4.title': '¿En qué fecha se inició el procedimiento?',
+    'defaultLoss.q.p4.help': 'Es la fecha en que se presentó la demanda de ejecución. La plataforma debería poder indicártela.',
+
+    'defaultLoss.equity.text': 'Esta inversión es una participación en el capital de una sociedad, no un préstamo, así que no le aplican las reglas de impago. Una pérdida en participaciones se declara, por lo general, cuando las vendes o cuando la sociedad se liquida. Crowdfolio todavía no calcula este caso: consúltalo con tu asesor.',
+    'defaultLoss.disclaimer': 'Esta información es orientativa y se basa en los datos que has indicado. No constituye asesoramiento fiscal. Confirma tu caso con un asesor antes de presentar la declaración.',
+
+    'defaultLoss.result.headline': 'Has perdido {loss} € en {project}.',
+    'defaultLoss.result.imputation.quita': 'El {date} se hizo efectiva una quita: {amount} € pueden incluirse en tu declaración del ejercicio {year}.',
+    'defaultLoss.result.imputation.insolvencyConcluded': 'El concurso de acreedores terminó el {date} sin que cobraras: {amount} € pueden incluirse en tu declaración del ejercicio {year}.',
+    'defaultLoss.result.imputation.enforcement': 'El {date} se cumplió un año desde el inicio de la ejecución judicial sin cobrar: {amount} € pueden incluirse en tu declaración del ejercicio {year}.',
+    'defaultLoss.result.generalBaseNote': 'Estas cantidades se declaran en la base imponible general, en el apartado de ganancias y pérdidas patrimoniales que no derivan de la transmisión de elementos patrimoniales.',
+    'defaultLoss.result.platformEnforcementWarning': 'La ejecución la inició la plataforma en nombre de los inversores. Entendemos que cuenta a estos efectos, pero Hacienda no lo ha aclarado de forma expresa. Confírmalo con tu asesor antes de declararla.',
+    'defaultLoss.result.pendingHeader.withImputations': 'Quedan {pending} € que todavía no puedes declarar.',
+    'defaultLoss.result.pendingHeader.withoutImputations': 'Todavía no puedes declarar esta pérdida.',
+    'defaultLoss.result.pending.deadline': 'La ley exige que pase un año desde el inicio de la ejecución judicial ({startDate}) sin cobrar. Si sigue sin cobrarse, podrás hacerlo a partir del {deadline}. Te avisaremos cuando llegue esa fecha.',
+    'defaultLoss.result.pending.insolvency': 'La sociedad está en concurso de acreedores y, mientras siga abierto, todavía puede haber pagos a los acreedores. Podrás hacerlo cuando el concurso termine sin que hayas cobrado o si se aprueba una quita. Actualiza la situación cuando cambie; te lo recordaremos cada tres meses.',
+    'defaultLoss.result.pending.notYet': 'La pérdida es real y aparece en tu cartera, pero la ley solo permite declararla cuando termina un concurso de acreedores sin cobro, se aprueba una quita o pasa un año desde una ejecución judicial. Si la plataforma te informa de alguno de estos pasos, actualízalo aquí. Te lo recordaremos cada tres meses.',
+    'defaultLoss.result.pending.unknown': 'Para saberlo necesitamos saber si la sociedad está en concurso. Puedes comprobarlo gratis en publicidadconcursal.es buscando el nombre o el NIF de la sociedad, o preguntar a la plataforma. Cuando lo sepas, actualízalo aquí.',
+    'defaultLoss.result.noLoss': 'No tienes pérdida en esta inversión: el capital que te han devuelto cubre lo invertido.',
 
     // Profile
     'profile.title': 'Mi Perfil',
@@ -735,6 +790,7 @@ export const translations: Record<Lang, Record<string, string>> = {
     'common.status': 'Status',
     'common.yes': 'Yes',
     'common.no': 'No',
+    'common.dontKnow': "I don't know",
 
     // Dashboard
     'dashboard.title': 'Home',
@@ -873,6 +929,60 @@ export const translations: Record<Lang, Record<string, string>> = {
     'tax.info.buckets.gppLine2': 'Losses from loan defaults don\'t belong here: they\'re declared in the general tax base and follow their own rules (see "Portfolio losses from loan defaults").',
     'tax.info.compensation25.disclaimer': "This rule applies to gains and losses in the savings tax base, such as selling equity stakes, which Crowdfolio doesn't calculate yet. Losses from loan defaults aren't offset this way: they're declared in the general tax base, with their own rules.",
     'tax.info.carryforward.disclaimer': "Losses from loan defaults, declared in the general tax base, can also be offset over the following four years, but against income other than interest. Crowdfolio doesn't calculate this offset.",
+
+    // Phase 3 — tax qualification questionnaire for loan default losses (art. 14.2.k LIRPF)
+    'defaultLoss.title': 'Tax qualification of the default',
+    'defaultLoss.nav.back': 'Back',
+    'defaultLoss.nav.continue': 'Continue',
+    'defaultLoss.nav.confirm': 'Confirm',
+    'defaultLoss.q.whyWeAsk': 'Why are we asking this?',
+
+    'defaultLoss.q.p0.title': 'Have you recovered anything from this investment?',
+    'defaultLoss.q.p0.capitalReceived': 'Capital received so far: €{amount}',
+    'defaultLoss.q.p0.addRecoveryButton': 'Add a recovery',
+    'defaultLoss.q.p0.removeRecovery': 'Remove the recovery',
+    'defaultLoss.q.p0.recoveryAmountLabel': 'Recovered amount (€)',
+    'defaultLoss.q.p0.recoveryDateLabel': 'Date of the recovery',
+    'defaultLoss.q.p0.help': "Include any amount of capital the platform has returned to you after the default. If you haven't recovered anything, continue without adding anything.",
+
+    'defaultLoss.q.p1.title': 'Is the company that received the loan in insolvency proceedings (concurso de acreedores)?',
+    'defaultLoss.q.p1.help': "The Spanish tax authority only allows you to declare a loss from a default once a formal event has occurred proving the money won't be recovered. Insolvency proceedings are one of them. You can check for free at publicidadconcursal.es by searching the company's name or tax ID, or by asking the platform.",
+
+    'defaultLoss.q.p2.title': 'What is the current state of the insolvency proceedings?',
+    'defaultLoss.q.p2.concludedOption': "They've ended and I haven't been paid",
+    'defaultLoss.q.p2.openOption': "They're still open",
+    'defaultLoss.q.p2.dateLabel': 'Date the proceedings ended',
+    'defaultLoss.q.p2.help': "While the proceedings are open there can still be payments to creditors, so the loss isn't final yet. You can declare it once the proceedings end without you having been paid.",
+
+    'defaultLoss.q.pq.title': 'Has a debt write-off (quita) been approved, i.e. a reduction of the debt?',
+    'defaultLoss.q.pq.amountLabel': "Amount of the write-off that corresponds to you",
+    'defaultLoss.q.pq.dateLabel': 'Date the write-off took effect',
+    'defaultLoss.q.pq.help': "A debt write-off can be approved within insolvency proceedings, in the creditors' agreement, or outside of it, in a refinancing agreement. If approved, you can declare that reduced amount as a loss in the year it takes effect. The platform should inform you of the amount that corresponds to you.",
+
+    'defaultLoss.q.p3.title': 'Has a judicial enforcement claim been started to collect the loan (for example, a mortgage foreclosure)?',
+    'defaultLoss.q.p3.userOption': "Yes, I started it",
+    'defaultLoss.q.p3.platformOption': 'Yes, the platform started it on behalf of investors',
+    'defaultLoss.q.p3.help': "If there are no insolvency proceedings, the other route the law allows is for one year to have passed since a judicial enforcement procedure to collect the loan started, without having collected it. In real estate crowdfunding it's usually the platform that starts it when the loan has a mortgage guarantee. If you don't know, ask the platform.",
+
+    'defaultLoss.q.p4.title': 'On what date was the procedure started?',
+    'defaultLoss.q.p4.help': 'This is the date the enforcement claim was filed. The platform should be able to tell you.',
+
+    'defaultLoss.equity.text': "This investment is an equity stake in a company, not a loan, so the default rules don't apply to it. A loss on equity is generally declared when you sell it or when the company is liquidated. Crowdfolio doesn't calculate this case yet: consult your tax advisor.",
+    'defaultLoss.disclaimer': "This information is for guidance only and is based on the data you've provided. It doesn't constitute tax advice. Confirm your case with a tax advisor before filing your tax return.",
+
+    'defaultLoss.result.headline': "You've lost €{loss} on {project}.",
+    'defaultLoss.result.imputation.quita': 'On {date} a debt write-off took effect: €{amount} can be included in your tax return for {year}.',
+    'defaultLoss.result.imputation.insolvencyConcluded': 'The insolvency proceedings ended on {date} without you being paid: €{amount} can be included in your tax return for {year}.',
+    'defaultLoss.result.imputation.enforcement': 'On {date} one year passed since the judicial enforcement started without payment: €{amount} can be included in your tax return for {year}.',
+    'defaultLoss.result.generalBaseNote': 'These amounts are declared in the general taxable base, under capital gains and losses not arising from the transfer of assets.',
+    'defaultLoss.result.platformEnforcementWarning': "The enforcement was started by the platform on behalf of investors. We understand this counts for this purpose, but the Spanish tax authority hasn't clarified it explicitly. Confirm this with your tax advisor before declaring it.",
+    'defaultLoss.result.pendingHeader.withImputations': "There's €{pending} left that you can't declare yet.",
+    'defaultLoss.result.pendingHeader.withoutImputations': "You can't declare this loss yet.",
+    'defaultLoss.result.pending.deadline': "The law requires one year to pass since the judicial enforcement started ({startDate}) without payment. If it remains unpaid, you'll be able to declare it from {deadline}. We'll notify you when that date arrives.",
+    'defaultLoss.result.pending.insolvency': "The company is in insolvency proceedings, and while they remain open there can still be payments to creditors. You'll be able to declare it once the proceedings end without you being paid, or if a debt write-off is approved. Update the situation when it changes; we'll remind you every three months.",
+    'defaultLoss.result.pending.notYet': "The loss is real and shows up in your portfolio, but the law only allows declaring it when insolvency proceedings end without payment, a debt write-off is approved, or one year passes since a judicial enforcement. If the platform informs you of any of these events, update it here. We'll remind you every three months.",
+    'defaultLoss.result.pending.unknown': "To know this we need to know whether the company is in insolvency proceedings. You can check for free at publicidadconcursal.es by searching the company's name or tax ID, or ask the platform. Update it here once you know.",
+    'defaultLoss.result.noLoss': "You don't have a loss on this investment: the capital you've been returned covers what you invested.",
 
     // Profile
     'profile.title': 'My Profile',

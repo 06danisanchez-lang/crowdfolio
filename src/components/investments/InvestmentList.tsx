@@ -56,6 +56,7 @@ import { InvestmentForm } from './InvestmentForm';
 import { InvestmentDetail } from './InvestmentDetail';
 import { MaturityConfirmationModal } from './MaturityConfirmationModal';
 import { CloseInvestmentModal } from './CloseInvestmentModal';
+import { DefaultLossQuestionnaire } from './DefaultLossQuestionnaire';
 
 interface InvestmentListProps {
   activeInvestments: Investment[];
@@ -113,6 +114,7 @@ export function InvestmentList({
   const [viewingInvestmentId, setViewingInvestmentId] = useState<string | null>(null);
   const [confirmingMaturityId, setConfirmingMaturityId] = useState<string | null>(null);
   const [closingInvestmentId, setClosingInvestmentId] = useState<string | null>(null);
+  const [questionnaireInvestmentId, setQuestionnaireInvestmentId] = useState<string | null>(null);
 
   // Both derived in real-time so dialogs always reflect the latest data.
   const viewingInvestment = useMemo(
@@ -128,6 +130,11 @@ export function InvestmentList({
   const closingInvestment = useMemo(
     () => activeInvestments.find(inv => inv.id === closingInvestmentId) ?? null,
     [closingInvestmentId, activeInvestments],
+  );
+
+  const questionnaireInvestment = useMemo(
+    () => [...activeInvestments, ...completedInvestments].find(inv => inv.id === questionnaireInvestmentId) ?? null,
+    [questionnaireInvestmentId, activeInvestments, completedInvestments],
   );
 
   useEffect(() => {
@@ -754,6 +761,14 @@ export function InvestmentList({
       <MaturityConfirmationModal
         investment={confirmingMaturityInvestment}
         onClose={() => setConfirmingMaturityId(null)}
+        onUpdate={onUpdate}
+        onAddPayment={onAddPayment}
+        onDefaulted={(inv) => setQuestionnaireInvestmentId(inv.id)}
+      />
+
+      <DefaultLossQuestionnaire
+        investment={questionnaireInvestment}
+        onClose={() => setQuestionnaireInvestmentId(null)}
         onUpdate={onUpdate}
         onAddPayment={onAddPayment}
       />

@@ -1,10 +1,11 @@
 import { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
-import { Investment, InvestmentSummary, Platform, InvestmentStatus, Payment, DraftInvestment, IncomeModel, PaymentFrequency, PrincipalReturnType, EquityType, CloseReasonType, InvestmentScheduleEntry } from '@/types/investment';
+import { Investment, InvestmentSummary, Platform, InvestmentStatus, Payment, DraftInvestment, IncomeModel, PaymentFrequency, PrincipalReturnType, EquityType, CloseReasonType, InvestmentScheduleEntry, LossInsolvencyStatus, LossEnforcementInitiator } from '@/types/investment';
 import { calculateInvestmentTotalReturn, calculateExpectedReturnFromSchedule, calculateAccruedReturn, calculateRemainingReturn, getEffectiveTAE } from '@/lib/investment/calculations';
 import { isInvestmentComplete, getInvestmentCompletionStatus } from '@/lib/investment/completeness';
 import { generateSchedule } from '@/lib/investment/scheduleGenerator';
+import { isBlockedDefaultedTransition } from '@/lib/investment/defaultTransitionGuard';
 
 const FETCH_TIMEOUT_MS = 15_000;
 
@@ -30,6 +31,15 @@ interface RawInvestmentRow {
   actual_end_date: string | null;
   close_reason: string | null;
   was_extended: boolean | null;
+  loss_insolvency_status: string | null;
+  loss_insolvency_concluded_date: string | null;
+  loss_quita_amount: number | null;
+  loss_quita_date: string | null;
+  loss_enforcement_started: boolean | null;
+  loss_enforcement_date: string | null;
+  loss_enforcement_initiator: string | null;
+  loss_assessed_at: string | null;
+  loss_rules_version: number | null;
   created_at: string;
   updated_at: string;
   user_id: string;
@@ -154,6 +164,15 @@ export function useInvestments() {
         actualEndDate: inv.actual_end_date || undefined,
         closeReason: (inv.close_reason as CloseReasonType) || undefined,
         wasExtended: inv.was_extended ?? false,
+        lossInsolvencyStatus: (inv.loss_insolvency_status as LossInsolvencyStatus) || undefined,
+        lossInsolvencyConcludedDate: inv.loss_insolvency_concluded_date || undefined,
+        lossQuitaAmount: inv.loss_quita_amount != null ? Number(inv.loss_quita_amount) : undefined,
+        lossQuitaDate: inv.loss_quita_date || undefined,
+        lossEnforcementStarted: inv.loss_enforcement_started ?? undefined,
+        lossEnforcementDate: inv.loss_enforcement_date || undefined,
+        lossEnforcementInitiator: (inv.loss_enforcement_initiator as LossEnforcementInitiator) || undefined,
+        lossAssessedAt: inv.loss_assessed_at || undefined,
+        lossRulesVersion: inv.loss_rules_version ?? undefined,
         createdAt: inv.created_at,
         updatedAt: inv.updated_at,
         payments: paymentsData
@@ -380,7 +399,18 @@ export function useInvestments() {
     return data;
   }, [user, fetchInvestments]);
 
-  const updateInvestment = useCallback(async (id: string, updates: Partial<Investment>): Promise<{ demotedToDraft: boolean }> => {
+  const updateInvestment = useCallback(async (id: string, updates: Partial<Investment>): Promise<{ demotedToDraft: boolean; error?: string }> => {
+    const current = allRawInvestments.find(inv => inv.id === id);
+
+    // Ninguna inversión puede pasar a 'defaulted' sin haber completado el
+    // cuestionario de calificación fiscal (Fase 3) en la misma actualización.
+    // No bloquea editar una que ya está en 'defaulted'. Ver defaultTransitionGuard.ts.
+    if (isBlockedDefaultedTransition(current?.status, updates)) {
+      const message = 'No se puede marcar como impago sin completar el cuestionario de calificación fiscal.';
+      console.error('Blocked defaulted transition without loss assessment:', { id, updates });
+      return { demotedToDraft: false, error: message };
+    }
+
     const dbUpdates: Record<string, unknown> = {};
     if (updates.platform !== undefined) dbUpdates.platform = updates.platform || null;
     if (updates.customPlatformName !== undefined) dbUpdates.custom_platform_name = updates.customPlatformName;
@@ -401,11 +431,22 @@ export function useInvestments() {
     if (updates.paymentFrequency !== undefined) dbUpdates.payment_frequency = updates.paymentFrequency || null;
     if (updates.principalReturnType !== undefined) dbUpdates.principal_return_type = updates.principalReturnType || null;
     if (updates.equityType !== undefined) dbUpdates.equity_type = updates.equityType || null;
+    if (updates.lossInsolvencyStatus !== undefined) dbUpdates.loss_insolvency_status = updates.lossInsolvencyStatus;
+    if (updates.lossInsolvencyConcludedDate !== undefined) dbUpdates.loss_insolvency_concluded_date = updates.lossInsolvencyConcludedDate;
+    if (updates.lossQuitaAmount !== undefined) dbUpdates.loss_quita_amount = updates.lossQuitaAmount;
+    if (updates.lossQuitaDate !== undefined) dbUpdates.loss_quita_date = updates.lossQuitaDate;
+    if (updates.lossEnforcementStarted !== undefined) dbUpdates.loss_enforcement_started = updates.lossEnforcementStarted;
+    if (updates.lossEnforcementDate !== undefined) dbUpdates.loss_enforcement_date = updates.lossEnforcementDate;
+    if (updates.lossEnforcementInitiator !== undefined) dbUpdates.loss_enforcement_initiator = updates.lossEnforcementInitiator;
+    if (updates.lossAssessedAt !== undefined) dbUpdates.loss_assessed_at = updates.lossAssessedAt;
+    if (updates.lossRulesVersion !== undefined) dbUpdates.loss_rules_version = updates.lossRulesVersion;
     const { error } = await supabase.from('investments').update(dbUpdates).eq('id', id);
-    if (error) { console.error('Error updating investment:', error); return { demotedToDraft: false }; }
+    if (error) {
+      console.error('Error updating investment:', error);
+      return { demotedToDraft: false, error: 'Error al actualizar la inversión.' };
+    }
 
     // Regenerate schedule if income model fields changed
-    const current = allRawInvestments.find(inv => inv.id === id);
     if (current && (updates.incomeModel || updates.paymentFrequency || updates.expectedReturn !== undefined || updates.expectedEndDate !== undefined || updates.amount !== undefined || updates.investmentDate !== undefined || updates.principalReturnType !== undefined || updates.equityType !== undefined)) {
       const merged = {
         amount: updates.amount ?? current.amount ?? 0,

@@ -15,8 +15,10 @@ import {
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { cn } from '@/lib/utils';
 
+type CloseSelection = CloseReasonType | 'defaulted';
+
 interface CloseOption {
-  value: CloseReasonType;
+  value: CloseSelection;
   label: string;
   description: string;
   emoji: string;
@@ -47,16 +49,25 @@ const CLOSE_OPTIONS: CloseOption[] = [
     description: 'Has vendido tu participación en el mercado secundario',
     emoji: '💱',
   },
+  {
+    value: 'defaulted',
+    label: 'Impago',
+    description: 'La plataforma ha dejado de pagar y no se espera recuperar todo el capital',
+    emoji: '💔',
+  },
 ];
 
 interface Props {
   investment: Investment | null;
   onClose: () => void;
   onUpdate: (id: string, updates: Partial<Investment>) => Promise<unknown>;
+  /** 'Impago' no se guarda aquí: abre el cuestionario de calificación fiscal
+   * (o T9 para equity), igual que desde la confirmación de vencimiento. */
+  onDefaulted: (investment: Investment) => void;
 }
 
-export function CloseInvestmentModal({ investment, onClose, onUpdate }: Props) {
-  const [selectedReason, setSelectedReason] = useState<CloseReasonType | null>(null);
+export function CloseInvestmentModal({ investment, onClose, onUpdate, onDefaulted }: Props) {
+  const [selectedReason, setSelectedReason] = useState<CloseSelection | null>(null);
   const [newEndDate, setNewEndDate] = useState<Date | undefined>();
   const [saving, setSaving] = useState(false);
 
@@ -70,8 +81,16 @@ export function CloseInvestmentModal({ investment, onClose, onUpdate }: Props) {
     if (!open) { reset(); onClose(); }
   };
 
+  const handleConfirmDefaulted = () => {
+    if (!investment) return;
+    const inv = investment;
+    reset();
+    onClose();
+    onDefaulted(inv);
+  };
+
   const handleConfirmClose = async () => {
-    if (!investment || !selectedReason || selectedReason === 'extended') return;
+    if (!investment || !selectedReason || selectedReason === 'extended' || selectedReason === 'defaulted') return;
     setSaving(true);
     const today = format(new Date(), 'yyyy-MM-dd');
     await onUpdate(investment.id, {
@@ -100,6 +119,7 @@ export function CloseInvestmentModal({ investment, onClose, onUpdate }: Props) {
   };
 
   const isExtended = selectedReason === 'extended';
+  const isDefaulted = selectedReason === 'defaulted';
 
   if (!investment) return null;
 
@@ -197,6 +217,14 @@ export function CloseInvestmentModal({ investment, onClose, onUpdate }: Props) {
               disabled={saving || !newEndDate}
             >
               Actualizar prórroga
+            </Button>
+          ) : isDefaulted ? (
+            <Button
+              className="flex-1"
+              onClick={handleConfirmDefaulted}
+              disabled={saving}
+            >
+              Continuar
             </Button>
           ) : (
             <Button

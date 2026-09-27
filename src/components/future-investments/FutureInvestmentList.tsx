@@ -7,6 +7,7 @@ import { PLAN_FEATURES } from '@/lib/stripe/config';
 import { FutureInvestment } from '@/types/futureInvestment';
 import { Investment, Platform, PLATFORMS } from '@/types/investment';
 import { InvestmentForm, FutureInvestmentFormData } from '@/components/investments/InvestmentForm';
+import { toDateOnlyString } from '@/lib/dateOnly';
 import { UpgradeModal } from '@/components/subscription/UpgradeModal';
 import { KPICard } from '@/components/dashboard/KPICard';
 import { Button } from '@/components/ui/button';
@@ -254,10 +255,10 @@ export function FutureInvestmentList({ onAddInvestment, investmentCount: externa
       principalReturnType: data.principalReturnType,
       status: data.status,
       investmentDate: data.investmentDate instanceof Date
-        ? data.investmentDate.toISOString()
+        ? toDateOnlyString(data.investmentDate)
         : data.investmentDate,
       expectedEndDate: data.expectedEndDate instanceof Date
-        ? data.expectedEndDate.toISOString()
+        ? toDateOnlyString(data.expectedEndDate)
         : data.expectedEndDate,
       notes: data.notes,
       sourceUrl: data.sourceUrl || undefined,

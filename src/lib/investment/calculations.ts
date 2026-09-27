@@ -1,4 +1,5 @@
 import { Investment, InvestmentScheduleEntry, Payment } from '@/types/investment';
+import { toDateOnlyString } from '@/lib/dateOnly';
 
 /**
  * Calcula la duración en años de una inversión
@@ -155,7 +156,7 @@ export function calculateAccruedReturn(
     // plusvalia y liquidacion: interés simple proporcional (mismo que bullet)
   }
 
-  const todayStr = today.toISOString().split('T')[0];
+  const todayStr = toDateOnlyString(today);
 
   if (inv.incomeModel === 'periodic_fixed' || inv.incomeModel === 'amortizing') {
     return schedule
@@ -252,7 +253,7 @@ export function calculateEstimatedTAEToday(
   const years = Math.max((today.getTime() - start.getTime()) / (1000 * 60 * 60 * 24 * 365.25), 0);
   if (years <= 0) return investment.expectedReturn;
 
-  const todayStr = today.toISOString().split('T')[0];
+  const todayStr = toDateOnlyString(today);
   const yieldCollected = payments
     .filter(p => p.date <= todayStr && (p.type === 'dividend' || p.type === 'interest' || p.type === 'capital_return'))
     .reduce((sum, p) => sum + p.amount, 0);

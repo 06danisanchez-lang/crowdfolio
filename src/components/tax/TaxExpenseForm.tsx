@@ -4,6 +4,7 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import { Plus } from 'lucide-react';
 import { TaxExpense, TaxExpenseCategory, TAX_EXPENSE_CATEGORIES } from '@/types/tax';
+import { toDateOnlyString } from '@/lib/dateOnly';
 import { Button } from '@/components/ui/button';
 import {
   Dialog,
@@ -77,7 +78,7 @@ export function TaxExpenseForm({
       category: prefillCategory || 'platform_fees',
       description: prefillDescription || '',
       amount: '',
-      date: new Date().toISOString().split('T')[0],
+      date: toDateOnlyString(new Date()),
       notes: '',
     },
   });

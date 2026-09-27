@@ -6,6 +6,7 @@
  */
 
 import { IncomeModel, PaymentFrequency, PrincipalReturnType, EquityType, InvestmentScheduleEntry } from '@/types/investment';
+import { toDateOnlyString } from '@/lib/dateOnly';
 
 interface ScheduleInput {
   id: string;
@@ -49,7 +50,7 @@ function getMonthsPerPeriod(freq: PaymentFrequency): number {
 }
 
 function toDateStr(d: Date): string {
-  return d.toISOString().split('T')[0];
+  return toDateOnlyString(d);
 }
 
 export function generateSchedule(input: ScheduleInput): InvestmentScheduleEntry[] {
@@ -67,7 +68,12 @@ export function generateSchedule(input: ScheduleInput): InvestmentScheduleEntry[
     const end = new Date(expectedEndDate);
     const entries: InvestmentScheduleEntry[] = [];
     let current = addMonths(start, 3);
-    while (current < end) {
+    // Comparar por string de fecha, no por el Date crudo: addMonths() arrastra
+    // la hora local de origen (artefacto de parsear investmentDate como
+    // medianoche UTC) y, al cruzar un cambio de hora, esa hora puede quedar
+    // por delante de `end` aunque sea el mismo día calendario — se perdería
+    // la última cuota. Ver auditoría de fechas / scheduleGenerator.test.ts.
+    while (toDateStr(current) < toDateStr(end)) {
       entries.push({
         investmentId: id,
         expectedDate: toDateStr(current),
@@ -100,7 +106,9 @@ export function generateSchedule(input: ScheduleInput): InvestmentScheduleEntry[
   // Generate period dates
   const dates: Date[] = [];
   let current = addMonths(start, monthsPerPeriod);
-  while (current <= end) {
+  // Mismo motivo que arriba: comparar por string de fecha, no por el Date
+  // crudo, para no perder la última cuota cerca de un cambio de hora.
+  while (toDateStr(current) <= toDateStr(end)) {
     dates.push(new Date(current));
     current = addMonths(current, monthsPerPeriod);
   }

@@ -6,6 +6,7 @@ import { calculateInvestmentTotalReturn, calculateExpectedReturnFromSchedule, ca
 import { isInvestmentComplete, getInvestmentCompletionStatus } from '@/lib/investment/completeness';
 import { generateSchedule } from '@/lib/investment/scheduleGenerator';
 import { isBlockedDefaultedTransition } from '@/lib/investment/defaultTransitionGuard';
+import { toDateOnlyString } from '@/lib/dateOnly';
 
 const FETCH_TIMEOUT_MS = 15_000;
 
@@ -128,7 +129,7 @@ export function useInvestments() {
       if (requestIdRef.current !== currentId) return;
 
       // Auto-transition: active + past expectedEndDate → pending (skip [DISPUTA] notes)
-      const todayStr = new Date().toISOString().split('T')[0];
+      const todayStr = toDateOnlyString(new Date());
       const autoPendingIds = new Set<string>(
         (investmentsData as RawInvestmentRow[])
           .filter(inv =>

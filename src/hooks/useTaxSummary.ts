@@ -37,6 +37,7 @@ interface InvestmentRow {
   defaulted_at: string | null;
   amount_recovered: number | null;
   equity_type: string | null;
+  loss_assessed_at: string | null;
   created_at: string;
   updated_at: string;
 }
@@ -262,6 +263,16 @@ export function useTaxSummary(year: number) {
       .filter(d => d.loss < 0);
   }, [investmentRows, defaultedPrincipalPayments]);
 
+  // Inversiones en impago sin cuestionario de calificación fiscal completar
+  // (Fase 4, punto 3) — a propósito NO reutiliza defaultedInvestmentsWithLoss:
+  // ese filtra loss < 0, pero assessDefaultLoss devuelve 'not_assessed' antes
+  // de comprobar si hay pérdida (equity aparte, que nunca es 'not_assessed').
+  const notAssessedDefaultedInvestments = useMemo(() => {
+    return investmentRows
+      .filter(inv => inv.status === 'defaulted' && inv.income_model !== 'equity' && !inv.loss_assessed_at)
+      .map(inv => ({ investmentId: inv.id, projectName: inv.project_name }));
+  }, [investmentRows]);
+
   // Tax summary — RCM + pérdidas de cartera por impago (sin efecto en cuota, Fase 1)
   const summary: TaxSummary = useMemo(() => {
     // capital_return (prima de emisión equity rentas) no tributa — excluir de todos los cálculos fiscales
@@ -361,6 +372,7 @@ export function useTaxSummary(year: number) {
   return {
     summary, projection, payments, enrichedPayments, expenses,
     defaultedInvestmentsWithLoss,
+    notAssessedDefaultedInvestments,
     error, excludedIncompleteCount,
     isLoading: isLoading || expensesLoading, availableYears,
     refetch: () => setRetryCount(c => c + 1),

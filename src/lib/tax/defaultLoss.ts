@@ -169,6 +169,10 @@ export function assessDefaultLoss(
     } else if (input.insolvencyStatus === 'open') {
       pendingReason = 'pending_insolvency';
     } else if (input.enforcementStarted && input.enforcementDate) {
+      // El aviso de "la inició la plataforma" aplica en cuanto se sabe quién la
+      // inició, ya sea imputable o todavía pendiente del plazo de 1 año — no
+      // solo cuando ya se puede declarar.
+      flags.platformInitiatedEnforcement = input.enforcementInitiator === 'platform';
       const oneYear = enforcementOneYearDate ?? addYearsStr(input.enforcementDate, 1);
       if (oneYear <= todayStr) {
         imputations.push({
@@ -177,7 +181,6 @@ export function assessDefaultLoss(
           triggerDate: oneYear,
           year: yearOf(oneYear),
         });
-        flags.platformInitiatedEnforcement = input.enforcementInitiator === 'platform';
         remainder = 0;
       } else {
         pendingReason = 'pending_deadline';

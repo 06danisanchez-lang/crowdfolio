@@ -31,6 +31,30 @@ describe('isBlockedDefaultedTransition', () => {
     expect(isBlockedDefaultedTransition('active', { status: 'completed' })).toBe(false);
   });
 
+  // Fase 4, punto 4: "Deshacer impago" pasa de 'defaulted' a 'pending'/'active'
+  // limpiando defaultedAt/loss_* — la guarda solo bloquea transiciones HACIA
+  // 'defaulted', así que esto debe aceptarse sin más.
+  it('deshacer impago: defaulted → pending, limpiando loss_* → aceptada', () => {
+    expect(
+      isBlockedDefaultedTransition('defaulted', {
+        status: 'pending',
+        defaultedAt: null,
+        lossInsolvencyStatus: null,
+        lossAssessedAt: null,
+      }),
+    ).toBe(false);
+  });
+
+  it('deshacer impago: defaulted → active, limpiando loss_* → aceptada', () => {
+    expect(
+      isBlockedDefaultedTransition('defaulted', {
+        status: 'active',
+        defaultedAt: null,
+        lossAssessedAt: null,
+      }),
+    ).toBe(false);
+  });
+
   it('currentStatus desconocido (undefined) y transición a defaulted sin loss_assessed_at → rechazada', () => {
     expect(isBlockedDefaultedTransition(undefined, { status: 'defaulted' })).toBe(true);
   });

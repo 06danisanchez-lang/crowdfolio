@@ -3,7 +3,7 @@ import { useLanguage } from '@/contexts/LanguageContext';
 import { format, parseISO } from 'date-fns';
 import { es } from 'date-fns/locale';
 import { Plus, Trash2, CalendarIcon, Pencil } from 'lucide-react';
-import { Investment, Payment, PLATFORMS, STATUS_OPTIONS, InvestmentScheduleEntry, IncomeModel } from '@/types/investment';
+import { Investment, Payment, PLATFORMS, STATUS_OPTIONS, InvestmentScheduleEntry, IncomeModel, InvestmentStatus } from '@/types/investment';
 import { toDateOnlyString } from '@/lib/dateOnly';
 import {
   getInvestmentDurationYears,
@@ -14,6 +14,8 @@ import {
   calculateEstimatedTAEToday,
   getDelayDays,
 } from '@/lib/investment/calculations';
+import { getPrincipalReturned } from '@/lib/tax/principalReturned';
+import { DefaultLossStatusCard } from './DefaultLossStatusCard';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
@@ -70,9 +72,11 @@ interface InvestmentDetailProps {
   onAddPayment: (investmentId: string, payment: { date: string; amount: number; type: 'dividend' | 'principal' | 'interest'; notes?: string }) => void;
   onDeletePayment: (investmentId: string, paymentId: string) => void;
   onOpenCloseModal?: (id: string) => void;
+  /** Abre DefaultLossQuestionnaire en modo 'update' para esta inversión (Fase 4). */
+  onUpdateFiscalStatus?: (investment: Investment) => void;
 }
 
-export function InvestmentDetail({ investment, schedule = [], onClose, onUpdate, onDelete, onAddPayment, onDeletePayment, onOpenCloseModal }: InvestmentDetailProps) {
+export function InvestmentDetail({ investment, schedule = [], onClose, onUpdate, onDelete, onAddPayment, onDeletePayment, onOpenCloseModal, onUpdateFiscalStatus }: InvestmentDetailProps) {
   const { t } = useLanguage();
   const [showAddPayment, setShowAddPayment] = useState(false);
   const [paymentDate, setPaymentDate] = useState<Date>(new Date());
@@ -81,6 +85,10 @@ export function InvestmentDetail({ investment, schedule = [], onClose, onUpdate,
 
   // Delete confirmation
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+
+  // Deshacer impago (Fase 4)
+  const [showUndoDefaultConfirm, setShowUndoDefaultConfirm] = useState(false);
+  const [undoingDefault, setUndoingDefault] = useState(false);
 
   // Action forms
   const [activeForm, setActiveForm] = useState<ActionForm>(null);
@@ -208,10 +216,56 @@ export function InvestmentDetail({ investment, schedule = [], onClose, onUpdate,
     }
   };
 
+  const handleUndoDefault = async () => {
+    if (!investment) return;
+    setUndoingDefault(true);
+    const todayStr = toDateOnlyString(new Date());
+    const newStatus: InvestmentStatus =
+      investment.expectedEndDate && investment.expectedEndDate < todayStr ? 'pending' : 'active';
+    const result = await onUpdate(investment.id, {
+      status: newStatus,
+      defaultedAt: null,
+      lossInsolvencyStatus: null,
+      lossInsolvencyConcludedDate: null,
+      lossQuitaAmount: null,
+      lossQuitaDate: null,
+      lossEnforcementStarted: null,
+      lossEnforcementDate: null,
+      lossEnforcementInitiator: null,
+      lossAssessedAt: null,
+      lossRulesVersion: null,
+      // Reenviar incomeModel fuerza a updateInvestment a regenerar
+      // investment_schedule (useInvestments.ts) — no se toca solo al entrar
+      // o salir de impago, así que hay que pedirlo explícitamente aquí.
+      incomeModel: investment.incomeModel,
+    });
+    const errorMessage =
+      result && typeof result === 'object' && 'error' in result && typeof (result as { error?: unknown }).error === 'string'
+        ? (result as { error: string }).error
+        : null;
+    setUndoingDefault(false);
+    if (errorMessage) {
+      toast.error(errorMessage);
+      return;
+    }
+    toast.success('Impago deshecho.');
+    setShowUndoDefaultConfirm(false);
+  };
+
   if (!investment) return null;
 
   const totalPayments = investment.payments.reduce((sum, p) => sum + p.amount, 0);
   const durationYears = getInvestmentDurationYears(investment.investmentDate, investment.expectedEndDate);
+
+  // Resumen de retornos para inversiones en impago (Fase 4, punto 5): capital
+  // recuperado SIEMPRE desde getPrincipalReturned (pagos type 'principal'),
+  // nunca de amount_recovered (caché desnormalizada, puede desincronizarse —
+  // ver principalReturned.ts). La pérdida nunca se muestra negativa: si lo
+  // recuperado cubre lo invertido, 0 €.
+  const recoveredCapital = getPrincipalReturned(investment.payments ?? []);
+  const defaultedLoss = Math.max(investment.amount - recoveredCapital, 0);
+  const defaultedRealReturnPercent =
+    investment.amount > 0 ? ((recoveredCapital - investment.amount) / investment.amount) * 100 : 0;
 
   // D5: Calculate returns based on income model.
   // totalReturnAmount extraído a calculateExpectedTotalReturn (src/lib/investment/calculations.ts)
@@ -339,7 +393,26 @@ export function InvestmentDetail({ investment, schedule = [], onClose, onUpdate,
           {/* Returns Summary */}
           <div className="rounded-lg bg-muted/50 p-4">
             <h4 className="mb-3 font-semibold">{t('investments.detail.returnsSummary')}</h4>
-            {investment.incomeModel === 'variable_or_unknown' ? (
+            {investment.status === 'defaulted' ? (
+              <div className="grid grid-cols-2 gap-4 text-center">
+                <div>
+                  <p className="text-xl font-bold text-foreground">{formatCurrency(investment.amount)}</p>
+                  <p className="text-xs text-muted-foreground">{t('investments.detail.investedCapital')}</p>
+                </div>
+                <div>
+                  <p className="text-xl font-bold text-foreground">{formatCurrency(recoveredCapital)}</p>
+                  <p className="text-xs text-muted-foreground">{t('investments.detail.recoveredCapital')}</p>
+                </div>
+                <div>
+                  <p className="text-xl font-bold text-destructive">{formatCurrency(defaultedLoss)}</p>
+                  <p className="text-xs text-muted-foreground">{t('investments.detail.loss')}</p>
+                </div>
+                <div>
+                  <p className="text-xl font-bold text-destructive">{defaultedRealReturnPercent.toFixed(1)}%</p>
+                  <p className="text-xs text-muted-foreground">{t('investments.detail.realReturnDefaulted')}</p>
+                </div>
+              </div>
+            ) : investment.incomeModel === 'variable_or_unknown' ? (
               <div className="grid grid-cols-2 gap-4 text-center">
                 <div>
                   <p className="text-xl font-bold text-status-active">{formatCurrency(totalPayments)}</p>
@@ -564,6 +637,27 @@ export function InvestmentDetail({ investment, schedule = [], onClose, onUpdate,
             </div>
           )}
 
+          {/* Ficha fiscal del impago (Fase 4) */}
+          {investment.status === 'defaulted' && (
+            <div>
+              <h4 className="mb-3 font-semibold">{t('defaultLoss.title')}</h4>
+              <DefaultLossStatusCard
+                investment={investment}
+                onUpdateFiscalStatus={(inv) => onUpdateFiscalStatus?.(inv)}
+              />
+              <div className="mt-3">
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className="text-destructive hover:text-destructive hover:bg-destructive/10"
+                  onClick={() => setShowUndoDefaultConfirm(true)}
+                >
+                  {t('defaultLoss.undo.button')}
+                </Button>
+              </div>
+            </div>
+          )}
+
           {/* Actions — only for active investments */}
           {investment.status === 'active' && (
             <div>
@@ -700,6 +794,25 @@ export function InvestmentDetail({ investment, schedule = [], onClose, onUpdate,
               onClick={() => { onDelete(investment.id); onClose(); }}
             >
               {t('common.delete')}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      <AlertDialog open={showUndoDefaultConfirm} onOpenChange={setShowUndoDefaultConfirm}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>{t('defaultLoss.undo.title')}</AlertDialogTitle>
+            <AlertDialogDescription>{t('defaultLoss.undo.description')}</AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={undoingDefault}>{t('common.cancel')}</AlertDialogCancel>
+            <AlertDialogAction
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+              disabled={undoingDefault}
+              onClick={handleUndoDefault}
+            >
+              {t('defaultLoss.undo.button')}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>

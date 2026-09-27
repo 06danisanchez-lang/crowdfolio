@@ -57,6 +57,7 @@ import { InvestmentDetail } from './InvestmentDetail';
 import { MaturityConfirmationModal } from './MaturityConfirmationModal';
 import { CloseInvestmentModal } from './CloseInvestmentModal';
 import { DefaultLossQuestionnaire } from './DefaultLossQuestionnaire';
+import { investmentToDefaultLossAnswers } from '@/lib/tax/investmentToDefaultLossInput';
 
 interface InvestmentListProps {
   activeInvestments: Investment[];
@@ -121,8 +122,13 @@ export function InvestmentList({
   // se marcó como equity y se cambió después a otro modelo de ingreso, o si
   // se cerró a medias y se reabre para volver a empezar desde P0.
   const [questionnaireOpenSeq, setQuestionnaireOpenSeq] = useState(0);
-  const openQuestionnaire = (id: string) => {
+  // 'initial': se está marcando la inversión como impago (status+defaultedAt+loss_*).
+  // 'update' (Fase 4): la inversión ya está en impago — "Actualizar situación"/
+  // "Completar" solo tocan loss_*/loss_assessed_at, ver DefaultLossQuestionnaire.
+  const [questionnaireMode, setQuestionnaireMode] = useState<'initial' | 'update'>('initial');
+  const openQuestionnaire = (id: string, mode: 'initial' | 'update' = 'initial') => {
     setQuestionnaireOpenSeq((n) => n + 1);
+    setQuestionnaireMode(mode);
     setQuestionnaireInvestmentId(id);
   };
 
@@ -145,6 +151,11 @@ export function InvestmentList({
   const questionnaireInvestment = useMemo(
     () => [...activeInvestments, ...completedInvestments].find(inv => inv.id === questionnaireInvestmentId) ?? null,
     [questionnaireInvestmentId, activeInvestments, completedInvestments],
+  );
+
+  const questionnaireInitialAnswers = useMemo(
+    () => (questionnaireInvestment ? investmentToDefaultLossAnswers(questionnaireInvestment) : null),
+    [questionnaireInvestment],
   );
 
   useEffect(() => {
@@ -182,7 +193,7 @@ export function InvestmentList({
       active: 'Activa',
       pending: '⏰ Por confirmar',
       completed: 'Completada',
-      defaulted: 'Default',
+      defaulted: 'Impago',
     };
 
     const mainBadge = status === 'pending' ? (
@@ -760,6 +771,7 @@ export function InvestmentList({
         onAddPayment={onAddPayment}
         onDeletePayment={onDeletePayment}
         onOpenCloseModal={(id) => { setViewingInvestmentId(null); setClosingInvestmentId(id); }}
+        onUpdateFiscalStatus={(inv) => { setViewingInvestmentId(null); openQuestionnaire(inv.id, 'update'); }}
       />
 
       <CloseInvestmentModal
@@ -782,6 +794,8 @@ export function InvestmentList({
         onClose={() => setQuestionnaireInvestmentId(null)}
         onUpdate={onUpdate}
         onAddPayment={onAddPayment}
+        mode={questionnaireMode}
+        initialAnswers={questionnaireInitialAnswers}
       />
     </div>
   );

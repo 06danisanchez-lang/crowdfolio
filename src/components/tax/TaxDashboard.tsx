@@ -23,9 +23,11 @@ import { Button } from '@/components/ui/button';
 interface TaxDashboardProps {
   isPro?: boolean;
   onProRequired?: () => void;
+  /** Navega a la ficha de una inversión desde el aviso de cuestionario sin completar (Fase 4). */
+  onOpenInvestment?: (investmentId: string) => void;
 }
 
-export function TaxDashboard({ isPro = false, onProRequired }: TaxDashboardProps) {
+export function TaxDashboard({ isPro = false, onProRequired, onOpenInvestment }: TaxDashboardProps) {
   const [selectedYear, setSelectedYear] = useState(new Date().getFullYear());
   const [expenseFormOpen, setExpenseFormOpen] = useState(false);
   const [prefillCategory, setPrefillCategory] = useState<TaxExpenseCategory | undefined>();
@@ -33,7 +35,7 @@ export function TaxDashboard({ isPro = false, onProRequired }: TaxDashboardProps
   const { t } = useLanguage();
   const { user } = useAuth();
 
-  const { summary, projection, isLoading, availableYears, excludedIncompleteCount, enrichedPayments, defaultedInvestmentsWithLoss, error, refetch } = useTaxSummary(selectedYear);
+  const { summary, projection, isLoading, availableYears, excludedIncompleteCount, enrichedPayments, defaultedInvestmentsWithLoss, notAssessedDefaultedInvestments, error, refetch } = useTaxSummary(selectedYear);
   const { 
     expenses, 
     addExpense, 
@@ -84,10 +86,11 @@ export function TaxDashboard({ isPro = false, onProRequired }: TaxDashboardProps
 
   // Detectar si el ejercicio no tiene datos NI proyecciones
   const hasProjections = projection.byInvestment.length > 0;
-  const hasNoData = summary.grossIncome === 0 && 
-                    summary.withholdingsApplied === 0 && 
+  const hasNoData = summary.grossIncome === 0 &&
+                    summary.withholdingsApplied === 0 &&
                     summary.deductibleExpenses === 0 &&
-                    !hasProjections;
+                    !hasProjections &&
+                    notAssessedDefaultedInvestments.length === 0;
 
   if (hasNoData) {
     return (
@@ -136,6 +139,19 @@ export function TaxDashboard({ isPro = false, onProRequired }: TaxDashboardProps
       </div>
 
       {spainTaxNotice}
+
+      {/* Inversiones en impago sin cuestionario fiscal completar (Fase 4) */}
+      {notAssessedDefaultedInvestments.map((inv) => (
+        <div
+          key={inv.investmentId}
+          className="flex flex-col sm:flex-row sm:items-center gap-3 justify-between rounded-lg border border-amber-300 bg-amber-50 dark:border-amber-700 dark:bg-amber-950/30 p-3"
+        >
+          <span className="text-sm text-amber-800 dark:text-amber-300">{t('defaultLoss.notAssessedBanner.text')}</span>
+          <Button size="sm" className="shrink-0" onClick={() => onOpenInvestment?.(inv.investmentId)}>
+            {t('defaultLoss.notAssessedBanner.button')}
+          </Button>
+        </div>
+      ))}
 
       {/* KPI Summary Cards */}
       {excludedIncompleteCount > 0 && (

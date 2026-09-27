@@ -326,6 +326,24 @@ export const translations: Record<Lang, Record<string, string>> = {
     'defaultLoss.result.pending.unknown': 'Para saberlo necesitamos saber si la sociedad está en concurso. Puedes comprobarlo gratis en publicidadconcursal.es buscando el nombre o el NIF de la sociedad, o preguntar a la plataforma. Cuando lo sepas, actualízalo aquí.',
     'defaultLoss.result.noLoss': 'No tienes pérdida en esta inversión: el capital que te han devuelto cubre lo invertido.',
 
+    // Fase 4 — ficha del estado fiscal del impago
+    'defaultLoss.status.label': 'Situación fiscal',
+    'defaultLoss.status.deductible': 'Declarable',
+    'defaultLoss.status.partiallyDeductible': 'Declarable en parte',
+    'defaultLoss.status.pendingDeadline': 'Declarable a partir del {deadline}',
+    'defaultLoss.status.pendingInsolvency': 'En espera: concurso abierto',
+    'defaultLoss.status.notYet': 'Aún no declarable',
+    'defaultLoss.status.unknown': 'Falta información',
+    'defaultLoss.status.notAssessed': 'Situación fiscal sin completar',
+    'defaultLoss.status.noLoss': 'Sin pérdida',
+    'defaultLoss.status.notApplicableEquity': 'Participación en capital',
+    'defaultLoss.status.updateButton': 'Actualizar situación',
+    'defaultLoss.notAssessedBanner.text': 'Hemos mejorado cómo calculamos las pérdidas por impago para ajustarnos exactamente a la ley. Responde unas preguntas sobre esta inversión para saber si puedes declararla y cuándo.',
+    'defaultLoss.notAssessedBanner.button': 'Completar',
+    'defaultLoss.undo.button': 'Deshacer impago',
+    'defaultLoss.undo.title': '¿Deshacer el impago?',
+    'defaultLoss.undo.description': 'La inversión volverá a su estado anterior y se borrarán las respuestas del cuestionario fiscal. Los pagos y recuperaciones que hayas registrado se mantienen.',
+
     // Profile
     'profile.title': 'Mi Perfil',
     'profile.subtitle': 'Gestiona tu información personal',
@@ -599,6 +617,12 @@ export const translations: Record<Lang, Record<string, string>> = {
     'investments.action.confirmClose': 'Confirmar cierre',
     'investments.detail.expected': 'Esperado',
     'investments.detail.realReturn': 'Rendimiento Real',
+    // Fase 4 — resumen de retornos de una inversión en impago (textos literales
+    // distintos de los de arriba: minúscula, sin "Monto"/capitalización propia)
+    'investments.detail.investedCapital': 'Capital invertido',
+    'investments.detail.recoveredCapital': 'Capital recuperado',
+    'investments.detail.loss': 'Pérdida',
+    'investments.detail.realReturnDefaulted': 'Rendimiento real',
     'investments.detail.payments': 'Pagos Recibidos',
     'investments.detail.addPayment': 'Añadir Pago',
     'investments.detail.noPayments': 'No hay pagos registrados.',
@@ -986,6 +1010,24 @@ export const translations: Record<Lang, Record<string, string>> = {
     'defaultLoss.result.pending.unknown': "To know this we need to know whether the company is in insolvency proceedings. You can check for free at publicidadconcursal.es by searching the company's name or tax ID, or ask the platform. Update it here once you know.",
     'defaultLoss.result.noLoss': "You don't have a loss on this investment: the capital you've been returned covers what you invested.",
 
+    // Phase 4 — default loss tax status card
+    'defaultLoss.status.label': 'Tax status',
+    'defaultLoss.status.deductible': 'Deductible',
+    'defaultLoss.status.partiallyDeductible': 'Partially deductible',
+    'defaultLoss.status.pendingDeadline': 'Deductible from {deadline}',
+    'defaultLoss.status.pendingInsolvency': 'Waiting: insolvency proceedings open',
+    'defaultLoss.status.notYet': 'Not yet deductible',
+    'defaultLoss.status.unknown': 'Missing information',
+    'defaultLoss.status.notAssessed': 'Tax status not completed',
+    'defaultLoss.status.noLoss': 'No loss',
+    'defaultLoss.status.notApplicableEquity': 'Equity stake',
+    'defaultLoss.status.updateButton': 'Update status',
+    'defaultLoss.notAssessedBanner.text': "We've improved how we calculate losses from loan defaults to match the law exactly. Answer a few questions about this investment to find out if you can declare it and when.",
+    'defaultLoss.notAssessedBanner.button': 'Complete',
+    'defaultLoss.undo.button': 'Undo default',
+    'defaultLoss.undo.title': 'Undo the default?',
+    'defaultLoss.undo.description': "The investment will go back to its previous status and the tax questionnaire answers will be deleted. Any payments and recoveries you've recorded are kept.",
+
     // Profile
     'profile.title': 'My Profile',
     'profile.subtitle': 'Manage your personal information',
@@ -1259,6 +1301,10 @@ export const translations: Record<Lang, Record<string, string>> = {
     'investments.action.confirmClose': 'Confirm closure',
     'investments.detail.expected': 'Expected',
     'investments.detail.realReturn': 'Actual Return',
+    'investments.detail.investedCapital': 'Invested capital',
+    'investments.detail.recoveredCapital': 'Recovered capital',
+    'investments.detail.loss': 'Loss',
+    'investments.detail.realReturnDefaulted': 'Actual return',
     'investments.detail.payments': 'Received Payments',
     'investments.detail.addPayment': 'Add Payment',
     'investments.detail.noPayments': 'No payments recorded.',

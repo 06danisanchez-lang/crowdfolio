@@ -767,6 +767,7 @@ export function InvestmentList({
       />
 
       <DefaultLossQuestionnaire
+        key={questionnaireInvestment?.id ?? 'none'}
         investment={questionnaireInvestment}
         onClose={() => setQuestionnaireInvestmentId(null)}
         onUpdate={onUpdate}

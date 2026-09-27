@@ -1,6 +1,6 @@
 import { useMemo, useState } from 'react';
 import { z } from 'zod';
-import { format, parseISO } from 'date-fns';
+import { format } from 'date-fns';
 import { ChevronDown, ChevronLeft, Info, AlertTriangle } from 'lucide-react';
 import { toast } from 'sonner';
 import { Investment, Payment } from '@/types/investment';
@@ -9,7 +9,7 @@ import {
   EnforcementInitiator,
   DefaultLossPayment,
   assessDefaultLoss,
-  DefaultLossResult,
+  DefaultLossResult as DefaultLossResultData,
 } from '@/lib/tax/defaultLoss';
 import { answersToLossColumns, DefaultLossAnswers } from '@/lib/tax/answersToLossColumns';
 import { getPrincipalReturned } from '@/lib/tax/principalReturned';
@@ -18,6 +18,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
+import { DefaultLossResult } from './DefaultLossResult';
 import { cn } from '@/lib/utils';
 
 type Step = 'equity' | 'p0' | 'p1' | 'p2' | 'pq' | 'p3' | 'p4' | 'result';
@@ -49,8 +50,15 @@ interface Props {
   onClose: () => void;
   onUpdate: (id: string, updates: Partial<Investment>) => Promise<unknown>;
   onAddPayment?: (investmentId: string, payment: Omit<Payment, 'id'>) => Promise<unknown>;
-  /** Respuestas previas, para reabrir el cuestionario ya relleno (Fase 4). No se usa en la Fase 3. */
+  /** Respuestas previas, para reabrir el cuestionario ya relleno (Fase 4). */
   initialAnswers?: DefaultLossAnswers | null;
+  /**
+   * 'initial' (por defecto): marca la inversión como impago — status +
+   * defaultedAt + loss_*. 'update' (Fase 4, botón "Actualizar situación"):
+   * la inversión ya está en 'defaulted' — solo se actualizan las columnas
+   * loss_* y loss_assessed_at, sin tocar status ni defaultedAt.
+   */
+  mode?: 'initial' | 'update';
 }
 
 function formatCurrency(v: number): string {
@@ -58,10 +66,6 @@ function formatCurrency(v: number): string {
     style: 'currency', currency: 'EUR',
     minimumFractionDigits: 2, maximumFractionDigits: 2,
   }).format(v);
-}
-
-function formatDate(dateStr: string): string {
-  return format(parseISO(dateStr), 'dd/MM/yyyy');
 }
 
 function todayStr(): string {
@@ -124,7 +128,7 @@ function ChoiceButton({
   );
 }
 
-export function DefaultLossQuestionnaire({ investment, onClose, onUpdate, onAddPayment, initialAnswers }: Props) {
+export function DefaultLossQuestionnaire({ investment, onClose, onUpdate, onAddPayment, initialAnswers, mode = 'initial' }: Props) {
   const { t } = useLanguage();
 
   const buildInitialWizard = (): WizardAnswers => {
@@ -178,7 +182,7 @@ export function DefaultLossQuestionnaire({ investment, onClose, onUpdate, onAddP
   }, [answers]);
 
   // ── Vista previa del resultado (incluye la recuperación de P0 si se añadió) ─
-  const previewResult: DefaultLossResult | null = useMemo(() => {
+  const previewResult: DefaultLossResultData | null = useMemo(() => {
     if (!investment || isEquity || step !== 'result') return null;
     const pendingPayments: DefaultLossPayment[] = (investment.payments ?? []).map((p) => ({
       type: p.type, amount: p.amount, date: p.date,
@@ -286,11 +290,12 @@ export function DefaultLossQuestionnaire({ investment, onClose, onUpdate, onAddP
     setSaving(true);
     setFieldError(null);
     const lossColumns = answersToLossColumns(answersForSave);
-    const result = await onUpdate(investment.id, {
-      status: 'defaulted',
-      defaultedAt: new Date().toISOString(),
-      ...lossColumns,
-    });
+    const result = await onUpdate(
+      investment.id,
+      mode === 'update'
+        ? { ...lossColumns }
+        : { status: 'defaulted', defaultedAt: new Date().toISOString(), ...lossColumns },
+    );
     const errorMessage =
       result && typeof result === 'object' && 'error' in result && typeof result.error === 'string'
         ? result.error
@@ -315,7 +320,7 @@ export function DefaultLossQuestionnaire({ investment, onClose, onUpdate, onAddP
       }
     }
     setSaving(false);
-    toast.success('Inversión marcada como impago.');
+    toast.success(mode === 'update' ? 'Situación fiscal actualizada.' : 'Inversión marcada como impago.');
     reset();
     onClose();
   };
@@ -333,8 +338,7 @@ export function DefaultLossQuestionnaire({ investment, onClose, onUpdate, onAddP
             <DialogTitle>{t('defaultLoss.title')}</DialogTitle>
             <DialogDescription>{t('defaultLoss.description')}</DialogDescription>
           </DialogHeader>
-          <p className="text-sm">{t('defaultLoss.equity.text')}</p>
-          <p className="text-xs text-muted-foreground">{t('defaultLoss.disclaimer')}</p>
+          <DefaultLossResult isEquity result={null} projectName={investment.projectName} enforcementDate={null} />
           {fieldError && (
             <div className="flex gap-2 rounded-lg border border-destructive/30 bg-destructive/5 p-3 text-sm text-destructive">
               <AlertTriangle className="h-4 w-4 shrink-0 mt-0.5" />
@@ -581,67 +585,12 @@ export function DefaultLossQuestionnaire({ investment, onClose, onUpdate, onAddP
 
         {step === 'result' && previewResult && (
           <div className="space-y-4">
-            {previewResult.status === 'no_loss' ? (
-              <p className="text-sm">{t('defaultLoss.result.noLoss')}</p>
-            ) : (
-              <>
-                <p className="text-sm font-medium">
-                  {t('defaultLoss.result.headline')
-                    .replace('{loss}', formatAmountFixed(previewResult.lossAmount))
-                    .replace('{project}', investment.projectName)}
-                </p>
-
-                {previewResult.imputations.map((imp, i) => {
-                  const key =
-                    imp.trigger === 'quita' ? 'defaultLoss.result.imputation.quita'
-                    : imp.trigger === 'insolvency_concluded' ? 'defaultLoss.result.imputation.insolvencyConcluded'
-                    : 'defaultLoss.result.imputation.enforcement';
-                  return (
-                    <p key={i} className="text-sm">
-                      {t(key)
-                        .replace('{date}', formatDate(imp.triggerDate))
-                        .replace('{amount}', formatAmountFixed(imp.amount))
-                        .replace('{year}', String(imp.year))}
-                    </p>
-                  );
-                })}
-
-                {previewResult.imputations.length > 0 && (
-                  <p className="text-sm text-muted-foreground">{t('defaultLoss.result.generalBaseNote')}</p>
-                )}
-
-                {previewResult.flags.platformInitiatedEnforcement && (
-                  <div className="flex gap-2 rounded-lg border border-amber-300 bg-amber-50 dark:border-amber-700 dark:bg-amber-950/30 p-3 text-sm text-amber-800 dark:text-amber-300">
-                    <AlertTriangle className="h-4 w-4 shrink-0 mt-0.5" />
-                    <span>{t('defaultLoss.result.platformEnforcementWarning')}</span>
-                  </div>
-                )}
-
-                {previewResult.pendingAmount > 0 && (
-                  <div className="rounded-lg border bg-muted/30 p-3 space-y-1.5">
-                    <p className="text-sm font-medium">
-                      {(previewResult.imputations.length > 0
-                        ? t('defaultLoss.result.pendingHeader.withImputations')
-                        : t('defaultLoss.result.pendingHeader.withoutImputations')
-                      ).replace('{pending}', formatAmountFixed(previewResult.pendingAmount))}
-                    </p>
-                    <p className="text-sm text-muted-foreground">
-                      {previewResult.pendingReason === 'pending_deadline'
-                        ? t('defaultLoss.result.pending.deadline')
-                            .replace('{startDate}', answers.enforcementDate ? formatDate(answers.enforcementDate) : '')
-                            .replace('{deadline}', previewResult.deadlineDate ? formatDate(previewResult.deadlineDate) : '')
-                        : previewResult.pendingReason === 'pending_insolvency'
-                        ? t('defaultLoss.result.pending.insolvency')
-                        : previewResult.pendingReason === 'unknown'
-                        ? t('defaultLoss.result.pending.unknown')
-                        : t('defaultLoss.result.pending.notYet')}
-                    </p>
-                  </div>
-                )}
-              </>
-            )}
-
-            <p className="text-xs text-muted-foreground">{t('defaultLoss.disclaimer')}</p>
+            <DefaultLossResult
+              isEquity={false}
+              result={previewResult}
+              projectName={investment.projectName}
+              enforcementDate={answers.enforcementDate || null}
+            />
             {fieldError && (
               <div className="flex gap-2 rounded-lg border border-destructive/30 bg-destructive/5 p-3 text-sm text-destructive">
                 <AlertTriangle className="h-4 w-4 shrink-0 mt-0.5" />

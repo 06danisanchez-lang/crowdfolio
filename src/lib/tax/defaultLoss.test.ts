@@ -135,6 +135,21 @@ describe('assessDefaultLoss', () => {
     expect(r.pendingAmount).toBe(1000);
   });
 
+  it('ejecución iniciada por la plataforma, plazo de 1 año aún sin cumplir → flag activado igual (Fase 4)', () => {
+    const r = assessDefaultLoss(
+      baseInput({
+        amountInvested: 1000,
+        enforcementStarted: true,
+        enforcementDate: '2026-02-15',
+        enforcementInitiator: 'platform',
+      }),
+      today('2027-01-15'), // 11 meses — todavía pending_deadline
+    );
+    expect(r.status).toBe('pending_deadline');
+    expect(r.pendingReason).toBe('pending_deadline');
+    expect(r.flags.platformInitiatedEnforcement).toBe(true);
+  });
+
   it('hoy = aniversario exacto de la ejecución → deductible', () => {
     const r = assessDefaultLoss(
       baseInput({

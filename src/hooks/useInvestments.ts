@@ -286,11 +286,15 @@ export function useInvestments() {
     equityType?: EquityType | null;
     investmentDate: string;
     expectedEndDate?: string;
-  }) => {
+  }): Promise<{ error?: string }> => {
     // Delete existing schedule
-    await supabase.from('investment_schedule').delete().eq('investment_id', investmentId);
+    const { error: deleteError } = await supabase.from('investment_schedule').delete().eq('investment_id', investmentId);
+    if (deleteError) {
+      console.error('Error deleting investment_schedule:', deleteError);
+      return { error: 'Error al actualizar el calendario de pagos.' };
+    }
 
-    if (!investment.expectedEndDate) return;
+    if (!investment.expectedEndDate) return {};
 
     const entries = generateSchedule({
       id: investmentId,
@@ -312,8 +316,13 @@ export function useInvestments() {
         type: e.type,
         status: e.status || 'pending',
       }));
-      await supabase.from('investment_schedule').insert(rows);
+      const { error: insertError } = await supabase.from('investment_schedule').insert(rows);
+      if (insertError) {
+        console.error('Error inserting investment_schedule:', insertError);
+        return { error: 'Error al generar el calendario de pagos.' };
+      }
     }
+    return {};
   }, []);
 
   const addInvestment = useCallback(async (investment: Omit<Investment, 'id' | 'createdAt' | 'updatedAt' | 'payments'>): Promise<Investment | null> => {
@@ -448,6 +457,7 @@ export function useInvestments() {
     }
 
     // Regenerate schedule if income model fields changed
+    let scheduleError: string | undefined;
     if (current && (updates.incomeModel || updates.paymentFrequency || updates.expectedReturn !== undefined || updates.expectedEndDate !== undefined || updates.amount !== undefined || updates.investmentDate !== undefined || updates.principalReturnType !== undefined || updates.equityType !== undefined)) {
       const merged = {
         amount: updates.amount ?? current.amount ?? 0,
@@ -459,7 +469,8 @@ export function useInvestments() {
         investmentDate: updates.investmentDate ?? current.investmentDate ?? '',
         expectedEndDate: updates.expectedEndDate ?? current.expectedEndDate,
       };
-      await saveScheduleForInvestment(id, merged);
+      const scheduleResult = await saveScheduleForInvestment(id, merged);
+      scheduleError = scheduleResult.error;
     }
 
     // Auto-draft: demote to draft if edit breaks tracking_ready
@@ -486,7 +497,7 @@ export function useInvestments() {
     }
 
     await fetchInvestments();
-    return { demotedToDraft };
+    return { demotedToDraft, error: scheduleError };
   }, [fetchInvestments, allRawInvestments, saveScheduleForInvestment, scheduleMap]);
 
   const deleteInvestment = useCallback(async (id: string) => {

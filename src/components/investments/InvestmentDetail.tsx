@@ -310,6 +310,14 @@ export function InvestmentDetail({ investment, schedule = [], onClose, onUpdate,
               initialData={investment}
               onSubmit={async (data) => {
                 const result = await onUpdate(investment.id, data);
+                const errorMessage =
+                  result && typeof result === 'object' && 'error' in result && typeof (result as { error?: unknown }).error === 'string'
+                    ? (result as { error: string }).error
+                    : null;
+                if (errorMessage) {
+                  toast.error(errorMessage);
+                  return;
+                }
                 if (result && 'demotedToDraft' in result && result.demotedToDraft) {
                   toast.warning('La inversión ha pasado a pendientes por faltar datos obligatorios.');
                 }

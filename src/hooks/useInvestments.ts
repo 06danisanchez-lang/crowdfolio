@@ -5,7 +5,7 @@ import { Investment, InvestmentSummary, Platform, InvestmentStatus, Payment, Dra
 import { calculateInvestmentTotalReturn, calculateExpectedReturnFromSchedule, calculateAccruedReturn, calculateRemainingReturn, getEffectiveTAE } from '@/lib/investment/calculations';
 import { isInvestmentComplete, getInvestmentCompletionStatus } from '@/lib/investment/completeness';
 import { generateSchedule } from '@/lib/investment/scheduleGenerator';
-import { isBlockedDefaultedTransition } from '@/lib/investment/defaultTransitionGuard';
+import { isBlockedDefaultedTransition, isBlockedIncomeModelChange } from '@/lib/investment/defaultTransitionGuard';
 import { toDateOnlyString } from '@/lib/dateOnly';
 import { RawInvestmentRow, mapRawInvestmentRow, draftToInvestment } from '@/lib/investment/mapInvestmentRow';
 
@@ -335,6 +335,14 @@ export function useInvestments() {
     if (isBlockedDefaultedTransition(current?.status, updates)) {
       const message = 'No se puede marcar como impago sin completar el cuestionario de calificación fiscal.';
       console.error('Blocked defaulted transition without loss assessment:', { id, updates });
+      return { demotedToDraft: false, error: message };
+    }
+
+    // Cambiar el tipo de rendimiento de una inversión ya en impago dejaría
+    // huérfano el cuestionario fiscal ya respondido. Ver defaultTransitionGuard.ts.
+    if (isBlockedIncomeModelChange(current, updates)) {
+      const message = 'No se puede cambiar el tipo de rendimiento de una inversión en impago. Deshaz el impago primero.';
+      console.error('Blocked income model change on defaulted investment:', { id, updates });
       return { demotedToDraft: false, error: message };
     }
 

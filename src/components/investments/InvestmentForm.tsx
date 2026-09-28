@@ -139,6 +139,57 @@ const futureInvestmentSchema = z.object({
 
 type InvestmentFormData = z.infer<typeof investmentSchema>;
 
+interface EditFormValues {
+  platform?: Platform;
+  customPlatformName?: string;
+  projectName?: string;
+  amount?: number;
+  investmentDate?: Date;
+  expectedEndDate?: Date;
+  expectedReturn?: number;
+  incomeModel?: IncomeModel;
+  paymentFrequency?: PaymentFrequency;
+  principalReturnType?: PrincipalReturnType;
+  equityType?: EquityType;
+  status?: InvestmentStatus;
+  notes?: string;
+  sourceUrl?: string;
+}
+
+/**
+ * Única fuente de verdad para convertir `initialData` (la inversión real,
+ * tal y como llega del padre) en valores de formulario — usada al montar, en
+ * CADA apertura del diálogo y al cerrarlo. Antes había dos copias de este
+ * mapeo (defaultValues al montar y el reset al cerrar) y la segunda omitía
+ * incomeModel/paymentFrequency/principalReturnType/equityType: al reabrir el
+ * formulario para la MISMA inversión sin haber recargado la página, esos 4
+ * campos quedaban en `undefined` en vez de reflejar el dato real — y como el
+ * formulario envía siempre el objeto completo (no solo lo tocado), guardar
+ * cualquier otro cambio podía sobrescribirlos en la BD con un valor obsoleto.
+ */
+function buildEditFormValues(initialData: Investment | FutureInvestmentFormData): EditFormValues {
+  return {
+    platform: initialData.platform,
+    customPlatformName: initialData.customPlatformName,
+    projectName: initialData.projectName,
+    amount: initialData.amount || undefined,
+    investmentDate: initialData.investmentDate
+      ? (initialData.investmentDate instanceof Date ? initialData.investmentDate : new Date(initialData.investmentDate))
+      : undefined,
+    expectedEndDate: initialData.expectedEndDate
+      ? (initialData.expectedEndDate instanceof Date ? initialData.expectedEndDate : new Date(initialData.expectedEndDate))
+      : undefined,
+    expectedReturn: initialData.expectedReturn || undefined,
+    incomeModel: 'incomeModel' in initialData ? initialData.incomeModel || undefined : undefined,
+    paymentFrequency: 'paymentFrequency' in initialData ? initialData.paymentFrequency || undefined : undefined,
+    principalReturnType: 'principalReturnType' in initialData ? initialData.principalReturnType || undefined : undefined,
+    equityType: 'equityType' in initialData ? (initialData as Investment).equityType : undefined,
+    status: 'status' in initialData ? initialData.status : undefined,
+    notes: initialData.notes,
+    sourceUrl: 'sourceUrl' in initialData ? initialData.sourceUrl : undefined,
+  };
+}
+
 export type InvestmentFormMode = 'real' | 'future';
 
 interface InvestmentFormProps {
@@ -197,26 +248,7 @@ export function InvestmentForm({
   const form = useForm<any>({
     resolver: zodResolver(schema),
     defaultValues: initialData
-      ? {
-          platform: initialData.platform,
-          customPlatformName: initialData.customPlatformName,
-          projectName: initialData.projectName,
-          amount: initialData.amount || undefined,
-          investmentDate: initialData.investmentDate
-            ? (initialData.investmentDate instanceof Date ? initialData.investmentDate : new Date(initialData.investmentDate))
-            : undefined,
-          expectedEndDate: initialData.expectedEndDate
-            ? (initialData.expectedEndDate instanceof Date ? initialData.expectedEndDate : new Date(initialData.expectedEndDate))
-            : undefined,
-          expectedReturn: initialData.expectedReturn || undefined,
-          incomeModel: 'incomeModel' in initialData ? initialData.incomeModel || undefined : undefined,
-          paymentFrequency: 'paymentFrequency' in initialData ? initialData.paymentFrequency : undefined,
-          principalReturnType: 'principalReturnType' in initialData ? initialData.principalReturnType : undefined,
-          equityType: 'equityType' in initialData ? (initialData as Investment).equityType : undefined,
-          status: 'status' in initialData ? initialData.status : undefined,
-          notes: initialData.notes,
-          sourceUrl: 'sourceUrl' in initialData ? initialData.sourceUrl : undefined,
-        }
+      ? buildEditFormValues(initialData)
       : isFuture
         ? {}
         : {
@@ -232,8 +264,14 @@ export function InvestmentForm({
   const watchPlatform = form.watch('platform');
   const watchIncomeModel = form.watch('incomeModel') as IncomeModel | undefined;
   const watchEquityType = form.watch('equityType') as EquityType | undefined;
+  const watchStatus = form.watch('status') as InvestmentStatus | undefined;
   const endDateRequired = !!watchIncomeModel &&
     (END_DATE_REQUIRED_MODELS as readonly string[]).includes(watchIncomeModel);
+  // El modelo de ingresos condiciona por completo cómo assessDefaultLoss
+  // califica la pérdida (equity nunca se evalúa, el resto sí) — cambiarlo en
+  // una inversión ya en impago dejaría huérfano el cuestionario fiscal ya
+  // respondido (loss_*) sin ningún aviso. Bloqueado igual que 'status'.
+  const incomeModelLockedByDefault = watchStatus === 'defaulted';
 
   // B2 — Clear incompatible fields when incomeModel changes to bullet or variable_or_unknown
   const incomeModelMountRef = useRef(true);
@@ -325,27 +363,26 @@ export function InvestmentForm({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [initialData]);
 
+  // Full reset from the CURRENT initialData on every open — not just at
+  // mount. useForm's defaultValues are only read once at mount, so without
+  // this, reopening the SAME investment (or a different one, if this
+  // component instance stayed mounted) could show stale values left over
+  // from a previous open/close cycle. Only for edit forms (initialData set);
+  // new-investment/future-investment drafts have their own restore effect.
+  useEffect(() => {
+    if (open && initialData) {
+      form.reset(buildEditFormValues(initialData));
+    }
+    // form.reset is stable; buildEditFormValues is a pure top-level function
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [open, initialData]);
+
   // Reset state when dialog closes.
   // For new investments we intentionally skip form.reset() so the draft survives close/reopen.
   useEffect(() => {
     if (!open) {
       if (initialData) {
-        form.reset({
-          platform: initialData.platform,
-          customPlatformName: initialData.customPlatformName,
-          projectName: initialData.projectName,
-          amount: initialData.amount,
-          investmentDate: initialData.investmentDate
-            ? (initialData.investmentDate instanceof Date ? initialData.investmentDate : new Date(initialData.investmentDate))
-            : undefined,
-          expectedEndDate: initialData.expectedEndDate
-            ? (initialData.expectedEndDate instanceof Date ? initialData.expectedEndDate : new Date(initialData.expectedEndDate))
-            : undefined,
-          expectedReturn: initialData.expectedReturn,
-          status: 'status' in initialData ? initialData.status : undefined,
-          notes: initialData.notes,
-          sourceUrl: 'sourceUrl' in initialData ? initialData.sourceUrl : undefined,
-        });
+        form.reset(buildEditFormValues(initialData));
       }
       // new investment: intentionally NO form.reset() — draft survives close/reopen
       // Reset the incomeModel mount guard so it's ready for the next open
@@ -659,7 +696,7 @@ export function InvestmentForm({
             render={({ field }) => (
               <FormItem>
                 <FormLabel>{t('investments.field.incomeModel')}</FormLabel>
-                <Select onValueChange={field.onChange} value={field.value}>
+                <Select onValueChange={field.onChange} value={field.value} disabled={incomeModelLockedByDefault}>
                   <FormControl>
                     <SelectTrigger aria-label={t('investments.field.incomeModel')}>
                       <SelectValue placeholder={t('investments.incomeModel.placeholder')} />
@@ -673,6 +710,9 @@ export function InvestmentForm({
                     ))}
                   </SelectContent>
                 </Select>
+                {incomeModelLockedByDefault && (
+                  <p className="text-xs text-muted-foreground">{t('investments.incomeModel.lockedDefaulted')}</p>
+                )}
                 <FormMessage />
               </FormItem>
             )}
@@ -741,7 +781,7 @@ export function InvestmentForm({
               render={({ field }) => (
                 <FormItem>
                   <FormLabel>{t('investments.field.equityType')}</FormLabel>
-                  <Select onValueChange={field.onChange} value={field.value || ''}>
+                  <Select onValueChange={field.onChange} value={field.value || ''} disabled={incomeModelLockedByDefault}>
                     <FormControl>
                       <SelectTrigger>
                         <SelectValue placeholder={t('common.noSelection')} />

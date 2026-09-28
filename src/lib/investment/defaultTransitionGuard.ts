@@ -1,4 +1,4 @@
-import type { Investment, InvestmentStatus } from '@/types/investment';
+import type { EquityType, IncomeModel, Investment, InvestmentStatus } from '@/types/investment';
 
 /**
  * Impide marcar una inversión como 'defaulted' sin haber completado el
@@ -18,4 +18,30 @@ export function isBlockedDefaultedTransition(
     currentStatus !== 'defaulted' &&
     updates.lossAssessedAt === undefined
   );
+}
+
+const normalize = <T>(v: T | null | undefined): T | null => v ?? null;
+
+/**
+ * Impide cambiar incomeModel/equityType de una inversión que YA está en
+ * 'defaulted' (antes de esta actualización): assessDefaultLoss califica la
+ * pérdida de forma completamente distinta según el modelo (equity nunca se
+ * evalúa, el resto sí), así que cambiarlo dejaría huérfano el cuestionario
+ * fiscal ya respondido (loss_*) sin ningún aviso. No bloquea reenviar el
+ * MISMO valor (p.ej. "Deshacer impago" reenvía incomeModel sin cambiarlo
+ * para forzar la regeneración del calendario, ver InvestmentDetail.tsx) ni
+ * afecta a inversiones que no estaban ya en 'defaulted'.
+ */
+export function isBlockedIncomeModelChange(
+  current: { status?: InvestmentStatus; incomeModel?: IncomeModel; equityType?: EquityType | null } | undefined,
+  updates: Partial<Investment>,
+): boolean {
+  if (current?.status !== 'defaulted') return false;
+
+  const incomeModelChanged =
+    updates.incomeModel !== undefined && normalize(updates.incomeModel) !== normalize(current.incomeModel);
+  const equityTypeChanged =
+    updates.equityType !== undefined && normalize(updates.equityType) !== normalize(current.equityType);
+
+  return incomeModelChanged || equityTypeChanged;
 }

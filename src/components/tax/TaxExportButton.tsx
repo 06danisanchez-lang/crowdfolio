@@ -447,7 +447,7 @@ export function TaxExportButton({
         const wsGPP = workbook.addWorksheet('Pérdidas por impago');
         wsGPP.properties.tabColor = { argb: RED_NEG };
         wsGPP.columns = [
-          { width: 30 }, { width: 16 }, { width: 14 }, { width: 14 }, { width: 14 },
+          { width: 30 }, { width: 16 }, { width: 14 }, { width: 14 }, { width: 22 },
           { width: 16 }, { width: 18 }, { width: 14 }, { width: 12 }, { width: 16 },
         ];
 
@@ -459,7 +459,7 @@ export function TaxExportButton({
 
         if (defaultLossSummary.declarable.rows.length > 0) {
           addTableHeader(wsGPP, [
-            'Inversión', 'Plataforma', 'Invertido (€)', 'Recuperado (€)', 'Pérdida (€)',
+            'Inversión', 'Plataforma', 'Invertido (€)', 'Recuperado (€)', 'Pérdida total de la inversión (€)',
             'Estado', 'Hecho', 'Fecha del hecho', 'Ejercicio', 'Importe imputable (€)',
           ], 10);
 
@@ -677,7 +677,7 @@ export function TaxExportButton({
         if (defaultLossSummary.declarable.rows.length > 0) {
           autoTable(doc, {
             startY: yPos,
-            head: [['Inversión', 'Plataforma', 'Invertido', 'Recuperado', 'Pérdida', 'Estado', 'Hecho', 'Fecha', 'Ej.', 'Imputable']],
+            head: [['Inversión', 'Plataforma', 'Invertido', 'Recuperado', 'Pérdida total de la inversión (€)', 'Estado', 'Hecho', 'Fecha', 'Ej.', 'Imputable']],
             body: [
               ...defaultLossSummary.declarable.rows.map((r) => [
                 r.projectName,
@@ -697,11 +697,11 @@ export function TaxExportButton({
             headStyles: { fillColor: [239, 68, 68] },
             styles: { fontSize: 7 },
             columnStyles: {
-              0: { cellWidth: 30 }, 1: { cellWidth: 18 },
-              2: { cellWidth: 18, halign: 'right' as const }, 3: { cellWidth: 18, halign: 'right' as const },
-              4: { cellWidth: 18, halign: 'right' as const }, 5: { cellWidth: 20 },
-              6: { cellWidth: 22 }, 7: { cellWidth: 18 }, 8: { cellWidth: 10 },
-              9: { cellWidth: 20, halign: 'right' as const },
+              0: { cellWidth: 26 }, 1: { cellWidth: 16 },
+              2: { cellWidth: 16, halign: 'right' as const }, 3: { cellWidth: 16, halign: 'right' as const },
+              4: { cellWidth: 28, halign: 'right' as const }, 5: { cellWidth: 18 },
+              6: { cellWidth: 20 }, 7: { cellWidth: 16 }, 8: { cellWidth: 10 },
+              9: { cellWidth: 18, halign: 'right' as const },
             },
           });
           // eslint-disable-next-line @typescript-eslint/no-explicit-any

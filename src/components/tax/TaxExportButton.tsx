@@ -9,7 +9,8 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
-import { TaxSummary, TaxExpense, TAX_EXPENSE_CATEGORIES, EnrichedPayment, DefaultedInvestmentLoss } from '@/types/tax';
+import { TaxSummary, TaxExpense, TAX_EXPENSE_CATEGORIES, EnrichedPayment } from '@/types/tax';
+import type { DefaultLossYearSummary } from '@/lib/tax/defaultLossSummary';
 import { getTaxBreakdown, formatCurrency, formatPercentage } from '@/lib/tax/calculations';
 import { toast } from '@/hooks/use-toast';
 import ExcelJS from 'exceljs';
@@ -25,23 +26,34 @@ interface ExtendedTaxExportButtonProps {
   summary: TaxSummary;
   expenses: TaxExpense[];
   enrichedPayments: EnrichedPayment[];
-  defaultedInvestmentsWithLoss: DefaultedInvestmentLoss[];
+  defaultLossSummary: DefaultLossYearSummary;
   userEmail: string;
   onProRequired?: () => void;
   isPro?: boolean;
 }
 
+const TRIGGER_LABEL_KEYS: Record<string, string> = {
+  quita: 'tax.defaultLoss.trigger.quita',
+  insolvency_concluded: 'tax.defaultLoss.trigger.insolvencyConcluded',
+  enforcement_one_year: 'tax.defaultLoss.trigger.enforcementOneYear',
+};
+
 export function TaxExportButton({
   summary,
   expenses,
   enrichedPayments,
-  defaultedInvestmentsWithLoss,
+  defaultLossSummary,
   userEmail,
   onProRequired,
   isPro = true,
 }: ExtendedTaxExportButtonProps) {
   const { t } = useLanguage();
   const [isExporting, setIsExporting] = useState(false);
+
+  const hasAnyDefaultLoss =
+    defaultLossSummary.declarable.rows.length > 0 ||
+    defaultLossSummary.recoveryGains.rows.length > 0 ||
+    defaultLossSummary.pending.length > 0;
 
   const handleExportClick = (exportFn: () => Promise<void>) => {
     if (!isPro) {
@@ -260,17 +272,29 @@ export function TaxExportButton({
       applyStyle(erRow.getCell(1), S.creamLabel);
       applyStyle(erRow.getCell(2), S.creamVal);
 
-      // Pérdidas de cartera por impago (conditional) — Fase 1: sin calificación
-      // fiscal, no entran en ningún cálculo de cuota/base/compensación (ver
-      // useTaxSummary.ts). No se muestra ninguna tabla de compensación: siempre
-      // es 0 mientras se implementa correctamente (Fase 2/3).
-      if (summary.totalGPPLosses < 0) {
-        addSectionSep('── Pérdidas de Cartera por Impago ──');
-        addSummaryRow(t('tax.buckets.gpp.defaultLossesLabel'), summary.totalGPPLosses, S.valNeg);
-        const gppNoteRow = wsR.addRow([t('tax.buckets.gpp.defaultLossesDisclaimer'), '']);
-        gppNoteRow.height = 48;
-        wsR.mergeCells(gppNoteRow.number, 1, gppNoteRow.number, 2);
-        applyStyle(wsR.getCell(gppNoteRow.number, 1), S.legalNote);
+      // Pérdidas por impago (Fase 5) — base imponible GENERAL, nunca entran en
+      // taxableBase/estimatedTax (ver useTaxSummary.ts/defaultLossSummary.ts).
+      // Detalle completo por inversión y por hecho en la hoja "Pérdidas por impago".
+      if (hasAnyDefaultLoss) {
+        addSectionSep('── Base Imponible General — Pérdidas por Impago ──');
+        if (defaultLossSummary.declarable.rows.length > 0) {
+          addSummaryRow(`Pérdidas declarables en ${summary.year}`, -defaultLossSummary.declarable.totalAmount, S.valNeg);
+        }
+        if (defaultLossSummary.recoveryGains.rows.length > 0) {
+          addSummaryRow(`Recuperaciones como ganancia en ${summary.year}`, defaultLossSummary.recoveryGains.totalAmount, S.valPos);
+        }
+        if (defaultLossSummary.pending.length > 0) {
+          const totalPending = defaultLossSummary.pending.reduce((s, p) => s + p.pendingAmount, 0);
+          addSummaryRow('Aún no declarables (informativo)', -totalPending, S.dataOdd as XStyle);
+        }
+        const methodNoteRow = wsR.addRow([t('tax.defaultLoss.methodologyNote'), '']);
+        methodNoteRow.height = 60;
+        wsR.mergeCells(methodNoteRow.number, 1, methodNoteRow.number, 2);
+        applyStyle(wsR.getCell(methodNoteRow.number, 1), S.legalNote);
+        const gppDisclaimerRow = wsR.addRow([t('defaultLoss.disclaimer'), '']);
+        gppDisclaimerRow.height = 36;
+        wsR.mergeCells(gppDisclaimerRow.number, 1, gppDisclaimerRow.number, 2);
+        applyStyle(wsR.getCell(gppDisclaimerRow.number, 1), S.legalNote);
       }
 
       // ── Sheet 2: Tramos IRPF ─────────────────────────────────────────────
@@ -416,27 +440,95 @@ export function TaxExportButton({
       addTotalRow(wsI, ['TOTAL', '', iTotBruto, iTotRet, iTotBruto - iTotRet], 5);
       [3, 4, 5].forEach(c => { wsI.lastRow!.getCell(c).numFmt = MONEY; });
 
-      // ── Sheet 6: Pérdidas GPP (conditional) ──────────────────────────────
-      if (summary.totalGPPLosses < 0 && defaultedInvestmentsWithLoss.length > 0) {
+      // ── Sheet 6: Pérdidas por impago (Fase 5, conditional) ───────────────
+      if (hasAnyDefaultLoss) {
         const wsGPP = workbook.addWorksheet('Pérdidas por impago');
         wsGPP.properties.tabColor = { argb: RED_NEG };
-        wsGPP.columns = [{ width: 38 }, { width: 20 }, { width: 18 }, { width: 18 }, { width: 18 }];
+        wsGPP.columns = [
+          { width: 30 }, { width: 16 }, { width: 14 }, { width: 14 }, { width: 14 },
+          { width: 16 }, { width: 18 }, { width: 14 }, { width: 12 }, { width: 16 },
+        ];
 
-        addTitleRows(wsGPP, `PÉRDIDAS POR IMPAGO ${summary.year}`, t('tax.buckets.gpp.defaultLossesDisclaimer'), 5, S.sheetTitleRed);
-        addTableHeader(wsGPP, ['Inversión', 'Plataforma', 'Invertido (€)', 'Recuperado (€)', 'Pérdida (€)'], 5);
+        addTitleRows(wsGPP, `PÉRDIDAS POR IMPAGO ${summary.year}`, 'Art. 14.2.k LIRPF — base imponible general', 10, S.sheetTitleRed);
 
-        addDataRows(wsGPP, defaultedInvestmentsWithLoss, inv => [
-          inv.projectName, inv.platform, inv.amountInvested, inv.amountRecovered, inv.loss,
-        ], (cell, col) => {
-          if (col >= 3) { cell.numFmt = MONEY; applyStyle(cell, { ...cell.style, alignment: { horizontal: 'right' } } as XStyle); }
-          if (col === 5) applyStyle(cell, { ...cell.style, font: { bold: true, size: 10, color: { argb: RED_NEG } } } as XStyle);
-        });
+        const hasPlatformEnforcement = defaultLossSummary.declarable.rows.some(
+          (r) => r.platformInitiatedEnforcement && r.trigger === 'enforcement_one_year',
+        );
 
-        const gppTotRow = addTotalRow(wsGPP, [t('tax.buckets.gpp.defaultLossesLabel'), '', '', '', summary.totalGPPLosses], 5);
-        wsGPP.getRow(gppTotRow).getCell(5).numFmt = MONEY;
-        // Fase 1 — sin sección de compensación: estas pérdidas no entran en
-        // ningún cálculo de cuota/base/compensación (ver useTaxSummary.ts).
-        // La sección de compensación se reintroducirá, correctamente, en Fase 5.
+        if (defaultLossSummary.declarable.rows.length > 0) {
+          addTableHeader(wsGPP, [
+            'Inversión', 'Plataforma', 'Invertido (€)', 'Recuperado (€)', 'Pérdida (€)',
+            'Estado', 'Hecho', 'Fecha del hecho', 'Ejercicio', 'Importe imputable (€)',
+          ], 10);
+
+          addDataRows(wsGPP, defaultLossSummary.declarable.rows, (r) => [
+            r.projectName, r.platform, r.amountInvested, r.amountRecovered, r.loss,
+            t(`defaultLoss.status.${r.status === 'deductible' ? 'deductible' : 'partiallyDeductible'}`),
+            t(TRIGGER_LABEL_KEYS[r.trigger]) + (r.platformInitiatedEnforcement && r.trigger === 'enforcement_one_year' ? ' *' : ''),
+            new Date(r.triggerDate).toLocaleDateString('es-ES'), r.year, r.amount,
+          ], (cell, col) => {
+            if ([3, 4, 5, 10].includes(col)) { cell.numFmt = MONEY; applyStyle(cell, { ...cell.style, alignment: { horizontal: 'right' } } as XStyle); }
+            if (col === 10) applyStyle(cell, { ...cell.style, font: { bold: true, size: 10, color: { argb: RED_NEG } } } as XStyle);
+          });
+
+          const declTotRow = addTotalRow(wsGPP, [
+            `Total declarable ${summary.year}`, '', '', '', '', '', '', '', '', defaultLossSummary.declarable.totalAmount,
+          ], 10);
+          wsGPP.getRow(declTotRow).getCell(10).numFmt = MONEY;
+
+          if (hasPlatformEnforcement) {
+            const noteRow = wsGPP.addRow([`* ${t('defaultLoss.result.platformEnforcementWarning')}`]);
+            noteRow.height = 30;
+            wsGPP.mergeCells(noteRow.number, 1, noteRow.number, 10);
+            applyStyle(wsGPP.getCell(noteRow.number, 1), S.legalNote);
+          }
+        }
+
+        if (defaultLossSummary.recoveryGains.rows.length > 0) {
+          wsGPP.addRow([]);
+          const recTitleRow = wsGPP.addRow([`Recuperaciones que son ganancia patrimonial en ${summary.year}`]);
+          recTitleRow.height = 22;
+          wsGPP.mergeCells(recTitleRow.number, 1, recTitleRow.number, 10);
+          applyStyle(wsGPP.getCell(recTitleRow.number, 1), S.sectionHeader);
+
+          addTableHeader(wsGPP, ['Inversión', 'Plataforma', 'Ejercicio de la pérdida', 'Ejercicio del cobro', 'Importe (€)'], 5);
+          addDataRows(wsGPP, defaultLossSummary.recoveryGains.rows, (r) => [
+            r.projectName, r.platform, r.lossYear, r.year, r.amount,
+          ], (cell, col) => {
+            if (col === 5) { cell.numFmt = MONEY; applyStyle(cell, { ...cell.style, alignment: { horizontal: 'right' } } as XStyle); }
+          });
+          const recTotRow = addTotalRow(wsGPP, ['Total recuperado como ganancia', '', '', '', defaultLossSummary.recoveryGains.totalAmount], 5);
+          wsGPP.getRow(recTotRow).getCell(5).numFmt = MONEY;
+        }
+
+        if (defaultLossSummary.pending.length > 0) {
+          wsGPP.addRow([]);
+          const pendTitleRow = wsGPP.addRow(['Pérdidas por impago aún no declarables (informativo)']);
+          pendTitleRow.height = 22;
+          wsGPP.mergeCells(pendTitleRow.number, 1, pendTitleRow.number, 10);
+          applyStyle(wsGPP.getCell(pendTitleRow.number, 1), S.sectionHeader);
+
+          addTableHeader(wsGPP, ['Inversión', 'Plataforma', 'Importe pendiente (€)', 'Motivo'], 4);
+          addDataRows(wsGPP, defaultLossSummary.pending, (p) => [
+            p.projectName, p.platform, p.pendingAmount,
+            p.pendingReason === 'pending_deadline'
+              ? t('defaultLoss.status.pendingDeadline').replace('{deadline}', p.deadlineDate ? new Date(p.deadlineDate).toLocaleDateString('es-ES') : '')
+              : t(`defaultLoss.status.${p.pendingReason === 'pending_insolvency' ? 'pendingInsolvency' : p.pendingReason === 'unknown' ? 'unknown' : 'notYet'}`),
+          ], (cell, col) => {
+            if (col === 3) { cell.numFmt = MONEY; applyStyle(cell, { ...cell.style, alignment: { horizontal: 'right' } } as XStyle); }
+          });
+        }
+
+        wsGPP.addRow([]);
+        const methodRow = wsGPP.addRow([t('tax.defaultLoss.methodologyNote')]);
+        methodRow.height = 60;
+        wsGPP.mergeCells(methodRow.number, 1, methodRow.number, 10);
+        applyStyle(wsGPP.getCell(methodRow.number, 1), S.legalNote);
+
+        const disclaimerRow = wsGPP.addRow([t('defaultLoss.disclaimer')]);
+        disclaimerRow.height = 36;
+        wsGPP.mergeCells(disclaimerRow.number, 1, disclaimerRow.number, 10);
+        applyStyle(wsGPP.getCell(disclaimerRow.number, 1), S.legalNote);
       }
 
       // ── Download ──────────────────────────────────────────────────────────
@@ -552,49 +644,127 @@ export function TaxExportButton({
         yPos = (doc as any).lastAutoTable.finalY + 15;
       }
 
-      // ── Pérdidas de cartera por impago — Fase 1: sin calificación fiscal,
-      // no entran en ningún cálculo de cuota/base/compensación (ver
-      // useTaxSummary.ts). Sin tabla de compensación: se reintroducirá,
-      // correctamente, en Fase 5. ────────────────────────────────────────────
-      if (summary.totalGPPLosses < 0 && defaultedInvestmentsWithLoss.length > 0) {
+      // ── Pérdidas por impago (Fase 5) — base imponible GENERAL, nunca entran
+      // en taxableBase/estimatedTax (ver useTaxSummary.ts/defaultLossSummary.ts). ──
+      if (hasAnyDefaultLoss) {
         if (yPos > 190) { doc.addPage(); yPos = 20; }
 
         doc.setFontSize(14);
         doc.setFont('helvetica', 'bold');
-        doc.text('Pérdidas de Cartera por Impago', 14, yPos);
+        doc.text('Pérdidas por Impago — Base Imponible General', 14, yPos);
         yPos += 5;
 
-        autoTable(doc, {
-          startY: yPos,
-          head: [['Inversión', 'Plataforma', 'Invertido', 'Recuperado', 'Pérdida']],
-          body: [
-            ...defaultedInvestmentsWithLoss.map(inv => [
-              inv.projectName,
-              inv.platform,
-              formatCurrency(inv.amountInvested),
-              formatCurrency(inv.amountRecovered),
-              formatCurrency(inv.loss),
+        const hasPlatformEnforcementPdf = defaultLossSummary.declarable.rows.some(
+          (r) => r.platformInitiatedEnforcement && r.trigger === 'enforcement_one_year',
+        );
+
+        if (defaultLossSummary.declarable.rows.length > 0) {
+          autoTable(doc, {
+            startY: yPos,
+            head: [['Inversión', 'Plataforma', 'Invertido', 'Recuperado', 'Pérdida', 'Estado', 'Hecho', 'Fecha', 'Ej.', 'Imputable']],
+            body: [
+              ...defaultLossSummary.declarable.rows.map((r) => [
+                r.projectName,
+                r.platform,
+                formatCurrency(r.amountInvested),
+                formatCurrency(r.amountRecovered),
+                formatCurrency(r.loss),
+                t(`defaultLoss.status.${r.status === 'deductible' ? 'deductible' : 'partiallyDeductible'}`),
+                t(TRIGGER_LABEL_KEYS[r.trigger]) + (r.platformInitiatedEnforcement && r.trigger === 'enforcement_one_year' ? ' *' : ''),
+                new Date(r.triggerDate).toLocaleDateString('es-ES'),
+                String(r.year),
+                formatCurrency(r.amount),
+              ]),
+              ['', '', '', '', '', '', '', '', `Total ${summary.year}`, formatCurrency(defaultLossSummary.declarable.totalAmount)],
+            ],
+            theme: 'striped',
+            headStyles: { fillColor: [239, 68, 68] },
+            styles: { fontSize: 7 },
+            columnStyles: {
+              0: { cellWidth: 30 }, 1: { cellWidth: 18 },
+              2: { cellWidth: 18, halign: 'right' as const }, 3: { cellWidth: 18, halign: 'right' as const },
+              4: { cellWidth: 18, halign: 'right' as const }, 5: { cellWidth: 20 },
+              6: { cellWidth: 22 }, 7: { cellWidth: 18 }, 8: { cellWidth: 10 },
+              9: { cellWidth: 20, halign: 'right' as const },
+            },
+          });
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+          yPos = (doc as any).lastAutoTable.finalY + 6;
+
+          if (hasPlatformEnforcementPdf) {
+            const warnLines = doc.splitTextToSize(`* ${t('defaultLoss.result.platformEnforcementWarning')}`, pageWidth - 28);
+            doc.setFontSize(8);
+            doc.setFont('helvetica', 'italic');
+            doc.text(warnLines, 14, yPos);
+            doc.setFont('helvetica', 'normal');
+            yPos += warnLines.length * 4 + 6;
+          }
+        }
+
+        if (defaultLossSummary.recoveryGains.rows.length > 0) {
+          if (yPos > 220) { doc.addPage(); yPos = 20; }
+          doc.setFontSize(11);
+          doc.setFont('helvetica', 'bold');
+          doc.text(`Recuperaciones que son ganancia patrimonial en ${summary.year}`, 14, yPos);
+          yPos += 4;
+
+          autoTable(doc, {
+            startY: yPos,
+            head: [['Inversión', 'Plataforma', 'Ejercicio pérdida', 'Ejercicio cobro', 'Importe']],
+            body: [
+              ...defaultLossSummary.recoveryGains.rows.map((r) => [
+                r.projectName, r.platform, String(r.lossYear), String(r.year), formatCurrency(r.amount),
+              ]),
+              ['', '', '', 'TOTAL', formatCurrency(defaultLossSummary.recoveryGains.totalAmount)],
+            ],
+            theme: 'striped',
+            headStyles: { fillColor: [34, 139, 87] },
+            styles: { fontSize: 8 },
+            columnStyles: {
+              0: { cellWidth: 55 }, 1: { cellWidth: 30 }, 2: { cellWidth: 30 },
+              3: { cellWidth: 30 }, 4: { cellWidth: 28, halign: 'right' as const },
+            },
+          });
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+          yPos = (doc as any).lastAutoTable.finalY + 8;
+        }
+
+        if (defaultLossSummary.pending.length > 0) {
+          if (yPos > 220) { doc.addPage(); yPos = 20; }
+          doc.setFontSize(11);
+          doc.setFont('helvetica', 'bold');
+          doc.text('Pérdidas por impago aún no declarables (informativo)', 14, yPos);
+          yPos += 4;
+
+          autoTable(doc, {
+            startY: yPos,
+            head: [['Inversión', 'Plataforma', 'Pendiente', 'Motivo']],
+            body: defaultLossSummary.pending.map((p) => [
+              p.projectName,
+              p.platform,
+              formatCurrency(p.pendingAmount),
+              p.pendingReason === 'pending_deadline'
+                ? t('defaultLoss.status.pendingDeadline').replace('{deadline}', p.deadlineDate ? new Date(p.deadlineDate).toLocaleDateString('es-ES') : '')
+                : t(`defaultLoss.status.${p.pendingReason === 'pending_insolvency' ? 'pendingInsolvency' : p.pendingReason === 'unknown' ? 'unknown' : 'notYet'}`),
             ]),
-            ['', '', '', t('tax.buckets.gpp.defaultLossesLabel'), formatCurrency(summary.totalGPPLosses)],
-          ],
-          theme: 'striped',
-          headStyles: { fillColor: [239, 68, 68] },
-          styles: { fontSize: 9 },
-          columnStyles: {
-            0: { cellWidth: 55 },
-            1: { cellWidth: 30 },
-            2: { cellWidth: 28, halign: 'right' as const },
-            3: { cellWidth: 28, halign: 'right' as const },
-            4: { cellWidth: 28, halign: 'right' as const },
-          },
-        });
+            theme: 'striped',
+            headStyles: { fillColor: [156, 163, 175] },
+            styles: { fontSize: 8 },
+            columnStyles: {
+              0: { cellWidth: 45 }, 1: { cellWidth: 28 }, 2: { cellWidth: 25, halign: 'right' as const }, 3: { cellWidth: 70 },
+            },
+          });
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+          yPos = (doc as any).lastAutoTable.finalY + 8;
+        }
 
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        yPos = (doc as any).lastAutoTable.finalY + 8;
-
-        const gppNoteLines = doc.splitTextToSize(t('tax.buckets.gpp.defaultLossesDisclaimer'), pageWidth - 28);
+        const methodLines = doc.splitTextToSize(t('tax.defaultLoss.methodologyNote'), pageWidth - 28);
         doc.setFontSize(8);
         doc.setFont('helvetica', 'italic');
+        doc.text(methodLines, 14, yPos);
+        yPos += methodLines.length * 4 + 4;
+
+        const gppNoteLines = doc.splitTextToSize(t('defaultLoss.disclaimer'), pageWidth - 28);
         doc.text(gppNoteLines, 14, yPos);
         doc.setFont('helvetica', 'normal');
         yPos += gppNoteLines.length * 4 + 12;

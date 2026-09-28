@@ -1,50 +1,15 @@
 import { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
-import { Investment, InvestmentSummary, Platform, InvestmentStatus, Payment, DraftInvestment, IncomeModel, PaymentFrequency, PrincipalReturnType, EquityType, CloseReasonType, InvestmentScheduleEntry, LossInsolvencyStatus, LossEnforcementInitiator } from '@/types/investment';
+import { Investment, InvestmentSummary, Platform, InvestmentStatus, Payment, DraftInvestment, IncomeModel, PaymentFrequency, PrincipalReturnType, EquityType, InvestmentScheduleEntry } from '@/types/investment';
 import { calculateInvestmentTotalReturn, calculateExpectedReturnFromSchedule, calculateAccruedReturn, calculateRemainingReturn, getEffectiveTAE } from '@/lib/investment/calculations';
 import { isInvestmentComplete, getInvestmentCompletionStatus } from '@/lib/investment/completeness';
 import { generateSchedule } from '@/lib/investment/scheduleGenerator';
-import { isBlockedDefaultedTransition } from '@/lib/investment/defaultTransitionGuard';
+import { isBlockedDefaultedTransition, isBlockedIncomeModelChange } from '@/lib/investment/defaultTransitionGuard';
 import { toDateOnlyString } from '@/lib/dateOnly';
+import { RawInvestmentRow, mapRawInvestmentRow, draftToInvestment } from '@/lib/investment/mapInvestmentRow';
 
 const FETCH_TIMEOUT_MS = 15_000;
-
-// Internal type for raw DB rows (nullable fields)
-interface RawInvestmentRow {
-  id: string;
-  platform: string | null;
-  custom_platform_name: string | null;
-  project_name: string | null;
-  amount: number | null;
-  investment_date: string | null;
-  expected_end_date: string | null;
-  expected_return: number | null;
-  income_model: string | null;
-  payment_frequency: string | null;
-  principal_return_type: string | null;
-  status: string;
-  notes: string | null;
-  source_url: string | null;
-  defaulted_at: string | null;
-  amount_recovered: number | null;
-  equity_type: string | null;
-  actual_end_date: string | null;
-  close_reason: string | null;
-  was_extended: boolean | null;
-  loss_insolvency_status: string | null;
-  loss_insolvency_concluded_date: string | null;
-  loss_quita_amount: number | null;
-  loss_quita_date: string | null;
-  loss_enforcement_started: boolean | null;
-  loss_enforcement_date: string | null;
-  loss_enforcement_initiator: string | null;
-  loss_assessed_at: string | null;
-  loss_rules_version: number | null;
-  created_at: string;
-  updated_at: string;
-  user_id: string;
-}
 
 export function useInvestments() {
   const { user } = useAuth();
@@ -144,46 +109,19 @@ export function useInvestments() {
         await supabase.from('investments').update({ status: 'pending' }).in('id', [...autoPendingIds]);
       }
 
-      const mapped: DraftInvestment[] = (investmentsData as RawInvestmentRow[] || []).map(inv => ({
-        id: inv.id,
-        platform: (inv.platform as Platform) || undefined,
-        customPlatformName: inv.custom_platform_name || undefined,
-        projectName: inv.project_name || undefined,
-        amount: inv.amount != null ? Number(inv.amount) : undefined,
-        investmentDate: inv.investment_date || undefined,
-        expectedEndDate: inv.expected_end_date || undefined,
-        expectedReturn: inv.expected_return != null ? Number(inv.expected_return) : undefined,
-        incomeModel: (inv.income_model as IncomeModel) || undefined,
-        paymentFrequency: (inv.payment_frequency as PaymentFrequency) || undefined,
-        principalReturnType: (inv.principal_return_type as PrincipalReturnType) || undefined,
-        status: autoPendingIds.has(inv.id) ? 'pending' : ((inv.status as InvestmentStatus) || 'active'),
-        notes: inv.notes || undefined,
-        sourceUrl: inv.source_url || undefined,
-        defaultedAt: inv.defaulted_at || undefined,
-        amountRecovered: inv.amount_recovered != null ? Number(inv.amount_recovered) : undefined,
-        equityType: (inv.equity_type as EquityType) || undefined,
-        actualEndDate: inv.actual_end_date || undefined,
-        closeReason: (inv.close_reason as CloseReasonType) || undefined,
-        wasExtended: inv.was_extended ?? false,
-        lossInsolvencyStatus: (inv.loss_insolvency_status as LossInsolvencyStatus) || undefined,
-        lossInsolvencyConcludedDate: inv.loss_insolvency_concluded_date || undefined,
-        lossQuitaAmount: inv.loss_quita_amount != null ? Number(inv.loss_quita_amount) : undefined,
-        lossQuitaDate: inv.loss_quita_date || undefined,
-        lossEnforcementStarted: inv.loss_enforcement_started ?? undefined,
-        lossEnforcementDate: inv.loss_enforcement_date || undefined,
-        lossEnforcementInitiator: (inv.loss_enforcement_initiator as LossEnforcementInitiator) || undefined,
-        lossAssessedAt: inv.loss_assessed_at || undefined,
-        lossRulesVersion: inv.loss_rules_version ?? undefined,
-        createdAt: inv.created_at,
-        updatedAt: inv.updated_at,
-        payments: paymentsData
-          .filter(p => p.investment_id === inv.id)
-          .map(p => ({
-            id: p.id, date: p.date, amount: Number(p.amount),
-            type: p.type as 'dividend' | 'principal' | 'interest',
-            notes: p.notes || undefined,
-          })),
-      }));
+      const mapped: DraftInvestment[] = (investmentsData as RawInvestmentRow[] || []).map(inv =>
+        mapRawInvestmentRow(
+          inv,
+          paymentsData
+            .filter(p => p.investment_id === inv.id)
+            .map(p => ({
+              id: p.id as string, date: p.date as string, amount: Number(p.amount),
+              type: p.type as 'dividend' | 'principal' | 'interest',
+              notes: (p.notes as string) || undefined,
+            })),
+          autoPendingIds.has(inv.id) ? 'pending' : undefined,
+        )
+      );
 
       setAllRawInvestments(mapped);
       setScheduleMap(schedMap);
@@ -231,28 +169,7 @@ export function useInvestments() {
         incomplete.push(raw);
       } else {
         // tracking_ready — safe to cast required fields
-        const inv: Investment = {
-          id: raw.id,
-          platform: raw.platform as Platform,
-          customPlatformName: raw.customPlatformName,
-          projectName: raw.projectName as string,
-          amount: raw.amount as number,
-          investmentDate: raw.investmentDate as string,
-          expectedEndDate: raw.expectedEndDate,
-          expectedReturn: raw.expectedReturn as number,
-          incomeModel: raw.incomeModel as IncomeModel,
-          paymentFrequency: raw.paymentFrequency || undefined,
-          principalReturnType: raw.principalReturnType || undefined,
-          equityType: raw.equityType,
-          status: raw.status,
-          payments: raw.payments,
-          notes: raw.notes,
-          actualEndDate: raw.actualEndDate,
-          closeReason: raw.closeReason,
-          wasExtended: raw.wasExtended,
-          createdAt: raw.createdAt,
-          updatedAt: raw.updatedAt,
-        };
+        const inv: Investment = draftToInvestment(raw);
 
         if (raw.status === 'completed' || raw.status === 'pending') {
           completed.push(inv);
@@ -418,6 +335,14 @@ export function useInvestments() {
     if (isBlockedDefaultedTransition(current?.status, updates)) {
       const message = 'No se puede marcar como impago sin completar el cuestionario de calificación fiscal.';
       console.error('Blocked defaulted transition without loss assessment:', { id, updates });
+      return { demotedToDraft: false, error: message };
+    }
+
+    // Cambiar el tipo de rendimiento de una inversión ya en impago dejaría
+    // huérfano el cuestionario fiscal ya respondido. Ver defaultTransitionGuard.ts.
+    if (isBlockedIncomeModelChange(current, updates)) {
+      const message = 'No se puede cambiar el tipo de rendimiento de una inversión en impago. Deshaz el impago primero.';
+      console.error('Blocked income model change on defaulted investment:', { id, updates });
       return { demotedToDraft: false, error: message };
     }
 

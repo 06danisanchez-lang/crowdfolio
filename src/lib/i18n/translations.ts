@@ -261,13 +261,25 @@ export const translations: Record<Lang, Record<string, string>> = {
     'tax.title': 'Fiscalidad',
     'tax.subtitle': 'Gestión fiscal de tus inversiones (España)',
 
-    // Tax — Pérdidas de cartera por impago (Fase 1, fix/fiscal-default-loss-texts)
-    'tax.buckets.gpp.empty': 'No tienes pérdidas de cartera por impago.',
+    // Tax — Bases imponibles: Base del ahorro (RCM/GPP) y Base imponible general (Fase 5)
     'tax.buckets.gpp.notCalculated': 'Crowdfolio todavía no calcula ganancias y pérdidas por venta de participaciones.',
-    'tax.buckets.gpp.defaultLossesLabel': 'Pérdidas de cartera por impago',
-    'tax.buckets.gpp.defaultLossesDisclaimer': 'Estas pérdidas son reales en tu cartera, pero su tratamiento fiscal depende de hechos formales (concurso, quita o ejecución judicial). Estamos actualizando este cálculo. Consulta con tu asesor antes de declararlas.',
+    'tax.buckets.savingsBaseTitle': 'Base del ahorro',
+
+    // Base imponible general — pérdidas por impago (Fase 5)
+    'tax.defaultLoss.title': 'Base imponible general',
+    'tax.defaultLoss.empty': 'No tienes pérdidas por impago declarables en {year}.',
+    'tax.defaultLoss.declarableTitle': 'Pérdidas por impago declarables en {year}',
+    'tax.defaultLoss.recoveryTitle': 'Recuperaciones de pérdidas ya declarables (ganancia en {year})',
+    'tax.defaultLoss.pendingTitle': 'Pérdidas por impago aún no declarables',
+    'tax.defaultLoss.compensationNote': 'Estas pérdidas se declaran en la base imponible general. Primero se compensan con otras ganancias patrimoniales de esa misma base y, si queda saldo negativo, con tus rendimientos de la base general (por ejemplo, el salario) hasta el 25 % de estos. Lo que no se compense puede aplicarse en los cuatro años siguientes. Como Crowdfolio no conoce el resto de tus rentas, no calcula esta compensación: tu asesor o el programa Renta Web lo harán al preparar la declaración.',
+    'tax.defaultLoss.recoveryGainSentence': 'En {year} recuperaste {amount} € de una pérdida que ya era declarable en {lossYear}. Ese importe se declara como ganancia patrimonial en tu declaración del ejercicio {year}, en la base imponible general.',
+    'tax.defaultLoss.equityNote': 'Participación en capital: Crowdfolio no calcula este caso.',
+    'tax.defaultLoss.trigger.quita': 'Quita',
+    'tax.defaultLoss.trigger.insolvencyConcluded': 'Fin del concurso',
+    'tax.defaultLoss.trigger.enforcementOneYear': 'Un año de ejecución',
+    'tax.defaultLoss.methodologyNote': 'Las pérdidas por créditos vencidos y no cobrados se imputan conforme al art. 14.2.k) de la Ley 35/2006 del IRPF: solo en el ejercicio en que adquiere eficacia una quita (por su importe), concluye el concurso del deudor sin cobro, o se cumple un año desde el inicio de un procedimiento judicial de ejecución distinto del concurso sin cobro. Se integran en la base imponible general. Las cantidades recuperadas después de imputar la pérdida se declaran como ganancia patrimonial en el ejercicio del cobro. La calificación se basa en la información facilitada por el usuario.',
     'tax.info.buckets.gppLine1': 'Ganancias y pérdidas por la venta de participaciones. Se calculan como precio de venta menos coste de adquisición. Crowdfolio todavía no las calcula.',
-    'tax.info.buckets.gppLine2': 'Las pérdidas por impago de un préstamo no van aquí: se declaran en la base general y tienen reglas propias (ver "Pérdidas de cartera por impago").',
+    'tax.info.buckets.gppLine2': 'Las pérdidas por impago de un préstamo no van aquí: se declaran en la base general y tienen reglas propias (ver "Base imponible general").',
     'tax.info.compensation25.disclaimer': 'Esta regla se aplica a las ganancias y pérdidas de la base del ahorro, como la venta de participaciones, que Crowdfolio todavía no calcula. Las pérdidas por impago no se compensan así: se declaran en la base general, con reglas propias.',
     'tax.info.carryforward.disclaimer': 'Las pérdidas por impago, que se declaran en la base general, también pueden compensarse en los cuatro años siguientes, pero con otras rentas distintas de los intereses. Crowdfolio no calcula esta compensación.',
 
@@ -946,13 +958,25 @@ export const translations: Record<Lang, Record<string, string>> = {
     'tax.title': 'Tax',
     'tax.subtitle': 'Tax management for your investments (Spain)',
 
-    // Tax — Portfolio losses from loan defaults (Phase 1, fix/fiscal-default-loss-texts)
-    'tax.buckets.gpp.empty': "You don't have any portfolio losses from loan defaults.",
+    // Tax — Tax bases: Savings base (RCM/GPP) and General tax base (Phase 5)
     'tax.buckets.gpp.notCalculated': "Crowdfolio doesn't calculate gains and losses from selling equity stakes yet.",
-    'tax.buckets.gpp.defaultLossesLabel': 'Portfolio losses from loan defaults',
-    'tax.buckets.gpp.defaultLossesDisclaimer': "These losses are real in your portfolio, but their tax treatment depends on formal events (insolvency proceedings, debt write-off, or legal enforcement). We're updating this calculation. Consult your tax advisor before declaring them.",
+    'tax.buckets.savingsBaseTitle': 'Savings tax base',
+
+    // General tax base — losses from loan defaults (Phase 5)
+    'tax.defaultLoss.title': 'General tax base',
+    'tax.defaultLoss.empty': "You don't have any declarable losses from loan defaults in {year}.",
+    'tax.defaultLoss.declarableTitle': 'Declarable losses from loan defaults in {year}',
+    'tax.defaultLoss.recoveryTitle': 'Recoveries of already-declarable losses (gain in {year})',
+    'tax.defaultLoss.pendingTitle': 'Not yet declarable losses from loan defaults',
+    'tax.defaultLoss.compensationNote': "These losses are declared in the general tax base. They're first offset against other capital gains in that same base and, if a negative balance remains, against your general-base income (e.g. salary) up to 25% of it. Whatever isn't offset can be applied over the following four years. Since Crowdfolio doesn't know the rest of your income, it doesn't calculate this offset: your advisor or the Renta Web program will do it when preparing your return.",
+    'tax.defaultLoss.recoveryGainSentence': 'In {year} you recovered €{amount} from a loss that was already declarable in {lossYear}. That amount is declared as a capital gain in your {year} tax return, in the general tax base.',
+    'tax.defaultLoss.equityNote': "Equity stake: Crowdfolio doesn't calculate this case.",
+    'tax.defaultLoss.trigger.quita': 'Debt write-off',
+    'tax.defaultLoss.trigger.insolvencyConcluded': 'Insolvency proceedings concluded',
+    'tax.defaultLoss.trigger.enforcementOneYear': 'One year of legal enforcement',
+    'tax.defaultLoss.methodologyNote': "Losses from due and unpaid debts are imputed under art. 14.2.k) of Spanish Law 35/2006 (IRPF): only in the tax year in which a debt write-off takes effect (for its amount), the debtor's insolvency proceedings conclude without payment, or one year elapses since the start of a legal enforcement procedure other than insolvency proceedings, without payment. They're included in the general tax base. Amounts recovered after the loss is imputed are declared as a capital gain in the tax year of collection. The classification is based on the information provided by the user.",
     'tax.info.buckets.gppLine1': "Gains and losses from selling equity stakes. Calculated as sale price minus acquisition cost. Crowdfolio doesn't calculate these yet.",
-    'tax.info.buckets.gppLine2': 'Losses from loan defaults don\'t belong here: they\'re declared in the general tax base and follow their own rules (see "Portfolio losses from loan defaults").',
+    'tax.info.buckets.gppLine2': 'Losses from loan defaults don\'t belong here: they\'re declared in the general tax base and follow their own rules (see "General tax base").',
     'tax.info.compensation25.disclaimer': "This rule applies to gains and losses in the savings tax base, such as selling equity stakes, which Crowdfolio doesn't calculate yet. Losses from loan defaults aren't offset this way: they're declared in the general tax base, with their own rules.",
     'tax.info.carryforward.disclaimer': "Losses from loan defaults, declared in the general tax base, can also be offset over the following four years, but against income other than interest. Crowdfolio doesn't calculate this offset.",
 

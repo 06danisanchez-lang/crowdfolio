@@ -1,13 +1,13 @@
 import { useState, useEffect, useMemo, useRef } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
-import { TaxSummary, EnrichedPayment, DefaultedInvestmentLoss } from '@/types/tax';
-import { Investment } from '@/types/investment';
+import { TaxSummary, EnrichedPayment } from '@/types/tax';
+import { Investment, Payment } from '@/types/investment';
 import { calculateProgressiveTax, calculateEffectiveRate } from '@/lib/tax/calculations';
 import { calculateYearlyProjection, TaxProjection } from '@/lib/tax/projections';
 import { useTaxExpenses } from './useTaxExpenses';
 import { isInvestmentComplete } from '@/lib/investment/completeness';
-import { getPrincipalReturned } from '@/lib/tax/principalReturned';
+import { computeDefaultLossSummary } from '@/lib/tax/defaultLossSummary';
 
 const FETCH_TIMEOUT_MS = 15_000;
 
@@ -256,37 +256,31 @@ export function useTaxSummary(year: number) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [user?.id, year, retryCount]);
 
-  // Pérdidas de cartera por impago — Fase 1: la calificación fiscal (qué hecho la
-  // hace imputable y en qué ejercicio) se implementa en la Fase 2. Por ahora se
-  // muestran TODAS las inversiones defaulted con pérdida > 0, sin filtro por
-  // fechas ni por ejercicio. Este resultado NO se usa en ningún cálculo de cuota,
-  // base ni compensación — solo se expone para mostrarlo sin calificación fiscal,
-  // con el aviso correspondiente (ver TaxBucketsCard/TaxExportButton).
-  const defaultedInvestmentsWithLoss: DefaultedInvestmentLoss[] = useMemo(() => {
-    return investmentRows
-      .filter(inv => inv.status === 'defaulted')
-      .map(inv => {
-        const amountInvested = Number(inv.amount);
-        const principalReturned = getPrincipalReturned(defaultedPrincipalPayments[inv.id] ?? []);
-        return {
-          investmentId: inv.id,
-          projectName: inv.project_name,
-          platform: inv.platform,
-          customPlatformName: inv.custom_platform_name || undefined,
-          amountInvested,
-          amountRecovered: principalReturned,
-          loss: principalReturned - amountInvested,
-          defaultedAt: inv.defaulted_at || undefined,
-          expectedEndDate: inv.expected_end_date || undefined,
-        };
-      })
-      .filter(d => d.loss < 0);
-  }, [investmentRows, defaultedPrincipalPayments]);
+  // Pérdidas por impago (Fase 5) — calificación fiscal real vía assessDefaultLoss
+  // (art. 14.2.k LIRPF), agregada por ejercicio. Función pura en
+  // defaultLossSummary.ts; aquí solo se construyen los Investment[] completos
+  // (con loss_* y el histórico de pagos 'principal') que necesita.
+  const defaultLossSummary = useMemo(() => {
+    const defaultedInvestments: Investment[] = investmentRows
+      .filter((inv) => inv.status === 'defaulted')
+      .map((inv) => {
+        const payments: Payment[] = (defaultedPrincipalPayments[inv.id] ?? []).map((p, i) => ({
+          id: `${inv.id}-${i}`,
+          date: p.date,
+          amount: p.amount,
+          type: p.type as Payment['type'],
+        }));
+        return { ...mapInvestmentRow(inv), payments };
+      });
+    return computeDefaultLossSummary(defaultedInvestments, year);
+  }, [investmentRows, defaultedPrincipalPayments, year]);
 
   // Inversiones en impago sin cuestionario de calificación fiscal completar
-  // (Fase 4, punto 3) — a propósito NO reutiliza defaultedInvestmentsWithLoss:
-  // ese filtra loss < 0, pero assessDefaultLoss devuelve 'not_assessed' antes
-  // de comprobar si hay pérdida (equity aparte, que nunca es 'not_assessed').
+  // (Fase 4, punto 3) — alimenta el aviso accionable ("Completar") de
+  // TaxDashboard.tsx. defaultLossSummary.notAssessed (Fase 5) calcula la
+  // misma lista vía assessDefaultLoss para el listado informativo dentro de
+  // "Base imponible general"; se mantienen separados porque cada uno filtra
+  // sobre una fuente distinta (esta, directamente sobre investmentRows).
   const notAssessedDefaultedInvestments = useMemo(() => {
     return investmentRows
       .filter(inv => inv.status === 'defaulted' && inv.income_model !== 'equity' && !inv.loss_assessed_at)
@@ -328,20 +322,10 @@ export function useTaxSummary(year: number) {
         equityType: 'liquidacion',
       }));
 
-    // Importe total de pérdidas de cartera por impago — solo para mostrar en
-    // pantalla (ver comentario en defaultedInvestmentsWithLoss). NO participa en
-    // ningún cálculo de cuota/base a partir de aquí.
-    const totalGPPLosses = defaultedInvestmentsWithLoss.reduce((sum, d) => sum + d.loss, 0);
-
-    // Compensación cruzada GPP ↔ RCM: en este código, la única pérdida que podía
-    // alimentar esta compensación era la de impago por defaulted, y esas pérdidas
-    // se han sacado de todo cálculo de cuota/base/compensación (Fase 1 — su
-    // tratamiento fiscal real depende de hechos formales aún no implementados,
-    // ver Fase 2/3). No hay ninguna otra fuente de pérdida GPP en el código hoy
-    // (no se calculan pérdidas por transmisión de participaciones equity), así
-    // que esta compensación es siempre 0 hasta que se implemente correctamente.
-    const compensacionGPPRCM = 0;
-    const perdidasGPPPendientes = 0;
+    // Las pérdidas por impago (art. 14.2.k LIRPF) se declaran en la base
+    // imponible GENERAL, no en la del ahorro — nunca se compensan con RCM ni
+    // afectan a baseImponibleRCMAjustada/taxableBase. Ver defaultLossSummary.ts
+    // y TaxBucketsCard.tsx (bloque "Base imponible general", Fase 5).
     const baseImponibleRCMAjustada = grossIncome;
 
     const taxableBase = Math.max(0, baseImponibleRCMAjustada - totalExpenses);
@@ -351,11 +335,11 @@ export function useTaxSummary(year: number) {
     return {
       year, grossIncome, interestIncome, dividendIncome, principalReturns,
       withholdingsApplied, deductibleExpenses: totalExpenses,
-      totalGPPLosses, compensacionGPPRCM, perdidasGPPPendientes, baseImponibleRCMAjustada,
+      baseImponibleRCMAjustada,
       taxableBase, estimatedTax, effectiveRate,
       liquidacionSinRetencion,
     };
-  }, [payments, totalExpenses, year, defaultedInvestmentsWithLoss, investmentRows]);
+  }, [payments, totalExpenses, year, investmentRows]);
 
   // Projection — based only on active + tracking_ready investments
   const projection: TaxProjection = useMemo(() => {
@@ -391,7 +375,7 @@ export function useTaxSummary(year: number) {
 
   return {
     summary, projection, payments, enrichedPayments, expenses,
-    defaultedInvestmentsWithLoss,
+    defaultLossSummary,
     notAssessedDefaultedInvestments,
     error, excludedIncompleteCount,
     isLoading: isLoading || expensesLoading, availableYears,

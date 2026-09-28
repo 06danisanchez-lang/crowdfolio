@@ -35,7 +35,7 @@ export function TaxDashboard({ isPro = false, onProRequired, onOpenInvestment }:
   const { t } = useLanguage();
   const { user } = useAuth();
 
-  const { summary, projection, isLoading, availableYears, excludedIncompleteCount, enrichedPayments, defaultedInvestmentsWithLoss, notAssessedDefaultedInvestments, error, refetch } = useTaxSummary(selectedYear);
+  const { summary, projection, isLoading, availableYears, excludedIncompleteCount, enrichedPayments, defaultLossSummary, notAssessedDefaultedInvestments, error, refetch } = useTaxSummary(selectedYear);
   const { 
     expenses, 
     addExpense, 
@@ -86,11 +86,17 @@ export function TaxDashboard({ isPro = false, onProRequired, onOpenInvestment }:
 
   // Detectar si el ejercicio no tiene datos NI proyecciones
   const hasProjections = projection.byInvestment.length > 0;
+  const hasDefaultLossData =
+    defaultLossSummary.declarable.rows.length > 0 ||
+    defaultLossSummary.recoveryGains.rows.length > 0 ||
+    defaultLossSummary.pending.length > 0 ||
+    defaultLossSummary.equityExcluded.length > 0;
   const hasNoData = summary.grossIncome === 0 &&
                     summary.withholdingsApplied === 0 &&
                     summary.deductibleExpenses === 0 &&
                     !hasProjections &&
-                    notAssessedDefaultedInvestments.length === 0;
+                    notAssessedDefaultedInvestments.length === 0 &&
+                    !hasDefaultLossData;
 
   if (hasNoData) {
     return (
@@ -129,7 +135,7 @@ export function TaxDashboard({ isPro = false, onProRequired, onOpenInvestment }:
           </p>
         </div>
         <div className="flex items-center gap-3">
-          <TaxExportButton summary={summary} expenses={expenses} enrichedPayments={enrichedPayments} defaultedInvestmentsWithLoss={defaultedInvestmentsWithLoss} userEmail={user?.email ?? ''} isPro={isPro} onProRequired={onProRequired} />
+          <TaxExportButton summary={summary} expenses={expenses} enrichedPayments={enrichedPayments} defaultLossSummary={defaultLossSummary} userEmail={user?.email ?? ''} isPro={isPro} onProRequired={onProRequired} />
           <TaxYearSelector
             selectedYear={selectedYear}
             onYearChange={setSelectedYear}
@@ -173,7 +179,7 @@ export function TaxDashboard({ isPro = false, onProRequired, onOpenInvestment }:
           </TabsTrigger>
           <TabsTrigger value="buckets" className="flex items-center gap-2">
             <ArrowLeftRight className="h-4 w-4" />
-            Cajones RCM/GPP
+            Bases imponibles
           </TabsTrigger>
           <TabsTrigger value="expenses" className="flex items-center gap-2">
             <Receipt className="h-4 w-4" />
@@ -186,11 +192,7 @@ export function TaxDashboard({ isPro = false, onProRequired, onOpenInvestment }:
         </TabsContent>
 
         <TabsContent value="buckets" className="space-y-4">
-          <TaxBucketsCard summary={summary} />
-          {/* CompensationBreakdown oculto (Fase 1): la compensación GPP↔RCM para
-              impagos era incorrecta y ahora siempre es 0 (ver useTaxSummary.ts).
-              El componente no se borra — se reescribirá en Fase 5 cuando el
-              motor de pérdidas por impago esté correctamente implementado. */}
+          <TaxBucketsCard summary={summary} defaultLossSummary={defaultLossSummary} />
         </TabsContent>
 
         <TabsContent value="expenses">

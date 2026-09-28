@@ -53,7 +53,9 @@ export function TaxExportButton({
   const hasAnyDefaultLoss =
     defaultLossSummary.declarable.rows.length > 0 ||
     defaultLossSummary.recoveryGains.rows.length > 0 ||
-    defaultLossSummary.pending.length > 0;
+    defaultLossSummary.pending.length > 0 ||
+    defaultLossSummary.notAssessed.length > 0 ||
+    defaultLossSummary.equityExcluded.length > 0;
 
   const handleExportClick = (exportFn: () => Promise<void>) => {
     if (!isPro) {
@@ -519,6 +521,20 @@ export function TaxExportButton({
           });
         }
 
+        if (defaultLossSummary.notAssessed.length > 0 || defaultLossSummary.equityExcluded.length > 0) {
+          wsGPP.addRow([]);
+          const excludedTitleRow = wsGPP.addRow(['Inversiones excluidas de este cálculo']);
+          excludedTitleRow.height = 22;
+          wsGPP.mergeCells(excludedTitleRow.number, 1, excludedTitleRow.number, 10);
+          applyStyle(wsGPP.getCell(excludedTitleRow.number, 1), S.sectionHeader);
+
+          addTableHeader(wsGPP, ['Inversión', 'Motivo'], 2);
+          addDataRows(wsGPP, [
+            ...defaultLossSummary.notAssessed.map((n) => ({ projectName: n.projectName, reason: t('defaultLoss.status.notAssessed') })),
+            ...defaultLossSummary.equityExcluded.map((e) => ({ projectName: e.projectName, reason: t('tax.defaultLoss.equityNote') })),
+          ], (row) => [row.projectName, row.reason]);
+        }
+
         wsGPP.addRow([]);
         const methodRow = wsGPP.addRow([t('tax.defaultLoss.methodologyNote')]);
         methodRow.height = 60;
@@ -753,6 +769,29 @@ export function TaxExportButton({
             columnStyles: {
               0: { cellWidth: 45 }, 1: { cellWidth: 28 }, 2: { cellWidth: 25, halign: 'right' as const }, 3: { cellWidth: 70 },
             },
+          });
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+          yPos = (doc as any).lastAutoTable.finalY + 8;
+        }
+
+        if (defaultLossSummary.notAssessed.length > 0 || defaultLossSummary.equityExcluded.length > 0) {
+          if (yPos > 220) { doc.addPage(); yPos = 20; }
+          doc.setFontSize(11);
+          doc.setFont('helvetica', 'bold');
+          doc.text('Inversiones excluidas de este cálculo', 14, yPos);
+          yPos += 4;
+
+          autoTable(doc, {
+            startY: yPos,
+            head: [['Inversión', 'Motivo']],
+            body: [
+              ...defaultLossSummary.notAssessed.map((n) => [n.projectName, t('defaultLoss.status.notAssessed')]),
+              ...defaultLossSummary.equityExcluded.map((e) => [e.projectName, t('tax.defaultLoss.equityNote')]),
+            ],
+            theme: 'striped',
+            headStyles: { fillColor: [156, 163, 175] },
+            styles: { fontSize: 8 },
+            columnStyles: { 0: { cellWidth: 55 }, 1: { cellWidth: 113 } },
           });
           // eslint-disable-next-line @typescript-eslint/no-explicit-any
           yPos = (doc as any).lastAutoTable.finalY + 8;

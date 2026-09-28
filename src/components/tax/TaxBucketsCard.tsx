@@ -73,6 +73,7 @@ export function TaxBucketsCard({ summary, defaultLossSummary }: TaxBucketsCardPr
         </span>
       </div>
     )}
+    <h3 className="text-lg font-semibold">{t('tax.buckets.savingsBaseTitle')}</h3>
     <div className="grid gap-4 md:grid-cols-2">
       {/* ── RCM ── */}
       <Card>
@@ -111,14 +112,9 @@ export function TaxBucketsCard({ summary, defaultLossSummary }: TaxBucketsCardPr
     </div>
 
     {/* ── Base imponible general — pérdidas por impago (Fase 5, art. 14.2.k LIRPF) ── */}
+    <h3 className="text-lg font-semibold pt-2">{t('tax.defaultLoss.title')}</h3>
     <Card>
-      <CardHeader className="pb-2">
-        <CardTitle className="flex items-center gap-2 text-base">
-          <TrendingDown className="h-4 w-4 text-destructive" />
-          {t('tax.defaultLoss.title')}
-        </CardTitle>
-      </CardHeader>
-      <CardContent className="space-y-5">
+      <CardContent className="space-y-5 pt-6">
         {!hasAnything ? (
           <p className="text-sm text-muted-foreground py-4 text-center">
             {t('tax.defaultLoss.empty').replace('{year}', String(year))}

@@ -179,7 +179,7 @@ export function TaxDashboard({ isPro = false, onProRequired, onOpenInvestment }:
           </TabsTrigger>
           <TabsTrigger value="buckets" className="flex items-center gap-2">
             <ArrowLeftRight className="h-4 w-4" />
-            Cajones RCM/GPP
+            Bases imponibles
           </TabsTrigger>
           <TabsTrigger value="expenses" className="flex items-center gap-2">
             <Receipt className="h-4 w-4" />

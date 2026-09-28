@@ -11,8 +11,12 @@ export function TaxInfoCard() {
       <CardHeader>
         <CardTitle className="flex items-center gap-2 text-base">
           <FileText className="h-5 w-5" />
-          Información Fiscal España - IRPF 2025
+          Información Fiscal España - IRPF
         </CardTitle>
+        <p className="text-xs text-muted-foreground">
+          Los tramos y el cálculo de la cuota de esta ficha son siempre los del ejercicio 2025 (Ley 7/2024),
+          sea cual sea el año que tengas seleccionado arriba: todavía no tenemos cargados los tramos de otros ejercicios.
+        </p>
       </CardHeader>
       <CardContent>
         <Accordion type="single" collapsible className="w-full">
@@ -27,7 +31,8 @@ export function TaxInfoCard() {
             <AccordionContent>
               <div className="space-y-2 text-sm">
                 <p className="text-muted-foreground mb-3">
-                  Los rendimientos del capital mobiliario tributan con estos tramos progresivos:
+                  Los rendimientos del capital mobiliario tributan con estos tramos progresivos (ejercicio 2025;
+                  no cambian según el año que tengas seleccionado en el resumen fiscal):
                 </p>
                 <div className="grid grid-cols-2 gap-2">
                   <div className="rounded-lg bg-muted/50 p-2">

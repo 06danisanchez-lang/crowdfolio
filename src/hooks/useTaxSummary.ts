@@ -8,6 +8,7 @@ import { calculateYearlyProjection, TaxProjection } from '@/lib/tax/projections'
 import { useTaxExpenses } from './useTaxExpenses';
 import { isInvestmentComplete } from '@/lib/investment/completeness';
 import { computeDefaultLossSummary } from '@/lib/tax/defaultLossSummary';
+import { getPlatformLabel } from '@/lib/labels';
 
 const FETCH_TIMEOUT_MS = 15_000;
 
@@ -159,7 +160,7 @@ export function useTaxSummary(year: number) {
         const investmentMeta = new Map(
           allRows.map(inv => [inv.id, {
             name: inv.project_name,
-            platform: inv.platform === 'custom' ? (inv.custom_platform_name || 'Personalizada') : inv.platform,
+            platform: getPlatformLabel(inv.platform, inv.custom_platform_name || undefined),
             equityType: inv.equity_type || undefined,
           }])
         );
@@ -302,7 +303,7 @@ export function useTaxSummary(year: number) {
     const equityTypeMap = new Map(investmentRows.map(r => [r.id, r.equity_type]));
     const invNameMap = new Map(investmentRows.map(r => [r.id, {
       name: r.project_name,
-      platform: r.platform === 'custom' ? (r.custom_platform_name || 'Personalizada') : r.platform,
+      platform: getPlatformLabel(r.platform, r.custom_platform_name || undefined),
     }]));
     const liquidacionSinRetencion: EnrichedPayment[] = taxablePayments
       .filter(p =>

@@ -1,6 +1,6 @@
 import { format, parseISO } from 'date-fns';
 import { TaxSummary } from '@/types/tax';
-import type { DefaultLossYearSummary, DefaultLossPendingRow } from '@/lib/tax/defaultLossSummary';
+import type { DefaultLossYearSummary, DefaultLossPendingRow, DefaultLossImputationRow } from '@/lib/tax/defaultLossSummary';
 import { useLanguage } from '@/contexts/LanguageContext';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { ArrowLeftRight, TrendingDown, AlertTriangle } from 'lucide-react';
@@ -40,6 +40,11 @@ function Row({ label, value, sub, highlight, dimmed }: {
       <span className={`text-sm font-mono shrink-0 ${highlight ? 'font-semibold' : ''}`}>{value}</span>
     </div>
   );
+}
+
+function formatOtherImputations(items: DefaultLossImputationRow['otherImputations']): string {
+  if (items.length === 0) return '—';
+  return items.map((imp) => `${fmt(imp.amount)} (${imp.year})`).join(', ');
 }
 
 function pendingReasonLabel(t: (key: string) => string, row: DefaultLossPendingRow): string {
@@ -129,20 +134,28 @@ export function TaxBucketsCard({ summary, defaultLossSummary }: TaxBucketsCardPr
                 </div>
                 <div className="rounded-md border divide-y text-sm">
                   {declarable.rows.map((r, i) => (
-                    <div key={i} className="flex items-start justify-between gap-4 px-3 py-2.5">
-                      <div>
-                        <p className="font-medium">{r.projectName}</p>
-                        <p className="text-xs text-muted-foreground">
-                          {r.platform} · {t(TRIGGER_LABEL_KEYS[r.trigger])} · {fmtDate(r.triggerDate)}
-                        </p>
-                        {r.platformInitiatedEnforcement && r.trigger === 'enforcement_one_year' && (
-                          <p className="flex items-start gap-1 text-xs text-amber-700 dark:text-amber-400 mt-1">
-                            <AlertTriangle className="h-3 w-3 shrink-0 mt-0.5" />
-                            {t('defaultLoss.result.platformEnforcementWarning')}
+                    <div key={i} className="px-3 py-2.5 space-y-1.5">
+                      <div className="flex items-start justify-between gap-4">
+                        <div>
+                          <p className="font-medium">{r.projectName}</p>
+                          <p className="text-xs text-muted-foreground">
+                            {r.platform} · {t(TRIGGER_LABEL_KEYS[r.trigger])} · {fmtDate(r.triggerDate)}
                           </p>
-                        )}
+                        </div>
+                        <span className="font-mono text-sm text-destructive shrink-0">{fmt(r.amount)}</span>
                       </div>
-                      <span className="font-mono text-sm text-destructive shrink-0">{fmt(r.amount)}</span>
+                      <div className="grid grid-cols-2 gap-x-4 gap-y-1 text-xs text-muted-foreground">
+                        <span>{t('tax.defaultLoss.col.invested')}: <span className="text-foreground">{fmt(r.amountInvested)}</span></span>
+                        <span>{t('tax.defaultLoss.col.recoveredBeforeTrigger')}: <span className="text-foreground">{fmt(r.amountRecoveredBeforeTrigger)}</span></span>
+                        <span>{t('tax.defaultLoss.col.totalLoss')}: <span className="text-foreground">{fmt(r.loss)}</span></span>
+                        <span>{t('tax.defaultLoss.col.otherImputations')}: <span className="text-foreground">{formatOtherImputations(r.otherImputations)}</span></span>
+                      </div>
+                      {r.platformInitiatedEnforcement && r.trigger === 'enforcement_one_year' && (
+                        <p className="flex items-start gap-1 text-xs text-amber-700 dark:text-amber-400">
+                          <AlertTriangle className="h-3 w-3 shrink-0 mt-0.5" />
+                          {t('defaultLoss.result.platformEnforcementWarning')}
+                        </p>
+                      )}
                     </div>
                   ))}
                 </div>

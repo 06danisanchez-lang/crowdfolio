@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { isBlockedDefaultedTransition } from './defaultTransitionGuard';
+import { isBlockedDefaultedTransition, isBlockedIncomeModelChange } from './defaultTransitionGuard';
 
 describe('isBlockedDefaultedTransition', () => {
   it('transición a defaulted sin loss_assessed_at → rechazada', () => {
@@ -57,5 +57,65 @@ describe('isBlockedDefaultedTransition', () => {
 
   it('currentStatus desconocido (undefined) y transición a defaulted sin loss_assessed_at → rechazada', () => {
     expect(isBlockedDefaultedTransition(undefined, { status: 'defaulted' })).toBe(true);
+  });
+});
+
+describe('isBlockedIncomeModelChange', () => {
+  it('cambiar incomeModel de una inversión ya en impago → rechazada', () => {
+    expect(
+      isBlockedIncomeModelChange(
+        { status: 'defaulted', incomeModel: 'bullet' },
+        { incomeModel: 'equity' },
+      ),
+    ).toBe(true);
+  });
+
+  it('cambiar equityType de una inversión en impago → rechazada', () => {
+    expect(
+      isBlockedIncomeModelChange(
+        { status: 'defaulted', incomeModel: 'equity', equityType: 'rentas' },
+        { equityType: 'liquidacion' },
+      ),
+    ).toBe(true);
+  });
+
+  it('reenviar el MISMO incomeModel de una inversión en impago → aceptada (p.ej. "Deshacer impago" fuerza la regeneración del calendario)', () => {
+    expect(
+      isBlockedIncomeModelChange(
+        { status: 'defaulted', incomeModel: 'bullet' },
+        { status: 'active', incomeModel: 'bullet' },
+      ),
+    ).toBe(false);
+  });
+
+  it('cambiar incomeModel de una inversión que NO está en impago → aceptada', () => {
+    expect(
+      isBlockedIncomeModelChange(
+        { status: 'active', incomeModel: 'bullet' },
+        { incomeModel: 'equity' },
+      ),
+    ).toBe(false);
+  });
+
+  it('actualización que no toca incomeModel ni equityType, en impago → aceptada', () => {
+    expect(
+      isBlockedIncomeModelChange(
+        { status: 'defaulted', incomeModel: 'bullet' },
+        { notes: 'nota' },
+      ),
+    ).toBe(false);
+  });
+
+  it('current desconocido (undefined) → aceptada (nada que comparar)', () => {
+    expect(isBlockedIncomeModelChange(undefined, { incomeModel: 'equity' })).toBe(false);
+  });
+
+  it('equityType null vs undefined se tratan como equivalentes (sin cambio real) → aceptada', () => {
+    expect(
+      isBlockedIncomeModelChange(
+        { status: 'defaulted', incomeModel: 'equity', equityType: undefined },
+        { equityType: null },
+      ),
+    ).toBe(false);
   });
 });

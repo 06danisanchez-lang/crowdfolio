@@ -6,6 +6,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import { Investment, InvestmentScheduleEntry } from '@/types/investment';
 import { Notification } from './useNotifications';
 import { calculateAccruedReturn } from '@/lib/investment/calculations';
+import { computeFiscalLossNotifications } from '@/lib/notifications/fiscalLossNotifications';
 
 function getWeekKey(date: Date): string {
   const year = getISOWeekYear(date);
@@ -204,6 +205,12 @@ export function useNotificationGenerator(
             read: false,
           });
         }
+      }
+
+      // ── 5. Calificación fiscal del impago (Fase 4) ──────────────────
+      const fiscalDrafts = computeFiscalLossNotifications(investments, existingNotifications, new Date());
+      for (const draft of fiscalDrafts) {
+        toInsert.push({ user_id: user.id, ...draft });
       }
 
       if (toInsert.length > 0) {

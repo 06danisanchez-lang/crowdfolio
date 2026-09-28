@@ -778,6 +778,7 @@ export function InvestmentList({
         investment={closingInvestment}
         onClose={() => setClosingInvestmentId(null)}
         onUpdate={onUpdate}
+        onDefaulted={(inv) => openQuestionnaire(inv.id)}
       />
 
       <MaturityConfirmationModal

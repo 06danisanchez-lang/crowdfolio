@@ -4,7 +4,10 @@ export type NotificationType =
   | 'payment_due'
   | 'maturity_soon'
   | 'maturity_overdue'
-  | 'weekly_summary';
+  | 'weekly_summary'
+  | 'fiscal_loss_ready'
+  | 'fiscal_loss_review'
+  | 'fiscal_loss_incomplete';
 
 export interface NotificationRenderConfig {
   /** Tailwind classes for the card wrapper */
@@ -57,6 +60,32 @@ const CONFIG: Record<NotificationType, NotificationRenderConfig> = {
     textClass: 'text-[#3f3623]/70',
     dotClass: 'bg-[#253765]',
     icon: 'BarChart3',
+  },
+  // Calificación fiscal del impago (Fase 4, punto 8) — mismo tono para las 3,
+  // el icono distingue el tipo de aviso dentro de la misma familia "fiscal".
+  fiscal_loss_ready: {
+    cardClass: 'bg-violet-50 border border-violet-200 rounded-lg',
+    iconClass: 'text-violet-600',
+    titleClass: 'text-violet-800',
+    textClass: 'text-violet-800/80',
+    dotClass: 'bg-violet-500',
+    icon: 'Banknote',
+  },
+  fiscal_loss_review: {
+    cardClass: 'bg-violet-50 border border-violet-200 rounded-lg',
+    iconClass: 'text-violet-600',
+    titleClass: 'text-violet-800',
+    textClass: 'text-violet-800/80',
+    dotClass: 'bg-violet-500',
+    icon: 'Clock',
+  },
+  fiscal_loss_incomplete: {
+    cardClass: 'bg-violet-50 border border-violet-200 rounded-lg',
+    iconClass: 'text-violet-600',
+    titleClass: 'text-violet-800',
+    textClass: 'text-violet-800/80',
+    dotClass: 'bg-violet-500',
+    icon: 'AlertTriangle',
   },
 };
 

@@ -2,6 +2,7 @@ import { addMonths, differenceInCalendarMonths, parseISO, format } from 'date-fn
 import type { Investment } from '@/types/investment';
 import { assessDefaultLoss } from '@/lib/tax/defaultLoss';
 import { investmentToDefaultLossInput } from '@/lib/tax/investmentToDefaultLossInput';
+import { toDateOnlyString } from '@/lib/dateOnly';
 
 export type FiscalLossNotificationType = 'fiscal_loss_ready' | 'fiscal_loss_review' | 'fiscal_loss_incomplete';
 
@@ -42,7 +43,11 @@ function getQuarterlyReviewDate(assessedAtIso: string, today: Date): string | nu
  *   deadlineDate <= todayStr (si el plazo ya se cumplió, assessDefaultLoss
  *   clasifica la inversión como deductible/partially_deductible, nunca sigue
  *   en pending_deadline con esa fecha ya pasada). Se detecta en su lugar
- *   comprobando si hay una imputación con trigger 'enforcement_one_year'.
+ *   comprobando si hay una imputación con trigger 'enforcement_one_year' —
+ *   pero solo avisa si esa fecha (triggerDate, el día en que se cumplió el
+ *   año) es POSTERIOR a loss_assessed_at: si el plazo ya se había cumplido
+ *   al rellenar el cuestionario, la ficha ya mostraba "deductible" desde el
+ *   primer momento y no hay nada nuevo que avisar.
  * - fiscal_loss_review: cada 3 meses desde loss_assessed_at, para
  *   not_yet/unknown/pending_insolvency — result.nextReviewDate de
  *   assessDefaultLoss NO sirve para esto: siempre se calcula como
@@ -69,18 +74,23 @@ export function computeFiscalLossNotifications(
     const result = assessDefaultLoss(investmentToDefaultLossInput(inv), today);
 
     const enforcementImputation = result.imputations.find((imp) => imp.trigger === 'enforcement_one_year');
-    if (enforcementImputation) {
-      const exists = existingNotifications.some(
-        (n) => n.type === 'fiscal_loss_ready' && (n.data as Record<string, unknown>)?.investmentId === inv.id,
-      );
-      if (!exists) {
-        drafts.push({
-          type: 'fiscal_loss_ready',
-          title: `Pérdida declarable: ${inv.projectName}`,
-          message: `Ya puedes declarar la pérdida de ${inv.projectName}: se ha cumplido un año desde el inicio de la ejecución judicial sin cobro. Entra para ver los detalles.`,
-          data: { investmentId: inv.id, investmentName: inv.projectName },
-          read: false,
-        });
+    if (enforcementImputation && inv.lossAssessedAt) {
+      const assessedDateStr = toDateOnlyString(new Date(inv.lossAssessedAt));
+      const becameReadyAfterAssessment = enforcementImputation.triggerDate > assessedDateStr;
+
+      if (becameReadyAfterAssessment) {
+        const exists = existingNotifications.some(
+          (n) => n.type === 'fiscal_loss_ready' && (n.data as Record<string, unknown>)?.investmentId === inv.id,
+        );
+        if (!exists) {
+          drafts.push({
+            type: 'fiscal_loss_ready',
+            title: `Pérdida declarable: ${inv.projectName}`,
+            message: `Ya puedes declarar la pérdida de ${inv.projectName}: se ha cumplido un año desde el inicio de la ejecución judicial sin cobro. Entra para ver los detalles.`,
+            data: { investmentId: inv.id, investmentName: inv.projectName },
+            read: false,
+          });
+        }
       }
     }
 

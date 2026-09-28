@@ -1,5 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import { computeFiscalLossNotifications } from './fiscalLossNotifications';
+import { mapRawInvestmentRow, draftToInvestment, type RawInvestmentRow } from '@/lib/investment/mapInvestmentRow';
 import type { Investment } from '@/types/investment';
 
 function makeInvestment(overrides: Partial<Investment> & { id: string }): Investment {
@@ -45,18 +46,42 @@ describe('computeFiscalLossNotifications', () => {
     expect(computeFiscalLossNotifications([inv], existing, TODAY)).toEqual([]);
   });
 
-  it('pending_deadline con el plazo ya cumplido → fiscal_loss_ready', () => {
+  it('el plazo de 1 año se cumple DESPUÉS de rellenar el cuestionario → fiscal_loss_ready', () => {
     const inv = makeInvestment({
       id: 'inv-1',
-      lossAssessedAt: '2027-01-15T00:00:00.000Z',
+      lossAssessedAt: '2026-06-01T00:00:00.000Z', // el cuestionario se rellenó cuando aún faltaba
       lossInsolvencyStatus: 'none',
       lossEnforcementStarted: true,
-      lossEnforcementDate: '2025-01-10', // hace más de 1 año respecto a TODAY
+      lossEnforcementDate: '2025-08-01', // el año se cumple el 2026-08-01, POSTERIOR a loss_assessed_at
       lossEnforcementInitiator: 'user',
     });
     const drafts = computeFiscalLossNotifications([inv], [], TODAY);
     expect(drafts).toHaveLength(1);
     expect(drafts[0].type).toBe('fiscal_loss_ready');
+  });
+
+  it('el plazo de 1 año YA se había cumplido al rellenar el cuestionario → no avisa (no hay nada nuevo que declarar)', () => {
+    const inv = makeInvestment({
+      id: 'inv-1',
+      lossAssessedAt: '2027-01-15T00:00:00.000Z', // se rellenó hoy mismo (TODAY)
+      lossInsolvencyStatus: 'none',
+      lossEnforcementStarted: true,
+      lossEnforcementDate: '2025-01-10', // el año se cumplió el 2026-01-10, muy anterior a loss_assessed_at
+      lossEnforcementInitiator: 'user',
+    });
+    expect(computeFiscalLossNotifications([inv], [], TODAY)).toEqual([]);
+  });
+
+  it('el plazo se cumple el MISMO día que loss_assessed_at (no estrictamente posterior) → no avisa', () => {
+    const inv = makeInvestment({
+      id: 'inv-1',
+      lossAssessedAt: '2026-08-01T09:00:00.000Z',
+      lossInsolvencyStatus: 'none',
+      lossEnforcementStarted: true,
+      lossEnforcementDate: '2025-08-01', // el año se cumple exactamente el mismo día
+      lossEnforcementInitiator: 'user',
+    });
+    expect(computeFiscalLossNotifications([inv], [], TODAY)).toEqual([]);
   });
 
   it('pending_deadline con el plazo aún sin cumplir → ninguna notificación', () => {
@@ -123,13 +148,93 @@ describe('computeFiscalLossNotifications', () => {
     const invA = makeInvestment({ id: 'inv-a' }); // not_assessed
     const invB = makeInvestment({
       id: 'inv-b',
-      lossAssessedAt: '2027-01-15T00:00:00.000Z',
+      lossAssessedAt: '2026-06-01T00:00:00.000Z',
       lossInsolvencyStatus: 'none',
       lossEnforcementStarted: true,
-      lossEnforcementDate: '2025-01-10',
+      lossEnforcementDate: '2025-08-01', // el año se cumple el 2026-08-01, POSTERIOR a loss_assessed_at
       lossEnforcementInitiator: 'platform',
     });
     const drafts = computeFiscalLossNotifications([invA, invB], [], TODAY);
     expect(drafts.map((d) => d.data.investmentId).sort()).toEqual(['inv-a', 'inv-b']);
+  });
+});
+
+// Fila cruda tal cual la devuelve `supabase.from('investments').select('*')`
+// (el hotfix #15 corrigió que las columnas loss_* se perdían al mapear el
+// resultado de la BD a Investment). Usada aquí para confirmar que las
+// notificaciones fiscales funcionan de punta a punta con datos leídos de la
+// BD por el mapeo REAL de la app, no con un Investment construido a mano.
+function makeRawRow(overrides: Partial<RawInvestmentRow> = {}): RawInvestmentRow {
+  return {
+    id: 'inv-prueba',
+    platform: 'urbanitae',
+    custom_platform_name: null,
+    project_name: 'prueba',
+    amount: 10000,
+    investment_date: '2024-01-01',
+    expected_end_date: '2025-01-01',
+    expected_return: 8,
+    income_model: 'bullet',
+    payment_frequency: null,
+    principal_return_type: null,
+    status: 'defaulted',
+    notes: null,
+    source_url: null,
+    defaulted_at: '2026-01-01T00:00:00.000Z',
+    amount_recovered: null,
+    equity_type: null,
+    actual_end_date: null,
+    close_reason: null,
+    was_extended: false,
+    loss_insolvency_status: 'none',
+    loss_insolvency_concluded_date: null,
+    loss_quita_amount: null,
+    loss_quita_date: null,
+    loss_enforcement_started: true,
+    loss_enforcement_date: '2025-08-01', // el año se cumple el 2026-08-01
+    loss_enforcement_initiator: 'user',
+    loss_assessed_at: '2026-06-01T00:00:00.000Z', // rellenado antes de que se cumpliera el año
+    loss_rules_version: 1,
+    created_at: '2024-01-01T00:00:00.000Z',
+    updated_at: '2026-06-01T00:00:00.000Z',
+    user_id: 'user-1',
+    ...overrides,
+  };
+}
+
+describe('computeFiscalLossNotifications — con datos leídos de la BD (mapeo real)', () => {
+  it('fiscal_loss_ready a partir de una fila real (mapRawInvestmentRow → draftToInvestment)', () => {
+    const draft = mapRawInvestmentRow(makeRawRow(), []);
+    const investment = draftToInvestment(draft);
+
+    const drafts = computeFiscalLossNotifications([investment], [], TODAY);
+    expect(drafts).toHaveLength(1);
+    expect(drafts[0].type).toBe('fiscal_loss_ready');
+    expect(drafts[0].data.investmentId).toBe('inv-prueba');
+  });
+
+  it('fiscal_loss_incomplete a partir de una fila real sin loss_assessed_at', () => {
+    const draft = mapRawInvestmentRow(makeRawRow({ loss_assessed_at: null, loss_insolvency_status: null }), []);
+    const investment = draftToInvestment(draft);
+
+    const drafts = computeFiscalLossNotifications([investment], [], TODAY);
+    expect(drafts).toHaveLength(1);
+    expect(drafts[0].type).toBe('fiscal_loss_incomplete');
+  });
+
+  it('sin ninguna columna loss_* que avisar (concurso abierto reciente) → ninguna notificación', () => {
+    const draft = mapRawInvestmentRow(
+      makeRawRow({
+        loss_insolvency_status: 'open',
+        loss_enforcement_started: false,
+        loss_enforcement_date: null,
+        loss_enforcement_initiator: null,
+        loss_assessed_at: '2027-01-10T00:00:00.000Z', // hace pocos días respecto a TODAY — sin revisión aún
+      }),
+      [],
+    );
+    const investment = draftToInvestment(draft);
+
+    expect(computeFiscalLossNotifications([investment], [], TODAY)).toEqual([]);
   });
 });

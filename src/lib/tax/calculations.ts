@@ -82,17 +82,22 @@ export function getTaxBreakdown(taxableBase: number): { bracket: TaxBracket; amo
  * Format currency for display
  */
 export function formatCurrency(value: number): string {
+  // Intl.NumberFormat muestra "-0,00 €" para -0 (p.ej. -gastos cuando
+  // gastos === 0) — normaliza a 0 antes de formatear. `value === 0` es true
+  // para +0 y -0 por igual en JS, así que esto nunca afecta a negativos reales.
+  const normalized = value === 0 ? 0 : value;
   return new Intl.NumberFormat('es-ES', {
     style: 'currency',
     currency: 'EUR',
     minimumFractionDigits: 2,
     maximumFractionDigits: 2,
-  }).format(value);
+  }).format(normalized);
 }
 
 /**
  * Format percentage for display
  */
 export function formatPercentage(value: number): string {
-  return `${value.toFixed(2)}%`;
+  const normalized = value === 0 ? 0 : value;
+  return `${new Intl.NumberFormat('es-ES', { minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(normalized)} %`;
 }

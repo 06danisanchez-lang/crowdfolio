@@ -25,6 +25,10 @@ const fmtDate = (d: string | Date) => format(typeof d === 'string' ? new Date(d)
 const formatOtherImputations = (items: DefaultLossImputationRow['otherImputations']): string =>
   items.length === 0 ? '—' : items.map((imp) => `${formatCurrency(imp.amount)} (${imp.year})`).join(', ');
 
+// Evita "-0,00 €" al invertir el signo de un importe que puede ser 0
+// (Gastos Deducibles, Retenciones Practicadas cuando no hay ninguno).
+const negate = (v: number): number => (v === 0 ? 0 : -v);
+
 const EXPENSES_NOTE =
   'Nota: solo son deducibles los gastos de administración y custodia directamente vinculados ' +
   'a los rendimientos declarados y debidamente acreditados (Art. 26.1.a LIRPF). ' +
@@ -97,7 +101,7 @@ export function TaxExportButton({
       const GREEN    = 'FF1a6b3c';
       const RED_NEG  = 'FFa32d2d';
       const MONEY    = '#,##0.00 "€"';
-      const PCT      = '0.00%';
+      const PCT      = '0.00 %';
       const BRANDING = `Generado por Crowdfolio · crowdfolio.es`;
 
       type XStyle = Partial<ExcelJS.Style>;
@@ -265,14 +269,14 @@ export function TaxExportButton({
       const divRow = wsR.addRow(['  · Dividendos', summary.dividendIncome]);
       divRow.height = 20; applyStyle(divRow.getCell(1), { ...S.label, alignment: { horizontal: 'left', indent: 4 } } as XStyle); applyStyle(divRow.getCell(2), { ...S.dataOdd, alignment: { horizontal: 'right' }, numFmt: MONEY } as XStyle);
       addSummaryRow('Devoluciones de Principal (informativo)', summary.principalReturns, S.dataOdd as XStyle);
-      addSummaryRow('Gastos Deducibles', -summary.deductibleExpenses, -summary.deductibleExpenses < 0 ? S.valNeg : S.valBold);
+      addSummaryRow('Gastos Deducibles', negate(summary.deductibleExpenses), summary.deductibleExpenses > 0 ? S.valNeg : S.valBold);
 
       addSectionSep('── Base Imponible ──');
       addSummaryRow('Base Imponible del Ahorro', summary.taxableBase, S.valBold);
 
       addSectionSep('── Cuota y Resultado ──');
       addSummaryRow('Cuota Íntegra Estimada', summary.estimatedTax, S.valBold);
-      addSummaryRow('Retenciones Practicadas', -summary.withholdingsApplied, -summary.withholdingsApplied < 0 ? S.valNeg : S.valBold);
+      addSummaryRow('Retenciones Practicadas', negate(summary.withholdingsApplied), summary.withholdingsApplied > 0 ? S.valNeg : S.valBold);
       const resultado = summary.estimatedTax - summary.withholdingsApplied;
       addSummaryRow('Resultado Declaración', resultado, resultado >= 0 ? S.valPos : S.valNeg);
 
@@ -620,10 +624,10 @@ export function TaxExportButton({
           ['  - Intereses', formatCurrency(summary.interestIncome)],
           ['  - Dividendos', formatCurrency(summary.dividendIncome)],
           ['Devoluciones de Principal (informativo)', formatCurrency(summary.principalReturns)],
-          ['Gastos Deducibles', formatCurrency(-summary.deductibleExpenses)],
+          ['Gastos Deducibles', formatCurrency(negate(summary.deductibleExpenses))],
           ['Base Imponible del Ahorro', formatCurrency(summary.taxableBase)],
           ['Cuota Íntegra Estimada', formatCurrency(summary.estimatedTax)],
-          ['Retenciones Practicadas', formatCurrency(-summary.withholdingsApplied)],
+          ['Retenciones Practicadas', formatCurrency(negate(summary.withholdingsApplied))],
           ['Resultado Declaración', formatCurrency(resultadoDeclaracion)],
           ['Tipo Efectivo', formatPercentage(summary.effectiveRate)],
         ],
@@ -669,9 +673,15 @@ export function TaxExportButton({
       }
 
       // ── Pérdidas por impago (Fase 5) — base imponible GENERAL, nunca entran
-      // en taxableBase/estimatedTax (ver useTaxSummary.ts/defaultLossSummary.ts). ──
+      // en taxableBase/estimatedTax (ver useTaxSummary.ts/defaultLossSummary.ts).
+      // Tabla horizontal (apaisada): con 11 columnas no cabe en vertical sin
+      // partir palabras ("Plataform a", fechas "15/03/202 6") — se abre una
+      // página apaisada solo para esta sección y se vuelve a vertical al
+      // terminar, antes de "Detalle de Pagos". ─────────────────────────────
       if (hasAnyDefaultLoss) {
-        if (yPos > 190) { doc.addPage(); yPos = 20; }
+        doc.addPage('a4', 'landscape');
+        yPos = 20;
+        const pageWidthLandscape = doc.internal.pageSize.getWidth();
 
         doc.setFontSize(14);
         doc.setFont('helvetica', 'bold');
@@ -685,7 +695,7 @@ export function TaxExportButton({
         if (defaultLossSummary.declarable.rows.length > 0) {
           autoTable(doc, {
             startY: yPos,
-            head: [['Inversión', 'Plataforma', 'Invertido', 'Recuperado antes de ser declarable', 'Pérdida total de la inversión (€)', 'Estado', 'Hecho', 'Fecha', 'Ej.', 'Imputado en otros ejercicios', 'Imputable']],
+            head: [['Inversión', 'Plataforma', 'Invertido (€)', 'Recuperado antes de ser declarable (€)', 'Pérdida total de la inversión (€)', 'Estado', 'Hecho', 'Fecha del hecho', 'Ejercicio', 'Imputado en otros ejercicios', 'Importe imputable (€)']],
             body: [
               ...defaultLossSummary.declarable.rows.map((r) => [
                 r.projectName,
@@ -703,22 +713,22 @@ export function TaxExportButton({
               ['', '', '', '', '', '', '', '', '', `Total ${summary.year}`, formatCurrency(defaultLossSummary.declarable.totalAmount)],
             ],
             theme: 'striped',
-            headStyles: { fillColor: [239, 68, 68] },
-            styles: { fontSize: 6.5 },
+            headStyles: { fillColor: [239, 68, 68], fontSize: 8 },
+            styles: { fontSize: 8 },
             columnStyles: {
-              0: { cellWidth: 22 }, 1: { cellWidth: 14 },
-              2: { cellWidth: 14, halign: 'right' as const }, 3: { cellWidth: 18, halign: 'right' as const },
-              4: { cellWidth: 20, halign: 'right' as const }, 5: { cellWidth: 14 },
-              6: { cellWidth: 16 }, 7: { cellWidth: 14 }, 8: { cellWidth: 8 },
-              9: { cellWidth: 22 },
-              10: { cellWidth: 16, halign: 'right' as const },
+              0: { cellWidth: 32 }, 1: { cellWidth: 20 },
+              2: { cellWidth: 20, halign: 'right' as const }, 3: { cellWidth: 32, halign: 'right' as const },
+              4: { cellWidth: 28, halign: 'right' as const }, 5: { cellWidth: 22 },
+              6: { cellWidth: 24 }, 7: { cellWidth: 22 }, 8: { cellWidth: 16 },
+              9: { cellWidth: 28 },
+              10: { cellWidth: 22, halign: 'right' as const },
             },
           });
           // eslint-disable-next-line @typescript-eslint/no-explicit-any
           yPos = (doc as any).lastAutoTable.finalY + 6;
 
           if (hasPlatformEnforcementPdf) {
-            const warnLines = doc.splitTextToSize(`* ${t('defaultLoss.result.platformEnforcementWarning')}`, pageWidth - 28);
+            const warnLines = doc.splitTextToSize(`* ${t('defaultLoss.result.platformEnforcementWarning')}`, pageWidthLandscape - 28);
             doc.setFontSize(8);
             doc.setFont('helvetica', 'italic');
             doc.text(warnLines, 14, yPos);
@@ -728,7 +738,7 @@ export function TaxExportButton({
         }
 
         if (defaultLossSummary.recoveryGains.rows.length > 0) {
-          if (yPos > 220) { doc.addPage(); yPos = 20; }
+          if (yPos > 170) { doc.addPage('a4', 'landscape'); yPos = 20; }
           doc.setFontSize(11);
           doc.setFont('helvetica', 'bold');
           doc.text(`Recuperaciones que son ganancia patrimonial en ${summary.year}`, 14, yPos);
@@ -756,7 +766,7 @@ export function TaxExportButton({
         }
 
         if (defaultLossSummary.pending.length > 0) {
-          if (yPos > 220) { doc.addPage(); yPos = 20; }
+          if (yPos > 170) { doc.addPage('a4', 'landscape'); yPos = 20; }
           doc.setFontSize(11);
           doc.setFont('helvetica', 'bold');
           doc.text('Pérdidas por impago aún no declarables (informativo)', 14, yPos);
@@ -785,7 +795,7 @@ export function TaxExportButton({
         }
 
         if (defaultLossSummary.notAssessed.length > 0 || defaultLossSummary.equityExcluded.length > 0) {
-          if (yPos > 220) { doc.addPage(); yPos = 20; }
+          if (yPos > 170) { doc.addPage('a4', 'landscape'); yPos = 20; }
           doc.setFontSize(11);
           doc.setFont('helvetica', 'bold');
           doc.text('Inversiones excluidas de este cálculo', 14, yPos);
@@ -807,16 +817,21 @@ export function TaxExportButton({
           yPos = (doc as any).lastAutoTable.finalY + 8;
         }
 
-        const methodLines = doc.splitTextToSize(t('tax.defaultLoss.methodologyNote'), pageWidth - 28);
+        if (yPos > 170) { doc.addPage('a4', 'landscape'); yPos = 20; }
+        const methodLines = doc.splitTextToSize(t('tax.defaultLoss.methodologyNote'), pageWidthLandscape - 28);
         doc.setFontSize(8);
         doc.setFont('helvetica', 'italic');
         doc.text(methodLines, 14, yPos);
         yPos += methodLines.length * 4 + 4;
 
-        const gppNoteLines = doc.splitTextToSize(t('defaultLoss.disclaimer'), pageWidth - 28);
+        const gppNoteLines = doc.splitTextToSize(t('defaultLoss.disclaimer'), pageWidthLandscape - 28);
         doc.text(gppNoteLines, 14, yPos);
         doc.setFont('helvetica', 'normal');
         yPos += gppNoteLines.length * 4 + 12;
+
+        // Vuelve a vertical para el resto del documento.
+        doc.addPage('a4', 'portrait');
+        yPos = 20;
       }
 
       // ── Detalle de Pagos ─────────────────────────────────────────────────────

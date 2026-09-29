@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { format } from 'date-fns';
 import { useLanguage } from '@/contexts/LanguageContext';
 import { FileDown, FileSpreadsheet, FileText, Loader2, Lock } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -10,12 +11,19 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 import { TaxSummary, TaxExpense, TAX_EXPENSE_CATEGORIES, EnrichedPayment } from '@/types/tax';
-import type { DefaultLossYearSummary } from '@/lib/tax/defaultLossSummary';
+import type { DefaultLossYearSummary, DefaultLossImputationRow } from '@/lib/tax/defaultLossSummary';
 import { getTaxBreakdown, formatCurrency, formatPercentage } from '@/lib/tax/calculations';
 import { toast } from '@/hooks/use-toast';
 import ExcelJS from 'exceljs';
 import { jsPDF } from 'jspdf';
 import autoTable from 'jspdf-autotable';
+
+// Fechas del informe siempre dd/MM/yyyy con dos cifras — toLocaleDateString('es-ES')
+// no lo garantiza (p.ej. "5/3/2025" en vez de "05/03/2025").
+const fmtDate = (d: string | Date) => format(typeof d === 'string' ? new Date(d) : d, 'dd/MM/yyyy');
+
+const formatOtherImputations = (items: DefaultLossImputationRow['otherImputations']): string =>
+  items.length === 0 ? '—' : items.map((imp) => `${formatCurrency(imp.amount)} (${imp.year})`).join(', ');
 
 const EXPENSES_NOTE =
   'Nota: solo son deducibles los gastos de administración y custodia directamente vinculados ' +
@@ -280,14 +288,14 @@ export function TaxExportButton({
       if (hasAnyDefaultLoss) {
         addSectionSep('── Base Imponible General — Pérdidas por Impago ──');
         if (defaultLossSummary.declarable.rows.length > 0) {
-          addSummaryRow(`Pérdidas declarables en ${summary.year}`, -defaultLossSummary.declarable.totalAmount, S.valNeg);
+          addSummaryRow(`Pérdida declarable en ${summary.year}`, defaultLossSummary.declarable.totalAmount, S.valNeg);
         }
         if (defaultLossSummary.recoveryGains.rows.length > 0) {
           addSummaryRow(`Recuperaciones como ganancia en ${summary.year}`, defaultLossSummary.recoveryGains.totalAmount, S.valPos);
         }
         if (defaultLossSummary.pending.length > 0) {
           const totalPending = defaultLossSummary.pending.reduce((s, p) => s + p.pendingAmount, 0);
-          addSummaryRow('Aún no declarables (informativo)', -totalPending, S.dataOdd as XStyle);
+          addSummaryRow('Pérdida aún no declarable (informativo)', totalPending, S.dataOdd as XStyle);
         }
         const methodNoteRow = wsR.addRow([t('tax.defaultLoss.methodologyNote'), '']);
         methodNoteRow.height = 60;
@@ -343,7 +351,7 @@ export function TaxExportButton({
       addTableHeader(wsG, ['Fecha', 'Categoría', 'Descripción', 'Importe (€)'], 4);
 
       addDataRows(wsG, expenses, exp => [
-        new Date(exp.date).toLocaleDateString('es-ES'),
+        fmtDate(exp.date),
         getCategoryLabel(exp.category),
         exp.description,
         exp.amount,
@@ -380,7 +388,7 @@ export function TaxExportButton({
       incomePayments.forEach(p => { totalBruto += p.amount; totalRet += p.withholdingApplied; });
 
       addDataRows(wsP, incomePayments, p => [
-        new Date(p.date).toLocaleDateString('es-ES'),
+        fmtDate(p.date),
         p.investmentName,
         p.platform,
         getPaymentTypeLabel(p),
@@ -447,11 +455,11 @@ export function TaxExportButton({
         const wsGPP = workbook.addWorksheet('Pérdidas por impago');
         wsGPP.properties.tabColor = { argb: RED_NEG };
         wsGPP.columns = [
-          { width: 30 }, { width: 16 }, { width: 14 }, { width: 14 }, { width: 22 },
-          { width: 16 }, { width: 18 }, { width: 14 }, { width: 12 }, { width: 16 },
+          { width: 30 }, { width: 16 }, { width: 14 }, { width: 24 }, { width: 22 },
+          { width: 16 }, { width: 18 }, { width: 14 }, { width: 12 }, { width: 20 }, { width: 16 },
         ];
 
-        addTitleRows(wsGPP, `PÉRDIDAS POR IMPAGO ${summary.year}`, 'Art. 14.2.k LIRPF — base imponible general', 10, S.sheetTitleRed);
+        addTitleRows(wsGPP, `PÉRDIDAS POR IMPAGO ${summary.year}`, 'Art. 14.2.k LIRPF — base imponible general', 11, S.sheetTitleRed);
 
         const hasPlatformEnforcement = defaultLossSummary.declarable.rows.some(
           (r) => r.platformInitiatedEnforcement && r.trigger === 'enforcement_one_year',
@@ -459,29 +467,29 @@ export function TaxExportButton({
 
         if (defaultLossSummary.declarable.rows.length > 0) {
           addTableHeader(wsGPP, [
-            'Inversión', 'Plataforma', 'Invertido (€)', 'Recuperado (€)', 'Pérdida total de la inversión (€)',
-            'Estado', 'Hecho', 'Fecha del hecho', 'Ejercicio', 'Importe imputable (€)',
-          ], 10);
+            'Inversión', 'Plataforma', 'Invertido (€)', 'Recuperado antes de ser declarable (€)', 'Pérdida total de la inversión (€)',
+            'Estado', 'Hecho', 'Fecha del hecho', 'Ejercicio', 'Imputado en otros ejercicios', 'Importe imputable (€)',
+          ], 11);
 
           addDataRows(wsGPP, defaultLossSummary.declarable.rows, (r) => [
-            r.projectName, r.platform, r.amountInvested, r.amountRecovered, r.loss,
+            r.projectName, r.platform, r.amountInvested, r.amountRecoveredBeforeTrigger, r.loss,
             t(`defaultLoss.status.${r.status === 'deductible' ? 'deductible' : 'partiallyDeductible'}`),
             t(TRIGGER_LABEL_KEYS[r.trigger]) + (r.platformInitiatedEnforcement && r.trigger === 'enforcement_one_year' ? ' *' : ''),
-            new Date(r.triggerDate).toLocaleDateString('es-ES'), r.year, r.amount,
+            fmtDate(r.triggerDate), r.year, formatOtherImputations(r.otherImputations), r.amount,
           ], (cell, col) => {
-            if ([3, 4, 5, 10].includes(col)) { cell.numFmt = MONEY; applyStyle(cell, { ...cell.style, alignment: { horizontal: 'right' } } as XStyle); }
-            if (col === 10) applyStyle(cell, { ...cell.style, font: { bold: true, size: 10, color: { argb: RED_NEG } } } as XStyle);
+            if ([3, 4, 5, 11].includes(col)) { cell.numFmt = MONEY; applyStyle(cell, { ...cell.style, alignment: { horizontal: 'right' } } as XStyle); }
+            if (col === 11) applyStyle(cell, { ...cell.style, font: { bold: true, size: 10, color: { argb: RED_NEG } } } as XStyle);
           });
 
           const declTotRow = addTotalRow(wsGPP, [
-            `Total declarable ${summary.year}`, '', '', '', '', '', '', '', '', defaultLossSummary.declarable.totalAmount,
-          ], 10);
-          wsGPP.getRow(declTotRow).getCell(10).numFmt = MONEY;
+            `Total declarable ${summary.year}`, '', '', '', '', '', '', '', '', '', defaultLossSummary.declarable.totalAmount,
+          ], 11);
+          wsGPP.getRow(declTotRow).getCell(11).numFmt = MONEY;
 
           if (hasPlatformEnforcement) {
             const noteRow = wsGPP.addRow([`* ${t('defaultLoss.result.platformEnforcementWarning')}`]);
             noteRow.height = 30;
-            wsGPP.mergeCells(noteRow.number, 1, noteRow.number, 10);
+            wsGPP.mergeCells(noteRow.number, 1, noteRow.number, 11);
             applyStyle(wsGPP.getCell(noteRow.number, 1), S.legalNote);
           }
         }
@@ -490,7 +498,7 @@ export function TaxExportButton({
           wsGPP.addRow([]);
           const recTitleRow = wsGPP.addRow([`Recuperaciones que son ganancia patrimonial en ${summary.year}`]);
           recTitleRow.height = 22;
-          wsGPP.mergeCells(recTitleRow.number, 1, recTitleRow.number, 10);
+          wsGPP.mergeCells(recTitleRow.number, 1, recTitleRow.number, 11);
           applyStyle(wsGPP.getCell(recTitleRow.number, 1), S.sectionHeader);
 
           addTableHeader(wsGPP, ['Inversión', 'Plataforma', 'Ejercicio de la pérdida', 'Ejercicio del cobro', 'Importe (€)'], 5);
@@ -507,14 +515,14 @@ export function TaxExportButton({
           wsGPP.addRow([]);
           const pendTitleRow = wsGPP.addRow(['Pérdidas por impago aún no declarables (informativo)']);
           pendTitleRow.height = 22;
-          wsGPP.mergeCells(pendTitleRow.number, 1, pendTitleRow.number, 10);
+          wsGPP.mergeCells(pendTitleRow.number, 1, pendTitleRow.number, 11);
           applyStyle(wsGPP.getCell(pendTitleRow.number, 1), S.sectionHeader);
 
           addTableHeader(wsGPP, ['Inversión', 'Plataforma', 'Importe pendiente (€)', 'Motivo'], 4);
           addDataRows(wsGPP, defaultLossSummary.pending, (p) => [
             p.projectName, p.platform, p.pendingAmount,
             p.pendingReason === 'pending_deadline'
-              ? t('defaultLoss.status.pendingDeadline').replace('{deadline}', p.deadlineDate ? new Date(p.deadlineDate).toLocaleDateString('es-ES') : '')
+              ? t('defaultLoss.status.pendingDeadline').replace('{deadline}', p.deadlineDate ? fmtDate(p.deadlineDate) : '')
               : t(`defaultLoss.status.${p.pendingReason === 'pending_insolvency' ? 'pendingInsolvency' : p.pendingReason === 'unknown' ? 'unknown' : 'notYet'}`),
           ], (cell, col) => {
             if (col === 3) { cell.numFmt = MONEY; applyStyle(cell, { ...cell.style, alignment: { horizontal: 'right' } } as XStyle); }
@@ -525,7 +533,7 @@ export function TaxExportButton({
           wsGPP.addRow([]);
           const excludedTitleRow = wsGPP.addRow(['Inversiones excluidas de este cálculo']);
           excludedTitleRow.height = 22;
-          wsGPP.mergeCells(excludedTitleRow.number, 1, excludedTitleRow.number, 10);
+          wsGPP.mergeCells(excludedTitleRow.number, 1, excludedTitleRow.number, 11);
           applyStyle(wsGPP.getCell(excludedTitleRow.number, 1), S.sectionHeader);
 
           addTableHeader(wsGPP, ['Inversión', 'Motivo'], 2);
@@ -538,12 +546,12 @@ export function TaxExportButton({
         wsGPP.addRow([]);
         const methodRow = wsGPP.addRow([t('tax.defaultLoss.methodologyNote')]);
         methodRow.height = 60;
-        wsGPP.mergeCells(methodRow.number, 1, methodRow.number, 10);
+        wsGPP.mergeCells(methodRow.number, 1, methodRow.number, 11);
         applyStyle(wsGPP.getCell(methodRow.number, 1), S.legalNote);
 
         const disclaimerRow = wsGPP.addRow([t('defaultLoss.disclaimer')]);
         disclaimerRow.height = 36;
-        wsGPP.mergeCells(disclaimerRow.number, 1, disclaimerRow.number, 10);
+        wsGPP.mergeCells(disclaimerRow.number, 1, disclaimerRow.number, 11);
         applyStyle(wsGPP.getCell(disclaimerRow.number, 1), S.legalNote);
       }
 
@@ -586,7 +594,7 @@ export function TaxExportButton({
       doc.setFontSize(10);
       doc.setFont('helvetica', 'normal');
       doc.setTextColor(128, 128, 128);
-      doc.text(`Documento generado el ${new Date().toLocaleDateString('es-ES')}`, pageWidth / 2, yPos, { align: 'center' });
+      doc.text(`Documento generado el ${fmtDate(new Date())}`, pageWidth / 2, yPos, { align: 'center' });
       doc.text('Datos listos para tu declaración o tu gestor', pageWidth / 2, yPos + 5, { align: 'center' });
 
       yPos += 10;
@@ -677,31 +685,33 @@ export function TaxExportButton({
         if (defaultLossSummary.declarable.rows.length > 0) {
           autoTable(doc, {
             startY: yPos,
-            head: [['Inversión', 'Plataforma', 'Invertido', 'Recuperado', 'Pérdida total de la inversión (€)', 'Estado', 'Hecho', 'Fecha', 'Ej.', 'Imputable']],
+            head: [['Inversión', 'Plataforma', 'Invertido', 'Recuperado antes de ser declarable', 'Pérdida total de la inversión (€)', 'Estado', 'Hecho', 'Fecha', 'Ej.', 'Imputado en otros ejercicios', 'Imputable']],
             body: [
               ...defaultLossSummary.declarable.rows.map((r) => [
                 r.projectName,
                 r.platform,
                 formatCurrency(r.amountInvested),
-                formatCurrency(r.amountRecovered),
+                formatCurrency(r.amountRecoveredBeforeTrigger),
                 formatCurrency(r.loss),
                 t(`defaultLoss.status.${r.status === 'deductible' ? 'deductible' : 'partiallyDeductible'}`),
                 t(TRIGGER_LABEL_KEYS[r.trigger]) + (r.platformInitiatedEnforcement && r.trigger === 'enforcement_one_year' ? ' *' : ''),
-                new Date(r.triggerDate).toLocaleDateString('es-ES'),
+                fmtDate(r.triggerDate),
                 String(r.year),
+                formatOtherImputations(r.otherImputations),
                 formatCurrency(r.amount),
               ]),
-              ['', '', '', '', '', '', '', '', `Total ${summary.year}`, formatCurrency(defaultLossSummary.declarable.totalAmount)],
+              ['', '', '', '', '', '', '', '', '', `Total ${summary.year}`, formatCurrency(defaultLossSummary.declarable.totalAmount)],
             ],
             theme: 'striped',
             headStyles: { fillColor: [239, 68, 68] },
-            styles: { fontSize: 7 },
+            styles: { fontSize: 6.5 },
             columnStyles: {
-              0: { cellWidth: 26 }, 1: { cellWidth: 16 },
-              2: { cellWidth: 16, halign: 'right' as const }, 3: { cellWidth: 16, halign: 'right' as const },
-              4: { cellWidth: 28, halign: 'right' as const }, 5: { cellWidth: 18 },
-              6: { cellWidth: 20 }, 7: { cellWidth: 16 }, 8: { cellWidth: 10 },
-              9: { cellWidth: 18, halign: 'right' as const },
+              0: { cellWidth: 22 }, 1: { cellWidth: 14 },
+              2: { cellWidth: 14, halign: 'right' as const }, 3: { cellWidth: 18, halign: 'right' as const },
+              4: { cellWidth: 20, halign: 'right' as const }, 5: { cellWidth: 14 },
+              6: { cellWidth: 16 }, 7: { cellWidth: 14 }, 8: { cellWidth: 8 },
+              9: { cellWidth: 22 },
+              10: { cellWidth: 16, halign: 'right' as const },
             },
           });
           // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -760,7 +770,7 @@ export function TaxExportButton({
               p.platform,
               formatCurrency(p.pendingAmount),
               p.pendingReason === 'pending_deadline'
-                ? t('defaultLoss.status.pendingDeadline').replace('{deadline}', p.deadlineDate ? new Date(p.deadlineDate).toLocaleDateString('es-ES') : '')
+                ? t('defaultLoss.status.pendingDeadline').replace('{deadline}', p.deadlineDate ? fmtDate(p.deadlineDate) : '')
                 : t(`defaultLoss.status.${p.pendingReason === 'pending_insolvency' ? 'pendingInsolvency' : p.pendingReason === 'unknown' ? 'unknown' : 'notYet'}`),
             ]),
             theme: 'striped',
@@ -839,7 +849,7 @@ export function TaxExportButton({
           head: [['Fecha', 'Inversión', 'Plataforma', 'Tipo / Origen', 'Bruto (€)', 'Retención (€)', 'Neto (€)']],
           body: [
             ...incomePayments.map(p => [
-              new Date(p.date).toLocaleDateString('es-ES'),
+              fmtDate(p.date),
               p.investmentName,
               p.platform,
               getPdfTypeLabel(p),
@@ -947,7 +957,7 @@ export function TaxExportButton({
           head: [['Fecha', 'Categoría', 'Descripción', 'Importe']],
           body: [
             ...expenses.map(exp => [
-              new Date(exp.date).toLocaleDateString('es-ES'),
+              fmtDate(exp.date),
               getCategoryLabel(exp.category),
               exp.description,
               formatCurrency(exp.amount),

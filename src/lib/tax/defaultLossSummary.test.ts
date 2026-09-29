@@ -74,6 +74,8 @@ describe('computeDefaultLossSummary', () => {
       investmentId: 'inv-1', trigger: 'quita', amount: 300, year: 2025, loss: 1000, status: 'deductible',
     });
     expect(s2025.declarable.totalAmount).toBe(300);
+    // La fila de 2025 lista la OTRA imputación (2027) — no la suya propia.
+    expect(s2025.declarable.rows[0].otherImputations).toEqual([{ amount: 700, year: 2027 }]);
 
     const s2027 = computeDefaultLossSummary([inv], 2027, TODAY);
     expect(s2027.declarable.rows).toHaveLength(1);
@@ -81,6 +83,7 @@ describe('computeDefaultLossSummary', () => {
       investmentId: 'inv-1', trigger: 'insolvency_concluded', amount: 700, year: 2027, loss: 1000,
     });
     expect(s2027.declarable.totalAmount).toBe(700);
+    expect(s2027.declarable.rows[0].otherImputations).toEqual([{ amount: 300, year: 2025 }]);
 
     // Un año sin ningún hecho de esta inversión → no aparece.
     const s2026 = computeDefaultLossSummary([inv], 2026, TODAY);
@@ -104,6 +107,56 @@ describe('computeDefaultLossSummary', () => {
     expect(s.recoveryGains.totalAmount).toBe(150);
     // La imputación original queda en su propio año (2025), no en 2026.
     expect(s.declarable.rows).toEqual([]);
+  });
+
+  it('amountRecoveredBeforeTrigger solo cuenta lo recuperado ANTES del primer hecho, no lo recuperado después', () => {
+    const inv = makeInvestment({
+      id: 'inv-1',
+      amount: 1000,
+      lossQuitaAmount: 300,
+      lossQuitaDate: '2025-05-01',
+      payments: [
+        { id: 'p0', date: '2024-06-01', amount: 200, type: 'principal' }, // ANTES del hecho
+        { id: 'p1', date: '2025-08-01', amount: 100, type: 'principal' }, // DESPUÉS del hecho
+      ],
+    });
+
+    const s = computeDefaultLossSummary([inv], 2025, TODAY);
+    expect(s.declarable.rows).toHaveLength(1);
+    // loss = 1000 - 200 (solo lo recuperado antes del hecho) = 800.
+    expect(s.declarable.rows[0].loss).toBe(800);
+    expect(s.declarable.rows[0].amountRecoveredBeforeTrigger).toBe(200);
+    // Invertido − Recuperado(antes) = Pérdida total, siempre.
+    expect(s.declarable.rows[0].amountInvested - s.declarable.rows[0].amountRecoveredBeforeTrigger).toBe(s.declarable.rows[0].loss);
+  });
+
+  it('lossYear de una recuperación usa la imputación MÁS TEMPRANA (firstTrigger), no la más tardía', () => {
+    const inv = makeInvestment({
+      id: 'inv-1',
+      amount: 1000,
+      lossQuitaAmount: 300,
+      lossQuitaDate: '2025-05-01',
+      lossInsolvencyStatus: 'concluded_unpaid',
+      lossInsolvencyConcludedDate: '2027-02-01',
+      payments: [{ id: 'p1', date: '2027-06-01', amount: 1000, type: 'principal' }], // después de ambos hechos
+    });
+
+    const s = computeDefaultLossSummary([inv], 2027, TODAY);
+    expect(s.recoveryGains.rows).toHaveLength(1);
+    // La ganancia se cobra en 2027, pero la pérdida ya era declarable desde 2025 (firstTrigger), no desde 2027.
+    expect(s.recoveryGains.rows[0]).toMatchObject({ year: 2027, lossYear: 2025, amount: 1000 });
+  });
+
+  it('una única imputación → otherImputations vacío', () => {
+    const inv = makeInvestment({
+      id: 'inv-1',
+      amount: 1000,
+      lossInsolvencyStatus: 'concluded_unpaid',
+      lossInsolvencyConcludedDate: '2025-06-01',
+    });
+    const s = computeDefaultLossSummary([inv], 2025, TODAY);
+    expect(s.declarable.rows).toHaveLength(1);
+    expect(s.declarable.rows[0].otherImputations).toEqual([]);
   });
 
   it('equity en impago → excluida aparte, no computa en nada', () => {

@@ -3,7 +3,6 @@ import { useNavigate } from 'react-router-dom';
 import crowdfolioLogo from '@/assets/logo_crowdfolio.svg';
 import TrustBadges from './TrustBadges';
 import { LEGAL_ROUTES } from '@/lib/legal/routes';
-import { GUIA_IMPAGOS_ROUTE } from '@/lib/guides/routes';
 import { useLanguage } from '@/contexts/LanguageContext';
 
 export default function Footer() {
@@ -38,10 +37,6 @@ export default function Footer() {
             >
               {t('footer.pricing')}
             </button>
-            <span className="text-muted-foreground/40">·</span>
-            <Link to={GUIA_IMPAGOS_ROUTE} className="transition-colors hover:text-foreground">
-              Guía: impagos y la renta
-            </Link>
             <span className="text-muted-foreground/40">·</span>
             <Link to={LEGAL_ROUTES.legal} className="transition-colors hover:text-foreground">
               {t('footer.legal')}

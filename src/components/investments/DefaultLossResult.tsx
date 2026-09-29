@@ -2,7 +2,6 @@ import { format, parseISO } from 'date-fns';
 import { AlertTriangle } from 'lucide-react';
 import { useLanguage } from '@/contexts/LanguageContext';
 import type { DefaultLossResult as DefaultLossResultData } from '@/lib/tax/defaultLoss';
-import { GUIA_IMPAGOS_ROUTE } from '@/lib/guides/routes';
 
 function formatAmountFixed(v: number): string {
   return new Intl.NumberFormat('es-ES', { minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(v);
@@ -10,24 +9,6 @@ function formatAmountFixed(v: number): string {
 
 function formatDate(dateStr: string): string {
   return format(parseISO(dateStr), 'dd/MM/yyyy');
-}
-
-/** Enlace a la guía pública sobre impagos — desde la app siempre en pestaña
- * nueva, para no perder el cuestionario/ficha abierta. */
-function GuideLink() {
-  const { t } = useLanguage();
-  return (
-    <p className="text-xs">
-      <a
-        href={GUIA_IMPAGOS_ROUTE}
-        target="_blank"
-        rel="noopener noreferrer"
-        className="text-primary underline underline-offset-2 hover:no-underline"
-      >
-        {t('defaultLoss.guideLink')}
-      </a>
-    </p>
-  );
 }
 
 interface DefaultLossResultProps {
@@ -53,7 +34,6 @@ export function DefaultLossResult({ isEquity, result, projectName, enforcementDa
     return (
       <div className="space-y-4">
         <p className="text-sm">{t('defaultLoss.equity.text')}</p>
-        <GuideLink />
         <p className="text-xs text-muted-foreground">{t('defaultLoss.disclaimer')}</p>
       </div>
     );
@@ -65,7 +45,6 @@ export function DefaultLossResult({ isEquity, result, projectName, enforcementDa
     return (
       <div className="space-y-4">
         <p className="text-sm">{t('defaultLoss.result.noLoss')}</p>
-        <GuideLink />
         <p className="text-xs text-muted-foreground">{t('defaultLoss.disclaimer')}</p>
       </div>
     );
@@ -127,7 +106,6 @@ export function DefaultLossResult({ isEquity, result, projectName, enforcementDa
         </div>
       )}
 
-      <GuideLink />
       <p className="text-xs text-muted-foreground">{t('defaultLoss.disclaimer')}</p>
     </div>
   );

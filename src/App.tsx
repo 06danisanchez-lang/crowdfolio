@@ -20,9 +20,7 @@ import AvisoLegal from "./pages/AvisoLegal";
 import PoliticaPrivacidad from "./pages/PoliticaPrivacidad";
 import Terminos from "./pages/Terminos";
 import CookiesPage from "./pages/Cookies";
-import GuiaImpagos from "./pages/GuiaImpagos";
 import { LEGAL_ROUTES } from "./lib/legal/routes";
-import { GUIA_IMPAGOS_ROUTE } from "./lib/guides/routes";
 import NotFound from "./pages/NotFound";
 import { useEffect, useRef, useState } from "react";
 import { Button } from "@/components/ui/button";
@@ -360,7 +358,6 @@ const AppRoutes = () => (
       <Route path={LEGAL_ROUTES.privacy} element={<PoliticaPrivacidad />} />
       <Route path={LEGAL_ROUTES.terms} element={<Terminos />} />
       <Route path={LEGAL_ROUTES.cookies} element={<CookiesPage />} />
-      <Route path={GUIA_IMPAGOS_ROUTE} element={<GuiaImpagos />} />
       <Route path="*" element={<NotFound />} />
     </Routes>
   </AuthGate>

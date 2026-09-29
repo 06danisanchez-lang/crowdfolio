@@ -326,7 +326,6 @@ export const translations: Record<Lang, Record<string, string>> = {
     'defaultLoss.q.p4.help': 'Es la fecha en que se presentó la demanda de ejecución. La plataforma debería poder indicártela.',
 
     'defaultLoss.equity.text': 'Esta inversión es una participación en el capital de una sociedad, no un préstamo, así que no le aplican las reglas de impago. Una pérdida en participaciones se declara, por lo general, cuando las vendes o cuando la sociedad se liquida. Crowdfolio todavía no calcula este caso: consúltalo con tu asesor.',
-    'defaultLoss.guideLink': 'Más información sobre impagos y la renta',
     'defaultLoss.disclaimer': 'Esta información es orientativa y se basa en los datos que has indicado. No constituye asesoramiento fiscal. Confirma tu caso con un asesor antes de presentar la declaración.',
 
     'defaultLoss.result.headline': 'Has perdido {loss} € en {project}.',
@@ -1028,7 +1027,6 @@ export const translations: Record<Lang, Record<string, string>> = {
     'defaultLoss.q.p4.help': 'This is the date the enforcement claim was filed. The platform should be able to tell you.',
 
     'defaultLoss.equity.text': "This investment is an equity stake in a company, not a loan, so the default rules don't apply to it. A loss on equity is generally declared when you sell it or when the company is liquidated. Crowdfolio doesn't calculate this case yet: consult your tax advisor.",
-    'defaultLoss.guideLink': 'More information about defaults and your tax return',
     'defaultLoss.disclaimer': "This information is for guidance only and is based on the data you've provided. It doesn't constitute tax advice. Confirm your case with a tax advisor before filing your tax return.",
 
     'defaultLoss.result.headline': "You've lost €{loss} on {project}.",

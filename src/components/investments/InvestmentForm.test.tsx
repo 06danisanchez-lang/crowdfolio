@@ -137,6 +137,45 @@ describe('InvestmentForm — no debe arrastrar datos obsoletos entre aperturas',
   });
 });
 
+describe('InvestmentForm — fecha del primer cobro fuera de rango tras editar otra fecha', () => {
+  afterEach(cleanup);
+
+  it('editar el vencimiento dejando first_payment_date fuera de rango avisa con un mensaje claro y NO llama a onSubmit (nunca llega al constraint de la BD)', async () => {
+    const onSubmit = vi.fn();
+    const inv = makeInvestment({
+      id: 'inv-f',
+      incomeModel: 'periodic_fixed',
+      paymentFrequency: 'monthly',
+      investmentDate: '2024-01-01',
+      expectedEndDate: '2025-01-01',
+      firstPaymentDate: '2024-06-01', // válido: entre investmentDate y expectedEndDate
+    });
+
+    renderForm(inv, onSubmit);
+    await openDialog();
+
+    // Abre el calendario de "Fecha de Vencimiento" y lo mueve a marzo de 2024
+    // (antes de firstPaymentDate) usando los desplegables de mes/año — así el
+    // vencimiento editado queda ANTES del primer cobro ya guardado.
+    fireEvent.click(screen.getByText('Fecha de Vencimiento'));
+    const selects = await screen.findAllByRole('combobox', { hidden: true });
+    const monthSelect = selects[selects.length - 2] as HTMLSelectElement;
+    const yearSelect = selects[selects.length - 1] as HTMLSelectElement;
+    fireEvent.change(monthSelect, { target: { value: '2' } }); // marzo (0-indexado)
+    fireEvent.change(yearSelect, { target: { value: '2024' } });
+
+    const dayButtons = Array.from(document.querySelectorAll('button[name="day"]')) as HTMLButtonElement[];
+    const day10 = dayButtons.find(b => b.textContent === '10' && !b.className.includes('day-outside'));
+    expect(day10).toBeTruthy();
+    fireEvent.click(day10!);
+
+    fireEvent.click(screen.getByText('Guardar Cambios'));
+
+    await screen.findByText('La fecha del primer cobro debe estar entre la fecha de inversión y el vencimiento');
+    expect(onSubmit).not.toHaveBeenCalled();
+  });
+});
+
 describe('InvestmentForm — inversiones en impago no permiten cambiar el tipo de rendimiento', () => {
   afterEach(cleanup);
 

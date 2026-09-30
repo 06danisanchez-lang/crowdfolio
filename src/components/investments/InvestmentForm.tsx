@@ -75,6 +75,26 @@ import { useLanguage } from '@/contexts/LanguageContext';
 
 const END_DATE_REQUIRED_MODELS = ['bullet', 'periodic_fixed', 'amortizing'] as const;
 
+// Refleja exactamente la constraint SQL investments_first_payment_date_range_check
+// (NULL-tolerante igual que ella) para que una fecha inválida nunca llegue a
+// intentar guardarse en la BD — el mensaje del constraint no debe verse nunca.
+function checkFirstPaymentDateRange(
+  data: { incomeModel?: string; investmentDate?: Date; expectedEndDate?: Date; firstPaymentDate?: Date },
+  ctx: z.RefinementCtx,
+) {
+  if (!data.firstPaymentDate) return;
+  if (data.incomeModel !== 'periodic_fixed' && data.incomeModel !== 'amortizing') return;
+  const afterInvestment = !data.investmentDate || data.firstPaymentDate > data.investmentDate;
+  const beforeOrOnEnd = !data.expectedEndDate || data.firstPaymentDate <= data.expectedEndDate;
+  if (!afterInvestment || !beforeOrOnEnd) {
+    ctx.addIssue({
+      code: z.ZodIssueCode.custom,
+      path: ['firstPaymentDate'],
+      message: 'La fecha del primer cobro debe estar entre la fecha de inversión y el vencimiento',
+    });
+  }
+}
+
 const investmentSchema = z.object({
   platform: z.enum(['urbanitae', 'housers', 'estateguru', 'crowdcube', 'brickstarter', 'wecity', 'other'] as const),
   customPlatformName: z.string().optional(),
@@ -106,21 +126,7 @@ const investmentSchema = z.object({
       message: 'Selecciona el tipo de inversión equity',
     });
   }
-  if (data.firstPaymentDate && (data.incomeModel === 'periodic_fixed' || data.incomeModel === 'amortizing')) {
-    if (data.investmentDate && data.firstPaymentDate <= data.investmentDate) {
-      ctx.addIssue({
-        code: z.ZodIssueCode.custom,
-        path: ['firstPaymentDate'],
-        message: 'La fecha del primer cobro debe ser posterior a la fecha de inversión',
-      });
-    } else if (data.expectedEndDate && data.firstPaymentDate > data.expectedEndDate) {
-      ctx.addIssue({
-        code: z.ZodIssueCode.custom,
-        path: ['firstPaymentDate'],
-        message: 'La fecha del primer cobro no puede ser posterior al vencimiento',
-      });
-    }
-  }
+  checkFirstPaymentDateRange(data, ctx);
 });
 
 const draftInvestmentSchema = z.object({
@@ -139,6 +145,8 @@ const draftInvestmentSchema = z.object({
   status: z.enum(['active', 'pending', 'completed', 'defaulted', 'draft'] as const).optional(),
   notes: z.string().optional(),
   sourceUrl: z.string().optional(),
+}).superRefine((data, ctx) => {
+  checkFirstPaymentDateRange(data, ctx);
 });
 
 const futureInvestmentSchema = z.object({

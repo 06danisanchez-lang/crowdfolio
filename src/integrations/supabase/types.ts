@@ -128,6 +128,7 @@ export type Database = {
           exchange_rate_source: string | null
           expected_end_date: string | null
           expected_return: number
+          first_payment_date: string | null
           id: string
           income_model: string | null
           investment_date: string
@@ -170,6 +171,7 @@ export type Database = {
           exchange_rate_source?: string | null
           expected_end_date?: string | null
           expected_return: number
+          first_payment_date?: string | null
           id?: string
           income_model?: string | null
           investment_date: string
@@ -212,6 +214,7 @@ export type Database = {
           exchange_rate_source?: string | null
           expected_end_date?: string | null
           expected_return?: number
+          first_payment_date?: string | null
           id?: string
           income_model?: string | null
           investment_date?: string

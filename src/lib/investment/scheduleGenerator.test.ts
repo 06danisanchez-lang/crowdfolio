@@ -69,6 +69,12 @@ describe('generateSchedule — tramos irregulares (fecha del primer cobro, tramo
     expect(entries[0].expectedAmount).toBe(entries[1].expectedAmount);
     expect(entries[2].expectedAmount).not.toBe(entries[0].expectedAmount);
     expect(entries[2].expectedDate).toBe('2026-04-15'); // siempre termina en expectedEndDate
+
+    // Valor exacto de la cuota final: capital pendiente (1788.54, tras las dos
+    // cuotas regulares) + intereses de los 90 días prorrateados por días/365
+    // sobre el tipo anual (66.15) = 1854.69. Calculado a mano y verificado por
+    // separado, no derivado del propio código bajo test.
+    expect(entries[2].expectedAmount).toBe(1854.69);
   });
 
   it('amortizing CON fecha de primer cobro que no coincide con investmentDate + 1 periodo: el primer tramo se prorratea', () => {

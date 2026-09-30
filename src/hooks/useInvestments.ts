@@ -96,7 +96,7 @@ export function useInvestments() {
       // Auto-transition: active + past expectedEndDate → pending (skip [DISPUTA] notes)
       const todayStr = toDateOnlyString(new Date());
       const autoPendingIds = new Set<string>(
-        (investmentsData as unknown as RawInvestmentRow[])
+        (investmentsData as RawInvestmentRow[])
           .filter(inv =>
             inv.status === 'active' &&
             inv.expected_end_date != null &&
@@ -109,7 +109,7 @@ export function useInvestments() {
         await supabase.from('investments').update({ status: 'pending' }).in('id', [...autoPendingIds]);
       }
 
-      const mapped: DraftInvestment[] = (investmentsData as unknown as RawInvestmentRow[] || []).map(inv =>
+      const mapped: DraftInvestment[] = (investmentsData as RawInvestmentRow[] || []).map(inv =>
         mapRawInvestmentRow(
           inv,
           paymentsData

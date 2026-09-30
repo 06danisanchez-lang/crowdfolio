@@ -1,16 +1,37 @@
-import { describe, it, expect, vi, afterEach } from 'vitest';
+import { describe, it, expect, vi, afterEach, beforeEach } from 'vitest';
 import { render, screen, fireEvent, cleanup, waitFor } from '@testing-library/react';
 import { InvestmentForm } from './InvestmentForm';
 import { LanguageProvider } from '@/contexts/LanguageContext';
 import type { Investment } from '@/types/investment';
 
 // InvestmentForm llama a useAuth() incondicionalmente (para el borrador de
-// nuevas inversiones) — no nos interesa aquí (initialData siempre presente
-// en estos tests, así que el borrador queda desactivado de todas formas), y
-// montar el AuthProvider real dispararía llamadas reales a Supabase.
+// nuevas inversiones). La mayoría de estos tests usan initialData (edición),
+// donde el borrador queda desactivado sin importar el usuario — pero los
+// tests del borrador automático de "Nueva Inversión" (más abajo) sí
+// necesitan un user.id real, así que el mock es controlable por test en vez
+// de fijo.
+const mockUseAuth = vi.fn(() => ({ user: null as { id: string } | null }));
 vi.mock('@/contexts/AuthContext', () => ({
-  useAuth: () => ({ user: null }),
+  useAuth: () => mockUseAuth(),
 }));
+
+// El entorno de test (Node 25 + jsdom vía vitest) expone un `localStorage`
+// global roto (TypeError: setItem is not a function) salvo que Node arranque
+// con --localstorage-file — nada que ver con el bug de producción, donde el
+// localStorage del navegador funciona con normalidad. Los tests del
+// borrador automático necesitan un localStorage real, así que se sustituye
+// por un stub en memoria solo mientras dura cada uno de esos tests.
+function stubWorkingLocalStorage() {
+  const store = new Map<string, string>();
+  vi.stubGlobal('localStorage', {
+    getItem: (k: string) => (store.has(k) ? store.get(k)! : null),
+    setItem: (k: string, v: string) => { store.set(k, String(v)); },
+    removeItem: (k: string) => { store.delete(k); },
+    clear: () => { store.clear(); },
+    key: (i: number) => Array.from(store.keys())[i] ?? null,
+    get length() { return store.size; },
+  });
+}
 
 function makeInvestment(overrides: Partial<Investment> & { id: string }): Investment {
   return {
@@ -173,6 +194,146 @@ describe('InvestmentForm — fecha del primer cobro fuera de rango tras editar o
 
     await screen.findByText('La fecha del primer cobro debe estar entre la fecha de inversión y el vencimiento');
     expect(onSubmit).not.toHaveBeenCalled();
+  });
+});
+
+describe('InvestmentForm — el campo Monto (y Rentabilidad) se pueden vaciar por completo', () => {
+  afterEach(() => {
+    cleanup();
+    vi.unstubAllGlobals();
+    mockUseAuth.mockReturnValue({ user: null });
+  });
+
+  it('borrar el importe hasta vaciarlo al editar una inversión existente deja el campo vacío, no el importe original', async () => {
+    const onSubmit = vi.fn();
+    const prueba = makeInvestment({ id: 'inv-prueba', projectName: 'prueba', amount: 7089 });
+
+    renderForm(prueba, onSubmit);
+    await openDialog();
+
+    const amountInput = screen.getByPlaceholderText('1000') as HTMLInputElement;
+    expect(amountInput.value).toBe('7089');
+
+    fireEvent.change(amountInput, { target: { value: '708' } });
+    fireEvent.change(amountInput, { target: { value: '70' } });
+    fireEvent.change(amountInput, { target: { value: '7' } });
+    fireEvent.change(amountInput, { target: { value: '' } });
+
+    expect(amountInput.value).toBe('');
+  });
+
+  it('nueva inversión tras editar otra: el borrador restaurado no arrastra el importe de la inversión editada, y su propio importe SÍ se puede vaciar', async () => {
+    stubWorkingLocalStorage();
+    mockUseAuth.mockReturnValue({ user: { id: 'user-1' } });
+
+    // 1) Empieza una inversión nueva con un importe (5000) y la abandona sin
+    // enviarla — por diseño, cerrar sin guardar conserva el borrador.
+    const onSubmitNew1 = vi.fn();
+    const { unmount: unmountNew1 } = render(
+      <LanguageProvider>
+        <InvestmentForm onSubmit={onSubmitNew1} trigger={<button>nueva</button>} />
+      </LanguageProvider>,
+    );
+    fireEvent.click(screen.getByText('nueva'));
+    await screen.findByPlaceholderText('Notas adicionales...');
+    fireEvent.change(screen.getByPlaceholderText('1000'), { target: { value: '5000' } });
+    await new Promise((r) => setTimeout(r, 350)); // deja que el guardado del borrador (debounced 300ms) se dispare
+    unmountNew1();
+
+    // 2) Edita una inversión YA EXISTENTE distinta ("prueba", importe 7089) y cancela.
+    const onSubmitEdit = vi.fn();
+    const prueba = makeInvestment({ id: 'inv-prueba', projectName: 'prueba', amount: 7089 });
+    const { unmount: unmountEdit } = renderForm(prueba, onSubmitEdit);
+    await openDialog();
+    expect((screen.getByPlaceholderText('1000') as HTMLInputElement).value).toBe('7089');
+    closeViaCancel();
+    unmountEdit();
+
+    // 3) Reabre "Nueva Inversión": el importe restaurado debe ser el del
+    // borrador propio (5000), NUNCA el de "prueba" (7089).
+    const onSubmitNew2 = vi.fn();
+    render(
+      <LanguageProvider>
+        <InvestmentForm onSubmit={onSubmitNew2} trigger={<button>nueva</button>} />
+      </LanguageProvider>,
+    );
+    fireEvent.click(screen.getByText('nueva'));
+    await screen.findByPlaceholderText('Notas adicionales...');
+    const amountInput = screen.getByPlaceholderText('1000') as HTMLInputElement;
+    await waitFor(() => expect(amountInput.value).toBe('5000'));
+    expect(amountInput.value).not.toBe('7089');
+
+    // 4) Y ese importe restaurado SÍ se debe poder vaciar del todo.
+    fireEvent.change(amountInput, { target: { value: '500' } });
+    fireEvent.change(amountInput, { target: { value: '' } });
+    expect(amountInput.value).toBe('');
+  });
+
+  it('el borrador automático: un importe restaurado tras reabrir el formulario se puede vaciar por completo', async () => {
+    stubWorkingLocalStorage();
+    mockUseAuth.mockReturnValue({ user: { id: 'user-1' } });
+
+    const onSubmit1 = vi.fn();
+    const { unmount } = render(
+      <LanguageProvider>
+        <InvestmentForm onSubmit={onSubmit1} trigger={<button>nueva</button>} />
+      </LanguageProvider>,
+    );
+    fireEvent.click(screen.getByText('nueva'));
+    await screen.findByPlaceholderText('Notas adicionales...');
+    fireEvent.change(screen.getByPlaceholderText('1000'), { target: { value: '7089' } });
+    await new Promise((r) => setTimeout(r, 350));
+    unmount();
+
+    const onSubmit2 = vi.fn();
+    render(
+      <LanguageProvider>
+        <InvestmentForm onSubmit={onSubmit2} trigger={<button>nueva</button>} />
+      </LanguageProvider>,
+    );
+    fireEvent.click(screen.getByText('nueva'));
+    await screen.findByPlaceholderText('Notas adicionales...');
+
+    // Confirma que de verdad se restauró un borrador (y no que el campo
+    // simplemente nació vacío) antes de comprobar que se puede vaciar.
+    expect(screen.getByText('Borrador restaurado')).toBeTruthy();
+    const amountInput = screen.getByPlaceholderText('1000') as HTMLInputElement;
+    expect(amountInput.value).toBe('7089');
+
+    fireEvent.change(amountInput, { target: { value: '708' } });
+    fireEvent.change(amountInput, { target: { value: '' } });
+    expect(amountInput.value).toBe('');
+  });
+
+  it('acepta coma decimal en Monto y Rentabilidad', async () => {
+    const onSubmit = vi.fn();
+    const prueba = makeInvestment({ id: 'inv-prueba', projectName: 'prueba', amount: 10000, expectedReturn: 8 });
+
+    renderForm(prueba, onSubmit);
+    await openDialog();
+
+    // Tecleo incremental, carácter a carácter (como un usuario real), no un
+    // único fireEvent.change con el valor final: así se comprueba que la
+    // coma "1234," no se reformatea a "1234" a mitad de escritura, que es
+    // justo lo que impediría completar "1234,56".
+    const amountInput = screen.getByPlaceholderText('1000') as HTMLInputElement;
+    for (const partial of ['1', '12', '123', '1234', '1234,', '1234,5', '1234,56']) {
+      fireEvent.change(amountInput, { target: { value: partial } });
+      expect(amountInput.value).toBe(partial);
+    }
+
+    const returnInput = screen.getByPlaceholderText('10') as HTMLInputElement;
+    for (const partial of ['7', '7,', '7,5']) {
+      fireEvent.change(returnInput, { target: { value: partial } });
+      expect(returnInput.value).toBe(partial);
+    }
+
+    changeNotesAndSave('con coma decimal');
+
+    await waitFor(() => expect(onSubmit).toHaveBeenCalled());
+    const payload = onSubmit.mock.calls[onSubmit.mock.calls.length - 1][0] as Record<string, unknown>;
+    expect(payload.amount).toBe(1234.56);
+    expect(payload.expectedReturn).toBe(7.5);
   });
 });
 

@@ -14,8 +14,8 @@ export interface DraftFormValues {
   platform?: string;
   customPlatformName?: string;
   projectName?: string;
-  amount?: number;
-  expectedReturn?: number;
+  amount?: number | null;
+  expectedReturn?: number | null;
   status: string;
   notes?: string;
   investmentDate: string;   // ISO via .toISOString()

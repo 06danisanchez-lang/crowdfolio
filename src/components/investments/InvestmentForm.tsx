@@ -75,6 +75,68 @@ import { useLanguage } from '@/contexts/LanguageContext';
 
 const END_DATE_REQUIRED_MODELS = ['bullet', 'periodic_fixed', 'amortizing'] as const;
 
+// Campo vacío = null, nunca undefined: si un campo Controller de
+// react-hook-form llega a mostrar alguna vez un valor real (al editar una
+// inversión existente, o al restaurar un borrador), su valor "vacío" interno
+// queda fijado a ese primer valor para siempre — internamente cae de vuelta a
+// él en cuanto el valor pasa a ser undefined, así que el campo parece
+// imposible de vaciar del todo. null sí es un valor "real" para
+// react-hook-form (no dispara ese fallback) y ya es lo que esperan
+// investmentSchema/draftInvestmentSchema y el resto del flujo de guardado.
+// Acepta coma decimal (10,5) además de punto.
+function parseNumericInput(raw: string): number | null {
+  const trimmed = raw.trim();
+  if (trimmed === '') return null;
+  const parsed = parseFloat(trimmed.replace(',', '.'));
+  return isNaN(parsed) ? null : parsed;
+}
+
+/**
+ * Input numérico controlado por react-hook-form que además admite coma
+ * decimal mientras se escribe. Un input controlado directamente por
+ * `field.value` (un número) reformatearía "10," a "10" en cuanto
+ * parseNumericInput lo interpreta como 10 — perdiendo la coma que el usuario
+ * acaba de teclear y haciendo imposible completar "10,5". Aquí el texto
+ * mostrado vive en un estado local propio (lo que el usuario ve tal cual lo
+ * escribe) y solo se resincroniza desde `value` cuando este cambia por una
+ * causa EXTERNA a este input (editar otra inversión, restaurar un borrador) —
+ * nunca como reacción al propio tecleo del usuario.
+ */
+function NumericTextInput({
+  value,
+  onChange,
+  placeholder,
+}: {
+  value: number | null | undefined;
+  onChange: (value: number | null) => void;
+  placeholder?: string;
+}) {
+  const [text, setText] = useState(value != null ? String(value) : '');
+
+  // Solo resincroniza el texto mostrado cuando `value` cambia por una causa
+  // EXTERNA a este input (editar otra inversión, restaurar un borrador):
+  // comparar contra lo que el propio texto YA representaría evita confundir
+  // ese caso con el eco del onChange del propio usuario — que reformatearía
+  // "10," a "10" en pleno tecleo y le impediría llegar a escribir "10,5".
+  if ((value ?? null) !== parseNumericInput(text)) {
+    setText(value != null ? String(value) : '');
+  }
+
+  return (
+    <Input
+      type="text"
+      inputMode="decimal"
+      placeholder={placeholder}
+      value={text}
+      onChange={(e) => {
+        const raw = e.target.value;
+        setText(raw);
+        onChange(parseNumericInput(raw));
+      }}
+    />
+  );
+}
+
 // Refleja exactamente la constraint SQL investments_first_payment_date_range_check
 // (NULL-tolerante igual que ella) para que una fecha inválida nunca llegue a
 // intentar guardarse en la BD — el mensaje del constraint no debe verse nunca.
@@ -900,19 +962,10 @@ export function InvestmentForm({
                 {isFuture ? t('future.form.estimatedAmount') : 'Monto (€)'}
               </FormLabel>
               <FormControl>
-                <Input
-                  type="number"
+                <NumericTextInput
                   placeholder={isFuture ? '' : '1000'}
-                  value={field.value != null ? field.value : ''}
-                  onChange={(e) => {
-                    const raw = e.target.value;
-                    if (raw === '') {
-                      field.onChange(isFuture ? null : undefined);
-                    } else {
-                      const parsed = parseFloat(raw);
-                      field.onChange(isNaN(parsed) ? undefined : parsed);
-                    }
-                  }}
+                  value={field.value}
+                  onChange={field.onChange}
                 />
               </FormControl>
               <FormMessage />
@@ -933,23 +986,13 @@ export function InvestmentForm({
                     : 'Rentabilidad Anual (%)'}
               </FormLabel>
               <FormControl>
-                <Input
-                  type="number"
-                  step="0.1"
+                <NumericTextInput
                   placeholder={
                     isFuture ? '' :
                     watchIncomeModel === 'variable_or_unknown' ? t('common.optional') : '10'
                   }
-                  value={field.value != null ? field.value : ''}
-                  onChange={(e) => {
-                    const raw = e.target.value;
-                    if (raw === '') {
-                      field.onChange(isFuture ? null : undefined);
-                    } else {
-                      const parsed = parseFloat(raw);
-                      field.onChange(isNaN(parsed) ? undefined : parsed);
-                    }
-                  }}
+                  value={field.value}
+                  onChange={field.onChange}
                 />
               </FormControl>
               <FormMessage />

@@ -212,7 +212,7 @@ describe('InvestmentForm — el campo Monto (y Rentabilidad) se pueden vaciar po
     await openDialog();
 
     const amountInput = screen.getByPlaceholderText('1000') as HTMLInputElement;
-    expect(amountInput.value).toBe('7089');
+    expect(amountInput.value).toBe('7.089,00');
 
     fireEvent.change(amountInput, { target: { value: '708' } });
     fireEvent.change(amountInput, { target: { value: '70' } });
@@ -245,7 +245,7 @@ describe('InvestmentForm — el campo Monto (y Rentabilidad) se pueden vaciar po
     const prueba = makeInvestment({ id: 'inv-prueba', projectName: 'prueba', amount: 7089 });
     const { unmount: unmountEdit } = renderForm(prueba, onSubmitEdit);
     await openDialog();
-    expect((screen.getByPlaceholderText('1000') as HTMLInputElement).value).toBe('7089');
+    expect((screen.getByPlaceholderText('1000') as HTMLInputElement).value).toBe('7.089,00');
     closeViaCancel();
     unmountEdit();
 
@@ -260,8 +260,8 @@ describe('InvestmentForm — el campo Monto (y Rentabilidad) se pueden vaciar po
     fireEvent.click(screen.getByText('nueva'));
     await screen.findByPlaceholderText('Notas adicionales...');
     const amountInput = screen.getByPlaceholderText('1000') as HTMLInputElement;
-    await waitFor(() => expect(amountInput.value).toBe('5000'));
-    expect(amountInput.value).not.toBe('7089');
+    await waitFor(() => expect(amountInput.value).toBe('5.000,00'));
+    expect(amountInput.value).not.toBe('7.089,00');
 
     // 4) Y ese importe restaurado SÍ se debe poder vaciar del todo.
     fireEvent.change(amountInput, { target: { value: '500' } });
@@ -298,7 +298,7 @@ describe('InvestmentForm — el campo Monto (y Rentabilidad) se pueden vaciar po
     // simplemente nació vacío) antes de comprobar que se puede vaciar.
     expect(screen.getByText('Borrador restaurado')).toBeTruthy();
     const amountInput = screen.getByPlaceholderText('1000') as HTMLInputElement;
-    expect(amountInput.value).toBe('7089');
+    expect(amountInput.value).toBe('7.089,00');
 
     fireEvent.change(amountInput, { target: { value: '708' } });
     fireEvent.change(amountInput, { target: { value: '' } });
@@ -334,6 +334,74 @@ describe('InvestmentForm — el campo Monto (y Rentabilidad) se pueden vaciar po
     const payload = onSubmit.mock.calls[onSubmit.mock.calls.length - 1][0] as Record<string, unknown>;
     expect(payload.amount).toBe(1234.56);
     expect(payload.expectedReturn).toBe(7.5);
+  });
+
+  it('interpreta el punto como separador de miles: "1.500" son 1500, nunca 1,5', async () => {
+    const onSubmit = vi.fn();
+    const prueba = makeInvestment({ id: 'inv-prueba', projectName: 'prueba', amount: 10000 });
+
+    renderForm(prueba, onSubmit);
+    await openDialog();
+
+    fireEvent.change(screen.getByPlaceholderText('1000'), { target: { value: '1.500' } });
+    changeNotesAndSave('importe con punto de millares');
+
+    await waitFor(() => expect(onSubmit).toHaveBeenCalled());
+    const payload = onSubmit.mock.calls[onSubmit.mock.calls.length - 1][0] as Record<string, unknown>;
+    expect(payload.amount).toBe(1500);
+  });
+
+  it('al perder el foco, reformatea el importe al estilo español (1.500,00) para que el usuario vea lo que se va a guardar', async () => {
+    const onSubmit = vi.fn();
+    const prueba = makeInvestment({ id: 'inv-prueba', projectName: 'prueba', amount: 10000 });
+
+    renderForm(prueba, onSubmit);
+    await openDialog();
+
+    const amountInput = screen.getByPlaceholderText('1000') as HTMLInputElement;
+    fireEvent.change(amountInput, { target: { value: '1500' } });
+    expect(amountInput.value).toBe('1500'); // tal cual se escribió, sin reformatear en pleno tecleo
+
+    fireEvent.blur(amountInput);
+    expect(amountInput.value).toBe('1.500,00');
+  });
+
+  it('una entrada ambigua (formato inglés "1,500.50") muestra un error claro al perder el foco y bloquea el guardado en vez de guardar un valor silenciosamente distinto', async () => {
+    const onSubmit = vi.fn();
+    const prueba = makeInvestment({ id: 'inv-prueba', projectName: 'prueba', amount: 10000 });
+
+    renderForm(prueba, onSubmit);
+    await openDialog();
+
+    const amountInput = screen.getByPlaceholderText('1000') as HTMLInputElement;
+    fireEvent.change(amountInput, { target: { value: '1,500.50' } });
+    fireEvent.blur(amountInput);
+
+    await screen.findByText(/en España el punto separa los miles y la coma los decimales/);
+
+    fireEvent.click(screen.getByText('Guardar Cambios'));
+
+    // Nunca debe guardarse ni el importe original (10000) ni el número
+    // "adivinado" a partir de una entrada ambigua — el guardado queda
+    // bloqueado (Importe pasa a considerarse un campo pendiente) hasta que
+    // el usuario corrija el texto.
+    expect(onSubmit).not.toHaveBeenCalled();
+  });
+
+  it('una entrada no reconocible ("abc") muestra un error claro y bloquea el guardado', async () => {
+    const onSubmit = vi.fn();
+    const prueba = makeInvestment({ id: 'inv-prueba', projectName: 'prueba', amount: 10000 });
+
+    renderForm(prueba, onSubmit);
+    await openDialog();
+
+    const amountInput = screen.getByPlaceholderText('1000') as HTMLInputElement;
+    fireEvent.change(amountInput, { target: { value: 'abc' } });
+    fireEvent.blur(amountInput);
+
+    await screen.findByText(/No se reconoce como un número/);
+    fireEvent.click(screen.getByText('Guardar Cambios'));
+    expect(onSubmit).not.toHaveBeenCalled();
   });
 });
 

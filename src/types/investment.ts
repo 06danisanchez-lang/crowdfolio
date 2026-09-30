@@ -46,6 +46,9 @@ export interface Investment {
   expectedReturn: number; // percentage
   incomeModel: IncomeModel;
   paymentFrequency?: PaymentFrequency;
+  /** Fecha real del primer cobro, si se conoce (solo periodic_fixed/amortizing).
+   * Sin ella, el calendario estima el primero como investmentDate + 1 periodo. */
+  firstPaymentDate?: string | null;
   principalReturnType?: PrincipalReturnType;
   status: InvestmentStatus;
   payments: Payment[];
@@ -116,6 +119,7 @@ export interface DraftInvestment {
   expectedReturn?: number | null;
   incomeModel?: IncomeModel | null;
   paymentFrequency?: PaymentFrequency | null;
+  firstPaymentDate?: string | null;
   principalReturnType?: PrincipalReturnType | null;
   status: InvestmentStatus;
   payments: Payment[];

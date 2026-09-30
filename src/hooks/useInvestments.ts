@@ -203,6 +203,7 @@ export function useInvestments() {
     equityType?: EquityType | null;
     investmentDate: string;
     expectedEndDate?: string;
+    firstPaymentDate?: string | null;
   }): Promise<{ error?: string }> => {
     // Delete existing schedule
     const { error: deleteError } = await supabase.from('investment_schedule').delete().eq('investment_id', investmentId);
@@ -223,6 +224,7 @@ export function useInvestments() {
       equityType: investment.equityType,
       investmentDate: investment.investmentDate,
       expectedEndDate: investment.expectedEndDate,
+      firstPaymentDate: investment.firstPaymentDate,
     });
 
     if (entries.length > 0) {
@@ -253,6 +255,7 @@ export function useInvestments() {
       expected_return: investment.expectedReturn, status: investment.status,
       income_model: investment.incomeModel || null,
       payment_frequency: investment.paymentFrequency || null,
+      first_payment_date: investment.firstPaymentDate || null,
       principal_return_type: investment.principalReturnType || null,
       equity_type: investment.equityType || null,
       notes: investment.notes || null,
@@ -270,6 +273,7 @@ export function useInvestments() {
       equityType: investment.equityType,
       investmentDate: investment.investmentDate,
       expectedEndDate: investment.expectedEndDate,
+      firstPaymentDate: investment.firstPaymentDate,
     });
 
     const created: Investment = {
@@ -280,6 +284,7 @@ export function useInvestments() {
       expectedReturn: Number(data.expected_return), status: data.status as InvestmentStatus,
       incomeModel: (data as Record<string, unknown>).income_model as IncomeModel,
       paymentFrequency: (data as Record<string, unknown>).payment_frequency as PaymentFrequency || undefined,
+      firstPaymentDate: (data as Record<string, unknown>).first_payment_date as string || undefined,
       principalReturnType: (data as Record<string, unknown>).principal_return_type as PrincipalReturnType || undefined,
       equityType: (data as Record<string, unknown>).equity_type as EquityType || undefined,
       sourceUrl: (data as Record<string, unknown>).source_url as string || undefined,
@@ -301,6 +306,7 @@ export function useInvestments() {
     expectedReturn?: number | null;
     incomeModel?: string | null;
     paymentFrequency?: string | null;
+    firstPaymentDate?: string | null;
     principalReturnType?: string | null;
     status?: string;
     notes?: string | null;
@@ -317,6 +323,7 @@ export function useInvestments() {
       expected_return: draft.expectedReturn ?? null,
       income_model: draft.incomeModel || null,
       payment_frequency: draft.paymentFrequency || null,
+      first_payment_date: draft.firstPaymentDate || null,
       principal_return_type: draft.principalReturnType || null,
       status: draft.status || 'active',
       notes: draft.notes || null,
@@ -364,6 +371,7 @@ export function useInvestments() {
     if (updates.wasExtended !== undefined) dbUpdates.was_extended = updates.wasExtended;
     if (updates.incomeModel !== undefined) dbUpdates.income_model = updates.incomeModel || null;
     if (updates.paymentFrequency !== undefined) dbUpdates.payment_frequency = updates.paymentFrequency || null;
+    if (updates.firstPaymentDate !== undefined) dbUpdates.first_payment_date = updates.firstPaymentDate || null;
     if (updates.principalReturnType !== undefined) dbUpdates.principal_return_type = updates.principalReturnType || null;
     if (updates.equityType !== undefined) dbUpdates.equity_type = updates.equityType || null;
     if (updates.lossInsolvencyStatus !== undefined) dbUpdates.loss_insolvency_status = updates.lossInsolvencyStatus;
@@ -383,7 +391,7 @@ export function useInvestments() {
 
     // Regenerate schedule if income model fields changed
     let scheduleError: string | undefined;
-    if (current && (updates.incomeModel || updates.paymentFrequency || updates.expectedReturn !== undefined || updates.expectedEndDate !== undefined || updates.amount !== undefined || updates.investmentDate !== undefined || updates.principalReturnType !== undefined || updates.equityType !== undefined)) {
+    if (current && (updates.incomeModel || updates.paymentFrequency || updates.firstPaymentDate !== undefined || updates.expectedReturn !== undefined || updates.expectedEndDate !== undefined || updates.amount !== undefined || updates.investmentDate !== undefined || updates.principalReturnType !== undefined || updates.equityType !== undefined)) {
       const merged = {
         amount: updates.amount ?? current.amount ?? 0,
         expectedReturn: updates.expectedReturn ?? current.expectedReturn ?? 0,
@@ -393,6 +401,7 @@ export function useInvestments() {
         equityType: (updates.equityType ?? current.equityType) as EquityType | null,
         investmentDate: updates.investmentDate ?? current.investmentDate ?? '',
         expectedEndDate: updates.expectedEndDate ?? current.expectedEndDate,
+        firstPaymentDate: updates.firstPaymentDate !== undefined ? updates.firstPaymentDate : current.firstPaymentDate,
       };
       const scheduleResult = await saveScheduleForInvestment(id, merged);
       scheduleError = scheduleResult.error;
@@ -475,6 +484,7 @@ export function useInvestments() {
         expected_return: inv.expectedReturn, status: inv.status,
         income_model: inv.incomeModel || null,
         payment_frequency: inv.paymentFrequency || null,
+        first_payment_date: inv.firstPaymentDate || null,
         principal_return_type: inv.principalReturnType || null,
         notes: inv.notes || null,
       }).select().single();
@@ -489,6 +499,7 @@ export function useInvestments() {
         principalReturnType: inv.principalReturnType,
         investmentDate: inv.investmentDate,
         expectedEndDate: inv.expectedEndDate,
+        firstPaymentDate: inv.firstPaymentDate,
       });
 
       if (inv.payments && inv.payments.length > 0) {

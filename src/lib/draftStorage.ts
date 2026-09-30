@@ -22,6 +22,7 @@ export interface DraftFormValues {
   expectedEndDate?: string; // ISO via .toISOString(), optional
   incomeModel?: string;
   paymentFrequency?: string;
+  firstPaymentDate?: string;
   principalReturnType?: string;
 }
 
@@ -101,6 +102,15 @@ export function loadDraft(uid: string): DraftPayload | null {
     if (
       fv.expectedEndDate !== undefined &&
       isNaN(Date.parse(fv.expectedEndDate))
+    ) {
+      clearDraft(uid);
+      return null;
+    }
+
+    // 9. firstPaymentDate parseable if present
+    if (
+      fv.firstPaymentDate !== undefined &&
+      isNaN(Date.parse(fv.firstPaymentDate))
     ) {
       clearDraft(uid);
       return null;

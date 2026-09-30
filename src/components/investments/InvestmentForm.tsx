@@ -7,6 +7,7 @@ import { CalendarIcon, Plus, AlertTriangle, Info } from 'lucide-react';
 import { Investment, Platform, InvestmentStatus, PLATFORMS, STATUS_OPTIONS, INCOME_MODEL_OPTIONS, PAYMENT_FREQUENCY_OPTIONS, PRINCIPAL_RETURN_TYPE_OPTIONS, EQUITY_TYPE_OPTIONS, IncomeModel, PaymentFrequency, PrincipalReturnType, EquityType } from '@/types/investment';
 import { getInvestmentCompletionStatus } from '@/lib/investment/completeness';
 import { generateSchedule } from '@/lib/investment/scheduleGenerator';
+import { parseSpanishNumber, formatSpanishNumber } from '@/lib/investment/parseSpanishNumber';
 import { PLAN_FEATURES } from '@/lib/stripe/config';
 import { toDateOnlyString } from '@/lib/dateOnly';
 
@@ -74,6 +75,99 @@ import { useInvestmentDraft } from '@/hooks/useInvestmentDraft';
 import { useLanguage } from '@/contexts/LanguageContext';
 
 const END_DATE_REQUIRED_MODELS = ['bullet', 'periodic_fixed', 'amortizing'] as const;
+
+/**
+ * Input numérico controlado por react-hook-form, en formato español (punto
+ * de millares, coma decimal — ver parseSpanishNumber.ts) y que representa
+ * "vacío" siempre con `null`, nunca `undefined`: si un campo Controller de
+ * react-hook-form llega a mostrar alguna vez un valor real (al editar una
+ * inversión existente, o al restaurar un borrador), su valor "vacío" interno
+ * queda fijado a ese primer valor para siempre — internamente cae de vuelta a
+ * él en cuanto el valor pasa a ser undefined, así que el campo parece
+ * imposible de vaciar del todo. null sí es un valor "real" para
+ * react-hook-form (no dispara ese fallback) y ya es lo que esperan
+ * investmentSchema/draftInvestmentSchema y el resto del flujo de guardado.
+ *
+ * El texto mostrado vive en un estado local propio (lo que el usuario ve tal
+ * cual lo escribe) en vez de derivarse directamente de `value` en cada
+ * render: reformatear "10," a "10" en cuanto se interpreta como 10 le
+ * impediría completar "10,5". Se resincroniza desde `value` solo cuando este
+ * cambia por una causa EXTERNA a este input (editar otra inversión, restaurar
+ * un borrador) — nunca como reacción al propio tecleo del usuario — y se
+ * reformatea al estilo español al perder el foco, para que el usuario vea
+ * exactamente lo que se va a guardar. Una entrada ambigua o no reconocida
+ * (ver parseSpanishNumber) nunca se adivina en silencio: se muestra un error
+ * y el valor comprometido pasa a null, para que el guardado quede bloqueado
+ * por la misma validación de "campo obligatorio" de siempre.
+ */
+function NumericTextInput({
+  value,
+  onChange,
+  placeholder,
+  suffix,
+}: {
+  value: number | null | undefined;
+  onChange: (value: number | null) => void;
+  placeholder?: string;
+  suffix?: string;
+}) {
+  const [text, setText] = useState(value != null ? formatSpanishNumber(value) : '');
+  const [error, setError] = useState<string | null>(null);
+
+  // No resincroniza mientras el texto actual esté a medio escribir (p.ej.
+  // "1.234," recién tecleada la coma, antes de los decimales) — eso también
+  // es técnicamente un error de parseSpanishNumber, pero solo se resuelve al
+  // perder el foco (onBlur), nunca sobrescribiendo en pleno tecleo.
+  const parsedFromText = parseSpanishNumber(text);
+  if (!parsedFromText.error && (value ?? null) !== parsedFromText.value) {
+    setText(value != null ? formatSpanishNumber(value) : '');
+    setError(null);
+  }
+
+  return (
+    <div>
+      <div className="relative">
+        <Input
+          type="text"
+          inputMode="decimal"
+          placeholder={placeholder}
+          className={suffix ? 'pr-8' : undefined}
+          value={text}
+          onChange={(e) => {
+            const raw = e.target.value;
+            setText(raw);
+            const result = parseSpanishNumber(raw);
+            if (!result.error) {
+              setError(null);
+              onChange(result.value);
+            }
+            // Si hay error, no se toca el valor comprometido todavía —
+            // permite seguir escribiendo un número en curso (p.ej. "1.500,"
+            // antes del último dígito) sin borrar lo ya válido. Se resuelve
+            // definitivamente al perder el foco (onBlur).
+          }}
+          onBlur={() => {
+            const result = parseSpanishNumber(text);
+            if (result.error) {
+              setError(result.error);
+              onChange(null);
+            } else {
+              setError(null);
+              onChange(result.value);
+              setText(result.value != null ? formatSpanishNumber(result.value) : '');
+            }
+          }}
+        />
+        {suffix && (
+          <span className="pointer-events-none absolute inset-y-0 right-3 flex items-center text-sm text-muted-foreground">
+            {suffix}
+          </span>
+        )}
+      </div>
+      {error && <p className="text-sm font-medium text-destructive mt-1">{error}</p>}
+    </div>
+  );
+}
 
 // Refleja exactamente la constraint SQL investments_first_payment_date_range_check
 // (NULL-tolerante igual que ella) para que una fecha inválida nunca llegue a
@@ -900,19 +994,11 @@ export function InvestmentForm({
                 {isFuture ? t('future.form.estimatedAmount') : 'Monto (€)'}
               </FormLabel>
               <FormControl>
-                <Input
-                  type="number"
+                <NumericTextInput
                   placeholder={isFuture ? '' : '1000'}
-                  value={field.value != null ? field.value : ''}
-                  onChange={(e) => {
-                    const raw = e.target.value;
-                    if (raw === '') {
-                      field.onChange(isFuture ? null : undefined);
-                    } else {
-                      const parsed = parseFloat(raw);
-                      field.onChange(isNaN(parsed) ? undefined : parsed);
-                    }
-                  }}
+                  value={field.value}
+                  onChange={field.onChange}
+                  suffix={isFuture ? undefined : '€'}
                 />
               </FormControl>
               <FormMessage />
@@ -933,23 +1019,13 @@ export function InvestmentForm({
                     : 'Rentabilidad Anual (%)'}
               </FormLabel>
               <FormControl>
-                <Input
-                  type="number"
-                  step="0.1"
+                <NumericTextInput
                   placeholder={
                     isFuture ? '' :
                     watchIncomeModel === 'variable_or_unknown' ? t('common.optional') : '10'
                   }
-                  value={field.value != null ? field.value : ''}
-                  onChange={(e) => {
-                    const raw = e.target.value;
-                    if (raw === '') {
-                      field.onChange(isFuture ? null : undefined);
-                    } else {
-                      const parsed = parseFloat(raw);
-                      field.onChange(isNaN(parsed) ? undefined : parsed);
-                    }
-                  }}
+                  value={field.value}
+                  onChange={field.onChange}
                 />
               </FormControl>
               <FormMessage />

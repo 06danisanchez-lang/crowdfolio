@@ -85,6 +85,7 @@ const investmentSchema = z.object({
   expectedReturn: z.number().min(0, 'El rendimiento debe ser mayor o igual a 0'),
   incomeModel: z.enum(['bullet', 'periodic_fixed', 'amortizing', 'variable_or_unknown', 'equity'] as const),
   paymentFrequency: z.enum(['monthly', 'quarterly', 'semiannual', 'annual'] as const).optional(),
+  firstPaymentDate: z.date().optional(),
   principalReturnType: z.enum(['at_maturity', 'amortizing', 'unknown'] as const).optional(),
   equityType: z.enum(['plusvalia', 'rentas', 'liquidacion'] as const).optional(),
   status: z.enum(['active', 'pending', 'completed', 'defaulted', 'draft'] as const),
@@ -105,6 +106,21 @@ const investmentSchema = z.object({
       message: 'Selecciona el tipo de inversión equity',
     });
   }
+  if (data.firstPaymentDate && (data.incomeModel === 'periodic_fixed' || data.incomeModel === 'amortizing')) {
+    if (data.investmentDate && data.firstPaymentDate <= data.investmentDate) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ['firstPaymentDate'],
+        message: 'La fecha del primer cobro debe ser posterior a la fecha de inversión',
+      });
+    } else if (data.expectedEndDate && data.firstPaymentDate > data.expectedEndDate) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ['firstPaymentDate'],
+        message: 'La fecha del primer cobro no puede ser posterior al vencimiento',
+      });
+    }
+  }
 });
 
 const draftInvestmentSchema = z.object({
@@ -117,6 +133,7 @@ const draftInvestmentSchema = z.object({
   expectedReturn: z.number().nullable().optional(),
   incomeModel: z.enum(['bullet', 'periodic_fixed', 'amortizing', 'variable_or_unknown', 'equity'] as const).optional(),
   paymentFrequency: z.enum(['monthly', 'quarterly', 'semiannual', 'annual'] as const).optional(),
+  firstPaymentDate: z.date().optional(),
   principalReturnType: z.enum(['at_maturity', 'amortizing', 'unknown'] as const).optional(),
   equityType: z.enum(['plusvalia', 'rentas', 'liquidacion'] as const).optional(),
   status: z.enum(['active', 'pending', 'completed', 'defaulted', 'draft'] as const).optional(),
@@ -149,6 +166,7 @@ interface EditFormValues {
   expectedReturn?: number;
   incomeModel?: IncomeModel;
   paymentFrequency?: PaymentFrequency;
+  firstPaymentDate?: Date;
   principalReturnType?: PrincipalReturnType;
   equityType?: EquityType;
   status?: InvestmentStatus;
@@ -182,6 +200,9 @@ function buildEditFormValues(initialData: Investment | FutureInvestmentFormData)
     expectedReturn: initialData.expectedReturn || undefined,
     incomeModel: 'incomeModel' in initialData ? initialData.incomeModel || undefined : undefined,
     paymentFrequency: 'paymentFrequency' in initialData ? initialData.paymentFrequency || undefined : undefined,
+    firstPaymentDate: 'firstPaymentDate' in initialData && initialData.firstPaymentDate
+      ? new Date(initialData.firstPaymentDate)
+      : undefined,
     principalReturnType: 'principalReturnType' in initialData ? initialData.principalReturnType || undefined : undefined,
     equityType: 'equityType' in initialData ? (initialData as Investment).equityType : undefined,
     status: 'status' in initialData ? initialData.status : undefined,
@@ -284,6 +305,7 @@ export function InvestmentForm({
     if (watchIncomeModel === 'bullet' || watchIncomeModel === 'variable_or_unknown' || watchIncomeModel === 'equity') {
       form.setValue('paymentFrequency', undefined);
       form.setValue('principalReturnType', undefined);
+      form.setValue('firstPaymentDate', undefined);
     }
     if (watchIncomeModel !== 'equity') {
       form.setValue('equityType', undefined);
@@ -322,6 +344,7 @@ export function InvestmentForm({
         expectedEndDate:    end?.toISOString(),
         incomeModel:        values.incomeModel as string | undefined,
         paymentFrequency:   values.paymentFrequency as string | undefined,
+        firstPaymentDate:   values.firstPaymentDate instanceof Date ? values.firstPaymentDate.toISOString() : undefined,
         principalReturnType: values.principalReturnType as string | undefined,
         equityType:         values.equityType as string | undefined,
       });
@@ -354,6 +377,9 @@ export function InvestmentForm({
         : undefined,
       incomeModel:        (saved.formValues.incomeModel as IncomeModel) || undefined,
       paymentFrequency:   (saved.formValues.paymentFrequency as PaymentFrequency) ?? undefined,
+      firstPaymentDate:   saved.formValues.firstPaymentDate
+        ? new Date(saved.formValues.firstPaymentDate)
+        : undefined,
       principalReturnType: (saved.formValues.principalReturnType as PrincipalReturnType) ?? undefined,
     });
 
@@ -446,6 +472,7 @@ export function InvestmentForm({
           principalReturnType: data.principalReturnType,
           investmentDate: data.investmentDate instanceof Date ? toDateOnlyString(data.investmentDate) : data.investmentDate,
           expectedEndDate: data.expectedEndDate instanceof Date ? toDateOnlyString(data.expectedEndDate) : (data.expectedEndDate || ''),
+          firstPaymentDate: data.firstPaymentDate instanceof Date ? toDateOnlyString(data.firstPaymentDate) : (data.firstPaymentDate || undefined),
         });
         hasSchedule = dryRunEntries.length > 0;
       }
@@ -482,6 +509,7 @@ export function InvestmentForm({
         expectedReturn: data.expectedReturn,
         incomeModel: data.incomeModel,
         paymentFrequency: data.paymentFrequency || null,
+        firstPaymentDate: data.firstPaymentDate ? toDateOnlyString(data.firstPaymentDate) : null,
         principalReturnType: data.principalReturnType || null,
         equityType: (data as any).equityType || null,
         status: finalStatus,
@@ -522,6 +550,7 @@ export function InvestmentForm({
         expectedReturn: values.expectedReturn ?? null,
         incomeModel: values.incomeModel || null,
         paymentFrequency: values.paymentFrequency || null,
+        firstPaymentDate: values.firstPaymentDate ? toDateOnlyString(values.firstPaymentDate) : null,
         principalReturnType: values.principalReturnType || null,
         equityType: values.equityType || null,
         status: 'draft',
@@ -740,6 +769,51 @@ export function InvestmentForm({
                       ))}
                     </SelectContent>
                   </Select>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+          )}
+
+          {(watchIncomeModel === 'periodic_fixed' || watchIncomeModel === 'amortizing') && (
+            <FormField
+              control={form.control}
+              name="firstPaymentDate"
+              render={({ field }) => (
+                <FormItem className="flex flex-col">
+                  <FormLabel>
+                    {t('investments.field.firstPaymentDate')}
+                    <span className="text-muted-foreground text-xs font-normal ml-1">({t('common.optional')})</span>
+                  </FormLabel>
+                  <Popover>
+                    <PopoverTrigger asChild>
+                      <FormControl>
+                        <Button
+                          variant="outline"
+                          className={cn(
+                            "w-full pl-3 text-left font-normal",
+                            !field.value && "text-muted-foreground"
+                          )}
+                        >
+                          {field.value ? (
+                            format(field.value, "dd/MM/yyyy")
+                          ) : (
+                            <span>{t('common.optional')}</span>
+                          )}
+                          <CalendarIcon className="ml-auto h-4 w-4 opacity-50" />
+                        </Button>
+                      </FormControl>
+                    </PopoverTrigger>
+                    <PopoverContent className="w-auto p-0" align="start">
+                      <Calendar
+                        mode="single"
+                        selected={field.value}
+                        onSelect={field.onChange}
+                        initialFocus
+                      />
+                    </PopoverContent>
+                  </Popover>
+                  <p className="text-xs text-muted-foreground">{t('investments.field.firstPaymentDate.help')}</p>
                   <FormMessage />
                 </FormItem>
               )}

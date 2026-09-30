@@ -16,6 +16,7 @@ export interface RawInvestmentRow {
   expected_return: number | null;
   income_model: string | null;
   payment_frequency: string | null;
+  first_payment_date: string | null;
   principal_return_type: string | null;
   status: string;
   notes: string | null;
@@ -60,6 +61,7 @@ export function mapRawInvestmentRow(
     expectedReturn: inv.expected_return != null ? Number(inv.expected_return) : undefined,
     incomeModel: (inv.income_model as IncomeModel) || undefined,
     paymentFrequency: (inv.payment_frequency as PaymentFrequency) || undefined,
+    firstPaymentDate: inv.first_payment_date || undefined,
     principalReturnType: (inv.principal_return_type as PrincipalReturnType) || undefined,
     status: statusOverride ?? ((inv.status as InvestmentStatus) || 'active'),
     notes: inv.notes || undefined,
@@ -106,6 +108,7 @@ export function draftToInvestment(raw: DraftInvestment): Investment {
     expectedReturn: raw.expectedReturn as number,
     incomeModel: raw.incomeModel as IncomeModel,
     paymentFrequency: raw.paymentFrequency || undefined,
+    firstPaymentDate: raw.firstPaymentDate,
     principalReturnType: raw.principalReturnType || undefined,
     equityType: raw.equityType,
     status: raw.status,

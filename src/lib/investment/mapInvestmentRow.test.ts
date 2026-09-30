@@ -21,6 +21,7 @@ function makeRawRow(overrides: Partial<RawInvestmentRow> = {}): RawInvestmentRow
     expected_return: 8,
     income_model: 'bullet',
     payment_frequency: null,
+    first_payment_date: null,
     principal_return_type: null,
     status: 'defaulted',
     notes: null,

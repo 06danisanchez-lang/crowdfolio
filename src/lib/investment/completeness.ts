@@ -53,11 +53,22 @@ export function getInvestmentCompletionStatus(inv: CompletenessInput): Completio
   if (inv.expectedReturn == null) missingFields.push('investments.field.expectedReturn');
   if (!inv.expectedEndDate) missingFields.push('investments.field.expectedEndDate');
 
-  // periodic_fixed / amortizing additionally require paymentFrequency + schedule
+  // periodic_fixed / amortizing additionally require paymentFrequency — un
+  // dato real que el usuario siempre puede rellenar. `hasSchedule` NO va
+  // aquí: es un valor DERIVADO (generateSchedule sobre los datos del
+  // formulario), no un campo que el usuario pueda "arreglar" si sale a false
+  // — legítimamente puede quedar en false cuando el plazo de la inversión es
+  // más corto que un periodo completo de la frecuencia elegida, un caso
+  // válido (se corrige aparte generando un tramo corto prorrateado, ver
+  // scheduleGenerator.ts). Antes de que esto se corrigiera (Fase 7), estaba
+  // aquí y bloqueaba para siempre la creación de esas inversiones como
+  // activas, con un campo pendiente ("Calendario de cobros") que no existe
+  // en el formulario. Solo afecta a isForecastReady, como para
+  // variable_or_unknown (que tampoco es nunca forecast-ready y es
+  // perfectamente trackable).
   const model = inv.incomeModel;
   if (model === 'periodic_fixed' || model === 'amortizing') {
     if (!inv.paymentFrequency) missingFields.push('investments.field.paymentFrequency');
-    if (!inv.hasSchedule) missingFields.push('investments.field.schedule');
   }
 
   const isTrackingReady = missingFields.length === 0;
@@ -70,8 +81,7 @@ export function getInvestmentCompletionStatus(inv: CompletenessInput): Completio
     } else if (model === 'bullet') {
       isForecastReady = true;
     } else if (model === 'periodic_fixed' || model === 'amortizing') {
-      // frequency + schedule already guaranteed by tracking-ready
-      isForecastReady = true;
+      isForecastReady = !!inv.hasSchedule;
     }
   }
 

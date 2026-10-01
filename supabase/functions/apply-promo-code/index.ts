@@ -95,20 +95,8 @@ serve(async (req) => {
     const now = new Date();
     const expiresAt = new Date(now.getTime() + promoConfig.durationDays * 24 * 60 * 60 * 1000);
 
-    // Record the promo code usage
-    const { error: insertError } = await supabaseClient
-      .from('used_promo_codes')
-      .insert({
-        user_id: user.id,
-        promo_code: normalizedCode,
-        expires_at: expiresAt.toISOString(),
-      });
-
-    if (insertError) {
-      throw new Error("Error recording promo code usage");
-    }
-
-    // Upsert subscription to Pro (creates the row if the user never went through checkout)
+    // 1) Activar Pro PRIMERO (crea la fila si el usuario nunca pasó por checkout).
+    //    Si esto falla, el código NO se marca como usado y el usuario puede reintentar.
     const { error: upsertError } = await supabaseClient
       .from('subscriptions')
       .upsert({
@@ -121,7 +109,28 @@ serve(async (req) => {
       }, { onConflict: 'user_id' });
 
     if (upsertError) {
+      console.error("apply-promo-code: error activating Pro", upsertError);
       throw new Error("Error updating subscription");
+    }
+
+    // 2) Solo con Pro ya activado, marcar el código como usado.
+    const { error: insertError } = await supabaseClient
+      .from('used_promo_codes')
+      .insert({
+        user_id: user.id,
+        promo_code: normalizedCode,
+        expires_at: expiresAt.toISOString(),
+      });
+
+    if (insertError) {
+      // 23505 = UNIQUE (user_id, promo_code): una petición concurrente ya lo registró.
+      // En cualquier caso el Pro ya está activo, así que no se devuelve error al usuario
+      // (sería falso decirle que ha fallado); se registra para revisarlo.
+      if (insertError.code !== '23505') {
+        console.error("apply-promo-code: Pro activated but promo usage not recorded", {
+          userId: user.id, code: normalizedCode, error: insertError,
+        });
+      }
     }
 
     return new Response(

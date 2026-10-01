@@ -11,7 +11,7 @@ import {
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { useSubscription } from '@/contexts/SubscriptionContext';
-import { STRIPE_PRICES, formatPrice } from '@/lib/stripe/config';
+import { STRIPE_PRICES, formatPrice, PAYMENTS_ENABLED, PAYMENTS_DISABLED_LABEL } from '@/lib/stripe/config';
 import { toast } from '@/hooks/use-toast';
 
 interface UpgradeModalProps {
@@ -142,14 +142,14 @@ export function UpgradeModal({ open, onOpenChange, feature = 'default' }: Upgrad
                 className="w-full"
                 size="lg"
                 onClick={() => handleCheckout(selectedPlan)}
-                disabled={isLoading !== null}
+                disabled={!PAYMENTS_ENABLED || isLoading !== null}
               >
                 {isLoading === selectedPlan ? (
                   <Loader2 className="mr-2 h-4 w-4 animate-spin" />
                 ) : (
                   <Crown className="mr-2 h-4 w-4" />
                 )}
-                {ctaLabel}
+                {PAYMENTS_ENABLED ? ctaLabel : PAYMENTS_DISABLED_LABEL}
               </Button>
 
               <p className="text-center text-xs text-muted-foreground">

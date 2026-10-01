@@ -15,6 +15,7 @@ import {
 } from '@/components/ui/dialog';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { cn } from '@/lib/utils';
+import { getPlatformLabel } from '@/lib/labels';
 
 type RejectOption = 'extended' | 'delayed' | 'disputed' | 'defaulted';
 
@@ -204,7 +205,7 @@ export function MaturityConfirmationModal({ investment, onClose, onUpdate, onAdd
               <div className="flex justify-between">
                 <span className="text-muted-foreground">Plataforma</span>
                 <span className="font-medium">
-                  {investment.customPlatformName ?? investment.platform}
+                  {getPlatformLabel(investment.platform, investment.customPlatformName)}
                 </span>
               </div>
             </div>

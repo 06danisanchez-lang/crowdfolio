@@ -21,19 +21,23 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from '@/components/ui/alert-dialog';
-import { Trash2 } from 'lucide-react';
+import { useState } from 'react';
+import { Pencil, Trash2 } from 'lucide-react';
 import { format } from 'date-fns';
 import { es } from 'date-fns/locale';
 import { SuggestedExpenses } from './SuggestedExpenses';
+import { TaxExpenseForm } from './TaxExpenseForm';
 
 interface TaxExpensesListProps {
   expenses: TaxExpense[];
-  onUpdate: (id: string, updates: Partial<TaxExpense>) => void;
+  onUpdate: (id: string, updates: Partial<TaxExpense>) => Promise<boolean>;
   onDelete: (id: string) => void;
   onAddSuggested?: (category: TaxExpenseCategory, description: string) => void;
 }
 
 export function TaxExpensesList({ expenses, onUpdate, onDelete, onAddSuggested }: TaxExpensesListProps) {
+  const [editingExpense, setEditingExpense] = useState<TaxExpense | null>(null);
+
   const formatCurrency = (value: number) => {
     return new Intl.NumberFormat('es-ES', {
       style: 'currency',
@@ -94,7 +98,7 @@ export function TaxExpensesList({ expenses, onUpdate, onDelete, onAddSuggested }
                 <TableHead>Categoría</TableHead>
                 <TableHead>Descripción</TableHead>
                 <TableHead className="text-right">Importe</TableHead>
-                <TableHead className="w-[50px]"></TableHead>
+                <TableHead className="w-[90px]"></TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -120,36 +124,58 @@ export function TaxExpensesList({ expenses, onUpdate, onDelete, onAddSuggested }
                     {formatCurrency(expense.amount)}
                   </TableCell>
                   <TableCell>
-                    <AlertDialog>
-                      <AlertDialogTrigger asChild>
-                        <Button variant="ghost" size="icon" className="h-8 w-8">
-                          <Trash2 className="h-4 w-4 text-destructive" />
-                        </Button>
-                      </AlertDialogTrigger>
-                      <AlertDialogContent>
-                        <AlertDialogHeader>
-                          <AlertDialogTitle>¿Eliminar gasto?</AlertDialogTitle>
-                          <AlertDialogDescription>
-                            Esta acción no se puede deshacer. Se eliminará el gasto "{expense.description}".
-                          </AlertDialogDescription>
-                        </AlertDialogHeader>
-                        <AlertDialogFooter>
-                          <AlertDialogCancel>Cancelar</AlertDialogCancel>
-                          <AlertDialogAction
-                            onClick={() => onDelete(expense.id)}
-                            className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
-                          >
-                            Eliminar
-                          </AlertDialogAction>
-                        </AlertDialogFooter>
-                      </AlertDialogContent>
-                    </AlertDialog>
+                    <div className="flex items-center justify-end gap-1">
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        className="h-8 w-8"
+                        aria-label="Editar gasto"
+                        title="Editar"
+                        onClick={() => setEditingExpense(expense)}
+                      >
+                        <Pencil className="h-4 w-4" />
+                      </Button>
+                      <AlertDialog>
+                        <AlertDialogTrigger asChild>
+                          <Button variant="ghost" size="icon" className="h-8 w-8" aria-label="Eliminar gasto" title="Eliminar">
+                            <Trash2 className="h-4 w-4 text-destructive" />
+                          </Button>
+                        </AlertDialogTrigger>
+                        <AlertDialogContent>
+                          <AlertDialogHeader>
+                            <AlertDialogTitle>¿Eliminar gasto?</AlertDialogTitle>
+                            <AlertDialogDescription>
+                              Esta acción no se puede deshacer. Se eliminará el gasto "{expense.description}".
+                            </AlertDialogDescription>
+                          </AlertDialogHeader>
+                          <AlertDialogFooter>
+                            <AlertDialogCancel>Cancelar</AlertDialogCancel>
+                            <AlertDialogAction
+                              onClick={() => onDelete(expense.id)}
+                              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                            >
+                              Eliminar
+                            </AlertDialogAction>
+                          </AlertDialogFooter>
+                        </AlertDialogContent>
+                      </AlertDialog>
+                    </div>
                   </TableCell>
                 </TableRow>
               ))}
             </TableBody>
           </Table>
         </div>
+        {editingExpense && (
+          <TaxExpenseForm
+            year={editingExpense.year}
+            expense={editingExpense}
+            triggerButton={false}
+            open
+            onOpenChange={(open) => { if (!open) setEditingExpense(null); }}
+            onSubmit={(data) => onUpdate(editingExpense.id, data)}
+          />
+        )}
       </CardContent>
     </Card>
   );

@@ -7,9 +7,10 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { useSubscription } from '@/contexts/SubscriptionContext';
 import { useAuth } from '@/contexts/AuthContext';
 import { useLanguage } from '@/contexts/LanguageContext';
-import { STRIPE_PRICES, formatPrice } from '@/lib/stripe/config';
+import { STRIPE_PRICES, formatPrice, PAYMENTS_ENABLED, PAYMENTS_DISABLED_LABEL } from '@/lib/stripe/config';
 import { toast } from '@/hooks/use-toast';
 import { cn } from '@/lib/utils';
+import { PromoCodeInput } from './PromoCodeInput';
 
 export function PricingTable() {
   const { subscription, isPro, openCheckout, openCustomerPortal } = useSubscription();
@@ -192,28 +193,37 @@ export function PricingTable() {
                 variant="outline"
                 className="w-full"
                 onClick={handleManageSubscription}
-                disabled={isLoading === 'portal'}
+                disabled={!PAYMENTS_ENABLED || isLoading === 'portal'}
               >
                 {isLoading === 'portal' && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                {t('subscription.billing.manage')}
+                {PAYMENTS_ENABLED ? t('subscription.billing.manage') : PAYMENTS_DISABLED_LABEL}
               </Button>
             ) : (
               <Button
                 className="w-full"
                 onClick={() => handleCheckout(billingPeriod)}
-                disabled={isLoading !== null}
+                disabled={!PAYMENTS_ENABLED || isLoading !== null}
               >
                 {isLoading === billingPeriod ? (
                   <Loader2 className="mr-2 h-4 w-4 animate-spin" />
                 ) : (
                   <Crown className="mr-2 h-4 w-4" />
                 )}
-                {t('subscription.cta.default')}
+                {PAYMENTS_ENABLED ? t('subscription.cta.default') : PAYMENTS_DISABLED_LABEL}
               </Button>
             )}
           </CardContent>
         </Card>
       </div>
+
+      {/* Código promocional — requiere sesión (apply-promo-code valida el usuario) */}
+      {user && !isPro && (
+        <Card className="max-w-md mx-auto">
+          <CardContent className="pt-6">
+            <PromoCodeInput />
+          </CardContent>
+        </Card>
+      )}
 
       {/* Subscription Info */}
       {isPro && subscription.subscriptionEnd && (

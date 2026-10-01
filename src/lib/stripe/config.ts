@@ -1,4 +1,12 @@
 // Stripe configuration for Crowdfolio Pro
+
+/**
+ * Interruptor único de pagos. Mientras sea `false`, ningún botón llama a
+ * create-checkout ni a customer-portal: se muestran deshabilitados con "Próximamente".
+ * Para activar Stripe basta con cambiar esta línea a `true`.
+ */
+export const PAYMENTS_ENABLED = false;
+export const PAYMENTS_DISABLED_LABEL = 'Próximamente';
 // Production Price IDs
 export const STRIPE_PRICES = {
   monthly: {

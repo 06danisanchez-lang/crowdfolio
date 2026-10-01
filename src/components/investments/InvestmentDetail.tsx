@@ -118,13 +118,15 @@ export function InvestmentDetail({ investment, schedule = [], onClose, onUpdate,
     return PLATFORMS.find(p => p.value === platform)?.label || platform;
   };
 
-  const getPaymentTypeLabel = (type: string) => {
-    const labels: Record<string, string> = {
-      dividend: 'Dividendo',
-      principal: 'Principal',
-      interest: 'Intereses',
+  // Mismas claves que PaymentsView: antes faltaba capital_return y se mostraba la key cruda
+  const getPaymentTypeLabel = (type: Payment['type']): string => {
+    const labels: Record<Payment['type'], string> = {
+      dividend: t('investments.detail.dividend'),
+      principal: t('investments.detail.principal'),
+      interest: t('investments.detail.interest'),
+      capital_return: t('investments.detail.capitalReturn'),
     };
-    return labels[type] || type;
+    return labels[type] ?? type;
   };
 
   const getIncomeModelLabel = (model: IncomeModel): string => {

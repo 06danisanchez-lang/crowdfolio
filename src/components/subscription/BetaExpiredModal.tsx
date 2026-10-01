@@ -9,6 +9,7 @@ import {
   DialogFooter,
 } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
+import { PromoCodeInput } from './PromoCodeInput';
 
 export const BetaExpiredModal = () => {
   const { subscription, isLoading } = useSubscription();
@@ -43,6 +44,9 @@ export const BetaExpiredModal = () => {
             y te lo activamos encantados.
           </DialogDescription>
         </DialogHeader>
+        <div className="rounded-lg border p-4">
+          <PromoCodeInput />
+        </div>
         <DialogFooter className="sm:justify-center pt-2">
           <Button onClick={() => setOpen(false)} className="w-full sm:w-auto">
             Entendido

@@ -15,6 +15,17 @@ const PLATFORM_URLS: Record<string, string> = {
 
 const PLATFORMS = Object.keys(PLATFORM_URLS);
 
+// Etiquetas visibles (mismo catálogo que PLATFORMS en src/types/investment.ts) — las
+// notificaciones no deben mostrar el identificador interno en minúsculas.
+const PLATFORM_LABELS: Record<string, string> = {
+  urbanitae: 'Urbanitae',
+  housers: 'Housers',
+  estateguru: 'Estateguru',
+  brickstarter: 'Brickstarter',
+  wecity: 'Wecity',
+};
+const platformLabel = (platform: string) => PLATFORM_LABELS[platform] ?? platform;
+
 interface ScrapedOpportunity {
   projectName: string;
   projectType: string;
@@ -195,7 +206,7 @@ Deno.serve(async (req) => {
           user_id: userId,
           type: 'new_opportunity',
           title: `${newOpportunities.length} nuevas oportunidades`,
-          message: `Hemos encontrado ${newOpportunities.length} nuevos proyectos de inversión en ${[...new Set(newOpportunities.map(o => o.platform))].join(', ')}`,
+          message: `Hemos encontrado ${newOpportunities.length} nuevos proyectos de inversión en ${[...new Set(newOpportunities.map(o => platformLabel(o.platform)))].join(', ')}`,
           data: { 
             opportunityCount: newOpportunities.length,
             platforms: [...new Set(newOpportunities.map(o => o.platform))],
@@ -220,7 +231,7 @@ Deno.serve(async (req) => {
               type: 'alert_match',
               title: `🔔 "${alert.name}": ${matchingOpportunities.length} coincidencia${matchingOpportunities.length > 1 ? 's' : ''}`,
               message: matchingOpportunities.length === 1 
-                ? `"${matchingOpportunities[0].projectName}" en ${matchingOpportunities[0].platform} - ${matchingOpportunities[0].expectedReturn}% rentabilidad`
+                ? `"${matchingOpportunities[0].projectName}" en ${platformLabel(matchingOpportunities[0].platform)} - ${matchingOpportunities[0].expectedReturn}% rentabilidad`
                 : `${matchingOpportunities.length} proyectos coinciden con tu alerta`,
               data: { 
                 alertId: alert.id,

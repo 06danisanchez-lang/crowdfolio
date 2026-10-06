@@ -9,6 +9,7 @@ import { useTaxExpenses } from './useTaxExpenses';
 import { isInvestmentComplete } from '@/lib/investment/completeness';
 import { computeDefaultLossSummary } from '@/lib/tax/defaultLossSummary';
 import { getPlatformLabel } from '@/lib/labels';
+import { computeManualGppOperations } from '@/lib/tax/manualGppOperations';
 
 const FETCH_TIMEOUT_MS = 15_000;
 
@@ -38,6 +39,8 @@ interface InvestmentRow {
   defaulted_at: string | null;
   amount_recovered: number | null;
   equity_type: string | null;
+  actual_end_date: string | null;
+  close_reason: string | null;
   loss_insolvency_status: string | null;
   loss_insolvency_concluded_date: string | null;
   loss_quita_amount: number | null;
@@ -70,6 +73,8 @@ function mapInvestmentRow(inv: InvestmentRow): Investment {
     defaultedAt: inv.defaulted_at || undefined,
     amountRecovered: inv.amount_recovered != null ? Number(inv.amount_recovered) : undefined,
     equityType: (inv.equity_type || undefined) as Investment['equityType'],
+    actualEndDate: inv.actual_end_date,
+    closeReason: (inv.close_reason as Investment['closeReason']) ?? null,
     lossInsolvencyStatus: (inv.loss_insolvency_status as Investment['lossInsolvencyStatus']) ?? null,
     lossInsolvencyConcludedDate: inv.loss_insolvency_concluded_date,
     lossQuitaAmount: inv.loss_quita_amount != null ? Number(inv.loss_quita_amount) : null,
@@ -93,6 +98,10 @@ export function useTaxSummary(year: number) {
   // ni por el ejercicio fiscal seleccionado) — necesario para calcular cuánto capital
   // se ha devuelto en total, no solo lo cobrado en el año en curso. Ver getPrincipalReturned.
   const [defaultedPrincipalPayments, setDefaultedPrincipalPayments] = useState<Record<string, { type: string; amount: number; date: string }[]>>({});
+  // Histórico completo de pagos de inversiones equity completadas: el valor de
+  // adquisición de un cierre depende de la prima de emisión devuelta en años
+  // anteriores. Ver computeManualGppOperations.
+  const [completedEquityPayments, setCompletedEquityPayments] = useState<Record<string, { type: string; amount: number; date: string }[]>>({});
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [excludedIncompleteCount, setExcludedIncompleteCount] = useState(0);
@@ -110,6 +119,7 @@ export function useTaxSummary(year: number) {
         setProjectionInvestments([]);
         setInvestmentRows([]);
         setDefaultedPrincipalPayments({});
+        setCompletedEquityPayments({});
         setIsLoading(false);
         setError(null);
         return;
@@ -173,6 +183,7 @@ export function useTaxSummary(year: number) {
           setPayments([]);
           setEnrichedPayments([]);
           setDefaultedPrincipalPayments({});
+          setCompletedEquityPayments({});
           setExcludedIncompleteCount(excludedCount);
           setIsLoading(false);
           return;
@@ -193,6 +204,24 @@ export function useTaxSummary(year: number) {
 
           for (const p of principalData || []) {
             const list = defaultedPrincipalMap[p.investment_id] ?? (defaultedPrincipalMap[p.investment_id] = []);
+            list.push({ type: p.type, amount: Number(p.amount), date: p.date });
+          }
+        }
+
+        const completedEquityIds = allRows
+          .filter(r => r.status === 'completed' && r.income_model === 'equity')
+          .map(r => r.id);
+        const completedEquityMap: Record<string, { type: string; amount: number; date: string }[]> = {};
+        if (completedEquityIds.length > 0) {
+          const { data: equityData, error: equityError } = await supabase
+            .from('payments')
+            .select('investment_id, amount, date, type')
+            .in('investment_id', completedEquityIds);
+
+          if (equityError) throw equityError;
+
+          for (const p of equityData || []) {
+            const list = completedEquityMap[p.investment_id] ?? (completedEquityMap[p.investment_id] = []);
             list.push({ type: p.type, amount: Number(p.amount), date: p.date });
           }
         }
@@ -223,6 +252,7 @@ export function useTaxSummary(year: number) {
         setProjectionInvestments(trackingReadyActive);
         setInvestmentRows(allRows);
         setDefaultedPrincipalPayments(defaultedPrincipalMap);
+        setCompletedEquityPayments(completedEquityMap);
         setPayments(rawPayments);
         setEnrichedPayments(
           rawPayments.map((p) => ({
@@ -275,6 +305,27 @@ export function useTaxSummary(year: number) {
       });
     return computeDefaultLossSummary(defaultedInvestments, year);
   }, [investmentRows, defaultedPrincipalPayments, year]);
+
+  // Cierres equity con ganancia/pérdida patrimonial a declarar manualmente
+  // (liquidación, venta o pérdida). No entran en el cálculo de la cuota.
+  const manualGppOperations = useMemo(() => {
+    const equityInvestments: Investment[] = investmentRows
+      .filter((inv) => inv.status === 'completed' && inv.income_model === 'equity')
+      .map((inv) => ({
+        ...mapInvestmentRow(inv),
+        payments: (completedEquityPayments[inv.id] ?? []).map((p, i) => ({
+          id: `${inv.id}-${i}`,
+          date: p.date,
+          amount: p.amount,
+          type: p.type as Payment['type'],
+        })),
+      }));
+    return computeManualGppOperations(
+      equityInvestments,
+      year,
+      (inv) => getPlatformLabel(inv.platform, inv.customPlatformName),
+    );
+  }, [investmentRows, completedEquityPayments, year]);
 
   // Inversiones en impago sin cuestionario de calificación fiscal completar
   // (Fase 4, punto 3) — alimenta el aviso accionable ("Completar") de
@@ -377,6 +428,7 @@ export function useTaxSummary(year: number) {
   return {
     summary, projection, payments, enrichedPayments, expenses,
     defaultLossSummary,
+    manualGppOperations,
     notAssessedDefaultedInvestments,
     error, excludedIncompleteCount,
     isLoading: isLoading || expensesLoading, availableYears,

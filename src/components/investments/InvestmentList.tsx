@@ -16,9 +16,9 @@ import {
   Lock,
   Crown,
 } from 'lucide-react';
-import { Investment, DraftInvestment, PLATFORMS, STATUS_OPTIONS, Platform, InvestmentStatus, IncomeModel, InvestmentScheduleEntry } from '@/types/investment';
+import { Investment, DraftInvestment, PLATFORMS, STATUS_OPTIONS, Platform, InvestmentStatus, IncomeModel, InvestmentScheduleEntry, PaymentType, Payment } from '@/types/investment';
 import { getInvestmentCompletionStatus } from '@/lib/investment/completeness';
-import { calculateExpectedTotalReturn, sumIncomePayments } from '@/lib/investment/calculations';
+import { calculateExpectedTotalReturn, calculateRealizedProfit } from '@/lib/investment/calculations';
 import { getPrincipalReturned } from '@/lib/tax/principalReturned';
 import { getMaturitySeverity } from '@/hooks/useAlerts';
 import { getStatusLabel } from '@/lib/labels';
@@ -67,8 +67,13 @@ interface InvestmentListProps {
   scheduleMap?: Record<string, InvestmentScheduleEntry[]>;
   onUpdate: (id: string, updates: Partial<Investment>) => Promise<{ demotedToDraft?: boolean } | void> | void;
   onDelete: (id: string) => void;
-  onAddPayment: (investmentId: string, payment: { date: string; amount: number; type: 'dividend' | 'principal' | 'interest' | 'capital_return'; notes?: string }) => Promise<unknown> | void;
+  onAddPayment: (investmentId: string, payment: { date: string; amount: number; type: PaymentType; notes?: string }) => Promise<unknown> | void;
   onDeletePayment: (investmentId: string, paymentId: string) => void;
+  onCloseEquity?: (
+    investmentId: string,
+    payments: Omit<Payment, 'id'>[],
+    closeUpdates: Pick<Partial<Investment>, 'actualEndDate' | 'closeReason'>,
+  ) => Promise<{ error?: string }>;
   onUpgrade?: () => void;
   allowDraftSave?: boolean;
   initialStatusFilter?: InvestmentStatus | 'all';
@@ -91,6 +96,7 @@ export function InvestmentList({
   onDelete,
   onAddPayment,
   onDeletePayment,
+  onCloseEquity,
   onUpgrade,
   allowDraftSave,
   initialStatusFilter = 'all',
@@ -256,7 +262,7 @@ export function InvestmentList({
   // Columna "Beneficio": importe bruto (sin retención), nunca mezclado con el cálculo
   // fiscal de useTaxSummary (que además excluye inversiones extranjeras incompletas y
   // resuelve divisa). active/pending = proyección (fórmula de calculateExpectedTotalReturn,
-  // marcada con "~"); completed = real cobrado (interest/dividend, sin capital_return);
+  // marcada con "~"); completed = real cobrado (calculateRealizedProfit: rentas en préstamos, cobrado − invertido en equity);
   // defaulted = recuperado - capital invertido (puede ser negativo).
   const getProfitInfo = (inv: Investment): { label: string; className: string } => {
     if (inv.status === 'active' || inv.status === 'pending') {
@@ -264,7 +270,7 @@ export function InvestmentList({
       return { label: `~${formatCurrency(expected)}`, className: 'text-muted-foreground' };
     }
     if (inv.status === 'completed') {
-      const real = sumIncomePayments(inv.payments);
+      const real = calculateRealizedProfit(inv);
       return {
         label: formatCurrency(real),
         className: real >= 0 ? 'text-green-700 dark:text-green-400' : 'text-destructive',
@@ -779,13 +785,14 @@ export function InvestmentList({
         onClose={() => setClosingInvestmentId(null)}
         onUpdate={onUpdate}
         onDefaulted={(inv) => openQuestionnaire(inv.id)}
+        onCloseEquity={onCloseEquity}
       />
 
       <MaturityConfirmationModal
         investment={confirmingMaturityInvestment}
         onClose={() => setConfirmingMaturityId(null)}
         onUpdate={onUpdate}
-        onAddPayment={onAddPayment}
+        onCloseEquity={onCloseEquity}
         onDefaulted={(inv) => openQuestionnaire(inv.id)}
       />
 

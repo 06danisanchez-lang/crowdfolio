@@ -13,6 +13,7 @@ import { useFutureInvestments } from '@/hooks/useFutureInvestments';
 import { Notification } from '@/hooks/useNotifications';
 import { useLanguage } from '@/contexts/LanguageContext';
 import { getNotifConfig } from '@/lib/notifications/notificationConfig';
+import { paymentFromDueNotification } from '@/lib/notifications/paymentFromDueNotification';
 
 const ICONS = { Banknote, Clock, AlertTriangle, BarChart3 } as const;
 
@@ -61,14 +62,18 @@ export function NotificationBell({
 
   const handlePaid = async (n: Notification) => {
     if (!onAddPayment || !onMarkAsRead) return;
-    setSavingId(n.id);
     const data = n.data as Record<string, unknown>;
+    const toRegister = paymentFromDueNotification(data);
+    if (!toRegister) {
+      // Sin importe que registrar (p. ej. renta de equity): se abre la inversión
+      // para que el usuario lo apunte con su importe y tipo reales.
+      onMarkAsRead(n.id);
+      onOpenInvestment?.(data?.investmentId as string);
+      return;
+    }
+    setSavingId(n.id);
     try {
-      await onAddPayment(data.investmentId as string, {
-        date: new Date(data.scheduleEntryDate as string).toISOString(),
-        amount: data.expectedAmount as number,
-        type: 'interest',
-      });
+      await onAddPayment(toRegister.investmentId, toRegister.payment);
       onMarkAsRead(n.id);
     } finally {
       setSavingId(null);

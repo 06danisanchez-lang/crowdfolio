@@ -139,6 +139,23 @@ export function sumIncomePayments(payments: Payment[]): number {
     .reduce((sum, p) => sum + p.amount, 0);
 }
 
+/**
+ * "Beneficio real" de una inversión completada (columna Beneficio del listado).
+ * - Préstamos: rentas cobradas (sumIncomePayments).
+ * - Equity: todo lo cobrado (capital, prima de emisión, dividendos, ganancia)
+ *   menos lo invertido. Así una pérdida al cierre se ve como negativa en vez de
+ *   como 0 € (el cierre no registra la pérdida como pago; ver equityExit.ts).
+ *   Solo cartera: no es el cálculo fiscal.
+ */
+export function calculateRealizedProfit(investment: Pick<Investment, 'incomeModel' | 'amount' | 'payments'>): number {
+  const payments = investment.payments ?? [];
+  if (investment.incomeModel === 'equity') {
+    const totalReceived = payments.reduce((sum, p) => sum + p.amount, 0);
+    return Math.round((totalReceived - investment.amount) * 100) / 100;
+  }
+  return sumIncomePayments(payments);
+}
+
 export function calculateAccruedReturn(
   inv: Investment,
   schedule: InvestmentScheduleEntry[],

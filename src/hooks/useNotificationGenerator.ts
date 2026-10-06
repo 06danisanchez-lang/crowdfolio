@@ -135,10 +135,14 @@ export function useNotificationGenerator(
         const maturityDate = parseISO(inv.expectedEndDate);
         if (maturityDate >= todayDate) continue;
 
-        // Equity settlements are registered as 'dividend'; all others use 'principal'
-        const settlementType = inv.incomeModel === 'equity' ? 'dividend' : 'principal';
+        // Préstamos: el cobro del vencimiento es 'principal'. Equity: el cierre
+        // (equityExit.ts) registra 'principal' y, si hay beneficio, 'dividend' o
+        // 'capital_gain'; cualquiera de ellos indica que ya se ha cobrado.
+        const settlementTypes = inv.incomeModel === 'equity'
+          ? ['principal', 'dividend', 'capital_gain']
+          : ['principal'];
         const hasSettlement = inv.payments.some(
-          p => p.type === settlementType && parseISO(p.date) >= maturityDate,
+          p => settlementTypes.includes(p.type) && parseISO(p.date) >= maturityDate,
         );
         if (hasSettlement) continue;
 

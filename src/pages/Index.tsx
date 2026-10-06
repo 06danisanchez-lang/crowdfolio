@@ -52,6 +52,7 @@ import { toast } from 'sonner';
 import { Skeleton } from '@/components/ui/skeleton';
 import { View } from '@/types/investment';
 import { cn } from '@/lib/utils';
+import { paymentFromDueNotification } from '@/lib/notifications/paymentFromDueNotification';
 
 const Index = () => {
   const { t } = useLanguage();
@@ -84,6 +85,7 @@ const Index = () => {
     updateInvestment,
     deleteInvestment,
     addPayment,
+    closeEquityInvestment,
     deletePayment,
     importInvestments,
     exportInvestments,
@@ -125,14 +127,18 @@ const Index = () => {
   };
 
   const handleSheetPaid = async (notification: Notification) => {
-    setSavingNotificationId(notification.id);
     const data = notification.data as Record<string, unknown>;
+    const toRegister = paymentFromDueNotification(data);
+    if (!toRegister) {
+      // Sin importe que registrar (p. ej. renta de equity): se abre la inversión.
+      markAsRead(notification.id);
+      const investmentId = data?.investmentId as string | undefined;
+      if (investmentId) openInvestmentDetail(investmentId);
+      return;
+    }
+    setSavingNotificationId(notification.id);
     try {
-      await addPayment(data.investmentId as string, {
-        date: new Date(data.scheduleEntryDate as string).toISOString(),
-        amount: data.expectedAmount as number,
-        type: 'interest',
-      });
+      await addPayment(toRegister.investmentId, toRegister.payment);
       markAsRead(notification.id);
     } finally {
       setSavingNotificationId(null);
@@ -462,6 +468,7 @@ const Index = () => {
               onDelete={deleteInvestment}
               onAddPayment={addPayment}
               onDeletePayment={deletePayment}
+              onCloseEquity={closeEquityInvestment}
               onUpgrade={() => openUpgradeModal('unlimited_investments')}
               allowDraftSave
               initialStatusFilter={investmentsFilter}

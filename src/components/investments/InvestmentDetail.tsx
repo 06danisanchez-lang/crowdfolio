@@ -125,6 +125,7 @@ export function InvestmentDetail({ investment, schedule = [], onClose, onUpdate,
       principal: t('investments.detail.principal'),
       interest: t('investments.detail.interest'),
       capital_return: t('investments.detail.capitalReturn'),
+      capital_gain: t('investments.detail.capitalGain'),
     };
     return labels[type] ?? type;
   };

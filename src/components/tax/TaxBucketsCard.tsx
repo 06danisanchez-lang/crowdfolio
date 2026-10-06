@@ -1,6 +1,7 @@
 import { format, parseISO } from 'date-fns';
 import { TaxSummary } from '@/types/tax';
 import type { DefaultLossYearSummary, DefaultLossPendingRow, DefaultLossImputationRow } from '@/lib/tax/defaultLossSummary';
+import type { ManualGppOperation } from '@/lib/tax/manualGppOperations';
 import { useLanguage } from '@/contexts/LanguageContext';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { ArrowLeftRight, TrendingDown, AlertTriangle } from 'lucide-react';
@@ -8,7 +9,14 @@ import { ArrowLeftRight, TrendingDown, AlertTriangle } from 'lucide-react';
 interface TaxBucketsCardProps {
   summary: TaxSummary;
   defaultLossSummary: DefaultLossYearSummary;
+  manualGppOperations?: ManualGppOperation[];
 }
+
+const GPP_REASON_LABEL: Record<ManualGppOperation['reason'], string> = {
+  liquidation: 'Liquidación de la sociedad',
+  sale: 'Venta',
+  loss: 'Cierre con pérdida',
+};
 
 const fmt = (v: number) =>
   new Intl.NumberFormat('es-ES', { style: 'currency', currency: 'EUR', minimumFractionDigits: 2 }).format(v);
@@ -56,7 +64,7 @@ function pendingReasonLabel(t: (key: string) => string, row: DefaultLossPendingR
   return t('defaultLoss.status.notYet');
 }
 
-export function TaxBucketsCard({ summary, defaultLossSummary }: TaxBucketsCardProps) {
+export function TaxBucketsCard({ summary, defaultLossSummary, manualGppOperations = [] }: TaxBucketsCardProps) {
   const { t } = useLanguage();
   const liqCount = summary.liquidacionSinRetencion.length;
   const { year, declarable, recoveryGains, pending, notAssessed, equityExcluded } = defaultLossSummary;
@@ -109,9 +117,38 @@ export function TaxBucketsCard({ summary, defaultLossSummary }: TaxBucketsCardPr
           </CardTitle>
         </CardHeader>
         <CardContent>
-          <p className="text-sm text-muted-foreground py-4 text-center">
-            {t('tax.buckets.gpp.notCalculated')}
-          </p>
+          {manualGppOperations.length === 0 ? (
+            <p className="text-sm text-muted-foreground py-4 text-center">
+              {t('tax.buckets.gpp.notCalculated')}
+            </p>
+          ) : (
+            <div className="space-y-3">
+              <div className="flex gap-2 rounded-lg border border-amber-300 bg-amber-50 dark:border-amber-700 dark:bg-amber-950/30 p-3 text-xs text-amber-900 dark:text-amber-300">
+                <AlertTriangle className="h-4 w-4 shrink-0 text-amber-600 dark:text-amber-400" />
+                <span>
+                  Estas operaciones no entran en el cálculo de Crowdfolio. Declara cada una manualmente en tu IRPF
+                  con estos datos y consúltalo con tu asesor.
+                </span>
+              </div>
+              <div className="rounded-md border divide-y text-sm">
+                {manualGppOperations.map((op) => (
+                  <div key={op.investmentId} className="px-3 py-2.5 space-y-1.5">
+                    <div className="flex items-start justify-between gap-4">
+                      <div>
+                        <p className="font-medium">{op.projectName}</p>
+                        <p className="text-xs text-muted-foreground">{op.platformLabel} · {GPP_REASON_LABEL[op.reason]}</p>
+                      </div>
+                      <span className={`font-mono text-sm shrink-0 ${op.result < 0 ? 'text-destructive' : ''}`}>{fmt(op.result)}</span>
+                    </div>
+                    <div className="grid grid-cols-2 gap-x-4 gap-y-1 text-xs text-muted-foreground">
+                      <span>Adquisición: <span className="text-foreground">{fmtDate(op.acquisitionDate)} · {fmt(op.acquisitionValue)}</span></span>
+                      <span>Transmisión: <span className="text-foreground">{fmtDate(op.transmissionDate)} · {fmt(op.transmissionValue)}</span></span>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
         </CardContent>
       </Card>
     </div>

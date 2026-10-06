@@ -7,7 +7,7 @@ import { PLAN_FEATURES } from '@/lib/stripe/config';
 import { FutureInvestment } from '@/types/futureInvestment';
 import { Investment, Platform, PLATFORMS } from '@/types/investment';
 import { InvestmentForm, FutureInvestmentFormData } from '@/components/investments/InvestmentForm';
-import { toDateOnlyString } from '@/lib/dateOnly';
+import { toDateOnlyString, fromDateOnlyString } from '@/lib/dateOnly';
 import { UpgradeModal } from '@/components/subscription/UpgradeModal';
 import { KPICard } from '@/components/dashboard/KPICard';
 import { Button } from '@/components/ui/button';
@@ -126,8 +126,8 @@ function mapFutureToFormData(fi: FutureInvestment): FutureInvestmentFormData {
     projectName: fi.projectName,
     amount: fi.estimatedAmount ?? undefined,
     expectedReturn: fi.expectedReturn ?? undefined,
-    investmentDate: fi.estimatedOpenDate ? new Date(fi.estimatedOpenDate) : undefined,
-    expectedEndDate: fi.estimatedEndDate ? new Date(fi.estimatedEndDate) : undefined,
+    investmentDate: fi.estimatedOpenDate ? fromDateOnlyString(fi.estimatedOpenDate) : undefined,
+    expectedEndDate: fi.estimatedEndDate ? fromDateOnlyString(fi.estimatedEndDate) : undefined,
     sourceUrl: fi.sourceUrl,
     notes: fi.notes,
   };

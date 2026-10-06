@@ -5,6 +5,7 @@ import { z } from 'zod';
 import { Plus } from 'lucide-react';
 import { TaxExpense, TaxExpenseCategory, TAX_EXPENSE_CATEGORIES } from '@/types/tax';
 import { toDateOnlyString } from '@/lib/dateOnly';
+import { parseSpanishNumber, formatSpanishNumber } from '@/lib/investment/parseSpanishNumber';
 import { Button } from '@/components/ui/button';
 import {
   Dialog,
@@ -37,9 +38,12 @@ const expenseSchema = z.object({
   amount: z
     .string()
     .min(1, 'El importe es obligatorio')
+    // Formato español: el punto separa miles ("1.500,50"). Antes parseFloat
+    // leía "1.500" como 1,5 € y el gasto deducible quedaba mil veces menor.
+    .refine((val) => !parseSpanishNumber(val).error, 'Importe no válido (ej. 1.500,50)')
     .refine((val) => {
-      const parsed = parseFloat(val.replace(',', '.'));
-      return !isNaN(parsed) && parsed > 0;
+      const parsed = parseSpanishNumber(val).value;
+      return parsed != null && parsed > 0;
     }, 'El importe debe ser mayor que 0'),
   date: z.string().min(1, 'La fecha es obligatoria'),
   notes: z.string().max(500, 'Máximo 500 caracteres').optional(),
@@ -63,7 +67,7 @@ function expenseToFormValues(expense: TaxExpense): ExpenseFormData {
   return {
     category: expense.category,
     description: expense.description,
-    amount: String(expense.amount).replace('.', ','),
+    amount: formatSpanishNumber(expense.amount),
     date: expense.date,
     notes: expense.notes ?? '',
   };
@@ -113,7 +117,7 @@ export function TaxExpenseForm({
       year,
       category: data.category as TaxExpenseCategory,
       description: data.description,
-      amount: parseFloat(data.amount.replace(',', '.')),
+      amount: parseSpanishNumber(data.amount).value as number,
       date: data.date,
       // En edición se envía '' para poder borrar unas notas existentes (el hook lo guarda como null)
       notes: isEditing ? (data.notes ?? '') : (data.notes || undefined),

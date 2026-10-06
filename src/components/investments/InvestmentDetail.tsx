@@ -13,6 +13,7 @@ import {
   calculateRealTAE,
   calculateEstimatedTAEToday,
   getDelayDays,
+  sumIncomePayments,
 } from '@/lib/investment/calculations';
 import { getPrincipalReturned } from '@/lib/tax/principalReturned';
 import { DefaultLossStatusCard } from './DefaultLossStatusCard';
@@ -267,8 +268,13 @@ export function InvestmentDetail({ investment, schedule = [], onClose, onUpdate,
   // recuperado cubre lo invertido, 0 €.
   const recoveredCapital = getPrincipalReturned(investment.payments ?? []);
   const defaultedLoss = Math.max(investment.amount - recoveredCapital, 0);
+  // Rendimiento real = todo lo cobrado (capital recuperado + intereses/dividendos
+  // cobrados antes del impago) frente a lo invertido. La "Pérdida" de arriba es
+  // solo de capital (lo que cuenta a efectos del art. 14.2.k); los intereses ya
+  // tributaron como RCM y no la compensan.
+  const defaultedIncomeReceived = sumIncomePayments(investment.payments ?? []);
   const defaultedRealReturnPercent =
-    investment.amount > 0 ? ((recoveredCapital - investment.amount) / investment.amount) * 100 : 0;
+    investment.amount > 0 ? ((recoveredCapital + defaultedIncomeReceived - investment.amount) / investment.amount) * 100 : 0;
 
   // D5: Calculate returns based on income model.
   // totalReturnAmount extraído a calculateExpectedTotalReturn (src/lib/investment/calculations.ts)
@@ -419,7 +425,7 @@ export function InvestmentDetail({ investment, schedule = [], onClose, onUpdate,
                   <p className="text-xs text-muted-foreground">{t('investments.detail.loss')}</p>
                 </div>
                 <div>
-                  <p className="text-xl font-bold text-destructive">{defaultedRealReturnPercent.toFixed(1)}%</p>
+                  <p className={`text-xl font-bold ${defaultedRealReturnPercent < 0 ? 'text-destructive' : 'text-foreground'}`}>{defaultedRealReturnPercent.toFixed(1)}%</p>
                   <p className="text-xs text-muted-foreground">{t('investments.detail.realReturnDefaulted')}</p>
                 </div>
               </div>

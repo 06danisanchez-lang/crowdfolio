@@ -18,7 +18,7 @@ import {
 } from 'lucide-react';
 import { Investment, DraftInvestment, PLATFORMS, STATUS_OPTIONS, Platform, InvestmentStatus, IncomeModel, InvestmentScheduleEntry, PaymentType, Payment } from '@/types/investment';
 import { getInvestmentCompletionStatus } from '@/lib/investment/completeness';
-import { calculateExpectedTotalReturn, calculateRealizedProfit } from '@/lib/investment/calculations';
+import { calculateExpectedTotalReturn, calculateRealizedProfit, sumIncomePayments } from '@/lib/investment/calculations';
 import { getPrincipalReturned } from '@/lib/tax/principalReturned';
 import { getMaturitySeverity } from '@/hooks/useAlerts';
 import { getStatusLabel } from '@/lib/labels';
@@ -263,7 +263,7 @@ export function InvestmentList({
   // fiscal de useTaxSummary (que además excluye inversiones extranjeras incompletas y
   // resuelve divisa). active/pending = proyección (fórmula de calculateExpectedTotalReturn,
   // marcada con "~"); completed = real cobrado (calculateRealizedProfit: rentas en préstamos, cobrado − invertido en equity);
-  // defaulted = recuperado - capital invertido (puede ser negativo).
+  // defaulted = recuperado + rentas cobradas - capital invertido (puede ser negativo).
   const getProfitInfo = (inv: Investment): { label: string; className: string } => {
     if (inv.status === 'active' || inv.status === 'pending') {
       const expected = calculateExpectedTotalReturn(inv, scheduleMap[inv.id] ?? []);
@@ -277,7 +277,9 @@ export function InvestmentList({
       };
     }
     if (inv.status === 'defaulted') {
-      const profit = getPrincipalReturned(inv.payments) - inv.amount;
+      // Capital recuperado + rentas cobradas antes del impago − invertido
+      // (mismo criterio que "Rendimiento real" en el detalle).
+      const profit = getPrincipalReturned(inv.payments) + sumIncomePayments(inv.payments) - inv.amount;
       const sign = profit > 0 ? '+' : '';
       return {
         label: `${sign}${formatCurrency(profit)}`,

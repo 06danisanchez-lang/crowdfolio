@@ -9,7 +9,7 @@ import { getInvestmentCompletionStatus } from '@/lib/investment/completeness';
 import { generateSchedule } from '@/lib/investment/scheduleGenerator';
 import { parseSpanishNumber, formatSpanishNumber } from '@/lib/investment/parseSpanishNumber';
 import { PLAN_FEATURES } from '@/lib/stripe/config';
-import { toDateOnlyString } from '@/lib/dateOnly';
+import { toDateOnlyString, fromDateOnlyString } from '@/lib/dateOnly';
 
 // 'Impago' no es seleccionable desde este formulario genérico: solo se puede
 // llegar a 'defaulted' completando el cuestionario de calificación fiscal
@@ -298,16 +298,16 @@ function buildEditFormValues(initialData: Investment | FutureInvestmentFormData)
     projectName: initialData.projectName,
     amount: initialData.amount || undefined,
     investmentDate: initialData.investmentDate
-      ? (initialData.investmentDate instanceof Date ? initialData.investmentDate : new Date(initialData.investmentDate))
+      ? (initialData.investmentDate instanceof Date ? initialData.investmentDate : fromDateOnlyString(initialData.investmentDate))
       : undefined,
     expectedEndDate: initialData.expectedEndDate
-      ? (initialData.expectedEndDate instanceof Date ? initialData.expectedEndDate : new Date(initialData.expectedEndDate))
+      ? (initialData.expectedEndDate instanceof Date ? initialData.expectedEndDate : fromDateOnlyString(initialData.expectedEndDate))
       : undefined,
     expectedReturn: initialData.expectedReturn || undefined,
     incomeModel: 'incomeModel' in initialData ? initialData.incomeModel || undefined : undefined,
     paymentFrequency: 'paymentFrequency' in initialData ? initialData.paymentFrequency || undefined : undefined,
     firstPaymentDate: 'firstPaymentDate' in initialData && initialData.firstPaymentDate
-      ? new Date(initialData.firstPaymentDate)
+      ? fromDateOnlyString(initialData.firstPaymentDate)
       : undefined,
     principalReturnType: 'principalReturnType' in initialData ? initialData.principalReturnType || undefined : undefined,
     equityType: 'equityType' in initialData ? (initialData as Investment).equityType : undefined,

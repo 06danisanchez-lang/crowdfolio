@@ -25,6 +25,9 @@ import {
   MAX_INVESTMENTS_PER_IMPORT,
 } from '@/lib/validation/investmentSchema';
 import { ZodError } from 'zod';
+import { parseImportDate } from '@/lib/investment/parseImportDate';
+import { parseSpanishNumber } from '@/lib/investment/parseSpanishNumber';
+import { toDateOnlyString } from '@/lib/dateOnly';
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -127,7 +130,13 @@ function parseCsvToRows(text: string): RawRow[] {
 
 function excelCellToString(v: unknown): string {
   if (v == null) return '';
+  // ExcelJS devuelve las celdas de fecha como Date en UTC (Excel no guarda zona
+  // horaria), así que aquí sí hay que leer el día en UTC.
   if (v instanceof Date) return v.toISOString().split('T')[0];
+  // Números: la celda ya es un número sin ambigüedad. Se pasa a texto con coma
+  // decimal ("1500,125") para que parseImportNumber (formato español) no lo
+  // confunda con un separador de miles.
+  if (typeof v === 'number') return String(v).replace('.', ',');
   if (typeof v === 'object') {
     const obj = v as Record<string, unknown>;
     if (Array.isArray(obj.richText))
@@ -181,7 +190,15 @@ function isImportComplete(
   return true;
 }
 
-function buildInvestmentFromRow(raw: RawRow): [Investment, boolean] {
+/** Número de un archivo importado. Acepta formato español ("1.500,50") y el
+ * que exporta Crowdfolio ("1500.5"). null si está vacío o no se reconoce. */
+function parseImportNumber(raw: string | undefined): number | null {
+  const parsed = parseSpanishNumber(raw ?? '');
+  if (parsed.error || parsed.value === null || !Number.isFinite(parsed.value)) return null;
+  return parsed.value;
+}
+
+export function buildInvestmentFromRow(raw: RawRow): [Investment, boolean] {
   // platform
   const platformRaw = (raw.platform || '').toLowerCase().trim();
   const matched = PLATFORMS.find(p => p.label.toLowerCase() === platformRaw || p.value === platformRaw);
@@ -191,27 +208,19 @@ function buildInvestmentFromRow(raw: RawRow): [Investment, boolean] {
   // projectName
   const projectName = (raw.projectName || '').trim();
 
-  // amount — no silent default; null signals missing
-  const amountRaw = (raw.amount || '').replace(',', '.');
-  const amount = amountRaw ? parseFloat(amountRaw) : null;
+  // amount — no silent default; null signals missing. Formato español
+  // ("1.500,50"): antes "1.500" se leía como 1,5 €.
+  const amount = parseImportNumber(raw.amount);
 
-  // investmentDate — no fallback to today
-  let investmentDate: string | null = null;
-  if (raw.investmentDate?.trim()) {
-    const d = new Date(raw.investmentDate.trim());
-    if (!isNaN(d.getTime())) investmentDate = d.toISOString();
-  }
+  // Fechas — 'YYYY-MM-DD' o dd/mm/yyyy, sin pasar por UTC (ver parseImportDate).
+  // No se rellena con hoy: sin fecha válida la inversión queda como borrador.
+  const investmentDate = parseImportDate(raw.investmentDate);
+  const expectedEndDate = parseImportDate(raw.expectedEndDate) ?? undefined;
 
-  // expectedEndDate
-  let expectedEndDate: string | undefined;
-  if (raw.expectedEndDate?.trim()) {
-    const d = new Date(raw.expectedEndDate.trim());
-    if (!isNaN(d.getTime())) expectedEndDate = d.toISOString();
-  }
-
-  // expectedReturn — no silent default
-  const returnRaw = (raw.expectedReturn || '').replace(',', '.');
-  const expectedReturn = returnRaw ? parseFloat(returnRaw) : null;
+  // expectedReturn — no silent default; fuera de 0-100 % se trata como inválido
+  // (igual que el formulario).
+  const parsedReturn = parseImportNumber(raw.expectedReturn);
+  const expectedReturn = parsedReturn != null && parsedReturn >= 0 && parsedReturn <= 100 ? parsedReturn : null;
 
   // incomeModel — only valid values, invalid → null
   const incomeModelRaw = (raw.incomeModel || '').toLowerCase().trim();
@@ -240,7 +249,7 @@ function buildInvestmentFromRow(raw: RawRow): [Investment, boolean] {
     projectName: projectName || 'Sin nombre',
     // For drafts, store 0/placeholder — status='draft' signals incompleteness
     amount: (amount != null && !isNaN(amount) && amount > 0) ? amount : 0,
-    investmentDate: investmentDate ?? new Date().toISOString(),
+    investmentDate: investmentDate ?? toDateOnlyString(new Date()),
     expectedEndDate,
     expectedReturn: (expectedReturn != null && !isNaN(expectedReturn)) ? expectedReturn : 0,
     incomeModel: incomeModel ?? 'variable_or_unknown',
@@ -254,6 +263,17 @@ function buildInvestmentFromRow(raw: RawRow): [Investment, boolean] {
   };
 
   return [investment, complete];
+}
+
+/** JSON: deja todas las fechas de columnas `date` en 'YYYY-MM-DD' (ver parseImportDate). */
+function normalizeImportedDates(inv: Investment): Investment {
+  return {
+    ...inv,
+    investmentDate: parseImportDate(inv.investmentDate) ?? inv.investmentDate,
+    expectedEndDate: inv.expectedEndDate ? (parseImportDate(inv.expectedEndDate) ?? inv.expectedEndDate) : inv.expectedEndDate,
+    firstPaymentDate: inv.firstPaymentDate ? (parseImportDate(inv.firstPaymentDate) ?? inv.firstPaymentDate) : inv.firstPaymentDate,
+    payments: (inv.payments ?? []).map(p => ({ ...p, date: parseImportDate(p.date) ?? p.date })),
+  };
 }
 
 // ─── Zod error helper (unchanged) ────────────────────────────────────────────
@@ -396,7 +416,7 @@ export function ImportExport({
         if (!Array.isArray(parsedData)) throw new Error('El archivo debe contener un array de inversiones');
         if (parsedData.length > MAX_INVESTMENTS_PER_IMPORT)
           throw new Error(`Demasiadas inversiones. Máximo permitido: ${MAX_INVESTMENTS_PER_IMPORT}`);
-        const validatedData = investmentsArraySchema.parse(parsedData) as Investment[];
+        const validatedData = (investmentsArraySchema.parse(parsedData) as Investment[]).map(normalizeImportedDates);
         onImport(validatedData, false);
         setImportOpen(false);
         toast.success(t('investments.importSuccess').replace('{n}', String(validatedData.length)));

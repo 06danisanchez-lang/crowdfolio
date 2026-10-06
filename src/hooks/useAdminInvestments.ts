@@ -100,11 +100,22 @@ export function useAdminInvestments() {
         paymentsData = data || [];
       }
 
-      // Fetch user emails using the secure function
+      // Emails desde profiles (la política "Admins can view all profiles" lo
+      // permite solo a administradores). Antes se usaba la RPC get_user_email,
+      // que no existe en producción y no comprobaba que quien llama sea admin.
       const userEmails: Record<string, string> = {};
+      if (userIds.length > 0) {
+        const { data: profilesData, error: profilesError } = await supabase
+          .from('profiles')
+          .select('id, email')
+          .in('id', userIds);
+        if (profilesError) throw profilesError;
+        for (const p of profilesData || []) {
+          if (p.email) userEmails[p.id] = p.email;
+        }
+      }
       for (const userId of userIds) {
-        const { data: emailData } = await supabase.rpc('get_user_email', { _user_id: userId });
-        userEmails[userId] = emailData || 'Usuario desconocido';
+        if (!userEmails[userId]) userEmails[userId] = 'Usuario desconocido';
       }
 
       // Group investments by user

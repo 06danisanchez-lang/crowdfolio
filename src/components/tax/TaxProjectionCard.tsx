@@ -25,6 +25,8 @@ export function TaxProjectionCard({ summary, projection, year }: TaxProjectionCa
       currency: 'EUR',
       minimumFractionDigits: 2,
     }).format(value);
+  // Evita "-0,00 €" cuando no hay retenciones (mismo criterio que la exportación).
+  const formatNegative = (v: number) => (v === 0 ? formatCurrency(0) : `-${formatCurrency(v)}`);
 
   const isRefund = projection.projectedResult < 0;
   const resultAmount = Math.abs(projection.projectedResult);
@@ -78,7 +80,7 @@ export function TaxProjectionCard({ summary, projection, year }: TaxProjectionCa
               <div className="flex justify-between">
                 <span className="text-sm">Retenciones</span>
                 <span className="font-medium text-orange-600">
-                  -{formatCurrency(summary.withholdingsApplied)}
+                  {formatNegative(summary.withholdingsApplied)}
                 </span>
               </div>
             </div>
@@ -97,7 +99,7 @@ export function TaxProjectionCard({ summary, projection, year }: TaxProjectionCa
               <div className="flex justify-between">
                 <span className="text-sm">Retenciones</span>
                 <span className="font-medium text-orange-600">
-                  -{formatCurrency(projection.projectedWithholdings)}
+                  {formatNegative(projection.projectedWithholdings)}
                 </span>
               </div>
             </div>
@@ -127,7 +129,7 @@ export function TaxProjectionCard({ summary, projection, year }: TaxProjectionCa
             <div className="flex justify-between">
               <span>Retenciones totales</span>
               <span className="font-medium text-orange-600">
-                -{formatCurrency(summary.withholdingsApplied + projection.projectedWithholdings)}
+                {formatNegative(summary.withholdingsApplied + projection.projectedWithholdings)}
               </span>
             </div>
           </div>

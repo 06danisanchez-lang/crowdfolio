@@ -86,6 +86,7 @@ const Index = () => {
     deleteInvestment,
     addPayment,
     closeEquityInvestment,
+    updatePaymentWithholding,
     deletePayment,
     importInvestments,
     exportInvestments,
@@ -468,6 +469,7 @@ const Index = () => {
               onDelete={deleteInvestment}
               onAddPayment={addPayment}
               onDeletePayment={deletePayment}
+              onUpdatePaymentWithholding={updatePaymentWithholding}
               onCloseEquity={closeEquityInvestment}
               onUpgrade={() => openUpgradeModal('unlimited_investments')}
               allowDraftSave

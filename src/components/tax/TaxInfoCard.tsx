@@ -173,6 +173,17 @@ export function TaxInfoCard() {
                   </ul>
                 </div>
                 
+                <div className="rounded-lg border border-amber-200 dark:border-amber-900 bg-amber-50 dark:bg-amber-950/30 p-3">
+                  <h4 className="font-medium text-amber-800 dark:text-amber-200 mb-2">
+                    ? A confirmar con tu asesor:
+                  </h4>
+                  <ul className="text-amber-700 dark:text-amber-300 text-xs space-y-1">
+                    {DEDUCTIBLE_INFO.toConfirm.map((item, i) => (
+                      <li key={i}>• {item}</li>
+                    ))}
+                  </ul>
+                </div>
+
                 <div className="rounded-lg border border-red-200 dark:border-red-900 bg-red-50 dark:bg-red-950/30 p-3">
                   <h4 className="font-medium text-red-800 dark:text-red-200 mb-2">
                     ✗ No son deducibles:

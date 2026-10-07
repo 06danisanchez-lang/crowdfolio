@@ -332,7 +332,7 @@ export function TaxExportButton({
         addSectionSep('── Ganancias y Pérdidas Patrimoniales — declarar manualmente ──');
         const gppNet = manualGppOperations.reduce((sum, op) => sum + op.result, 0);
         addSummaryRow(
-          `Resultado neto (${manualGppOperations.length} operación${manualGppOperations.length > 1 ? 'es' : ''}) — no incluido arriba`,
+          `Resultado neto (${manualGppOperations.length} ${manualGppOperations.length === 1 ? 'operación' : 'operaciones'}) — no incluido arriba`,
           gppNet,
           gppNet >= 0 ? S.valPos : S.valNeg,
         );

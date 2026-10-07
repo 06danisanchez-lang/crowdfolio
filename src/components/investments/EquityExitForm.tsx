@@ -6,6 +6,7 @@ import { CloseReasonType, Investment } from '@/types/investment';
 import { buildEquityExitPlan, EquityExitPlan, getEquityNetCapital } from '@/lib/investment/equityExit';
 import { parseSpanishNumber } from '@/lib/investment/parseSpanishNumber';
 import { toDateOnlyString } from '@/lib/dateOnly';
+import { getDefaultWithholding, getDefaultWithholdingRate, validateWithholding } from '@/lib/tax/withholding';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Calendar } from '@/components/ui/calendar';
@@ -30,21 +31,45 @@ export function EquityExitForm({ investment, closeReason, saving, onBack, onConf
   const [amountInput, setAmountInput] = useState('');
   const [exitDate, setExitDate] = useState<Date>(() => new Date());
   const [submitError, setSubmitError] = useState<string | null>(null);
+  // Retención sobre el beneficio repartido como dividendo. Se propone sola
+  // (19 % en plataformas españolas) hasta que el usuario la cambia.
+  const [withholdingInput, setWithholdingInput] = useState('');
+  const [withholdingTouched, setWithholdingTouched] = useState(false);
 
   const netCapital = getEquityNetCapital(investment);
   const accumulatedCapitalReturn = Math.round((investment.amount - netCapital) * 100) / 100;
   const parsed = parseSpanishNumber(amountInput);
   const exitDateStr = toDateOnlyString(exitDate);
 
-  const plan = useMemo(() => {
+  const basePlan = useMemo(() => {
     if (parsed.error || parsed.value === null || parsed.value < 0) return null;
     return buildEquityExitPlan({
       investment, amountReceived: parsed.value, date: exitDateStr, closeReason,
     });
   }, [parsed.error, parsed.value, investment, exitDateStr, closeReason]);
 
+  const dividendAmount = basePlan?.payments.find(p => p.type === 'dividend')?.amount ?? 0;
+  const proposedWithholding = getDefaultWithholding(dividendAmount, 'dividend', investment.platform);
+  const parsedWithholding = parseSpanishNumber(withholdingInput);
+  const withholding = !withholdingTouched
+    ? proposedWithholding
+    : (parsedWithholding.error ? NaN : (parsedWithholding.value ?? 0));
+  const withholdingError = dividendAmount > 0
+    ? (parsedWithholding.error && withholdingTouched ? parsedWithholding.error : validateWithholding(withholding, dividendAmount))
+    : null;
+
+  // El dividendo guarda la retención; el resto de pagos del cierre no llevan.
+  const plan = useMemo<EquityExitPlan | null>(() => {
+    if (!basePlan) return null;
+    if (dividendAmount <= 0 || withholdingError) return basePlan;
+    return {
+      ...basePlan,
+      payments: basePlan.payments.map(p => p.type === 'dividend' ? { ...p, withholdingApplied: withholding } : p),
+    };
+  }, [basePlan, dividendAmount, withholding, withholdingError]);
+
   const handleConfirm = async () => {
-    if (!plan) return;
+    if (!plan || withholdingError) return;
     setSubmitError(null);
     const result = await onConfirm(plan, exitDateStr);
     if (result.error) setSubmitError(result.error);
@@ -119,6 +144,25 @@ export function EquityExitForm({ investment, closeReason, saving, onBack, onConf
         </div>
       </div>
 
+      {plan && plan.treatment === 'rcm_dividend' && dividendAmount > 0 && (
+        <div className="space-y-1.5 sm:max-w-[50%]">
+          <p className="text-sm font-medium">Retención sobre el beneficio (€)</p>
+          <Input
+            inputMode="decimal"
+            aria-label="Retención sobre el beneficio (€)"
+            placeholder="0,00"
+            value={withholdingTouched ? withholdingInput : (proposedWithholding ? proposedWithholding.toFixed(2).replace('.', ',') : '')}
+            onChange={e => { setWithholdingTouched(true); setWithholdingInput(e.target.value); setSubmitError(null); }}
+            aria-invalid={!!withholdingError}
+          />
+          <p className="text-xs text-muted-foreground">
+            {getDefaultWithholdingRate(investment.platform) > 0
+              ? 'Propuesta: 19 % del beneficio, lo que retienen las plataformas españolas. Cámbiala si tu certificado dice otra cosa.'
+              : 'Las plataformas extranjeras no practican retención española. Si la tuya es española, normalmente retiene el 19 %.'}
+          </p>
+          {withholdingError && <p className="text-xs text-destructive">{withholdingError}</p>}
+        </div>
+      )}
       {plan && plan.treatment === 'rcm_dividend' && (
         <div className="flex gap-2 rounded-lg border p-3 text-sm text-muted-foreground">
           <Info className="h-4 w-4 shrink-0 mt-0.5" />
@@ -148,7 +192,7 @@ export function EquityExitForm({ investment, closeReason, saving, onBack, onConf
           <ChevronLeft className="mr-1 h-4 w-4" />
           Atrás
         </Button>
-        <Button className="flex-1" onClick={handleConfirm} disabled={saving || !plan}>
+        <Button className="flex-1" onClick={handleConfirm} disabled={saving || !plan || !!withholdingError}>
           Confirmar y cerrar inversión
         </Button>
       </div>

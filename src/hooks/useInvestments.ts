@@ -7,6 +7,7 @@ import { isInvestmentComplete, getInvestmentCompletionStatus } from '@/lib/inves
 import { generateSchedule } from '@/lib/investment/scheduleGenerator';
 import { isBlockedDefaultedTransition, isBlockedIncomeModelChange } from '@/lib/investment/defaultTransitionGuard';
 import { toDateOnlyString } from '@/lib/dateOnly';
+import { getDefaultWithholding } from '@/lib/tax/withholding';
 import { RawInvestmentRow, mapRawInvestmentRow, draftToInvestment } from '@/lib/investment/mapInvestmentRow';
 
 const FETCH_TIMEOUT_MS = 15_000;
@@ -19,6 +20,9 @@ export function useInvestments() {
   const [error, setError] = useState<string | null>(null);
   const requestIdRef = useRef(0);
   const hasLoadedRef = useRef(false);
+  // Para que addPayment (memoizado) conozca la plataforma de cada inversión.
+  const rawInvestmentsRef = useRef<DraftInvestment[]>([]);
+  rawInvestmentsRef.current = allRawInvestments;
 
   const fetchInvestments = useCallback(async () => {
     if (!user) {
@@ -118,6 +122,7 @@ export function useInvestments() {
               id: p.id as string, date: p.date as string, amount: Number(p.amount),
               type: p.type as PaymentType,
               notes: (p.notes as string) || undefined,
+              withholdingApplied: p.withholding_applied != null ? Number(p.withholding_applied) : 0,
             })),
           autoPendingIds.has(inv.id) ? 'pending' : undefined,
         )
@@ -441,14 +446,22 @@ export function useInvestments() {
   }, []);
 
   const addPayment = useCallback(async (investmentId: string, payment: Omit<Payment, 'id'>) => {
+    // Sin retención explícita (p. ej. "Sí, cobrado" desde una notificación) se
+    // propone la de la plataforma: 19 % si es española, 0 si no. Un 0 explícito
+    // del formulario se respeta.
+    const platform = rawInvestmentsRef.current.find(inv => inv.id === investmentId)?.platform;
+    const withholdingApplied = payment.withholdingApplied
+      ?? getDefaultWithholding(payment.amount, payment.type, platform);
     const { data, error } = await supabase.from('payments').insert({
       investment_id: investmentId, date: payment.date, amount: payment.amount,
       type: payment.type, notes: payment.notes || null,
+      withholding_applied: withholdingApplied,
     }).select().single();
     if (error) { console.error('Error adding payment:', error); return null; }
     const newPayment: Payment = {
       id: data.id, date: data.date, amount: Number(data.amount),
       type: data.type as PaymentType, notes: data.notes || undefined,
+      withholdingApplied: data.withholding_applied != null ? Number(data.withholding_applied) : 0,
     };
     setAllRawInvestments(prev => prev.map(inv =>
       inv.id === investmentId
@@ -478,6 +491,7 @@ export function useInvestments() {
         payments.map(p => ({
           investment_id: investmentId, date: p.date, amount: p.amount,
           type: p.type, notes: p.notes || null,
+          withholding_applied: p.withholdingApplied ?? 0,
         })),
       ).select('id');
       if (error) {
@@ -508,6 +522,26 @@ export function useInvestments() {
     if (result.error) return { error: result.error };
     return {};
   }, [updateInvestment, fetchInvestments]);
+
+  /** Corrige la retención de un cobro ya registrado. Devuelve false si no se guarda. */
+  const updatePaymentWithholding = useCallback(async (
+    investmentId: string, paymentId: string, withholdingApplied: number,
+  ): Promise<boolean> => {
+    const { error } = await supabase.from('payments')
+      .update({ withholding_applied: withholdingApplied })
+      .eq('id', paymentId);
+    if (error) { console.error('Error updating payment withholding:', error); return false; }
+    setAllRawInvestments(prev => prev.map(inv =>
+      inv.id === investmentId
+        ? {
+            ...inv,
+            payments: inv.payments.map(p => p.id === paymentId ? { ...p, withholdingApplied } : p),
+            updatedAt: new Date().toISOString(),
+          }
+        : inv
+    ));
+    return true;
+  }, []);
 
   const deletePayment = useCallback(async (investmentId: string, paymentId: string) => {
     const { error } = await supabase.from('payments').delete().eq('id', paymentId);
@@ -556,6 +590,7 @@ export function useInvestments() {
       if (inv.payments && inv.payments.length > 0) {
         const paymentsToInsert = inv.payments.map(p => ({
           investment_id: data.id, date: p.date, amount: p.amount, type: p.type, notes: p.notes || null,
+          withholding_applied: p.withholdingApplied ?? 0,
         }));
         const { error: paymentsError } = await supabase.from('payments').insert(paymentsToInsert);
         if (paymentsError) console.error('Error importing payments:', paymentsError);
@@ -671,7 +706,7 @@ export function useInvestments() {
     incompleteInvestments, incompleteCount, allInvestmentsCount,
     isLoading, error, summary, scheduleMap,
     addInvestment, addDraftInvestment, updateInvestment, deleteInvestment,
-    addPayment, closeEquityInvestment, deletePayment, importInvestments,
+    addPayment, closeEquityInvestment, updatePaymentWithholding, deletePayment, importInvestments,
     exportInvestments, clearAllInvestments, refetch: fetchInvestments,
   };
 }

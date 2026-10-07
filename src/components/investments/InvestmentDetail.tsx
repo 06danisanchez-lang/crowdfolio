@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { useLanguage } from '@/contexts/LanguageContext';
 import { format, parseISO } from 'date-fns';
 import { es } from 'date-fns/locale';
-import { Plus, Trash2, CalendarIcon, Pencil } from 'lucide-react';
+import { Plus, Trash2, CalendarIcon, Pencil, Check, X } from 'lucide-react';
 import { Investment, Payment, PLATFORMS, STATUS_OPTIONS, InvestmentScheduleEntry, IncomeModel, InvestmentStatus } from '@/types/investment';
 import { toDateOnlyString } from '@/lib/dateOnly';
 import {
@@ -16,6 +16,7 @@ import {
   sumIncomePayments,
 } from '@/lib/investment/calculations';
 import { getPrincipalReturned } from '@/lib/tax/principalReturned';
+import { getDefaultWithholding, getDefaultWithholdingRate, isWithholdingApplicable, validateWithholding } from '@/lib/tax/withholding';
 import { DefaultLossStatusCard } from './DefaultLossStatusCard';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -70,19 +71,29 @@ interface InvestmentDetailProps {
   onClose: () => void;
   onUpdate: (id: string, updates: Partial<Investment>) => Promise<unknown>;
   onDelete: (id: string) => void;
-  onAddPayment: (investmentId: string, payment: { date: string; amount: number; type: 'dividend' | 'principal' | 'interest'; notes?: string }) => void;
+  onAddPayment: (investmentId: string, payment: { date: string; amount: number; type: 'dividend' | 'principal' | 'interest'; notes?: string; withholdingApplied?: number }) => void;
   onDeletePayment: (investmentId: string, paymentId: string) => void;
+  /** Corrige la retención de un cobro ya registrado. */
+  onUpdatePaymentWithholding?: (investmentId: string, paymentId: string, withholdingApplied: number) => Promise<boolean>;
   onOpenCloseModal?: (id: string) => void;
   /** Abre DefaultLossQuestionnaire en modo 'update' para esta inversión (Fase 4). */
   onUpdateFiscalStatus?: (investment: Investment) => void;
 }
 
-export function InvestmentDetail({ investment, schedule = [], onClose, onUpdate, onDelete, onAddPayment, onDeletePayment, onOpenCloseModal, onUpdateFiscalStatus }: InvestmentDetailProps) {
+export function InvestmentDetail({ investment, schedule = [], onClose, onUpdate, onDelete, onAddPayment, onDeletePayment, onUpdatePaymentWithholding, onOpenCloseModal, onUpdateFiscalStatus }: InvestmentDetailProps) {
   const { t } = useLanguage();
   const [showAddPayment, setShowAddPayment] = useState(false);
   const [paymentDate, setPaymentDate] = useState<Date>(new Date());
   const [paymentAmount, setPaymentAmount] = useState('');
   const [paymentType, setPaymentType] = useState<'dividend' | 'principal' | 'interest'>('dividend');
+  // Retención del cobro nuevo: se propone sola (19 % en plataformas españolas)
+  // hasta que el usuario la toca.
+  const [paymentWithholding, setPaymentWithholding] = useState('');
+  const [withholdingTouched, setWithholdingTouched] = useState(false);
+  // Edición de la retención de un cobro ya registrado
+  const [editingWithholdingId, setEditingWithholdingId] = useState<string | null>(null);
+  const [editingWithholdingValue, setEditingWithholdingValue] = useState('');
+  const [withholdingError, setWithholdingError] = useState<string | null>(null);
 
   // Delete confirmation
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
@@ -208,16 +219,53 @@ export function InvestmentDetail({ investment, schedule = [], onClose, onUpdate,
     resetForms();
   };
 
+  const parsedPaymentAmount = parseFloat(paymentAmount);
+  const withholdingApplies = isWithholdingApplicable(paymentType);
+  const proposedWithholding = investment
+    ? getDefaultWithholding(parsedPaymentAmount, paymentType, investment.platform)
+    : 0;
+  const effectivePaymentWithholding = !withholdingApplies
+    ? 0
+    : withholdingTouched
+      ? (paymentWithholding === '' ? 0 : parseFloat(paymentWithholding))
+      : proposedWithholding;
+  const newPaymentWithholdingError = withholdingApplies && Number.isFinite(parsedPaymentAmount)
+    ? validateWithholding(effectivePaymentWithholding, parsedPaymentAmount)
+    : null;
+
+  const resetPaymentForm = () => {
+    setPaymentAmount('');
+    setPaymentWithholding('');
+    setWithholdingTouched(false);
+    setShowAddPayment(false);
+  };
+
   const handleAddPayment = () => {
-    if (investment && paymentAmount) {
+    if (investment && paymentAmount && !newPaymentWithholdingError) {
       onAddPayment(investment.id, {
         date: toDateOnlyString(paymentDate),
-        amount: parseFloat(paymentAmount),
+        amount: parsedPaymentAmount,
         type: paymentType,
+        withholdingApplied: effectivePaymentWithholding,
       });
-      setPaymentAmount('');
-      setShowAddPayment(false);
+      resetPaymentForm();
     }
+  };
+
+  const startEditWithholding = (payment: Payment) => {
+    setEditingWithholdingId(payment.id);
+    setEditingWithholdingValue(String(payment.withholdingApplied ?? 0));
+    setWithholdingError(null);
+  };
+
+  const saveWithholding = async (payment: Payment) => {
+    if (!investment || !onUpdatePaymentWithholding) return;
+    const value = editingWithholdingValue === '' ? 0 : parseFloat(editingWithholdingValue);
+    const validation = validateWithholding(value, payment.amount);
+    if (validation) { setWithholdingError(validation); return; }
+    const ok = await onUpdatePaymentWithholding(investment.id, payment.id, Math.round(value * 100) / 100);
+    if (!ok) { setWithholdingError('No se ha podido guardar la retención.'); return; }
+    setEditingWithholdingId(null);
   };
 
   const handleUndoDefault = async () => {
@@ -597,14 +645,38 @@ export function InvestmentDetail({ investment, schedule = [], onClose, onUpdate,
                     </SelectContent>
                   </Select>
                   <div className="flex gap-2">
-                    <Button onClick={handleAddPayment} disabled={!paymentAmount}>
+                    <Button onClick={handleAddPayment} disabled={!paymentAmount || !!newPaymentWithholdingError}>
                       {t('common.add')}
                     </Button>
-                    <Button variant="ghost" onClick={() => setShowAddPayment(false)}>
+                    <Button variant="ghost" onClick={resetPaymentForm}>
                       {t('common.cancel')}
                     </Button>
                   </div>
                 </div>
+                {withholdingApplies && (
+                  <div className="mt-3 grid gap-1.5 sm:max-w-xs">
+                    <label className="text-sm font-medium" htmlFor="payment-withholding">
+                      Retención practicada (€)
+                    </label>
+                    <Input
+                      id="payment-withholding"
+                      type="number"
+                      min={0}
+                      step="0.01"
+                      value={withholdingTouched ? paymentWithholding : (proposedWithholding ? String(proposedWithholding) : '')}
+                      placeholder="0,00"
+                      onChange={(e) => { setWithholdingTouched(true); setPaymentWithholding(e.target.value); }}
+                    />
+                    <p className="text-xs text-muted-foreground">
+                      {getDefaultWithholdingRate(investment.platform) > 0
+                        ? 'Propuesta: 19 % del importe bruto, lo que retienen las plataformas españolas. Cámbiala si tu certificado dice otra cosa.'
+                        : 'Las plataformas extranjeras no practican retención española. Si la tuya es española, normalmente retiene el 19 %.'}
+                    </p>
+                    {newPaymentWithholdingError && (
+                      <p className="text-xs text-destructive">{newPaymentWithholdingError}</p>
+                    )}
+                  </div>
+                )}
               </div>
             )}
 
@@ -631,6 +703,39 @@ export function InvestmentDetail({ investment, schedule = [], onClose, onUpdate,
                         <Badge variant="secondary">
                           {getPaymentTypeLabel(payment.type)}
                         </Badge>
+                        {isWithholdingApplicable(payment.type) && (
+                          editingWithholdingId === payment.id ? (
+                            <div className="flex flex-col gap-1">
+                              <div className="flex items-center gap-1">
+                                <Input
+                                  type="number"
+                                  min={0}
+                                  step="0.01"
+                                  className="h-8 w-28"
+                                  aria-label="Retención practicada (€)"
+                                  value={editingWithholdingValue}
+                                  onChange={(e) => { setEditingWithholdingValue(e.target.value); setWithholdingError(null); }}
+                                />
+                                <Button size="icon" variant="ghost" className="h-8 w-8" aria-label="Guardar retención" onClick={() => saveWithholding(payment)}>
+                                  <Check className="h-4 w-4" />
+                                </Button>
+                                <Button size="icon" variant="ghost" className="h-8 w-8" aria-label="Cancelar" onClick={() => setEditingWithholdingId(null)}>
+                                  <X className="h-4 w-4" />
+                                </Button>
+                              </div>
+                              {withholdingError && <p className="text-xs text-destructive">{withholdingError}</p>}
+                            </div>
+                          ) : (
+                            <span className="flex items-center gap-1 text-sm text-muted-foreground">
+                              Retención: {formatCurrency(payment.withholdingApplied ?? 0)}
+                              {onUpdatePaymentWithholding && (
+                                <Button size="icon" variant="ghost" className="h-7 w-7" aria-label="Editar retención" onClick={() => startEditWithholding(payment)}>
+                                  <Pencil className="h-3.5 w-3.5" />
+                                </Button>
+                              )}
+                            </span>
+                          )
+                        )}
                       </div>
                       <Button
                         variant="ghost"

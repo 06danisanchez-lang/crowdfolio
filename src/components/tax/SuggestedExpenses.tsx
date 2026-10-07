@@ -21,10 +21,8 @@ const iconMap = {
 };
 
 const categoryColors: Record<TaxExpenseCategory, string> = {
+  custody: 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200',
   platform_fees: 'bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200',
-  advisory: 'bg-purple-100 text-purple-800 dark:bg-purple-900 dark:text-purple-200',
-  management: 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200',
-  travel: 'bg-orange-100 text-orange-800 dark:bg-orange-900 dark:text-orange-200',
   other: 'bg-gray-100 text-gray-800 dark:bg-gray-900 dark:text-gray-200',
 };
 
@@ -54,10 +52,8 @@ function SuggestedExpenseCard({
                 variant="secondary" 
                 className={`${categoryColors[expense.category]} text-xs shrink-0`}
               >
-                {expense.category === 'platform_fees' ? 'Comisión' :
-                 expense.category === 'advisory' ? 'Asesoría' :
-                 expense.category === 'management' ? 'Gestión' :
-                 expense.category === 'travel' ? 'Viaje' : 'Otro'}
+                {expense.category === 'platform_fees' ? 'A confirmar' :
+                 expense.category === 'custody' ? 'Deducible' : 'Otro'}
               </Badge>
             </div>
             {expense.examples.length > 0 && (
@@ -91,14 +87,15 @@ export function SuggestedExpenses({ onAddSuggested, showAsEmptyState = false }: 
       <div className="space-y-4">
         <div className="text-center py-4">
           <Lightbulb className="h-10 w-10 text-muted-foreground/50 mx-auto" />
-          <h3 className="font-medium mt-3">¿Sabías que puedes deducir estos gastos?</h3>
+          <h3 className="font-medium mt-3">¿Tienes gastos que puedas deducir?</h3>
           <p className="text-sm text-muted-foreground mt-1">
-            Haz clic en cualquiera para añadirlo rápidamente
+            En intereses y dividendos solo se restan los gastos de administración y depósito.
+            Haz clic en cualquiera para añadirlo.
           </p>
         </div>
         
         <div className="grid gap-3 sm:grid-cols-2">
-          {SUGGESTED_EXPENSES.slice(0, 4).map((expense) => (
+          {SUGGESTED_EXPENSES.map((expense) => (
             <SuggestedExpenseCard
               key={expense.id}
               expense={expense}
@@ -127,11 +124,19 @@ export function SuggestedExpenses({ onAddSuggested, showAsEmptyState = false }: 
           <Lightbulb className="h-4 w-4" />
           <AlertTitle>¿Qué puedo deducir?</AlertTitle>
           <AlertDescription className="mt-2">
-            <div className="grid gap-4 sm:grid-cols-2 text-xs">
+            <div className="grid gap-4 sm:grid-cols-3 text-xs">
               <div>
                 <p className="font-medium text-green-600 dark:text-green-400 mb-1">✓ Deducibles:</p>
                 <ul className="space-y-0.5 text-muted-foreground">
                   {DEDUCTIBLE_INFO.allowed.map((item, i) => (
+                    <li key={i}>• {item}</li>
+                  ))}
+                </ul>
+              </div>
+              <div>
+                <p className="font-medium text-amber-600 dark:text-amber-400 mb-1">? A confirmar:</p>
+                <ul className="space-y-0.5 text-muted-foreground">
+                  {DEDUCTIBLE_INFO.toConfirm.map((item, i) => (
                     <li key={i}>• {item}</li>
                   ))}
                 </ul>

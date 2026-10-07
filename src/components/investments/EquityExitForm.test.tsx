@@ -42,6 +42,37 @@ describe('EquityExitForm', () => {
     expect(plan.payments.map((p: { type: string; amount: number }) => [p.type, p.amount])).toEqual([['principal', 1000], ['dividend', 150]]);
   });
 
+  it('propone el 19 % de retención sobre el dividendo en plataformas españolas', async () => {
+    const onConfirm = renderForm();
+    fireEvent.change(screen.getByPlaceholderText(/1\.500,50/), { target: { value: '1.250,00' } });
+    expect((screen.getByLabelText(/retención sobre el beneficio/i) as HTMLInputElement).value).toBe('47,50');
+    fireEvent.click(screen.getByRole('button', { name: /confirmar y cerrar/i }));
+    await waitFor(() => expect(onConfirm).toHaveBeenCalled());
+    const [plan] = onConfirm.mock.calls[0];
+    const byType = Object.fromEntries(plan.payments.map((p: { type: string; withholdingApplied?: number }) => [p.type, p.withholdingApplied ?? 0]));
+    expect(byType).toEqual({ principal: 0, dividend: 47.5 });
+  });
+
+  it('respeta la retención que escribe el usuario y no deja una mayor que el beneficio', async () => {
+    const onConfirm = renderForm();
+    fireEvent.change(screen.getByPlaceholderText(/1\.500,50/), { target: { value: '1.250,00' } });
+    const input = screen.getByLabelText(/retención sobre el beneficio/i);
+    fireEvent.change(input, { target: { value: '300' } });
+    const btn = screen.getByRole('button', { name: /confirmar y cerrar/i }) as HTMLButtonElement;
+    expect(btn.disabled).toBe(true);
+    fireEvent.change(input, { target: { value: '0' } });
+    fireEvent.click(btn);
+    await waitFor(() => expect(onConfirm).toHaveBeenCalled());
+    const [plan] = onConfirm.mock.calls[0];
+    expect(plan.payments.find((p: { type: string }) => p.type === 'dividend').withholdingApplied).toBe(0);
+  });
+
+  it('en plataformas extranjeras no propone retención', () => {
+    renderForm(vi.fn().mockResolvedValue({}), { ...investment, platform: 'crowdcube' });
+    fireEvent.change(screen.getByPlaceholderText(/1\.500,50/), { target: { value: '1.250,00' } });
+    expect((screen.getByLabelText(/retención sobre el beneficio/i) as HTMLInputElement).value).toBe('');
+  });
+
   it('con pérdida avisa de que es pérdida patrimonial a declarar manualmente', () => {
     renderForm();
     fireEvent.change(screen.getByPlaceholderText(/1\.500,50/), { target: { value: '700' } });

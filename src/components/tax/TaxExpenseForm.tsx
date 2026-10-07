@@ -3,7 +3,7 @@ import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import { Plus } from 'lucide-react';
-import { TaxExpense, TaxExpenseCategory, TAX_EXPENSE_CATEGORIES } from '@/types/tax';
+import { TaxExpense, TaxExpenseCategory, TAX_EXPENSE_CATEGORIES, TAX_EXPENSE_CATEGORY_WARNINGS } from '@/types/tax';
 import { toDateOnlyString } from '@/lib/dateOnly';
 import { parseSpanishNumber, formatSpanishNumber } from '@/lib/investment/parseSpanishNumber';
 import { Button } from '@/components/ui/button';
@@ -33,7 +33,7 @@ import {
 } from '@/components/ui/select';
 
 const expenseSchema = z.object({
-  category: z.enum(['platform_fees', 'advisory', 'management', 'travel', 'other']),
+  category: z.enum(['custody', 'platform_fees', 'other']),
   description: z.string().min(1, 'La descripción es obligatoria').max(200, 'Máximo 200 caracteres'),
   amount: z
     .string()
@@ -93,7 +93,7 @@ export function TaxExpenseForm({
   const form = useForm<ExpenseFormData>({
     resolver: zodResolver(expenseSchema),
     defaultValues: expense ? expenseToFormValues(expense) : {
-      category: prefillCategory || 'platform_fees',
+      category: prefillCategory || 'custody',
       description: prefillDescription || '',
       amount: '',
       date: toDateOnlyString(new Date()),
@@ -174,6 +174,11 @@ export function TaxExpenseForm({
                       ))}
                     </SelectContent>
                   </Select>
+                  {TAX_EXPENSE_CATEGORY_WARNINGS[field.value as TaxExpenseCategory] && (
+                    <p className="text-xs text-amber-700 dark:text-amber-400">
+                      {TAX_EXPENSE_CATEGORY_WARNINGS[field.value as TaxExpenseCategory]}
+                    </p>
+                  )}
                   <FormMessage />
                 </FormItem>
               )}

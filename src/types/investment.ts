@@ -44,6 +44,9 @@ export interface Payment {
   amount: number;
   type: PaymentType;
   notes?: string;
+  /** Retención a cuenta del IRPF practicada por la plataforma, en euros.
+   * Solo intereses y dividendos (ver lib/tax/withholding.ts). */
+  withholdingApplied?: number;
 }
 
 export interface Investment {

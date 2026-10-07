@@ -1,5 +1,6 @@
 import { Investment } from '@/types/investment';
 import { calculateProgressiveTax } from '@/lib/tax/calculations';
+import { getDefaultWithholdingRate } from './withholding';
 
 export interface ProjectedInvestment {
   investmentId: string;
@@ -105,7 +106,8 @@ export function calculateYearlyProjection(
         projectName: investment.projectName,
         platform: investment.platform,
         projectedAmount: Math.round(projectedAmount * 100) / 100,
-        projectedWithholding: Math.round(projectedAmount * 0.19 * 100) / 100,
+        // Misma regla que al registrar un cobro: 19 % solo en plataformas españolas.
+        projectedWithholding: Math.round(projectedAmount * getDefaultWithholdingRate(investment.platform) * 100) / 100,
         monthsActive,
       });
     }

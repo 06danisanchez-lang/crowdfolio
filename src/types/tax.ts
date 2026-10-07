@@ -1,8 +1,13 @@
-export type TaxExpenseCategory = 
+import type { MissingWithholdingSummary } from '@/lib/tax/withholding';
+
+// Rendimientos del capital mobiliario (art. 26.1.a LIRPF): solo son deducibles
+// los gastos de administración y depósito de valores negociables. Asesoría,
+// desplazamientos o herramientas de seguimiento no lo son, y por eso ya no se
+// ofrecen (oct 2026). Las comisiones de plataforma están pendientes de confirmar
+// con el asesor fiscal: se dejan, con aviso.
+export type TaxExpenseCategory =
+  | 'custody'
   | 'platform_fees'
-  | 'advisory'
-  | 'management'
-  | 'travel'
   | 'other';
 
 export interface TaxExpense {
@@ -38,6 +43,8 @@ export interface TaxSummary {
   effectiveRate: number;
   // Equity liquidacion sin retención — declaración manual requerida
   liquidacionSinRetencion: EnrichedPayment[];
+  // Cobros de plataformas españolas sin retención registrada (ver lib/tax/withholding.ts)
+  incomeWithoutWithholding: MissingWithholdingSummary;
 }
 
 export interface EnrichedPayment {
@@ -59,12 +66,18 @@ export interface TaxBracket {
 }
 
 export const TAX_EXPENSE_CATEGORIES: { value: TaxExpenseCategory; label: string }[] = [
-  { value: 'platform_fees', label: 'Comisiones de plataforma' },
-  { value: 'advisory', label: 'Gastos de asesoría' },
-  { value: 'management', label: 'Gastos de gestión' },
-  { value: 'travel', label: 'Gastos de desplazamiento' },
-  { value: 'other', label: 'Otros gastos' },
+  { value: 'custody', label: 'Administración y depósito' },
+  { value: 'platform_fees', label: 'Comisiones de plataforma (a confirmar)' },
+  { value: 'other', label: 'Otros gastos de administración' },
 ];
+
+/** Aviso que se muestra al elegir una categoría cuya deducibilidad no está clara. */
+export const TAX_EXPENSE_CATEGORY_WARNINGS: Partial<Record<TaxExpenseCategory, string>> = {
+  platform_fees:
+    'Hacienda solo admite como gasto los de administración y depósito. Algunas comisiones de plataforma pueden no serlo: confírmalo con tu asesor antes de restarlas.',
+  other:
+    'Solo es deducible si es un gasto de administración o depósito. Asesoría, desplazamientos o herramientas de seguimiento no lo son.',
+};
 
 // Spanish savings income tax brackets — 2025 (Ley 7/2024)
 export const SPAIN_TAX_BRACKETS: TaxBracket[] = [

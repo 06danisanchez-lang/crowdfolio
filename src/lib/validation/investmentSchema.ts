@@ -33,6 +33,7 @@ const paymentSchema = z.object({
   amount: z.number(),
   type: paymentTypeSchema,
   notes: z.string().optional(),
+  withholdingApplied: z.number().min(0).optional(),
 });
 
 // Investment schema for import validation

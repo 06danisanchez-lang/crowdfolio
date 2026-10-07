@@ -143,6 +143,20 @@ export function TaxDashboard({ isPro = false, onProRequired, onOpenInvestment }:
           <span>{t('tax.incomplete.warning').replace('{count}', String(excludedIncompleteCount))}</span>
         </div>
       )}
+      {summary.incomeWithoutWithholding.count > 0 && (
+        <Alert className="border-amber-300 bg-amber-50 text-amber-900 dark:border-amber-700 dark:bg-amber-950/30 dark:text-amber-200">
+          <AlertTriangle className="h-4 w-4 text-amber-600 dark:text-amber-400" />
+          <AlertDescription className="text-sm">
+            {summary.incomeWithoutWithholding.count === 1
+              ? 'Hay 1 cobro'
+              : `Hay ${summary.incomeWithoutWithholding.count} cobros`}{' '}
+            de plataformas españolas sin retención registrada
+            ({new Intl.NumberFormat('es-ES', { style: 'currency', currency: 'EUR' }).format(summary.incomeWithoutWithholding.amount)} brutos).
+            Estas plataformas suelen retener el 19 %, así que la cuota a pagar puede salir más alta de lo real.
+            Revisa el certificado fiscal de cada plataforma y corrige la retención desde la ficha de la inversión, en la lista de pagos.
+          </AlertDescription>
+        </Alert>
+      )}
       {!hasNoData && (
         <>
           <TaxSummaryCards summary={summary} />

@@ -67,8 +67,9 @@ interface InvestmentListProps {
   scheduleMap?: Record<string, InvestmentScheduleEntry[]>;
   onUpdate: (id: string, updates: Partial<Investment>) => Promise<{ demotedToDraft?: boolean } | void> | void;
   onDelete: (id: string) => void;
-  onAddPayment: (investmentId: string, payment: { date: string; amount: number; type: PaymentType; notes?: string }) => Promise<unknown> | void;
+  onAddPayment: (investmentId: string, payment: { date: string; amount: number; type: PaymentType; notes?: string; withholdingApplied?: number }) => Promise<unknown> | void;
   onDeletePayment: (investmentId: string, paymentId: string) => void;
+  onUpdatePaymentWithholding?: (investmentId: string, paymentId: string, withholdingApplied: number) => Promise<boolean>;
   onCloseEquity?: (
     investmentId: string,
     payments: Omit<Payment, 'id'>[],
@@ -96,6 +97,7 @@ export function InvestmentList({
   onDelete,
   onAddPayment,
   onDeletePayment,
+  onUpdatePaymentWithholding,
   onCloseEquity,
   onUpgrade,
   allowDraftSave,
@@ -266,6 +268,9 @@ export function InvestmentList({
   // defaulted = recuperado + rentas cobradas - capital invertido (puede ser negativo).
   const getProfitInfo = (inv: Investment): { label: string; className: string } => {
     if (inv.status === 'active' || inv.status === 'pending') {
+      // Sin previsión (p. ej. equity): no se inventa una cifra. Antes salía "~294 €"
+      // al lado de la etiqueta "Sin previsión".
+      if (isNoForecast(inv)) return { label: '—', className: 'text-muted-foreground' };
       const expected = calculateExpectedTotalReturn(inv, scheduleMap[inv.id] ?? []);
       return { label: `~${formatCurrency(expected)}`, className: 'text-muted-foreground' };
     }
@@ -778,6 +783,7 @@ export function InvestmentList({
         onDelete={(id) => { onDelete(id); setViewingInvestmentId(null); }}
         onAddPayment={onAddPayment}
         onDeletePayment={onDeletePayment}
+        onUpdatePaymentWithholding={onUpdatePaymentWithholding}
         onOpenCloseModal={(id) => { setViewingInvestmentId(null); setClosingInvestmentId(id); }}
         onUpdateFiscalStatus={(inv) => { setViewingInvestmentId(null); openQuestionnaire(inv.id, 'update'); }}
       />

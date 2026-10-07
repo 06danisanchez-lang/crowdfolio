@@ -190,7 +190,7 @@ export function TaxBreakdownTable({ summary }: TaxBreakdownTableProps) {
               <TableRow>
                 <TableCell>- Gastos Deducibles</TableCell>
                 <TableCell className="text-right text-red-600 dark:text-red-400">
-                  -{formatCurrency(summary.deductibleExpenses)}
+                  {summary.deductibleExpenses === 0 ? formatCurrency(0) : `-${formatCurrency(summary.deductibleExpenses)}`}
                 </TableCell>
               </TableRow>
               <TableRow className="border-t-2">
@@ -206,7 +206,7 @@ export function TaxBreakdownTable({ summary }: TaxBreakdownTableProps) {
               <TableRow>
                 <TableCell>- Retenciones Ya Practicadas</TableCell>
                 <TableCell className="text-right text-green-600 dark:text-green-400">
-                  -{formatCurrency(summary.withholdingsApplied)}
+                  {summary.withholdingsApplied === 0 ? formatCurrency(0) : `-${formatCurrency(summary.withholdingsApplied)}`}
                 </TableCell>
               </TableRow>
               <TableRow className="border-t-2 bg-muted/50">

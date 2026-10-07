@@ -10,6 +10,7 @@ import { isInvestmentComplete } from '@/lib/investment/completeness';
 import { computeDefaultLossSummary } from '@/lib/tax/defaultLossSummary';
 import { getPlatformLabel } from '@/lib/labels';
 import { computeManualGppOperations } from '@/lib/tax/manualGppOperations';
+import { findIncomeWithoutWithholding } from '@/lib/tax/withholding';
 
 const FETCH_TIMEOUT_MS = 15_000;
 
@@ -390,6 +391,10 @@ export function useTaxSummary(year: number) {
       baseImponibleRCMAjustada,
       taxableBase, estimatedTax, effectiveRate,
       liquidacionSinRetencion,
+      incomeWithoutWithholding: findIncomeWithoutWithholding(
+        taxablePayments,
+        new Map(investmentRows.map(r => [r.id, r.platform as Investment['platform']])),
+      ),
     };
   }, [payments, totalExpenses, year, investmentRows]);
 

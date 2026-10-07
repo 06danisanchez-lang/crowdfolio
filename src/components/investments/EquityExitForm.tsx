@@ -87,6 +87,7 @@ export function EquityExitForm({ investment, closeReason, saving, onBack, onConf
       <div className="grid gap-3 sm:grid-cols-2">
         <div className="space-y-1.5">
           <p className="text-sm font-medium">Importe total recibido (€)</p>
+          <p className="text-xs text-muted-foreground">Bruto, antes de retenciones (como en el certificado de la plataforma).</p>
           <Input
             inputMode="decimal"
             placeholder="ej. 1.500,50"

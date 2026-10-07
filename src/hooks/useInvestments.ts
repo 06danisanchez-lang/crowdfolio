@@ -488,6 +488,17 @@ export function useInvestments() {
     }
 
     const result = await updateInvestment(investmentId, { status: 'completed', ...closeUpdates });
+    // Si a la inversión le falta algún dato obligatorio, updateInvestment la
+    // pasa a borrador en vez de completarla: los pagos quedarían colgados de
+    // un borrador, fuera del informe fiscal. Se trata como un fallo.
+    if (result.demotedToDraft) {
+      if (insertedIds.length > 0) {
+        const { error: rollbackError } = await supabase.from('payments').delete().in('id', insertedIds);
+        if (rollbackError) console.error('Error rolling back equity exit payments:', rollbackError);
+      }
+      await fetchInvestments();
+      return { error: 'A esta inversión le faltan datos obligatorios y ha pasado a borrador. Complétala y vuelve a cerrarla.' };
+    }
     if (result.error && insertedIds.length > 0) {
       const { error: rollbackError } = await supabase.from('payments').delete().in('id', insertedIds);
       if (rollbackError) console.error('Error rolling back equity exit payments:', rollbackError);

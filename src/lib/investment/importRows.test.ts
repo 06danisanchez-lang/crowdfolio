@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { buildInvestmentFromRow } from './ImportExport';
+import { buildInvestmentFromRow } from './importRows';
 
 const row = (overrides: Record<string, string> = {}) => ({
   platform: 'Urbanitae',

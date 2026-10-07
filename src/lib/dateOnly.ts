@@ -1,4 +1,4 @@
-import { format } from 'date-fns';
+import { format, parseISO } from 'date-fns';
 
 /**
  * Convierte un Date (por ejemplo, medianoche local — lo que produce el
@@ -20,4 +20,15 @@ import { format } from 'date-fns';
  */
 export function toDateOnlyString(date: Date): string {
   return format(date, 'yyyy-MM-dd');
+}
+
+/**
+ * Inversa de toDateOnlyString: 'YYYY-MM-DD' → Date a medianoche LOCAL de ese día.
+ *
+ * Nunca usar `new Date('YYYY-MM-DD')`: la especificación lo interpreta como
+ * medianoche UTC, y en cualquier zona con offset negativo cae en el día
+ * anterior (al volver a guardarlo con toDateOnlyString se perdería un día).
+ */
+export function fromDateOnlyString(value: string): Date {
+  return parseISO(value);
 }

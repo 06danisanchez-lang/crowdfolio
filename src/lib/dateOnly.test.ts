@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, afterEach } from 'vitest';
-import { toDateOnlyString } from './dateOnly';
+import { toDateOnlyString, fromDateOnlyString } from './dateOnly';
 
 // Estos tests corren con TZ=Europe/Madrid (vitest.config.ts) — la zona real
 // con offset positivo (CET +1 invierno, CEST +2 verano) que provoca el fallo
@@ -59,5 +59,15 @@ describe('toDateOnlyString', () => {
     const now = new Date();
     expect(toDateOnlyString(now)).toBe('2024-07-15');
     expect(now.toISOString().split('T')[0]).toBe('2024-07-14');
+  });
+});
+
+describe('fromDateOnlyString', () => {
+  it('devuelve la medianoche local del día, ida y vuelta sin perder días', () => {
+    for (const s of ['2024-01-01', '2024-03-31', '2024-07-01', '2024-10-27', '2024-12-31']) {
+      const d = fromDateOnlyString(s);
+      expect(d.getHours()).toBe(0);
+      expect(toDateOnlyString(d)).toBe(s);
+    }
   });
 });

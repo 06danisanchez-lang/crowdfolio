@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { format } from 'date-fns';
 import { es } from 'date-fns/locale';
 import { CalendarIcon } from 'lucide-react';
-import { Investment, CloseReasonType } from '@/types/investment';
+import { Investment, CloseReasonType, Payment } from '@/types/investment';
 import { Button } from '@/components/ui/button';
 import { Calendar } from '@/components/ui/calendar';
 import {
@@ -14,6 +14,8 @@ import {
 } from '@/components/ui/dialog';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { cn } from '@/lib/utils';
+import type { EquityExitPlan } from '@/lib/investment/equityExit';
+import { EquityExitForm } from './EquityExitForm';
 
 type CloseSelection = CloseReasonType | 'defaulted';
 
@@ -64,10 +66,20 @@ interface Props {
   /** 'Impago' no se guarda aquí: abre el cuestionario de calificación fiscal
    * (o T9 para equity), igual que desde la confirmación de vencimiento. */
   onDefaulted: (investment: Investment) => void;
+  /** Cierre equity: registra el resultado y solo entonces completa
+   * (useInvestments.closeEquityInvestment). Sin esto, un equity no se puede
+   * cerrar desde aquí: cerrarlo sin resultado lo dejaría fuera del informe fiscal. */
+  onCloseEquity?: (
+    investmentId: string,
+    payments: Omit<Payment, 'id'>[],
+    closeUpdates: Pick<Partial<Investment>, 'actualEndDate' | 'closeReason'>,
+  ) => Promise<{ error?: string }>;
 }
 
-export function CloseInvestmentModal({ investment, onClose, onUpdate, onDefaulted }: Props) {
+export function CloseInvestmentModal({ investment, onClose, onUpdate, onDefaulted, onCloseEquity }: Props) {
   const [selectedReason, setSelectedReason] = useState<CloseSelection | null>(null);
+  const [equityStep, setEquityStep] = useState(false);
+  const [closeError, setCloseError] = useState<string | null>(null);
   const [newEndDate, setNewEndDate] = useState<Date | undefined>();
   const [saving, setSaving] = useState(false);
 
@@ -75,6 +87,8 @@ export function CloseInvestmentModal({ investment, onClose, onUpdate, onDefaulte
     setSelectedReason(null);
     setNewEndDate(undefined);
     setSaving(false);
+    setEquityStep(false);
+    setCloseError(null);
   };
 
   const handleOpenChange = (open: boolean) => {
@@ -89,18 +103,44 @@ export function CloseInvestmentModal({ investment, onClose, onUpdate, onDefaulte
     onDefaulted(inv);
   };
 
+  const isEquityInvestment = investment?.incomeModel === 'equity';
+
   const handleConfirmClose = async () => {
     if (!investment || !selectedReason || selectedReason === 'extended' || selectedReason === 'defaulted') return;
+    // Un equity no puede cerrarse sin registrar lo recibido: el beneficio o la
+    // pérdida no llegaría nunca al informe fiscal.
+    if (isEquityInvestment) { setEquityStep(true); return; }
     setSaving(true);
+    setCloseError(null);
     const today = format(new Date(), 'yyyy-MM-dd');
-    await onUpdate(investment.id, {
+    const result = await onUpdate(investment.id, {
       status: 'completed',
       actualEndDate: today,
       closeReason: selectedReason,
     });
     setSaving(false);
+    if (result && typeof result === 'object' && 'error' in result && typeof result.error === 'string') {
+      setCloseError(result.error);
+      return;
+    }
     reset();
     onClose();
+  };
+
+  const handleEquityClose = async (plan: EquityExitPlan, exitDate: string): Promise<{ error?: string }> => {
+    if (!investment || !onCloseEquity || !selectedReason || selectedReason === 'extended' || selectedReason === 'defaulted') {
+      return { error: 'No se puede cerrar la inversión desde aquí.' };
+    }
+    setSaving(true);
+    const result = await onCloseEquity(investment.id, plan.payments, {
+      actualEndDate: exitDate,
+      closeReason: selectedReason,
+    });
+    setSaving(false);
+    if (result.error) return result;
+    reset();
+    onClose();
+    return {};
   };
 
   const handleExtend = async () => {
@@ -132,6 +172,16 @@ export function CloseInvestmentModal({ investment, onClose, onUpdate, onDefaulte
   return (
     <Dialog open={!!investment} onOpenChange={handleOpenChange}>
       <DialogContent className="sm:max-w-md">
+        {equityStep && selectedReason && selectedReason !== 'extended' && selectedReason !== 'defaulted' ? (
+          <EquityExitForm
+            investment={investment}
+            closeReason={selectedReason}
+            saving={saving}
+            onBack={() => setEquityStep(false)}
+            onConfirm={handleEquityClose}
+          />
+        ) : (
+        <>
         <DialogHeader>
           <DialogTitle>Cerrar inversión</DialogTitle>
           <DialogDescription>
@@ -230,12 +280,15 @@ export function CloseInvestmentModal({ investment, onClose, onUpdate, onDefaulte
             <Button
               className="flex-1"
               onClick={handleConfirmClose}
-              disabled={saving || !selectedReason}
+              disabled={saving || !selectedReason || (isEquityInvestment && !onCloseEquity)}
             >
-              Confirmar cierre
+              {isEquityInvestment ? 'Continuar' : 'Confirmar cierre'}
             </Button>
           )}
         </div>
+        {closeError && <p className="text-sm text-destructive">{closeError}</p>}
+        </>
+        )}
       </DialogContent>
     </Dialog>
   );

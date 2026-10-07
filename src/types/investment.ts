@@ -27,11 +27,22 @@ export type PrincipalReturnType = 'at_maturity' | 'amortizing' | 'unknown';
 export type LossInsolvencyStatus = 'none' | 'open' | 'concluded_unpaid' | 'unknown';
 export type LossEnforcementInitiator = 'user' | 'platform';
 
+/**
+ * - interest: intereses de préstamo (RCM).
+ * - dividend: dividendos o beneficio repartido como dividendo (RCM).
+ * - principal: devolución de capital aportado (no es renta).
+ * - capital_return: devolución de prima de emisión, equity 'rentas' (no es renta).
+ * - capital_gain: ganancia patrimonial al cerrar un equity por liquidación de la
+ *   sociedad o venta (base del ahorro, NO es RCM). Crowdfolio no la integra en el
+ *   cálculo: la lista para declararla manualmente. Ver lib/investment/equityExit.ts.
+ */
+export type PaymentType = 'dividend' | 'principal' | 'interest' | 'capital_return' | 'capital_gain';
+
 export interface Payment {
   id: string;
   date: string;
   amount: number;
-  type: 'dividend' | 'principal' | 'interest' | 'capital_return';
+  type: PaymentType;
   notes?: string;
 }
 

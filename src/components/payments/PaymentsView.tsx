@@ -76,6 +76,7 @@ export function PaymentsView({ onProRequired }: PaymentsViewProps) {
       dividend: t('investments.detail.dividend'),
       principal: t('investments.detail.principal'),
       capital_return: t('investments.detail.capitalReturn'),
+      capital_gain: t('investments.detail.capitalGain'),
     };
     return map[type];
   };

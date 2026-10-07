@@ -2,7 +2,7 @@ import { useRef, useState } from 'react';
 import ExcelJS from 'exceljs';
 import { useLanguage } from '@/contexts/LanguageContext';
 import { Upload, Download, FileJson, FileSpreadsheet, AlertCircle, CheckCircle2, Info } from 'lucide-react';
-import { Investment, PLATFORMS, STATUS_OPTIONS, Platform, IncomeModel, PaymentFrequency, PrincipalReturnType } from '@/types/investment';
+import { Investment, PLATFORMS, STATUS_OPTIONS } from '@/types/investment';
 import { PLAN_FEATURES } from '@/lib/stripe/config';
 import { Button } from '@/components/ui/button';
 import {
@@ -25,6 +25,8 @@ import {
   MAX_INVESTMENTS_PER_IMPORT,
 } from '@/lib/validation/investmentSchema';
 import { ZodError } from 'zod';
+import { parseImportDate } from '@/lib/investment/parseImportDate';
+import { buildInvestmentFromRow, RawRow } from '@/lib/investment/importRows';
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -36,7 +38,6 @@ interface ImportExportProps {
   currentActivePendingCount: number;
 }
 
-type RawRow = Record<string, string>;
 
 interface PendingImport {
   toInsert: Investment[];
@@ -127,7 +128,13 @@ function parseCsvToRows(text: string): RawRow[] {
 
 function excelCellToString(v: unknown): string {
   if (v == null) return '';
+  // ExcelJS devuelve las celdas de fecha como Date en UTC (Excel no guarda zona
+  // horaria), así que aquí sí hay que leer el día en UTC.
   if (v instanceof Date) return v.toISOString().split('T')[0];
+  // Números: la celda ya es un número sin ambigüedad. Se pasa a texto con coma
+  // decimal ("1500,125") para que parseImportNumber (formato español) no lo
+  // confunda con un separador de miles.
+  if (typeof v === 'number') return String(v).replace('.', ',');
   if (typeof v === 'object') {
     const obj = v as Record<string, unknown>;
     if (Array.isArray(obj.richText))
@@ -155,105 +162,15 @@ async function parseXlsxToRows(buffer: ArrayBuffer): Promise<RawRow[]> {
   return rowsData.slice(1).map(vals => mapRow(vals, colMap));
 }
 
-// ─── Validation & Investment builder ─────────────────────────────────────────
-
-const VALID_INCOME_MODELS = ['bullet', 'periodic_fixed', 'amortizing', 'variable_or_unknown', 'equity'];
-const VALID_FREQ = ['monthly', 'quarterly', 'semiannual', 'annual'];
-const VALID_PRT = ['at_maturity', 'amortizing', 'unknown'];
-
-function isImportComplete(
-  platform: string,
-  projectName: string,
-  amount: number | null,
-  investmentDate: string | null,
-  incomeModel: IncomeModel | null,
-  expectedReturn: number | null,
-  expectedEndDate: string | undefined,
-  paymentFrequency: PaymentFrequency | undefined,
-): boolean {
-  if (!platform || !projectName.trim()) return false;
-  if (amount == null || isNaN(amount) || amount <= 0) return false;
-  if (!investmentDate) return false;
-  if (!incomeModel) return false;
-  if (expectedReturn == null || isNaN(expectedReturn)) return false;
-  if (!expectedEndDate) return false;
-  if ((incomeModel === 'periodic_fixed' || incomeModel === 'amortizing') && !paymentFrequency) return false;
-  return true;
-}
-
-function buildInvestmentFromRow(raw: RawRow): [Investment, boolean] {
-  // platform
-  const platformRaw = (raw.platform || '').toLowerCase().trim();
-  const matched = PLATFORMS.find(p => p.label.toLowerCase() === platformRaw || p.value === platformRaw);
-  const platform = (matched?.value ?? 'other') as Platform;
-  const customPlatformName = platform === 'other' && raw.platform?.trim() ? raw.platform.trim() : undefined;
-
-  // projectName
-  const projectName = (raw.projectName || '').trim();
-
-  // amount — no silent default; null signals missing
-  const amountRaw = (raw.amount || '').replace(',', '.');
-  const amount = amountRaw ? parseFloat(amountRaw) : null;
-
-  // investmentDate — no fallback to today
-  let investmentDate: string | null = null;
-  if (raw.investmentDate?.trim()) {
-    const d = new Date(raw.investmentDate.trim());
-    if (!isNaN(d.getTime())) investmentDate = d.toISOString();
-  }
-
-  // expectedEndDate
-  let expectedEndDate: string | undefined;
-  if (raw.expectedEndDate?.trim()) {
-    const d = new Date(raw.expectedEndDate.trim());
-    if (!isNaN(d.getTime())) expectedEndDate = d.toISOString();
-  }
-
-  // expectedReturn — no silent default
-  const returnRaw = (raw.expectedReturn || '').replace(',', '.');
-  const expectedReturn = returnRaw ? parseFloat(returnRaw) : null;
-
-  // incomeModel — only valid values, invalid → null
-  const incomeModelRaw = (raw.incomeModel || '').toLowerCase().trim();
-  const incomeModel = VALID_INCOME_MODELS.includes(incomeModelRaw) ? (incomeModelRaw as IncomeModel) : null;
-
-  // paymentFrequency
-  const freqRaw = (raw.paymentFrequency || '').toLowerCase().trim();
-  const paymentFrequency = VALID_FREQ.includes(freqRaw) ? (freqRaw as PaymentFrequency) : undefined;
-
-  // principalReturnType
-  const prtRaw = (raw.principalReturnType || '').toLowerCase().trim();
-  const principalReturnType = VALID_PRT.includes(prtRaw) ? (prtRaw as PrincipalReturnType) : undefined;
-
-  // notes
-  const notes = raw.notes?.trim() || undefined;
-
-  const complete = isImportComplete(
-    platform, projectName, amount, investmentDate,
-    incomeModel, expectedReturn, expectedEndDate, paymentFrequency,
-  );
-
-  const investment: Investment = {
-    id: crypto.randomUUID(),
-    platform,
-    customPlatformName,
-    projectName: projectName || 'Sin nombre',
-    // For drafts, store 0/placeholder — status='draft' signals incompleteness
-    amount: (amount != null && !isNaN(amount) && amount > 0) ? amount : 0,
-    investmentDate: investmentDate ?? new Date().toISOString(),
-    expectedEndDate,
-    expectedReturn: (expectedReturn != null && !isNaN(expectedReturn)) ? expectedReturn : 0,
-    incomeModel: incomeModel ?? 'variable_or_unknown',
-    paymentFrequency,
-    principalReturnType,
-    status: complete ? 'active' : 'draft',
-    notes,
-    payments: [],
-    createdAt: new Date().toISOString(),
-    updatedAt: new Date().toISOString(),
+/** JSON: deja todas las fechas de columnas `date` en 'YYYY-MM-DD' (ver parseImportDate). */
+function normalizeImportedDates(inv: Investment): Investment {
+  return {
+    ...inv,
+    investmentDate: parseImportDate(inv.investmentDate) ?? inv.investmentDate,
+    expectedEndDate: inv.expectedEndDate ? (parseImportDate(inv.expectedEndDate) ?? inv.expectedEndDate) : inv.expectedEndDate,
+    firstPaymentDate: inv.firstPaymentDate ? (parseImportDate(inv.firstPaymentDate) ?? inv.firstPaymentDate) : inv.firstPaymentDate,
+    payments: (inv.payments ?? []).map(p => ({ ...p, date: parseImportDate(p.date) ?? p.date })),
   };
-
-  return [investment, complete];
 }
 
 // ─── Zod error helper (unchanged) ────────────────────────────────────────────
@@ -396,7 +313,7 @@ export function ImportExport({
         if (!Array.isArray(parsedData)) throw new Error('El archivo debe contener un array de inversiones');
         if (parsedData.length > MAX_INVESTMENTS_PER_IMPORT)
           throw new Error(`Demasiadas inversiones. Máximo permitido: ${MAX_INVESTMENTS_PER_IMPORT}`);
-        const validatedData = investmentsArraySchema.parse(parsedData) as Investment[];
+        const validatedData = (investmentsArraySchema.parse(parsedData) as Investment[]).map(normalizeImportedDates);
         onImport(validatedData, false);
         setImportOpen(false);
         toast.success(t('investments.importSuccess').replace('{n}', String(validatedData.length)));

@@ -38,7 +38,7 @@ export function TaxDashboard({ isPro = false, onProRequired, onOpenInvestment }:
   const { t } = useLanguage();
   const { user } = useAuth();
 
-  const { summary, projection, isLoading, availableYears, excludedIncompleteCount, enrichedPayments, defaultLossSummary, notAssessedDefaultedInvestments, error, refetch } = useTaxSummary(selectedYear);
+  const { summary, projection, isLoading, availableYears, excludedIncompleteCount, enrichedPayments, defaultLossSummary, manualGppOperations, notAssessedDefaultedInvestments, error, refetch } = useTaxSummary(selectedYear);
   const { 
     expenses, 
     addExpense, 
@@ -99,6 +99,7 @@ export function TaxDashboard({ isPro = false, onProRequired, onOpenInvestment }:
                     summary.deductibleExpenses === 0 &&
                     !hasProjections &&
                     notAssessedDefaultedInvestments.length === 0 &&
+                    manualGppOperations.length === 0 &&
                     !hasDefaultLossData;
 
   return (
@@ -112,7 +113,7 @@ export function TaxDashboard({ isPro = false, onProRequired, onOpenInvestment }:
           </p>
         </div>
         <div className="flex items-center gap-3">
-          {!hasNoData && <TaxExportButton summary={summary} expenses={expenses} enrichedPayments={enrichedPayments} defaultLossSummary={defaultLossSummary} userEmail={user?.email ?? ''} isPro={isPro} onProRequired={onProRequired} />}
+          {!hasNoData && <TaxExportButton summary={summary} expenses={expenses} enrichedPayments={enrichedPayments} defaultLossSummary={defaultLossSummary} manualGppOperations={manualGppOperations} userEmail={user?.email ?? ''} isPro={isPro} onProRequired={onProRequired} />}
           <TaxYearSelector
             selectedYear={selectedYear}
             onYearChange={setSelectedYear}
@@ -176,7 +177,7 @@ export function TaxDashboard({ isPro = false, onProRequired, onOpenInvestment }:
           {hasNoData ? (
             <TaxEmptyState year={selectedYear} />
           ) : (
-            <TaxBucketsCard summary={summary} defaultLossSummary={defaultLossSummary} />
+            <TaxBucketsCard summary={summary} defaultLossSummary={defaultLossSummary} manualGppOperations={manualGppOperations} />
           )}
         </TabsContent>
 

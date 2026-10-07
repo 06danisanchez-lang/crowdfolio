@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { format } from 'date-fns';
+import { format, parseISO } from 'date-fns';
 import { useLanguage } from '@/contexts/LanguageContext';
 import { FileDown, FileSpreadsheet, FileText, Loader2, Lock } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -12,6 +12,7 @@ import {
 } from '@/components/ui/dropdown-menu';
 import { TaxSummary, TaxExpense, TAX_EXPENSE_CATEGORIES, EnrichedPayment } from '@/types/tax';
 import type { DefaultLossYearSummary, DefaultLossImputationRow } from '@/lib/tax/defaultLossSummary';
+import type { ManualGppOperation } from '@/lib/tax/manualGppOperations';
 import { getTaxBreakdown, formatCurrency, formatPercentage } from '@/lib/tax/calculations';
 import { toast } from '@/hooks/use-toast';
 import ExcelJS from 'exceljs';
@@ -20,7 +21,9 @@ import autoTable from 'jspdf-autotable';
 
 // Fechas del informe siempre dd/MM/yyyy con dos cifras — toLocaleDateString('es-ES')
 // no lo garantiza (p.ej. "5/3/2025" en vez de "05/03/2025").
-const fmtDate = (d: string | Date) => format(typeof d === 'string' ? new Date(d) : d, 'dd/MM/yyyy');
+// parseISO interpreta 'YYYY-MM-DD' como medianoche LOCAL; new Date('YYYY-MM-DD') es
+// medianoche UTC y en zonas con offset negativo mostraría el día anterior.
+const fmtDate = (d: string | Date) => format(typeof d === 'string' ? parseISO(d) : d, 'dd/MM/yyyy');
 
 const formatOtherImputations = (items: DefaultLossImputationRow['otherImputations']): string =>
   items.length === 0 ? '—' : items.map((imp) => `${formatCurrency(imp.amount)} (${imp.year})`).join(', ');
@@ -39,10 +42,23 @@ interface ExtendedTaxExportButtonProps {
   expenses: TaxExpense[];
   enrichedPayments: EnrichedPayment[];
   defaultLossSummary: DefaultLossYearSummary;
+  /** Cierres equity con ganancia/pérdida patrimonial a declarar manualmente. */
+  manualGppOperations?: ManualGppOperation[];
   userEmail: string;
   onProRequired?: () => void;
   isPro?: boolean;
 }
+
+const GPP_REASON_LABEL: Record<ManualGppOperation['reason'], string> = {
+  liquidation: 'Liquidación de la sociedad',
+  sale: 'Venta',
+  loss: 'Cierre con pérdida',
+};
+
+const GPP_MANUAL_NOTE =
+  'Ganancias y pérdidas patrimoniales (base del ahorro) por el cierre de inversiones en participaciones. ' +
+  'Crowdfolio NO las incluye en la base imponible ni en la cuota de este informe: decláralas manualmente ' +
+  'en tu IRPF con estos datos y consúltalo con tu asesor.';
 
 const TRIGGER_LABEL_KEYS: Record<string, string> = {
   quita: 'tax.defaultLoss.trigger.quita',
@@ -55,6 +71,7 @@ export function TaxExportButton({
   expenses,
   enrichedPayments,
   defaultLossSummary,
+  manualGppOperations = [],
   userEmail,
   onProRequired,
   isPro = true,
@@ -311,6 +328,20 @@ export function TaxExportButton({
         applyStyle(wsR.getCell(gppDisclaimerRow.number, 1), S.legalNote);
       }
 
+      if (manualGppOperations.length > 0) {
+        addSectionSep('── Ganancias y Pérdidas Patrimoniales — declarar manualmente ──');
+        const gppNet = manualGppOperations.reduce((sum, op) => sum + op.result, 0);
+        addSummaryRow(
+          `Resultado neto (${manualGppOperations.length} operación${manualGppOperations.length > 1 ? 'es' : ''}) — no incluido arriba`,
+          gppNet,
+          gppNet >= 0 ? S.valPos : S.valNeg,
+        );
+        const gppNoteRow = wsR.addRow([GPP_MANUAL_NOTE, '']);
+        gppNoteRow.height = 48;
+        wsR.mergeCells(gppNoteRow.number, 1, gppNoteRow.number, 2);
+        applyStyle(wsR.getCell(gppNoteRow.number, 1), S.legalNote);
+      }
+
       // ── Sheet 2: Tramos IRPF ─────────────────────────────────────────────
       const wsT = workbook.addWorksheet('Tramos IRPF');
       wsT.properties.tabColor = { argb: NAVY };
@@ -559,6 +590,40 @@ export function TaxExportButton({
         applyStyle(wsGPP.getCell(disclaimerRow.number, 1), S.legalNote);
       }
 
+      // ── Sheet 7: GPP a declarar manualmente (conditional) ────────────────
+      if (manualGppOperations.length > 0) {
+        const wsM = workbook.addWorksheet('GPP a declarar');
+        wsM.properties.tabColor = { argb: RED_NEG };
+        wsM.columns = [
+          { width: 30 }, { width: 16 }, { width: 24 }, { width: 14 }, { width: 18 },
+          { width: 14 }, { width: 18 }, { width: 18 },
+        ];
+        addTitleRows(wsM, `GANANCIAS Y PÉRDIDAS PATRIMONIALES ${summary.year}`, 'Base del ahorro — declarar manualmente (no incluidas en el cálculo)', 8);
+
+        const mNoteRow = wsM.addRow([GPP_MANUAL_NOTE]);
+        mNoteRow.height = 36;
+        wsM.mergeCells(mNoteRow.number, 1, mNoteRow.number, 8);
+        applyStyle(wsM.getCell(mNoteRow.number, 1), S.legalNote);
+        wsM.addRow([]).height = 6;
+
+        addTableHeader(wsM, [
+          'Inversión', 'Plataforma', 'Motivo', 'Fecha adquisición', 'Valor adquisición (€)',
+          'Fecha transmisión', 'Valor transmisión (€)', 'Resultado (€)',
+        ], 8);
+        addDataRows(wsM, manualGppOperations, (op) => [
+          op.projectName, op.platformLabel, GPP_REASON_LABEL[op.reason],
+          fmtDate(op.acquisitionDate), op.acquisitionValue,
+          fmtDate(op.transmissionDate), op.transmissionValue, op.result,
+        ], (cell, col, op) => {
+          if ([5, 7, 8].includes(col)) { cell.numFmt = MONEY; applyStyle(cell, { ...cell.style, alignment: { horizontal: 'right' } } as XStyle); }
+          if (col === 8) applyStyle(cell, { ...cell.style, font: { bold: true, size: 10, color: { argb: op.result < 0 ? RED_NEG : GREEN } } } as XStyle);
+        });
+        const mTot = addTotalRow(wsM, [
+          'Resultado neto', '', '', '', '', '', '', manualGppOperations.reduce((sum, op) => sum + op.result, 0),
+        ], 8);
+        wsM.getRow(mTot).getCell(8).numFmt = MONEY;
+      }
+
       // ── Download ──────────────────────────────────────────────────────────
       const buffer = await workbook.xlsx.writeBuffer();
       const blob = new Blob([buffer], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
@@ -630,6 +695,9 @@ export function TaxExportButton({
           ['Retenciones Practicadas', formatCurrency(negate(summary.withholdingsApplied))],
           ['Resultado Declaración', formatCurrency(resultadoDeclaracion)],
           ['Tipo Efectivo', formatPercentage(summary.effectiveRate)],
+          ...(manualGppOperations.length > 0
+            ? [['GPP a declarar manualmente (no incluidas arriba)', formatCurrency(manualGppOperations.reduce((sum, op) => sum + op.result, 0))]]
+            : []),
         ],
         theme: 'striped',
         headStyles: { fillColor: [59, 130, 246] },
@@ -832,6 +900,48 @@ export function TaxExportButton({
         // Vuelve a vertical para el resto del documento.
         doc.addPage('a4', 'portrait');
         yPos = 20;
+      }
+
+      // ── GPP a declarar manualmente (cierres equity) — fuera del cálculo ──────
+      if (manualGppOperations.length > 0) {
+        if (yPos > 220) { doc.addPage(); yPos = 20; }
+        doc.setFontSize(14);
+        doc.setFont('helvetica', 'bold');
+        doc.text('Ganancias y Pérdidas Patrimoniales — declarar manualmente', 14, yPos);
+        yPos += 6;
+        const gppLines = doc.splitTextToSize(GPP_MANUAL_NOTE, pageWidth - 28);
+        doc.setFontSize(8);
+        doc.setFont('helvetica', 'italic');
+        doc.text(gppLines, 14, yPos);
+        doc.setFont('helvetica', 'normal');
+        yPos += gppLines.length * 4 + 2;
+
+        autoTable(doc, {
+          startY: yPos,
+          head: [['Inversión', 'Motivo', 'Adquisición', 'Valor adq.', 'Transmisión', 'Valor transm.', 'Resultado']],
+          body: [
+            ...manualGppOperations.map((op) => [
+              `${op.projectName}\n${op.platformLabel}`,
+              GPP_REASON_LABEL[op.reason],
+              fmtDate(op.acquisitionDate),
+              formatCurrency(op.acquisitionValue),
+              fmtDate(op.transmissionDate),
+              formatCurrency(op.transmissionValue),
+              formatCurrency(op.result),
+            ]),
+            ['', '', '', '', '', 'Neto', formatCurrency(manualGppOperations.reduce((sum, op) => sum + op.result, 0))],
+          ],
+          theme: 'striped',
+          headStyles: { fillColor: [239, 68, 68], fontSize: 8 },
+          styles: { fontSize: 8 },
+          columnStyles: {
+            0: { cellWidth: 40 }, 1: { cellWidth: 26 }, 2: { cellWidth: 20 },
+            3: { cellWidth: 22, halign: 'right' as const }, 4: { cellWidth: 20 },
+            5: { cellWidth: 24, halign: 'right' as const }, 6: { cellWidth: 26, halign: 'right' as const },
+          },
+        });
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        yPos = (doc as any).lastAutoTable.finalY + 15;
       }
 
       // ── Detalle de Pagos ─────────────────────────────────────────────────────

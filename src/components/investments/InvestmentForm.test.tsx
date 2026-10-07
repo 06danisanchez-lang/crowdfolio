@@ -430,3 +430,24 @@ describe('InvestmentForm — inversiones en impago no permiten cambiar el tipo d
     expect(screen.queryByText('Para cambiar el tipo de rendimiento, primero deshaz el impago.')).toBeNull();
   });
 });
+
+describe('InvestmentForm — fechas que se guardan', () => {
+  afterEach(cleanup);
+
+  it('editar y guardar sin tocar fechas conserva exactamente el mismo día (también en horario de verano)', async () => {
+    const onSubmit = vi.fn();
+    const inv = makeInvestment({
+      id: 'inv-fechas',
+      investmentDate: '2024-01-01',
+      expectedEndDate: '2025-07-31',
+    });
+    renderForm(inv, onSubmit);
+    await openDialog();
+    changeNotesAndSave('solo cambio notas');
+
+    await waitFor(() => expect(onSubmit).toHaveBeenCalled());
+    const payload = onSubmit.mock.calls[0][0] as Record<string, unknown>;
+    expect(payload.investmentDate).toBe('2024-01-01');
+    expect(payload.expectedEndDate).toBe('2025-07-31');
+  });
+});

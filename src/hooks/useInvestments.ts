@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
-import { Investment, InvestmentSummary, Platform, InvestmentStatus, Payment, DraftInvestment, IncomeModel, PaymentFrequency, PrincipalReturnType, EquityType, InvestmentScheduleEntry } from '@/types/investment';
+import { Investment, InvestmentSummary, Platform, InvestmentStatus, Payment, DraftInvestment, IncomeModel, PaymentFrequency, PrincipalReturnType, EquityType, InvestmentScheduleEntry, PaymentType } from '@/types/investment';
 import { calculateInvestmentTotalReturn, calculateExpectedReturnFromSchedule, calculateAccruedReturn, calculateRemainingReturn, getEffectiveTAE } from '@/lib/investment/calculations';
 import { isInvestmentComplete, getInvestmentCompletionStatus } from '@/lib/investment/completeness';
 import { generateSchedule } from '@/lib/investment/scheduleGenerator';
@@ -116,7 +116,7 @@ export function useInvestments() {
             .filter(p => p.investment_id === inv.id)
             .map(p => ({
               id: p.id as string, date: p.date as string, amount: Number(p.amount),
-              type: p.type as 'dividend' | 'principal' | 'interest',
+              type: p.type as PaymentType,
               notes: (p.notes as string) || undefined,
             })),
           autoPendingIds.has(inv.id) ? 'pending' : undefined,
@@ -448,7 +448,7 @@ export function useInvestments() {
     if (error) { console.error('Error adding payment:', error); return null; }
     const newPayment: Payment = {
       id: data.id, date: data.date, amount: Number(data.amount),
-      type: data.type as 'dividend' | 'principal' | 'interest', notes: data.notes || undefined,
+      type: data.type as PaymentType, notes: data.notes || undefined,
     };
     setAllRawInvestments(prev => prev.map(inv =>
       inv.id === investmentId
@@ -457,6 +457,57 @@ export function useInvestments() {
     ));
     return newPayment;
   }, []);
+
+  /**
+   * Cierra una inversión equity registrando el resultado ANTES de marcarla
+   * como completada (ver lib/investment/equityExit.ts):
+   *  1. Inserta todos los pagos del cierre en un único INSERT (o entran todos o ninguno).
+   *  2. Solo si eso va bien, pasa la inversión a 'completed'.
+   *  3. Si el cambio de estado falla, borra los pagos recién insertados para no
+   *     dejar el resultado registrado en una inversión que sigue abierta.
+   * 'completed' nunca es automático: solo se llama desde una confirmación del usuario.
+   */
+  const closeEquityInvestment = useCallback(async (
+    investmentId: string,
+    payments: Omit<Payment, 'id'>[],
+    closeUpdates: Pick<Partial<Investment>, 'actualEndDate' | 'closeReason'>,
+  ): Promise<{ error?: string }> => {
+    let insertedIds: string[] = [];
+    if (payments.length > 0) {
+      const { data, error } = await supabase.from('payments').insert(
+        payments.map(p => ({
+          investment_id: investmentId, date: p.date, amount: p.amount,
+          type: p.type, notes: p.notes || null,
+        })),
+      ).select('id');
+      if (error) {
+        console.error('Error adding equity exit payments:', error);
+        return { error: 'No se ha podido registrar el importe recibido. La inversión sigue abierta.' };
+      }
+      insertedIds = (data ?? []).map(r => r.id);
+    }
+
+    const result = await updateInvestment(investmentId, { status: 'completed', ...closeUpdates });
+    // Si a la inversión le falta algún dato obligatorio, updateInvestment la
+    // pasa a borrador en vez de completarla: los pagos quedarían colgados de
+    // un borrador, fuera del informe fiscal. Se trata como un fallo.
+    if (result.demotedToDraft) {
+      if (insertedIds.length > 0) {
+        const { error: rollbackError } = await supabase.from('payments').delete().in('id', insertedIds);
+        if (rollbackError) console.error('Error rolling back equity exit payments:', rollbackError);
+      }
+      await fetchInvestments();
+      return { error: 'A esta inversión le faltan datos obligatorios y ha pasado a borrador. Complétala y vuelve a cerrarla.' };
+    }
+    if (result.error && insertedIds.length > 0) {
+      const { error: rollbackError } = await supabase.from('payments').delete().in('id', insertedIds);
+      if (rollbackError) console.error('Error rolling back equity exit payments:', rollbackError);
+      await fetchInvestments();
+      return { error: 'No se ha podido cerrar la inversión. No se ha guardado ningún cambio.' };
+    }
+    if (result.error) return { error: result.error };
+    return {};
+  }, [updateInvestment, fetchInvestments]);
 
   const deletePayment = useCallback(async (investmentId: string, paymentId: string) => {
     const { error } = await supabase.from('payments').delete().eq('id', paymentId);
@@ -620,7 +671,7 @@ export function useInvestments() {
     incompleteInvestments, incompleteCount, allInvestmentsCount,
     isLoading, error, summary, scheduleMap,
     addInvestment, addDraftInvestment, updateInvestment, deleteInvestment,
-    addPayment, deletePayment, importInvestments,
+    addPayment, closeEquityInvestment, deletePayment, importInvestments,
     exportInvestments, clearAllInvestments, refetch: fetchInvestments,
   };
 }

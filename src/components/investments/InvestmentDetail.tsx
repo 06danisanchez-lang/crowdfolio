@@ -612,7 +612,7 @@ export function InvestmentDetail({ investment, schedule = [], onClose, onUpdate,
 
             {showAddPayment && (
               <div className="mb-4 rounded-lg border bg-card p-4">
-                <div className="grid gap-4 sm:grid-cols-4">
+                <div className="grid gap-4 sm:grid-cols-3">
                   <Popover>
                     <PopoverTrigger asChild>
                       <Button variant="outline" className="justify-start text-left font-normal">
@@ -644,14 +644,6 @@ export function InvestmentDetail({ investment, schedule = [], onClose, onUpdate,
                       <SelectItem value="interest">{t('investments.detail.interest')}</SelectItem>
                     </SelectContent>
                   </Select>
-                  <div className="flex gap-2">
-                    <Button onClick={handleAddPayment} disabled={!paymentAmount || !!newPaymentWithholdingError}>
-                      {t('common.add')}
-                    </Button>
-                    <Button variant="ghost" onClick={resetPaymentForm}>
-                      {t('common.cancel')}
-                    </Button>
-                  </div>
                 </div>
                 {withholdingApplies && (
                   <div className="mt-3 grid gap-1.5 sm:max-w-xs">
@@ -677,6 +669,15 @@ export function InvestmentDetail({ investment, schedule = [], onClose, onUpdate,
                     )}
                   </div>
                 )}
+                {/* Botones al final: en móvil la retención quedaba debajo de "Añadir" */}
+                <div className="mt-3 flex gap-2">
+                  <Button onClick={handleAddPayment} disabled={!paymentAmount || !!newPaymentWithholdingError}>
+                    {t('common.add')}
+                  </Button>
+                  <Button variant="ghost" onClick={resetPaymentForm}>
+                    {t('common.cancel')}
+                  </Button>
+                </div>
               </div>
             )}
 

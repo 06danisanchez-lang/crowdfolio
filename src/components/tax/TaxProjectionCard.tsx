@@ -119,7 +119,8 @@ export function TaxProjectionCard({ summary, projection, year }: TaxProjectionCa
             <div className="flex justify-between">
               <span>Base imponible total</span>
               <span className="font-medium">
-                {formatCurrency(projection.totalProjectedGross - summary.deductibleExpenses)}
+                {/* Igual que el cálculo (projections.ts): la base no baja de 0 */}
+                {formatCurrency(Math.max(0, projection.totalProjectedGross - summary.deductibleExpenses))}
               </span>
             </div>
             <div className="flex justify-between">

@@ -47,9 +47,13 @@ export function useInvestments() {
       }
       setError(null);
 
+      // Filtrar siempre por el usuario: RLS deja a un admin leer las inversiones
+      // de todos ("Admins can view all investments"), y sin este filtro el panel,
+      // la lista y las notificaciones del admin mezclaban carteras ajenas.
       const { data: investmentsData, error: investmentsError } = await supabase
         .from('investments')
         .select('*')
+        .eq('user_id', user.id)
         .order('created_at', { ascending: false });
 
       if (investmentsError) throw investmentsError;

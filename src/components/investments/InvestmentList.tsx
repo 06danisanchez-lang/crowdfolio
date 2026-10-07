@@ -65,9 +65,9 @@ interface InvestmentListProps {
   incompleteInvestments?: DraftInvestment[];
   lockedInvestments?: Investment[];
   scheduleMap?: Record<string, InvestmentScheduleEntry[]>;
-  onUpdate: (id: string, updates: Partial<Investment>) => Promise<{ demotedToDraft?: boolean } | void> | void;
+  onUpdate: (id: string, updates: Partial<Investment>) => Promise<{ demotedToDraft?: boolean; error?: string } | undefined>;
   onDelete: (id: string) => void;
-  onAddPayment: (investmentId: string, payment: { date: string; amount: number; type: PaymentType; notes?: string; withholdingApplied?: number }) => Promise<unknown> | void;
+  onAddPayment: (investmentId: string, payment: Omit<Payment, 'id'>) => Promise<unknown>;
   onDeletePayment: (investmentId: string, paymentId: string) => void;
   onUpdatePaymentWithholding?: (investmentId: string, paymentId: string, withholdingApplied: number) => Promise<boolean>;
   onCloseEquity?: (

@@ -7,6 +7,7 @@ import { Investment, InvestmentScheduleEntry } from '@/types/investment';
 import { Notification } from './useNotifications';
 import { calculateAccruedReturn } from '@/lib/investment/calculations';
 import { computeFiscalLossNotifications } from '@/lib/notifications/fiscalLossNotifications';
+import type { TablesInsert } from '@/integrations/supabase/types';
 
 function getWeekKey(date: Date): string {
   const year = getISOWeekYear(date);
@@ -34,7 +35,7 @@ export function useNotificationGenerator(
       const todayEnd = new Date();
       todayEnd.setHours(23, 59, 59, 999);
 
-      const toInsert: object[] = [];
+      const toInsert: TablesInsert<'notifications'>[] = [];
       const activeInvs = investments.filter(i => i.status === 'active');
 
       // ── 1. payment_due ─────────────────────────────────────────────

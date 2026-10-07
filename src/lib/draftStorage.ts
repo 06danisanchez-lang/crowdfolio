@@ -24,6 +24,7 @@ export interface DraftFormValues {
   paymentFrequency?: string;
   firstPaymentDate?: string;
   principalReturnType?: string;
+  equityType?: string;
 }
 
 export interface DraftPayload {

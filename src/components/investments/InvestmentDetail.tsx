@@ -69,7 +69,7 @@ interface InvestmentDetailProps {
   investment: Investment | null;
   schedule?: InvestmentScheduleEntry[];
   onClose: () => void;
-  onUpdate: (id: string, updates: Partial<Investment>) => Promise<unknown>;
+  onUpdate: (id: string, updates: Partial<Investment>) => Promise<{ demotedToDraft?: boolean; error?: string } | undefined>;
   onDelete: (id: string) => void;
   onAddPayment: (investmentId: string, payment: { date: string; amount: number; type: 'dividend' | 'principal' | 'interest'; notes?: string; withholdingApplied?: number }) => void;
   onDeletePayment: (investmentId: string, paymentId: string) => void;
@@ -367,15 +367,11 @@ export function InvestmentDetail({ investment, schedule = [], onClose, onUpdate,
               initialData={investment}
               onSubmit={async (data) => {
                 const result = await onUpdate(investment.id, data);
-                const errorMessage =
-                  result && typeof result === 'object' && 'error' in result && typeof (result as { error?: unknown }).error === 'string'
-                    ? (result as { error: string }).error
-                    : null;
-                if (errorMessage) {
-                  toast.error(errorMessage);
+                if (result?.error) {
+                  toast.error(result.error);
                   return;
                 }
-                if (result && 'demotedToDraft' in result && result.demotedToDraft) {
+                if (result?.demotedToDraft) {
                   toast.warning('La inversión ha pasado a pendientes por faltar datos obligatorios.');
                 }
               }}

@@ -487,6 +487,7 @@ export function InvestmentForm({
         ? new Date(saved.formValues.firstPaymentDate)
         : undefined,
       principalReturnType: (saved.formValues.principalReturnType as PrincipalReturnType) ?? undefined,
+      equityType:         (saved.formValues.equityType as EquityType) ?? undefined,
     });
 
     setDraftExists(true);
@@ -617,7 +618,7 @@ export function InvestmentForm({
         paymentFrequency: data.paymentFrequency || null,
         firstPaymentDate: data.firstPaymentDate ? toDateOnlyString(data.firstPaymentDate) : null,
         principalReturnType: data.principalReturnType || null,
-        equityType: (data as any).equityType || null,
+        equityType: (data as { equityType?: EquityType }).equityType || null,
         status: finalStatus,
         notes: data.notes,
         sourceUrl: data.sourceUrl || undefined,

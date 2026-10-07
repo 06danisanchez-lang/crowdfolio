@@ -5,6 +5,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { Investment, InvestmentScheduleEntry } from '@/types/investment';
 import { Notification } from './useNotifications';
+import type { TablesInsert } from '@/integrations/supabase/types';
 
 export function usePaymentDueNotifications(
   investments: Investment[],
@@ -27,7 +28,7 @@ export function usePaymentDueNotifications(
       const windowStart = subDays(today, 7);
       windowStart.setHours(0, 0, 0, 0);
 
-      const toInsert: object[] = [];
+      const toInsert: TablesInsert<'notifications'>[] = [];
 
       for (const inv of investments) {
         if (inv.status !== 'active') continue;

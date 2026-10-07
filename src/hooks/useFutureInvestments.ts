@@ -31,18 +31,18 @@ export function useFutureInvestments() {
       if (requestIdRef.current !== currentId) return;
 
       const mapped: FutureInvestment[] = (data || []).map((row: Record<string, unknown>) => ({
-        id: row.id,
+        id: row.id as string,
         platform: row.platform as Platform,
-        customPlatformName: row.custom_platform_name || undefined,
-        projectName: row.project_name,
+        customPlatformName: (row.custom_platform_name as string | null) || undefined,
+        projectName: row.project_name as string,
         estimatedAmount: row.estimated_amount != null ? Number(row.estimated_amount) : null,
         expectedReturn: row.expected_return != null ? Number(row.expected_return) : null,
-        estimatedOpenDate: row.estimated_open_date || undefined,
-        estimatedEndDate: row.estimated_end_date || undefined,
-        sourceUrl: row.source_url || undefined,
-        notes: row.notes || undefined,
-        createdAt: row.created_at,
-        updatedAt: row.updated_at,
+        estimatedOpenDate: (row.estimated_open_date as string | null) || undefined,
+        estimatedEndDate: (row.estimated_end_date as string | null) || undefined,
+        sourceUrl: (row.source_url as string | null) || undefined,
+        notes: (row.notes as string | null) || undefined,
+        createdAt: row.created_at as string,
+        updatedAt: row.updated_at as string,
       }));
 
       setFutureInvestments(mapped);

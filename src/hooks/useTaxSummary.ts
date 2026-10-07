@@ -272,7 +272,8 @@ export function useTaxSummary(year: number) {
         clearTimeout(timeoutId);
         if (requestIdRef.current !== currentId) return;
         console.error('Error fetching data for tax summary:', err);
-        const msg = err instanceof Error ? err.message : (err as any)?.message || (err as any)?.details || JSON.stringify(err);
+        const pgErr = err as { message?: string; details?: string } | null;
+        const msg = err instanceof Error ? err.message : pgErr?.message || pgErr?.details || JSON.stringify(err);
         setError(msg || 'Error al cargar datos fiscales');
       } finally {
         if (requestIdRef.current === currentId) {

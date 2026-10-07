@@ -141,11 +141,11 @@ export function useAdminInvestments() {
           payments: paymentsData
             .filter(p => p.investment_id === inv.id)
             .map(p => ({
-              id: p.id,
-              date: p.date,
+              id: p.id as string,
+              date: p.date as string,
               amount: Number(p.amount),
               type: p.type as Payment['type'],
-              notes: p.notes || undefined,
+              notes: (p.notes as string | null) || undefined,
             })),
         };
 

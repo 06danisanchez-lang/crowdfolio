@@ -106,8 +106,8 @@ export function useTaxExpenses(year?: number) {
     }
   };
 
-  const updateExpense = async (id: string, updates: Partial<Omit<TaxExpense, 'id' | 'userId' | 'createdAt' | 'updatedAt'>>) => {
-    if (!user) return;
+  const updateExpense = async (id: string, updates: Partial<Omit<TaxExpense, 'id' | 'userId' | 'createdAt' | 'updatedAt'>>): Promise<boolean> => {
+    if (!user) return false;
     try {
       const updateData: Record<string, unknown> = {};
       if (updates.year !== undefined) updateData.year = updates.year;
@@ -123,9 +123,11 @@ export function useTaxExpenses(year?: number) {
         expense.id === id ? { ...expense, ...updates, updatedAt: new Date().toISOString() } : expense
       ));
       toast.success('Gasto actualizado');
+      return true;
     } catch (error) {
       console.error('Error updating tax expense:', error);
       toast.error('Error al actualizar el gasto');
+      return false;
     }
   };
 

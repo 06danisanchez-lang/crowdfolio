@@ -32,6 +32,9 @@ export function TaxDashboard({ isPro = false, onProRequired, onOpenInvestment }:
   const [expenseFormOpen, setExpenseFormOpen] = useState(false);
   const [prefillCategory, setPrefillCategory] = useState<TaxExpenseCategory | undefined>();
   const [prefillDescription, setPrefillDescription] = useState<string | undefined>();
+  // Controlado para no perder la pestaña activa cuando se pasa de "sin datos" a "con datos"
+  // (p. ej. al anotar el primer gasto deducible de un ejercicio sin cobros).
+  const [activeTab, setActiveTab] = useState('breakdown');
   const { t } = useLanguage();
   const { user } = useAuth();
 
@@ -98,32 +101,6 @@ export function TaxDashboard({ isPro = false, onProRequired, onOpenInvestment }:
                     notAssessedDefaultedInvestments.length === 0 &&
                     !hasDefaultLossData;
 
-  if (hasNoData) {
-    return (
-      <div className="space-y-6">
-        {/* Header with Year Selector - siempre visible */}
-        <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-          <div>
-            <h2 className="text-2xl font-bold">Resumen Fiscal</h2>
-            <p className="text-muted-foreground">
-              Visualiza tus rendimientos y obligaciones fiscales
-            </p>
-          </div>
-          <TaxYearSelector
-            selectedYear={selectedYear}
-            onYearChange={setSelectedYear}
-            availableYears={availableYears}
-          />
-        </div>
-
-        {spainTaxNotice}
-
-        {/* Empty State */}
-        <TaxEmptyState year={selectedYear} />
-      </div>
-    );
-  }
-
   return (
     <div className="space-y-6">
       {/* Header with Year Selector */}
@@ -135,7 +112,7 @@ export function TaxDashboard({ isPro = false, onProRequired, onOpenInvestment }:
           </p>
         </div>
         <div className="flex items-center gap-3">
-          <TaxExportButton summary={summary} expenses={expenses} enrichedPayments={enrichedPayments} defaultLossSummary={defaultLossSummary} userEmail={user?.email ?? ''} isPro={isPro} onProRequired={onProRequired} />
+          {!hasNoData && <TaxExportButton summary={summary} expenses={expenses} enrichedPayments={enrichedPayments} defaultLossSummary={defaultLossSummary} userEmail={user?.email ?? ''} isPro={isPro} onProRequired={onProRequired} />}
           <TaxYearSelector
             selectedYear={selectedYear}
             onYearChange={setSelectedYear}
@@ -165,13 +142,17 @@ export function TaxDashboard({ isPro = false, onProRequired, onOpenInvestment }:
           <span>{t('tax.incomplete.warning').replace('{count}', String(excludedIncompleteCount))}</span>
         </div>
       )}
-      <TaxSummaryCards summary={summary} />
+      {!hasNoData && (
+        <>
+          <TaxSummaryCards summary={summary} />
 
-      {/* Projection Card for Current Year */}
-      <TaxProjectionCard summary={summary} projection={projection} year={selectedYear} />
+          {/* Projection Card for Current Year */}
+          <TaxProjectionCard summary={summary} projection={projection} year={selectedYear} />
+        </>
+      )}
 
-      {/* Detailed Tabs */}
-      <Tabs defaultValue="breakdown" className="space-y-4">
+      {/* Detailed Tabs — siempre visibles: sin cobros se pueden anotar gastos igualmente */}
+      <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-4">
         <TabsList className="grid w-full grid-cols-3 lg:w-auto lg:grid-cols-none lg:flex">
           <TabsTrigger value="breakdown" className="flex items-center gap-2">
             <Calculator className="h-4 w-4" />
@@ -188,11 +169,15 @@ export function TaxDashboard({ isPro = false, onProRequired, onOpenInvestment }:
         </TabsList>
 
         <TabsContent value="breakdown">
-          <TaxBreakdownTable summary={summary} />
+          {hasNoData ? <TaxEmptyState year={selectedYear} /> : <TaxBreakdownTable summary={summary} />}
         </TabsContent>
 
         <TabsContent value="buckets" className="space-y-4">
-          <TaxBucketsCard summary={summary} defaultLossSummary={defaultLossSummary} />
+          {hasNoData ? (
+            <TaxEmptyState year={selectedYear} />
+          ) : (
+            <TaxBucketsCard summary={summary} defaultLossSummary={defaultLossSummary} />
+          )}
         </TabsContent>
 
         <TabsContent value="expenses">

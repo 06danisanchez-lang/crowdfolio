@@ -189,6 +189,10 @@ function checkFirstPaymentDateRange(
   }
 }
 
+const EXPECTED_RETURN_MIN_MSG = 'La rentabilidad esperada no puede ser negativa';
+const EXPECTED_RETURN_MAX_MSG = 'La rentabilidad esperada no puede superar el 100 %';
+const expectedReturnSchema = z.number().min(0, EXPECTED_RETURN_MIN_MSG).max(100, EXPECTED_RETURN_MAX_MSG);
+
 const investmentSchema = z.object({
   platform: z.enum(['urbanitae', 'housers', 'estateguru', 'crowdcube', 'brickstarter', 'wecity', 'other'] as const),
   customPlatformName: z.string().optional(),
@@ -196,7 +200,7 @@ const investmentSchema = z.object({
   amount: z.number().min(1, 'El monto debe ser mayor a 0'),
   investmentDate: z.date(),
   expectedEndDate: z.date().optional(),
-  expectedReturn: z.number().min(0, 'El rendimiento debe ser mayor o igual a 0'),
+  expectedReturn: expectedReturnSchema,
   incomeModel: z.enum(['bullet', 'periodic_fixed', 'amortizing', 'variable_or_unknown', 'equity'] as const),
   paymentFrequency: z.enum(['monthly', 'quarterly', 'semiannual', 'annual'] as const).optional(),
   firstPaymentDate: z.date().optional(),
@@ -230,7 +234,7 @@ const draftInvestmentSchema = z.object({
   amount: z.number().nullable().optional(),
   investmentDate: z.date().optional(),
   expectedEndDate: z.date().optional(),
-  expectedReturn: z.number().nullable().optional(),
+  expectedReturn: expectedReturnSchema.nullable().optional(),
   incomeModel: z.enum(['bullet', 'periodic_fixed', 'amortizing', 'variable_or_unknown', 'equity'] as const).optional(),
   paymentFrequency: z.enum(['monthly', 'quarterly', 'semiannual', 'annual'] as const).optional(),
   firstPaymentDate: z.date().optional(),
@@ -250,7 +254,7 @@ const futureInvestmentSchema = z.object({
   amount: z.number().nullable().optional(),
   investmentDate: z.date().optional(),
   expectedEndDate: z.date().optional(),
-  expectedReturn: z.number().nullable().optional(),
+  expectedReturn: expectedReturnSchema.nullable().optional(),
   status: z.enum(['active', 'pending', 'completed', 'defaulted'] as const).optional(),
   notes: z.string().optional(),
   sourceUrl: z.string().optional(),

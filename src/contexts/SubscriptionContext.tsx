@@ -2,7 +2,7 @@
 import { createContext, useContext, useState, useEffect, useCallback, ReactNode } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
-import { PlanType, isPro } from '@/lib/stripe/config';
+import { PlanType, isPro, PAYMENTS_ENABLED } from '@/lib/stripe/config';
 
 export interface SubscriptionState {
   plan: PlanType;
@@ -162,6 +162,10 @@ export function SubscriptionProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     if (user && session?.access_token) {
       const pendingPlan = sessionStorage.getItem('pending_checkout_plan');
+      if (!PAYMENTS_ENABLED) {
+        if (pendingPlan) sessionStorage.removeItem('pending_checkout_plan');
+        return;
+      }
       if (pendingPlan && ['monthly', 'yearly'].includes(pendingPlan)) {
         sessionStorage.removeItem('pending_checkout_plan');
         setTimeout(() => {
@@ -174,6 +178,8 @@ export function SubscriptionProvider({ children }: { children: ReactNode }) {
   }, [user, session?.access_token]);
 
   const openCheckout = async (plan: 'monthly' | 'yearly') => {
+    // Defensa en profundidad: los botones ya están deshabilitados si PAYMENTS_ENABLED es false
+    if (!PAYMENTS_ENABLED) return;
     if (!session?.access_token) throw new Error('User not authenticated');
 
     const { data, error } = await supabase.functions.invoke('create-checkout', {
@@ -194,6 +200,7 @@ export function SubscriptionProvider({ children }: { children: ReactNode }) {
   };
 
   const openCustomerPortal = async () => {
+    if (!PAYMENTS_ENABLED) return;
     if (!session?.access_token) throw new Error('User not authenticated');
 
     const { data, error } = await supabase.functions.invoke('customer-portal', {

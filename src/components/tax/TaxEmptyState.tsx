@@ -24,8 +24,8 @@ export function TaxEmptyState({ year }: TaxEmptyStateProps) {
         
         <p className="text-muted-foreground max-w-md">
           {isFutureOrCurrentYear
-            ? '¡Es un buen momento para planificar tus próximas inversiones!'
-            : 'Puedes añadir gastos deducibles si procede.'}
+            ? '¡Es un buen momento para planificar tus próximas inversiones! Puedes anotar gastos deducibles en la pestaña «Gastos Deducibles».'
+            : 'Puedes añadir gastos deducibles si procede en la pestaña «Gastos Deducibles».'}
         </p>
       </CardContent>
     </Card>

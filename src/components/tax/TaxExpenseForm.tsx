@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
@@ -55,6 +55,18 @@ interface TaxExpenseFormProps {
   open?: boolean;
   onOpenChange?: (open: boolean) => void;
   triggerButton?: boolean;
+  /** Si se pasa, el formulario funciona en modo edición precargado con este gasto. */
+  expense?: TaxExpense;
+}
+
+function expenseToFormValues(expense: TaxExpense): ExpenseFormData {
+  return {
+    category: expense.category,
+    description: expense.description,
+    amount: String(expense.amount).replace('.', ','),
+    date: expense.date,
+    notes: expense.notes ?? '',
+  };
 }
 
 export function TaxExpenseForm({ 
@@ -65,7 +77,9 @@ export function TaxExpenseForm({
   open: controlledOpen,
   onOpenChange,
   triggerButton = true,
+  expense,
 }: TaxExpenseFormProps) {
+  const isEditing = expense !== undefined;
   const [internalOpen, setInternalOpen] = useState(false);
   
   const isControlled = controlledOpen !== undefined;
@@ -74,7 +88,7 @@ export function TaxExpenseForm({
 
   const form = useForm<ExpenseFormData>({
     resolver: zodResolver(expenseSchema),
-    defaultValues: {
+    defaultValues: expense ? expenseToFormValues(expense) : {
       category: prefillCategory || 'platform_fees',
       description: prefillDescription || '',
       amount: '',
@@ -82,6 +96,11 @@ export function TaxExpenseForm({
       notes: '',
     },
   });
+
+  // En modo edición, recargar los valores del gasto cada vez que se abre el diálogo
+  useEffect(() => {
+    if (open && expense) form.reset(expenseToFormValues(expense));
+  }, [open, expense, form]);
 
   // Update form when prefill values change
   const updateFormWithPrefill = (category?: TaxExpenseCategory, description?: string) => {
@@ -96,7 +115,8 @@ export function TaxExpenseForm({
       description: data.description,
       amount: parseFloat(data.amount.replace(',', '.')),
       date: data.date,
-      notes: data.notes || undefined,
+      // En edición se envía '' para poder borrar unas notas existentes (el hook lo guarda como null)
+      notes: isEditing ? (data.notes ?? '') : (data.notes || undefined),
     });
     if (success) {
       form.reset();
@@ -126,7 +146,7 @@ export function TaxExpenseForm({
       )}
       <DialogContent className="sm:max-w-[425px]">
         <DialogHeader>
-          <DialogTitle>Nuevo Gasto Deducible</DialogTitle>
+          <DialogTitle>{isEditing ? 'Editar Gasto Deducible' : 'Nuevo Gasto Deducible'}</DialogTitle>
         </DialogHeader>
         <Form {...form}>
           <form onSubmit={form.handleSubmit(handleSubmit)} className="space-y-4">
@@ -136,7 +156,7 @@ export function TaxExpenseForm({
               render={({ field }) => (
                 <FormItem>
                   <FormLabel>Categoría</FormLabel>
-                  <Select onValueChange={field.onChange} defaultValue={field.value}>
+                  <Select onValueChange={field.onChange} value={field.value}>
                     <FormControl>
                       <SelectTrigger>
                         <SelectValue placeholder="Selecciona una categoría" />

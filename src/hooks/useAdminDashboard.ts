@@ -1,6 +1,7 @@
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
+import { getPlatformLabel } from '@/lib/labels';
 
 export interface AdminUserInvestment {
   id: string;
@@ -64,7 +65,7 @@ export function useAdminDashboard() {
         list.push({
           id: inv.id,
           projectName: inv.project_name,
-          platformName: inv.custom_platform_name || inv.platform,
+          platformName: inv.custom_platform_name || getPlatformLabel(inv.platform),
           amount: Number(inv.amount),
           status: inv.status,
         });
@@ -98,7 +99,7 @@ export function useAdminDashboard() {
       // --- Analytics: Platform Market Share (investments only) ---
       const platformMap = new Map<string, number>();
       for (const inv of investments) {
-        const name = inv.custom_platform_name || inv.platform;
+        const name = inv.custom_platform_name || getPlatformLabel(inv.platform);
         platformMap.set(name, (platformMap.get(name) ?? 0) + Number(inv.amount));
       }
       const platformMarketShare = Array.from(platformMap.entries())

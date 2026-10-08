@@ -36,3 +36,28 @@ jobs:
 
       - name: Build
         run: npm run build
+
+  # Base de datos de pruebas: estructura de producción + migraciones nuevas +
+  # pruebas de permisos (RLS). Ver CLAUDE.md, "Base de datos de pruebas".
+  db:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    services:
+      postgres:
+        image: postgres:17
+        env:
+          POSTGRES_PASSWORD: postgres
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Migraciones y pruebas de permisos
+        env:
+          DATABASE_URL: postgresql://postgres:postgres@localhost:5432/postgres
+        run: scripts/db-test.sh

@@ -30,3 +30,6 @@ dist-ssr
 **/.!*!*
 Recurso 2.svg
 .vercel
+
+# Ajustes locales de Claude Code
+.claude/settings.local.json

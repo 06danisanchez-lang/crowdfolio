@@ -47,7 +47,12 @@ Producción es la única base real. Por eso:
      `supabase/tests/db/` que falle sin el cambio.
   3. PR fusionado con el OK de Dani.
   4. Aplicar en producción con la herramienta `apply_migration` de Supabase (deja la
-     versión registrada). Nunca `supabase db push`, nunca SQL suelto en el SQL Editor.
+     versión registrada). Si la migración borra algo (`drop`, `delete`…), Supabase pide
+     una confirmación que desde la sesión en la nube no llega y se cancela sola. En ese
+     caso, pasar a Dani el SQL para pegarlo en el SQL Editor, con un `insert into
+     supabase_migrations.schema_migrations (version, name, statements)` usando la misma
+     versión del archivo para que quede registrada. Después, comprobar el resultado en
+     producción. Nunca `supabase db push`, nunca SQL que no salga de una migración del repo.
   5. Regenerar la instantánea (abajo) en un PR pequeño.
 - **Cambios de datos en producción** (`update`/`delete`/`insert` a mano): solo con OK de
   Dani para esa operación concreta, y antes copiar las filas afectadas a una tabla

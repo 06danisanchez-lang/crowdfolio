@@ -15,9 +15,8 @@ import type { DefaultLossYearSummary, DefaultLossImputationRow } from '@/lib/tax
 import type { ManualGppOperation } from '@/lib/tax/manualGppOperations';
 import { getTaxBreakdown, formatCurrency, formatPercentage } from '@/lib/tax/calculations';
 import { toast } from '@/hooks/use-toast';
-import ExcelJS from 'exceljs';
-import { jsPDF } from 'jspdf';
-import autoTable from 'jspdf-autotable';
+import type * as ExcelJS from 'exceljs';
+import { loadExcelJS, loadPdfLibs } from '@/lib/lazy/exportLibs';
 
 // Fechas del informe siempre dd/MM/yyyy con dos cifras — toLocaleDateString('es-ES')
 // no lo garantiza (p.ej. "5/3/2025" en vez de "05/03/2025").
@@ -104,7 +103,8 @@ export function TaxExportButton({
   const handleExportExcel = async () => {
     setIsExporting(true);
     try {
-      const workbook = new ExcelJS.Workbook();
+      const ExcelJSLib = await loadExcelJS();
+      const workbook = new ExcelJSLib.Workbook();
       workbook.creator = 'Crowdfolio';
       workbook.created = new Date();
 
@@ -650,6 +650,7 @@ export function TaxExportButton({
   const handleExportPDF = async () => {
     setIsExporting(true);
     try {
+      const { jsPDF, autoTable } = await loadPdfLibs();
       const doc = new jsPDF();
       const pageWidth = doc.internal.pageSize.getWidth();
       let yPos = 20;

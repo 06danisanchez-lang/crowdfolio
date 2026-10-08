@@ -1,0 +1,11 @@
+-- Notificaciones: solo se pueden crear para uno mismo.
+--
+-- La política "Users can insert notifications" (with check (true), rol public)
+-- dejaba a cualquiera con la clave pública de la web, incluso sin sesión,
+-- crear notificaciones a nombre de cualquier usuario: texto arbitrario en su
+-- campana, p. ej. un falso aviso de cobro con un enlace.
+--
+-- La app solo inserta notificaciones del propio usuario (useNotificationGenerator,
+-- usePaymentDueNotifications), que ya cubre "Users can insert own notifications".
+-- scheduled-scraper usa la service role, que no pasa por RLS.
+drop policy if exists "Users can insert notifications" on public.notifications;

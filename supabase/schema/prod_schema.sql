@@ -1,9 +1,9 @@
 -- Instantánea del esquema `public` de PRODUCCIÓN (estructura, sin datos).
 -- NO EDITAR A MANO: se regenera con supabase/schema/dump_schema.sql (ver CLAUDE.md).
 --
--- snapshot_version: 20261008173037
--- última migración registrada en producción: 20261006000000
--- comprobación (md5 de la salida normalizada, 144 sentencias): bdfa0b78e6e66b4acffdb931f6dbb54b
+-- snapshot_version: 20261008184625
+-- última migración registrada en producción: 20261008173335
+-- comprobación (md5 de la salida normalizada, 143 sentencias): bbd0b49d26ce546dca5510c0054c9a2f
 --
 -- scripts/db-test.sh carga primero supabase/schema/stubs.sql, después este
 -- archivo y por último las migraciones con versión > snapshot_version.
@@ -403,8 +403,6 @@ create policy "Users can insert own investments" on public.investments as permis
 create policy "Users can update own investments" on public.investments as permissive for update to public using ((auth.uid() = user_id));
 
 create policy "Users can view own investments" on public.investments as permissive for select to public using ((auth.uid() = user_id));
-
-create policy "Users can insert notifications" on public.notifications as permissive for insert to public with check (true);
 
 create policy "Users can insert own notifications" on public.notifications as permissive for insert to public with check ((auth.uid() = user_id));
 

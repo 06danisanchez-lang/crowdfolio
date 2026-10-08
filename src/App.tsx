@@ -10,19 +10,22 @@ import { GlobalErrorBoundary } from "@/components/GlobalErrorBoundary";
 import { ThemeProvider } from "@/contexts/ThemeContext";
 import { DebugPanel } from "@/components/DebugPanel";
 import { LanguageProvider } from "@/contexts/LanguageContext";
-import Index from "./pages/Index";
 import Auth from "./pages/Auth";
 import Landing from "./pages/Landing";
-import Pricing from "./pages/Pricing";
-import ResetPassword from "./pages/ResetPassword";
-import AdminDashboard from "./pages/AdminDashboard";
-import AvisoLegal from "./pages/AvisoLegal";
-import PoliticaPrivacidad from "./pages/PoliticaPrivacidad";
-import Terminos from "./pages/Terminos";
-import CookiesPage from "./pages/Cookies";
 import { LEGAL_ROUTES } from "./lib/legal/routes";
-import NotFound from "./pages/NotFound";
-import { useEffect, useRef, useState } from "react";
+import { lazy, Suspense, useEffect, useRef, useState } from "react";
+
+// La landing y el login se cargan con la primera visita; el resto de pantallas
+// (la app, el panel de admin, precios, legales) se descargan al entrar en ellas.
+const Index = lazy(() => import("./pages/Index"));
+const Pricing = lazy(() => import("./pages/Pricing"));
+const ResetPassword = lazy(() => import("./pages/ResetPassword"));
+const AdminDashboard = lazy(() => import("./pages/AdminDashboard"));
+const AvisoLegal = lazy(() => import("./pages/AvisoLegal"));
+const PoliticaPrivacidad = lazy(() => import("./pages/PoliticaPrivacidad"));
+const Terminos = lazy(() => import("./pages/Terminos"));
+const CookiesPage = lazy(() => import("./pages/Cookies"));
+const NotFound = lazy(() => import("./pages/NotFound"));
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { AlertTriangle, LogOut, Home, RefreshCw, LogIn } from "lucide-react";
@@ -319,6 +322,7 @@ function PublicRoute({ children }: { children: React.ReactNode }) {
 
 const AppRoutes = () => (
   <AuthGate>
+    <Suspense fallback={<LoadingSpinner />}>
     <Routes>
       <Route 
         path="/" 
@@ -360,6 +364,7 @@ const AppRoutes = () => (
       <Route path={LEGAL_ROUTES.cookies} element={<CookiesPage />} />
       <Route path="*" element={<NotFound />} />
     </Routes>
+    </Suspense>
   </AuthGate>
 );
 

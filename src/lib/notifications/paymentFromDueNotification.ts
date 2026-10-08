@@ -25,3 +25,19 @@ export function paymentFromDueNotification(
 
   return { investmentId, payment: { date, amount, type: 'interest' } };
 }
+
+/**
+ * ¿Ya hay registrado un cobro igual (misma fecha, tipo e importe)? Evita que
+ * pulsar «Sí, cobrado» en dos avisos repetidos del mismo cobro lo apunte dos
+ * veces: un interés duplicado infla la base del ahorro del informe fiscal.
+ */
+export function hasMatchingPayment(
+  payments: ReadonlyArray<{ date: string; type: string; amount: number }>,
+  candidate: { date: string; type: string; amount: number },
+): boolean {
+  return payments.some(p =>
+    p.date === candidate.date &&
+    p.type === candidate.type &&
+    Math.abs(p.amount - candidate.amount) < 0.005,
+  );
+}

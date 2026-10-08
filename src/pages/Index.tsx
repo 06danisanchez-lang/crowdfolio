@@ -53,6 +53,7 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { View } from '@/types/investment';
 import { cn } from '@/lib/utils';
 import { paymentFromDueNotification, hasMatchingPayment } from '@/lib/notifications/paymentFromDueNotification';
+import { isForeignCurrency } from '@/lib/currency/fx';
 
 const Index = () => {
   const { t } = useLanguage();
@@ -135,6 +136,13 @@ const Index = () => {
   ) => {
     const inv = investments.find(i => i.id === investmentId);
     if (inv && hasMatchingPayment(inv.payments, payment)) return;
+    // En otra divisa el importe del aviso es una estimación en euros: el cobro
+    // se apunta desde la ficha, con el importe en su divisa y el tipo del día.
+    if (inv && isForeignCurrency(inv.currency)) {
+      openInvestmentDetail(investmentId);
+      toast.info('Apunta este cobro desde la ficha, con el importe en su divisa y el tipo de cambio del día.');
+      return;
+    }
     await addPayment(investmentId, payment);
   };
 

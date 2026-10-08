@@ -6,6 +6,11 @@ import { Plus, Trash2, CalendarIcon, Pencil, Check, X } from 'lucide-react';
 import { Investment, Payment, PLATFORMS, STATUS_OPTIONS, InvestmentScheduleEntry, IncomeModel, InvestmentStatus } from '@/types/investment';
 import { toDateOnlyString } from '@/lib/dateOnly';
 import { parseSpanishNumber, formatSpanishNumber } from '@/lib/investment/parseSpanishNumber';
+import { ForeignAmountField } from '@/components/common/ForeignAmountField';
+import {
+  EMPTY_FOREIGN_AMOUNT, buildForeignPaymentFields, formatExchangeRate, formatForeignAmount,
+  isForeignCurrency, type ForeignAmountInput,
+} from '@/lib/currency/fx';
 
 /** Importe escrito por el usuario en formato español ("1.500,50"). NaN si está
  * vacío o no se puede interpretar: nunca parseFloat, que lee "1.500" como 1,5. */
@@ -79,7 +84,7 @@ interface InvestmentDetailProps {
   onClose: () => void;
   onUpdate: (id: string, updates: Partial<Investment>) => Promise<{ demotedToDraft?: boolean; error?: string } | undefined>;
   onDelete: (id: string) => void;
-  onAddPayment: (investmentId: string, payment: { date: string; amount: number; type: 'dividend' | 'principal' | 'interest'; notes?: string; withholdingApplied?: number }) => void;
+  onAddPayment: (investmentId: string, payment: Omit<Payment, 'id'>) => void;
   onDeletePayment: (investmentId: string, paymentId: string) => void;
   /** Corrige la retención de un cobro ya registrado. */
   onUpdatePaymentWithholding?: (investmentId: string, paymentId: string, withholdingApplied: number) => Promise<boolean>;
@@ -98,6 +103,11 @@ export function InvestmentDetail({ investment, schedule = [], onClose, onUpdate,
   // hasta que el usuario la toca.
   const [paymentWithholding, setPaymentWithholding] = useState('');
   const [withholdingTouched, setWithholdingTouched] = useState(false);
+  // Inversión en otra divisa: importe del cobro en su divisa + tipo del día,
+  // y la retención practicada en el país de la plataforma.
+  const [paymentFx, setPaymentFx] = useState<ForeignAmountInput>(EMPTY_FOREIGN_AMOUNT);
+  const [partialFx, setPartialFx] = useState<ForeignAmountInput>(EMPTY_FOREIGN_AMOUNT);
+  const [foreignWithholding, setForeignWithholding] = useState('');
   // Edición de la retención de un cobro ya registrado
   const [editingWithholdingId, setEditingWithholdingId] = useState<string | null>(null);
   const [editingWithholdingValue, setEditingWithholdingValue] = useState('');
@@ -122,6 +132,7 @@ export function InvestmentDetail({ investment, schedule = [], onClose, onUpdate,
     setActiveForm(null);
     setNewEndDate(undefined);
     setPartialAmount('');
+    setPartialFx(EMPTY_FOREIGN_AMOUNT);
     setNewReturnRate('');
   };
 
@@ -207,14 +218,20 @@ export function InvestmentDetail({ investment, schedule = [], onClose, onUpdate,
   };
 
   const handlePartialReturn = async () => {
-    if (!investment || !partialAmount) return;
-    const amount = parseAmountInput(partialAmount);
-    if (!Number.isFinite(amount) || amount <= 0) return;
-    await onAddPayment(investment.id, {
-      date: toDateOnlyString(partialDate),
-      amount,
-      type: 'principal',
-    });
+    if (!investment || (!partialAmount && !isForeign)) return;
+    const dateStr = toDateOnlyString(partialDate);
+    let payment: Omit<Payment, 'id'>;
+    if (isForeign) {
+      const fx = buildForeignPaymentFields(investment.currency!, partialFx, dateStr);
+      if (!fx) return;
+      payment = { date: dateStr, type: 'principal', ...fx };
+    } else {
+      const parsed = parseAmountInput(partialAmount);
+      if (!Number.isFinite(parsed) || parsed <= 0) return;
+      payment = { date: dateStr, amount: parsed, type: 'principal' };
+    }
+    const amount = payment.amount;
+    await onAddPayment(investment.id, payment);
     const existingPrincipal = investment.payments
       .filter(p => p.type === 'principal')
       .reduce((sum, p) => sum + p.amount, 0);
@@ -230,13 +247,24 @@ export function InvestmentDetail({ investment, schedule = [], onClose, onUpdate,
     resetForms();
   };
 
-  const parsedPaymentAmount = parseAmountInput(paymentAmount);
+  const isForeign = !!investment && isForeignCurrency(investment.currency);
+  const paymentDateStr = toDateOnlyString(paymentDate);
+  const foreignPaymentFields = isForeign ? buildForeignPaymentFields(investment!.currency!, paymentFx, paymentDateStr) : null;
+  const parsedPaymentAmount = isForeign ? (foreignPaymentFields?.amount ?? NaN) : parseAmountInput(paymentAmount);
+  const parsedForeignWithholding = foreignWithholding.trim() === '' ? 0 : parseAmountInput(foreignWithholding);
+  const foreignWithholdingError = !Number.isFinite(parsedForeignWithholding) || parsedForeignWithholding < 0
+    ? 'Retención no válida (ej. 12,50)'
+    : null;
+  // Retención en origen: plataformas no españolas (las españolas retienen el 19 % aquí).
+
   const paymentAmountError = paymentAmount.trim() !== '' && !(parsedPaymentAmount > 0)
     ? 'Importe no válido (ej. 1.500,50)'
     : null;
   const withholdingApplies = isWithholdingApplicable(paymentType);
+  // Retención en origen: plataformas no españolas (las españolas retienen el 19 % aquí).
+  const showForeignWithholding = !!investment && withholdingApplies && (isForeign || getDefaultWithholdingRate(investment.platform) === 0);
   const proposedWithholding = investment
-    ? getDefaultWithholding(parsedPaymentAmount, paymentType, investment.platform)
+    ? getDefaultWithholding(parsedPaymentAmount, paymentType, isForeign ? 'other' : investment.platform)
     : 0;
   const effectivePaymentWithholding = !withholdingApplies
     ? 0
@@ -249,18 +277,25 @@ export function InvestmentDetail({ investment, schedule = [], onClose, onUpdate,
 
   const resetPaymentForm = () => {
     setPaymentAmount('');
+    setPaymentFx(EMPTY_FOREIGN_AMOUNT);
+    setForeignWithholding('');
     setPaymentWithholding('');
     setWithholdingTouched(false);
     setShowAddPayment(false);
   };
 
   const handleAddPayment = () => {
-    if (investment && parsedPaymentAmount > 0 && !newPaymentWithholdingError) {
+    if (investment && parsedPaymentAmount > 0 && !newPaymentWithholdingError && !(showForeignWithholding && foreignWithholdingError)) {
+      const foreignWh = showForeignWithholding && parsedForeignWithholding > 0
+        ? { foreignWithholdingAmount: Math.round(parsedForeignWithholding * 100) / 100, foreignWithholdingCurrency: investment.currency || 'EUR' }
+        : {};
       onAddPayment(investment.id, {
-        date: toDateOnlyString(paymentDate),
+        date: paymentDateStr,
         amount: parsedPaymentAmount,
         type: paymentType,
         withholdingApplied: effectivePaymentWithholding,
+        ...(foreignPaymentFields ?? {}),
+        ...foreignWh,
       });
       resetPaymentForm();
     }
@@ -436,6 +471,12 @@ export function InvestmentDetail({ investment, schedule = [], onClose, onUpdate,
             <div className="space-y-1">
               <p className="text-sm text-muted-foreground">{t('investments.detail.invested')}</p>
               <p className="font-medium">{formatCurrency(investment.amount)}</p>
+              {isForeign && investment.originalAmount != null && (
+                <p className="text-xs text-muted-foreground">
+                  {formatForeignAmount(investment.originalAmount, investment.currency!)}
+                  {investment.exchangeRate ? ` · ${formatExchangeRate(investment.exchangeRate, investment.currency!)}` : ''}
+                </p>
+              )}
             </div>
             <div className="space-y-1">
               <p className="text-sm text-muted-foreground">{t('investments.detail.annualReturn')}</p>
@@ -638,6 +679,7 @@ export function InvestmentDetail({ investment, schedule = [], onClose, onUpdate,
                       />
                     </PopoverContent>
                   </Popover>
+                  {!isForeign && (
                   <div>
                     <Input
                       type="text"
@@ -648,6 +690,7 @@ export function InvestmentDetail({ investment, schedule = [], onClose, onUpdate,
                     />
                     {paymentAmountError && <p className="mt-1 text-xs text-destructive">{paymentAmountError}</p>}
                   </div>
+                  )}
                   <Select value={paymentType} onValueChange={(v) => setPaymentType(v as typeof paymentType)}>
                     <SelectTrigger>
                       <SelectValue />
@@ -659,6 +702,18 @@ export function InvestmentDetail({ investment, schedule = [], onClose, onUpdate,
                     </SelectContent>
                   </Select>
                 </div>
+                {isForeign && (
+                  <div className="mt-3 rounded-md border bg-muted/30 p-3">
+                    <ForeignAmountField
+                      idPrefix="payment"
+                      currency={investment.currency!}
+                      date={paymentDateStr}
+                      value={paymentFx}
+                      onChange={setPaymentFx}
+                      amountLabel="Importe cobrado"
+                    />
+                  </div>
+                )}
                 {withholdingApplies && (
                   <div className="mt-3 grid gap-1.5 sm:max-w-xs">
                     <label className="text-sm font-medium" htmlFor="payment-withholding">
@@ -682,9 +737,28 @@ export function InvestmentDetail({ investment, schedule = [], onClose, onUpdate,
                     )}
                   </div>
                 )}
+                {showForeignWithholding && (
+                  <div className="mt-3 grid gap-1.5 sm:max-w-xs">
+                    <label className="text-sm font-medium" htmlFor="payment-foreign-withholding">
+                      Retención en origen ({investment.currency || 'EUR'})
+                    </label>
+                    <Input
+                      id="payment-foreign-withholding"
+                      type="text"
+                      inputMode="decimal"
+                      value={foreignWithholding}
+                      placeholder="0,00"
+                      onChange={(e) => setForeignWithholding(e.target.value)}
+                    />
+                    <p className="text-xs text-muted-foreground">
+                      Lo que te retuvo el país de la plataforma, si te retuvo algo. Sirve para la deducción por doble imposición (art. 80 LIRPF).
+                    </p>
+                    {foreignWithholdingError && <p className="text-xs text-destructive">{foreignWithholdingError}</p>}
+                  </div>
+                )}
                 {/* Botones al final: en móvil la retención quedaba debajo de "Añadir" */}
                 <div className="mt-3 flex gap-2">
-                  <Button onClick={handleAddPayment} disabled={!(parsedPaymentAmount > 0) || !!newPaymentWithholdingError}>
+                  <Button onClick={handleAddPayment} disabled={!(parsedPaymentAmount > 0) || !!newPaymentWithholdingError || (showForeignWithholding && !!foreignWithholdingError)}>
                     {t('common.add')}
                   </Button>
                   <Button variant="ghost" onClick={resetPaymentForm}>
@@ -710,6 +784,17 @@ export function InvestmentDetail({ investment, schedule = [], onClose, onUpdate,
                       <div className="flex items-center gap-4">
                         <div>
                           <p className="font-medium">{formatCurrency(payment.amount)}</p>
+                          {payment.originalCurrency && payment.originalAmount != null && (
+                            <p className="text-xs text-muted-foreground">
+                              {formatForeignAmount(payment.originalAmount, payment.originalCurrency)}
+                              {payment.exchangeRate ? ` · ${formatExchangeRate(payment.exchangeRate, payment.originalCurrency)}` : ''}
+                            </p>
+                          )}
+                          {!!payment.foreignWithholdingAmount && (
+                            <p className="text-xs text-muted-foreground">
+                              Retención en origen: {formatForeignAmount(payment.foreignWithholdingAmount, payment.foreignWithholdingCurrency || 'EUR')}
+                            </p>
+                          )}
                           <p className="text-sm text-muted-foreground">
                             {format(parseISO(payment.date), 'dd MMM yyyy', { locale: es })}
                           </p>
@@ -846,14 +931,14 @@ export function InvestmentDetail({ investment, schedule = [], onClose, onUpdate,
                   <p className="text-sm font-medium">{t('investments.action.partialReturnTitle')}</p>
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                     <div className="space-y-1">
-                      <p className="text-xs text-muted-foreground">{t('investments.action.returnedAmount')}</p>
-                      <Input
+                      <p className="text-xs text-muted-foreground">{t('investments.action.returnedAmount')}{isForeign ? ' (abajo, en la divisa)' : ''}</p>
+                      {!isForeign && <Input
                         type="text"
                         inputMode="decimal"
                         placeholder="0,00"
                         value={partialAmount}
                         onChange={e => setPartialAmount(e.target.value)}
-                      />
+                      />}
                       {partialAmount.trim() !== '' && !(parseAmountInput(partialAmount) > 0) && (
                         <p className="text-xs text-destructive">Importe no válido (ej. 1.500,50)</p>
                       )}
@@ -873,8 +958,18 @@ export function InvestmentDetail({ investment, schedule = [], onClose, onUpdate,
                       </Popover>
                     </div>
                   </div>
+                  {isForeign && (
+                    <ForeignAmountField
+                      idPrefix="partial-return"
+                      currency={investment.currency!}
+                      date={toDateOnlyString(partialDate)}
+                      value={partialFx}
+                      onChange={setPartialFx}
+                      amountLabel="Capital devuelto"
+                    />
+                  )}
                   <div className="flex gap-2">
-                    <Button size="sm" onClick={handlePartialReturn} disabled={!(parseAmountInput(partialAmount) > 0)}>{t('common.save')}</Button>
+                    <Button size="sm" onClick={handlePartialReturn} disabled={isForeign ? !buildForeignPaymentFields(investment.currency!, partialFx, toDateOnlyString(partialDate)) : !(parseAmountInput(partialAmount) > 0)}>{t('common.save')}</Button>
                     <Button size="sm" variant="ghost" onClick={resetForms}>{t('common.cancel')}</Button>
                   </div>
                 </div>

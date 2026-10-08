@@ -11,6 +11,9 @@ import { computeDefaultLossSummary } from '@/lib/tax/defaultLossSummary';
 import { getPlatformLabel } from '@/lib/labels';
 import { computeManualGppOperations } from '@/lib/tax/manualGppOperations';
 import { findIncomeWithoutWithholding } from '@/lib/tax/withholding';
+import { mapFxColumns } from '@/lib/investment/mapInvestmentRow';
+import { computeExchangeDifferences, summarizeForeignIncome } from '@/lib/currency/fx';
+import type { ManualGppOperation } from '@/lib/tax/manualGppOperations';
 
 const FETCH_TIMEOUT_MS = 15_000;
 
@@ -21,6 +24,10 @@ interface PaymentWithInvestment {
   type: string;
   withholding_applied: number | null;
   investment_id: string;
+  original_amount: number | null;
+  exchange_rate: number | null;
+  foreign_withholding_amount: number | null;
+  foreign_withholding_currency: string | null;
 }
 
 interface InvestmentRow {
@@ -51,6 +58,11 @@ interface InvestmentRow {
   loss_enforcement_initiator: string | null;
   loss_assessed_at: string | null;
   loss_rules_version: number | null;
+  currency?: string | null;
+  original_amount?: number | null;
+  exchange_rate?: number | null;
+  exchange_rate_date?: string | null;
+  exchange_rate_source?: string | null;
   created_at: string;
   updated_at: string;
 }
@@ -85,6 +97,7 @@ function mapInvestmentRow(inv: InvestmentRow): Investment {
     lossEnforcementInitiator: inv.loss_enforcement_initiator as Investment['lossEnforcementInitiator'],
     lossAssessedAt: inv.loss_assessed_at,
     lossRulesVersion: inv.loss_rules_version,
+    ...mapFxColumns(inv),
     createdAt: inv.created_at,
     updatedAt: inv.updated_at,
   };
@@ -233,7 +246,7 @@ export function useTaxSummary(year: number) {
 
         const { data, error: paymentsError } = await supabase
           .from('payments')
-          .select('id, date, amount, type, withholding_applied, investment_id')
+          .select('id, date, amount, type, withholding_applied, investment_id, original_amount, exchange_rate, foreign_withholding_amount, foreign_withholding_currency')
           .in('investment_id', allIds)
           .gte('date', startDate)
           .lte('date', endDate)
@@ -243,10 +256,15 @@ export function useTaxSummary(year: number) {
         if (requestIdRef.current !== currentId) return;
         if (paymentsError) throw paymentsError;
 
-        const rawPayments = (data || []).map((p) => ({
+        const num = (v: unknown) => (v != null ? Number(v) : null);
+        const rawPayments: PaymentWithInvestment[] = (data || []).map((p) => ({
           ...p,
           amount: Number(p.amount),
           withholding_applied: p.withholding_applied ? Number(p.withholding_applied) : null,
+          original_amount: num(p.original_amount),
+          exchange_rate: num(p.exchange_rate),
+          foreign_withholding_amount: num(p.foreign_withholding_amount),
+          foreign_withholding_currency: p.foreign_withholding_currency ?? null,
         }));
 
         setExcludedIncompleteCount(excludedCount);
@@ -322,12 +340,43 @@ export function useTaxSummary(year: number) {
           type: p.type as Payment['type'],
         })),
       }));
-    return computeManualGppOperations(
+    const equityOps = computeManualGppOperations(
       equityInvestments,
       year,
       (inv) => getPlatformLabel(inv.platform, inv.customPlatformName),
     );
-  }, [investmentRows, completedEquityPayments, year]);
+
+    // Diferencias de cambio al recuperar capital de préstamos en otra divisa
+    // (lib/currency/fx.ts). Solo con los cobros 'principal' del ejercicio.
+    const foreignLoans: Investment[] = investmentRows
+      .filter(inv => inv.currency && inv.currency !== 'EUR' && inv.income_model !== 'equity')
+      .map(inv => ({
+        ...mapInvestmentRow(inv),
+        payments: payments
+          .filter(p => p.investment_id === inv.id && p.type === 'principal')
+          .map(p => ({
+            id: p.id, date: p.date, amount: p.amount, type: 'principal' as const,
+            originalAmount: p.original_amount ?? undefined,
+            exchangeRate: p.exchange_rate ?? undefined,
+          })),
+      }));
+    const exchangeOps: ManualGppOperation[] = computeExchangeDifferences(foreignLoans, year).map(d => {
+      const inv = foreignLoans.find(i => i.id === d.investmentId)!;
+      return {
+        investmentId: d.investmentId,
+        projectName: `${d.projectName} (${d.originalAmount.toLocaleString('es-ES', { minimumFractionDigits: 2 })} ${d.currency})`,
+        platformLabel: getPlatformLabel(inv.platform, inv.customPlatformName),
+        acquisitionDate: inv.investmentDate,
+        acquisitionValue: d.acquisitionValue,
+        transmissionDate: d.paymentDate,
+        transmissionValue: d.transmissionValue,
+        result: d.result,
+        reason: 'exchange',
+      };
+    });
+
+    return [...equityOps, ...exchangeOps].sort((a, b) => a.transmissionDate.localeCompare(b.transmissionDate));
+  }, [investmentRows, completedEquityPayments, payments, year]);
 
   // Inversiones en impago sin cuestionario de calificación fiscal completar
   // (Fase 4, punto 3) — alimenta el aviso accionable ("Completar") de
@@ -381,6 +430,7 @@ export function useTaxSummary(year: number) {
     // afectan a baseImponibleRCMAjustada/taxableBase. Ver defaultLossSummary.ts
     // y TaxBucketsCard.tsx (bloque "Base imponible general", Fase 5).
     const baseImponibleRCMAjustada = grossIncome;
+    const currencyByInvestment = new Map(investmentRows.map(r => [r.id, r.currency]));
 
     const taxableBase = Math.max(0, baseImponibleRCMAjustada - totalExpenses);
     const estimatedTax = calculateProgressiveTax(taxableBase);
@@ -395,6 +445,18 @@ export function useTaxSummary(year: number) {
       incomeWithoutWithholding: findIncomeWithoutWithholding(
         taxablePayments,
         new Map(investmentRows.map(r => [r.id, r.platform as Investment['platform']])),
+      ),
+      foreignIncome: summarizeForeignIncome(
+        taxablePayments.map(p => ({
+          investmentId: p.investment_id,
+          type: p.type as Payment['type'],
+          amount: p.amount,
+          originalAmount: p.original_amount ?? undefined,
+          exchangeRate: p.exchange_rate ?? undefined,
+          foreignWithholdingAmount: p.foreign_withholding_amount ?? undefined,
+          foreignWithholdingCurrency: p.foreign_withholding_currency ?? undefined,
+        })),
+        p => currencyByInvestment.get((p as unknown as { investmentId: string }).investmentId),
       ),
     };
   }, [payments, totalExpenses, year, investmentRows]);

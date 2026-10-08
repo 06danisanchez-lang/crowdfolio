@@ -1,7 +1,7 @@
 import type {
   Investment, DraftInvestment, Payment, Platform, InvestmentStatus, IncomeModel,
   PaymentFrequency, PrincipalReturnType, EquityType, CloseReasonType,
-  LossInsolvencyStatus, LossEnforcementInitiator,
+  LossInsolvencyStatus, LossEnforcementInitiator, InvestmentFxFields, ExchangeRateSource,
 } from '@/types/investment';
 
 // Fila cruda tal cual la devuelve `supabase.from('investments').select('*')`.
@@ -36,6 +36,12 @@ export interface RawInvestmentRow {
   loss_enforcement_initiator: string | null;
   loss_assessed_at: string | null;
   loss_rules_version: number | null;
+  // Divisa (opcionales: filas y tests antiguos no las traen)
+  currency?: string | null;
+  original_amount?: number | null;
+  exchange_rate?: number | null;
+  exchange_rate_date?: string | null;
+  exchange_rate_source?: string | null;
   created_at: string;
   updated_at: string;
   user_id: string;
@@ -81,6 +87,7 @@ export function mapRawInvestmentRow(
     lossEnforcementInitiator: (inv.loss_enforcement_initiator as LossEnforcementInitiator) || undefined,
     lossAssessedAt: inv.loss_assessed_at || undefined,
     lossRulesVersion: inv.loss_rules_version ?? undefined,
+    ...mapFxColumns(inv),
     createdAt: inv.created_at,
     updatedAt: inv.updated_at,
     payments,
@@ -129,7 +136,80 @@ export function draftToInvestment(raw: DraftInvestment): Investment {
     lossEnforcementInitiator: raw.lossEnforcementInitiator,
     lossAssessedAt: raw.lossAssessedAt,
     lossRulesVersion: raw.lossRulesVersion,
+    currency: raw.currency,
+    originalAmount: raw.originalAmount,
+    exchangeRate: raw.exchangeRate,
+    exchangeRateDate: raw.exchangeRateDate,
+    exchangeRateSource: raw.exchangeRateSource,
     createdAt: raw.createdAt,
     updatedAt: raw.updatedAt,
+  };
+}
+
+/** Columnas de divisa de `investments` → campos camelCase. EUR si no hay divisa. */
+export function mapFxColumns(inv: {
+  currency?: string | null;
+  original_amount?: number | string | null;
+  exchange_rate?: number | string | null;
+  exchange_rate_date?: string | null;
+  exchange_rate_source?: string | null;
+}): InvestmentFxFields {
+  const currency = inv.currency || 'EUR';
+  if (currency === 'EUR') return { currency };
+  return {
+    currency,
+    originalAmount: inv.original_amount != null ? Number(inv.original_amount) : undefined,
+    exchangeRate: inv.exchange_rate != null ? Number(inv.exchange_rate) : undefined,
+    exchangeRateDate: inv.exchange_rate_date || undefined,
+    exchangeRateSource: (inv.exchange_rate_source as ExchangeRateSource) || undefined,
+  };
+}
+
+/** Columnas de divisa de una inversión para insert/update. En euros, todas a NULL. */
+export function fxFieldsToColumns(fx: InvestmentFxFields, amountEur: number | null | undefined) {
+  const foreign = !!fx.currency && fx.currency !== 'EUR';
+  return {
+    currency: foreign ? fx.currency! : 'EUR',
+    original_amount: foreign ? fx.originalAmount ?? null : null,
+    original_currency: foreign ? fx.currency! : null,
+    exchange_rate: foreign ? fx.exchangeRate ?? null : null,
+    exchange_rate_date: foreign ? fx.exchangeRateDate ?? null : null,
+    exchange_rate_source: foreign ? fx.exchangeRateSource ?? null : null,
+    amount_eur: foreign ? amountEur ?? null : null,
+  };
+}
+
+/** Fila de `payments` (select '*') → Payment, con los campos de divisa. */
+export function mapPaymentRow(p: Record<string, unknown>): Payment {
+  const num = (v: unknown) => (v != null ? Number(v) : undefined);
+  return {
+    id: p.id as string,
+    date: p.date as string,
+    amount: Number(p.amount),
+    type: p.type as Payment['type'],
+    notes: (p.notes as string) || undefined,
+    withholdingApplied: p.withholding_applied != null ? Number(p.withholding_applied) : 0,
+    originalAmount: num(p.original_amount),
+    originalCurrency: (p.original_currency as string) || undefined,
+    exchangeRate: num(p.exchange_rate),
+    exchangeRateDate: (p.exchange_rate_date as string) || undefined,
+    exchangeRateSource: (p.exchange_rate_source as ExchangeRateSource) || undefined,
+    amountEur: num(p.amount_eur),
+    foreignWithholdingAmount: num(p.foreign_withholding_amount),
+    foreignWithholdingCurrency: (p.foreign_withholding_currency as string) || undefined,
+  };
+}
+
+/** Payment → columnas de divisa para insert. Cobro en euros: todas a NULL. */
+export function paymentFxColumns(p: Omit<Payment, 'id'>) {
+  return {
+    original_amount: p.originalAmount ?? null,
+    original_currency: p.originalCurrency ?? null,
+    exchange_rate: p.exchangeRate ?? null,
+    exchange_rate_date: p.exchangeRateDate ?? null,
+    exchange_rate_source: p.exchangeRateSource ?? null,
+    amount_eur: p.originalCurrency ? (p.amountEur ?? p.amount) : null,
+    foreign_withholding_amount: p.foreignWithholdingAmount ?? null,
+    foreign_withholding_currency: p.foreignWithholdingAmount ? (p.foreignWithholdingCurrency ?? null) : null,
   };
 }

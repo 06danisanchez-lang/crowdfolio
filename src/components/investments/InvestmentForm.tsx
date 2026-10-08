@@ -10,6 +10,8 @@ import { generateSchedule } from '@/lib/investment/scheduleGenerator';
 import { parseSpanishNumber, formatSpanishNumber } from '@/lib/investment/parseSpanishNumber';
 import { PLAN_FEATURES } from '@/lib/stripe/config';
 import { toDateOnlyString, fromDateOnlyString } from '@/lib/dateOnly';
+import { ForeignAmountField } from '@/components/common/ForeignAmountField';
+import { ECB_CURRENCIES, EUR, foreignAmountToEur, getPlatformDefaultCurrency, isForeignCurrency, type ForeignAmountInput } from '@/lib/currency/fx';
 
 // 'Impago' no es seleccionable desde este formulario genérico: solo se puede
 // llegar a 'defaulted' completando el cuestionario de calificación fiscal
@@ -209,7 +211,21 @@ const investmentSchema = z.object({
   status: z.enum(['active', 'pending', 'completed', 'defaulted', 'draft'] as const),
   notes: z.string().optional(),
   sourceUrl: z.string().optional(),
+  // Divisa (lib/currency/fx.ts). En otra divisa, `amount` se calcula en euros
+  // a partir de fxOriginalAmount × fxRate.
+  currency: z.string().optional(),
+  fxOriginalAmount: z.number().nullable().optional(),
+  fxRate: z.number().nullable().optional(),
+  fxRateDate: z.string().nullable().optional(),
+  fxRateSource: z.enum(['ecb', 'manual'] as const).nullable().optional(),
 }).superRefine((data, ctx) => {
+  if (isForeignCurrency(data.currency) && !(data.fxOriginalAmount && data.fxOriginalAmount > 0 && data.fxRate && data.fxRate > 0)) {
+    ctx.addIssue({
+      code: z.ZodIssueCode.custom,
+      path: ['fxOriginalAmount'],
+      message: 'Indica el importe en la divisa y el tipo de cambio',
+    });
+  }
   if ((END_DATE_REQUIRED_MODELS as readonly string[]).includes(data.incomeModel) && !data.expectedEndDate) {
     ctx.addIssue({
       code: z.ZodIssueCode.custom,
@@ -243,6 +259,13 @@ const draftInvestmentSchema = z.object({
   status: z.enum(['active', 'pending', 'completed', 'defaulted', 'draft'] as const).optional(),
   notes: z.string().optional(),
   sourceUrl: z.string().optional(),
+  // Divisa (lib/currency/fx.ts). En otra divisa, `amount` se calcula en euros
+  // a partir de fxOriginalAmount × fxRate.
+  currency: z.string().optional(),
+  fxOriginalAmount: z.number().nullable().optional(),
+  fxRate: z.number().nullable().optional(),
+  fxRateDate: z.string().nullable().optional(),
+  fxRateSource: z.enum(['ecb', 'manual'] as const).nullable().optional(),
 }).superRefine((data, ctx) => {
   checkFirstPaymentDateRange(data, ctx);
 });
@@ -278,6 +301,11 @@ interface EditFormValues {
   status?: InvestmentStatus;
   notes?: string;
   sourceUrl?: string;
+  currency?: string;
+  fxOriginalAmount?: number | null;
+  fxRate?: number | null;
+  fxRateDate?: string | null;
+  fxRateSource?: 'ecb' | 'manual' | null;
 }
 
 /**
@@ -314,6 +342,25 @@ function buildEditFormValues(initialData: Investment | FutureInvestmentFormData)
     status: 'status' in initialData ? initialData.status : undefined,
     notes: initialData.notes,
     sourceUrl: 'sourceUrl' in initialData ? initialData.sourceUrl : undefined,
+    currency: 'currency' in initialData ? (initialData as Investment).currency || EUR : EUR,
+    fxOriginalAmount: 'originalAmount' in initialData ? (initialData as Investment).originalAmount ?? null : null,
+    fxRate: 'exchangeRate' in initialData ? (initialData as Investment).exchangeRate ?? null : null,
+    fxRateDate: 'exchangeRateDate' in initialData ? (initialData as Investment).exchangeRateDate ?? null : null,
+    fxRateSource: 'exchangeRateSource' in initialData ? (initialData as Investment).exchangeRateSource ?? null : null,
+  };
+}
+
+/** Campos de divisa del formulario → lo que guardan addInvestment/updateInvestment. */
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+function fxSubmitFields(data: any) {
+  const currency: string = data.currency || EUR;
+  if (!isForeignCurrency(currency)) return { currency: EUR };
+  return {
+    currency,
+    originalAmount: data.fxOriginalAmount ?? undefined,
+    exchangeRate: data.fxRate ?? undefined,
+    exchangeRateDate: data.fxRateDate ?? (data.investmentDate instanceof Date ? toDateOnlyString(data.investmentDate) : undefined),
+    exchangeRateSource: data.fxRateSource ?? 'manual',
   };
 }
 
@@ -381,7 +428,7 @@ export function InvestmentForm({
         : {
             status: 'active',
             investmentDate: new Date(),
-            
+            currency: EUR,
           },
   });
 
@@ -392,6 +439,45 @@ export function InvestmentForm({
   const watchIncomeModel = form.watch('incomeModel') as IncomeModel | undefined;
   const watchEquityType = form.watch('equityType') as EquityType | undefined;
   const watchStatus = form.watch('status') as InvestmentStatus | undefined;
+  const watchCurrency = (form.watch('currency') as string | undefined) || EUR;
+  const isForeign = !isFuture && isForeignCurrency(watchCurrency);
+  const watchInvestmentDate = form.watch('investmentDate') as Date | undefined;
+  const fxValue: ForeignAmountInput = {
+    originalAmount: (form.watch('fxOriginalAmount') as number | null | undefined) ?? null,
+    exchangeRate: (form.watch('fxRate') as number | null | undefined) ?? null,
+    exchangeRateDate: (form.watch('fxRateDate') as string | null | undefined) ?? null,
+    exchangeRateSource: (form.watch('fxRateSource') as 'ecb' | 'manual' | null | undefined) ?? null,
+  };
+  const setFx = (v: ForeignAmountInput) => {
+    form.setValue('fxOriginalAmount', v.originalAmount);
+    form.setValue('fxRate', v.exchangeRate);
+    form.setValue('fxRateDate', v.exchangeRateDate);
+    form.setValue('fxRateSource', v.exchangeRateSource);
+    // En otra divisa, `amount` (euros) sale de la conversión: es lo que usan el
+    // calendario de cobros, la cartera y el informe fiscal.
+    form.setValue('amount', foreignAmountToEur(v), { shouldValidate: false });
+  };
+
+  // Inversión nueva: al elegir plataforma se propone su divisa (Crowdcube → GBP).
+  const platformMountRef = useRef(true);
+  useEffect(() => {
+    if (platformMountRef.current) { platformMountRef.current = false; return; }
+    if (isFuture || initialData || !watchPlatform) return;
+    const proposed = getPlatformDefaultCurrency(watchPlatform);
+    if (proposed !== (form.getValues('currency') || EUR)) form.setValue('currency', proposed);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [watchPlatform]);
+
+  // Al volver a euros se limpia la conversión (el importe en € queda como esté).
+  useEffect(() => {
+    if (!isForeign && (form.getValues('fxRate') != null || form.getValues('fxOriginalAmount') != null)) {
+      form.setValue('fxOriginalAmount', null);
+      form.setValue('fxRate', null);
+      form.setValue('fxRateDate', null);
+      form.setValue('fxRateSource', null);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isForeign]);
   const endDateRequired = !!watchIncomeModel &&
     (END_DATE_REQUIRED_MODELS as readonly string[]).includes(watchIncomeModel);
   // El modelo de ingresos condiciona por completo cómo assessDefaultLoss
@@ -453,6 +539,11 @@ export function InvestmentForm({
         firstPaymentDate:   values.firstPaymentDate instanceof Date ? values.firstPaymentDate.toISOString() : undefined,
         principalReturnType: values.principalReturnType as string | undefined,
         equityType:         values.equityType as string | undefined,
+        currency:           values.currency as string | undefined,
+        fxOriginalAmount:   values.fxOriginalAmount as number | null | undefined,
+        fxRate:             values.fxRate as number | null | undefined,
+        fxRateDate:         values.fxRateDate as string | null | undefined,
+        fxRateSource:       values.fxRateSource as string | null | undefined,
       });
     });
 
@@ -488,6 +579,11 @@ export function InvestmentForm({
         : undefined,
       principalReturnType: (saved.formValues.principalReturnType as PrincipalReturnType) ?? undefined,
       equityType:         (saved.formValues.equityType as EquityType) ?? undefined,
+      currency:           saved.formValues.currency || EUR,
+      fxOriginalAmount:   saved.formValues.fxOriginalAmount ?? null,
+      fxRate:             saved.formValues.fxRate ?? null,
+      fxRateDate:         saved.formValues.fxRateDate ?? null,
+      fxRateSource:       (saved.formValues.fxRateSource as 'ecb' | 'manual' | null) ?? null,
     });
 
     setDraftExists(true);
@@ -551,6 +647,7 @@ export function InvestmentForm({
           platform: 'investments.field.platform',
           projectName: 'investments.field.projectName',
           amount: 'investments.field.amount',
+          fxOriginalAmount: 'investments.field.foreignAmount',
           investmentDate: 'investments.field.investmentDate',
           expectedEndDate: 'investments.field.expectedEndDate',
           expectedReturn: 'investments.field.expectedReturn',
@@ -624,6 +721,7 @@ export function InvestmentForm({
         sourceUrl: data.sourceUrl || undefined,
         investmentDate: toDateOnlyString(data.investmentDate),
         expectedEndDate: data.expectedEndDate ? toDateOnlyString(data.expectedEndDate) : undefined,
+        ...fxSubmitFields(data),
       });
     }
 
@@ -664,6 +762,7 @@ export function InvestmentForm({
         notes: values.notes,
         investmentDate: values.investmentDate ? toDateOnlyString(values.investmentDate) : null,
         expectedEndDate: values.expectedEndDate ? toDateOnlyString(values.expectedEndDate) : null,
+        ...fxSubmitFields(values),
       });
       draft.clear();
       setDraftExists(false);
@@ -989,7 +1088,51 @@ export function InvestmentForm({
         </>
       )}
 
+      {!isFuture && (
+        <FormField
+          control={form.control}
+          name="currency"
+          render={({ field }) => (
+            <FormItem>
+              <FormLabel>Divisa</FormLabel>
+              <Select onValueChange={field.onChange} value={field.value || EUR}>
+                <FormControl>
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
+                </FormControl>
+                <SelectContent>
+                  {ECB_CURRENCIES.map((c) => (
+                    <SelectItem key={c.code} value={c.code}>{c.label}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              {isForeign && (
+                <p className="text-xs text-muted-foreground">
+                  La app guarda el importe en euros al tipo de cambio del día de la inversión, y cada cobro al tipo de su día.
+                </p>
+              )}
+              <FormMessage />
+            </FormItem>
+          )}
+        />
+      )}
+
+      {isForeign && (
+        <div className="rounded-md border bg-muted/30 p-3">
+          <ForeignAmountField
+            idPrefix="investment-amount"
+            currency={watchCurrency}
+            date={watchInvestmentDate instanceof Date ? toDateOnlyString(watchInvestmentDate) : null}
+            value={fxValue}
+            onChange={setFx}
+            amountLabel="Importe invertido"
+          />
+        </div>
+      )}
+
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+        {!isForeign && (
         <FormField
           control={form.control}
           name="amount"
@@ -1010,6 +1153,7 @@ export function InvestmentForm({
             </FormItem>
           )}
         />
+        )}
 
         <FormField
           control={form.control}

@@ -7,6 +7,8 @@ import { buildEquityExitPlan, EquityExitPlan, getEquityNetCapital } from '@/lib/
 import { parseSpanishNumber } from '@/lib/investment/parseSpanishNumber';
 import { toDateOnlyString } from '@/lib/dateOnly';
 import { getDefaultWithholding, getDefaultWithholdingRate, validateWithholding } from '@/lib/tax/withholding';
+import { ForeignAmountField } from '@/components/common/ForeignAmountField';
+import { EMPTY_FOREIGN_AMOUNT, foreignAmountToEur, formatForeignAmount, isForeignCurrency, withForeignFields, type ForeignAmountInput } from '@/lib/currency/fx';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Calendar } from '@/components/ui/calendar';
@@ -40,16 +42,28 @@ export function EquityExitForm({ investment, closeReason, saving, onBack, onConf
   const accumulatedCapitalReturn = Math.round((investment.amount - netCapital) * 100) / 100;
   const parsed = parseSpanishNumber(amountInput);
   const exitDateStr = toDateOnlyString(exitDate);
+  // Equity en otra divisa (p. ej. Crowdcube en libras): el importe se escribe
+  // en la divisa y se pasa a euros al tipo del día del cobro.
+  const isForeign = isForeignCurrency(investment.currency);
+  const [fx, setFx] = useState<ForeignAmountInput>(EMPTY_FOREIGN_AMOUNT);
+  const amountReceivedEur = isForeign
+    ? foreignAmountToEur(fx)
+    : (parsed.error || parsed.value === null || parsed.value < 0 ? null : parsed.value);
 
   const basePlan = useMemo(() => {
-    if (parsed.error || parsed.value === null || parsed.value < 0) return null;
-    return buildEquityExitPlan({
-      investment, amountReceived: parsed.value, date: exitDateStr, closeReason,
+    if (amountReceivedEur == null) return null;
+    const p = buildEquityExitPlan({
+      investment, amountReceived: amountReceivedEur, date: exitDateStr, closeReason,
     });
-  }, [parsed.error, parsed.value, investment, exitDateStr, closeReason]);
+    if (!isForeign || !fx.exchangeRate) return p;
+    return {
+      ...p,
+      payments: withForeignFields(p.payments, investment.currency!, fx.exchangeRate, fx.exchangeRateDate ?? exitDateStr, fx.exchangeRateSource ?? 'manual'),
+    };
+  }, [amountReceivedEur, investment, exitDateStr, closeReason, isForeign, fx.exchangeRate, fx.exchangeRateDate, fx.exchangeRateSource]);
 
   const dividendAmount = basePlan?.payments.find(p => p.type === 'dividend')?.amount ?? 0;
-  const proposedWithholding = getDefaultWithholding(dividendAmount, 'dividend', investment.platform);
+  const proposedWithholding = getDefaultWithholding(dividendAmount, 'dividend', isForeign ? 'other' : investment.platform);
   const parsedWithholding = parseSpanishNumber(withholdingInput);
   const withholding = !withholdingTouched
     ? proposedWithholding
@@ -89,7 +103,12 @@ export function EquityExitForm({ investment, closeReason, saving, onBack, onConf
       <div className="rounded-lg border bg-muted/30 p-4 space-y-1.5 text-sm">
         <div className="flex justify-between">
           <span className="text-muted-foreground">Capital invertido original</span>
-          <span className="font-medium">{formatCurrency(investment.amount)}</span>
+          <span className="font-medium">
+            {formatCurrency(investment.amount)}
+            {isForeign && investment.originalAmount != null && (
+              <span className="text-xs text-muted-foreground"> ({formatForeignAmount(investment.originalAmount, investment.currency!)})</span>
+            )}
+          </span>
         </div>
         {accumulatedCapitalReturn > 0 && (
           <div className="flex justify-between">
@@ -110,6 +129,7 @@ export function EquityExitForm({ investment, closeReason, saving, onBack, onConf
       </div>
 
       <div className="grid gap-3 sm:grid-cols-2">
+        {!isForeign && (
         <div className="space-y-1.5">
           <p className="text-sm font-medium">Importe total recibido (€)</p>
           <p className="text-xs text-muted-foreground">Bruto, antes de retenciones (como en el certificado de la plataforma).</p>
@@ -122,6 +142,7 @@ export function EquityExitForm({ investment, closeReason, saving, onBack, onConf
           />
           {parsed.error && <p className="text-xs text-destructive">{parsed.error}</p>}
         </div>
+        )}
         <div className="space-y-1.5">
           <p className="text-sm font-medium">Fecha de cobro</p>
           <Popover>
@@ -143,6 +164,19 @@ export function EquityExitForm({ investment, closeReason, saving, onBack, onConf
           </Popover>
         </div>
       </div>
+
+      {isForeign && (
+        <div className="rounded-lg border bg-muted/30 p-3">
+          <ForeignAmountField
+            idPrefix="equity-exit"
+            currency={investment.currency!}
+            date={exitDateStr}
+            value={fx}
+            onChange={(v) => { setFx(v); setSubmitError(null); }}
+            amountLabel="Importe total recibido, bruto"
+          />
+        </div>
+      )}
 
       {plan && plan.treatment === 'rcm_dividend' && dividendAmount > 0 && (
         <div className="space-y-1.5 sm:max-w-[50%]">

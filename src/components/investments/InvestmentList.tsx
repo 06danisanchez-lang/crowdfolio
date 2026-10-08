@@ -466,7 +466,14 @@ export function InvestmentList({
                         <TableRow key={inv.id} className="cursor-pointer hover:bg-accent/50">
                           <TableCell className="font-medium">{inv.projectName}</TableCell>
                           <TableCell>{getPlatformLabel(inv.platform, inv.customPlatformName)}</TableCell>
-                          <TableCell>{formatCurrency(inv.amount)}</TableCell>
+                          <TableCell>
+                            {formatCurrency(inv.amount)}
+                            {inv.currency && inv.currency !== 'EUR' && (
+                              <span className="ml-1 rounded bg-muted px-1 text-[10px] font-medium text-muted-foreground" title={`Inversión en ${inv.currency}; importe en euros al cambio del día de la inversión`}>
+                                {inv.currency}
+                              </span>
+                            )}
+                          </TableCell>
                           <TableCell>{format(parseISO(inv.investmentDate), 'dd/MM/yyyy', { locale: es })}</TableCell>
                           <TableCell>{inv.expectedReturn.toFixed(1)}%</TableCell>
                           <TableCell>

@@ -7,6 +7,7 @@ import { Investment, InvestmentScheduleEntry } from '@/types/investment';
 import { Notification } from './useNotifications';
 import { calculateAccruedReturn } from '@/lib/investment/calculations';
 import { computeFiscalLossNotifications } from '@/lib/notifications/fiscalLossNotifications';
+import { notificationDedupeKey } from '@/lib/notifications/dedupeKey';
 import type { TablesInsert } from '@/integrations/supabase/types';
 
 function getWeekKey(date: Date): string {
@@ -219,7 +220,16 @@ export function useNotificationGenerator(
       }
 
       if (toInsert.length > 0) {
-        const { error } = await supabase.from('notifications').insert(toInsert);
+        // La lista `existingNotifications` puede estar desfasada (otra pestaña,
+        // otro dispositivo o un refresco en medio): la base de datos rechaza
+        // los avisos repetidos por su clave y aquí se ignoran en silencio.
+        const rows = toInsert.map(n => ({
+          ...n,
+          dedupe_key: notificationDedupeKey(n.type, n.data as Record<string, unknown> | null),
+        }));
+        const { error } = await supabase
+          .from('notifications')
+          .upsert(rows, { onConflict: 'user_id,dedupe_key', ignoreDuplicates: true });
         if (error) console.error('Error inserting notifications:', error);
       }
 

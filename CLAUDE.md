@@ -9,7 +9,7 @@ español, directo y sin jerga innecesaria; él aprueba, Claude implementa).
 | Qué | Dónde |
 |---|---|
 | Código | GitHub `06danisanchez-lang/crowdfolio` (rama `main` = producción) |
-| Web | crowdfolio.es (Vercel, proyecto `crowdfolio-sandy`) |
+| Web | crowdfolio.es (Vercel, proyecto `crowdfolio`) |
 | Base de datos, auth, Edge Functions | Supabase, proyecto `eazwouasdrcbucxwjfxy` (plan gratuito) |
 | Copia local de Dani | `~/Documents/CrowdFolio` en su Mac |
 

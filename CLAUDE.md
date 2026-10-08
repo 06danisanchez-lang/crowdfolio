@@ -9,9 +9,13 @@ español, directo y sin jerga innecesaria; él aprueba, Claude implementa).
 | Qué | Dónde |
 |---|---|
 | Código | GitHub `06danisanchez-lang/crowdfolio` (rama `main` = producción) |
-| Web | crowdfolio.es (Vercel, proyecto `crowdfolio`) |
+| Web | www.crowdfolio.es (Vercel, proyecto `crowdfolio`, el único). `crowdfolio.es` y la dirección antigua `crowdfolio-sandy.vercel.app` redirigen a la www |
 | Base de datos, auth, Edge Functions | Supabase, proyecto `eazwouasdrcbucxwjfxy` (plan gratuito) |
+| Inicio de sesión | Supabase Auth: Site URL `https://crowdfolio.es`; redirect URLs `crowdfolio.es/**`, `www.crowdfolio.es/**` y `localhost:5173/**`. Si se añade otro dominio, añadirlo ahí o el login vuelve a la Site URL |
 | Copia local de Dani | `~/Documents/CrowdFolio` en su Mac |
+
+Supabase y Vercel se pueden revisar con sus conectores. Lo que no exponen (configuración de
+Auth, por ejemplo) se mira en el navegador de la app, con la sesión de Dani.
 
 Stack: React 18 + Vite + TypeScript + Tailwind + shadcn/ui, TanStack Query, Zod,
 Supabase (Postgres + RLS + Edge Functions), Stripe (pendiente de activar).
@@ -96,8 +100,10 @@ comprobar que el md5 coincide calculándolo en producción con
   columnas de divisa son solo para auditoría.
 - Pro = (plan activo de Stripe) **o** (`is_beta_pro` y `pro_until > now()`), ambos en
   `subscriptions`. `plan = 'free'` en un beta Pro es intencionado.
-- El cálculo fiscal real está en el cliente (`useTaxSummary.ts`, `src/lib/tax/`). La Edge
-  Function `calculate-tax` es código muerto (usa tablas que ya no existen).
+- El cálculo fiscal está entero en el cliente (`useTaxSummary.ts`, `src/lib/tax/`). No
+  pasar lógica fiscal a Edge Functions. `calculate-tax`, `scheduled-scraper` y
+  `scrape-opportunities` se quitaron del repo (código muerto); pueden seguir desplegadas
+  en Supabase hasta que Dani las borre desde el panel.
 - Toda consulta del cliente sobre datos del usuario filtra por `user_id` aunque RLS ya
   lo haga: un admin tiene políticas que le dejan leer todo (ver PR #26).
 - Mantenerlo simple: no construir problemas que todavía no existen.

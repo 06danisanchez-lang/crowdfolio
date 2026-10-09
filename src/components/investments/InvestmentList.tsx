@@ -58,6 +58,7 @@ import { MaturityConfirmationModal } from './MaturityConfirmationModal';
 import { CloseInvestmentModal } from './CloseInvestmentModal';
 import { DefaultLossQuestionnaire } from './DefaultLossQuestionnaire';
 import { investmentToDefaultLossAnswers } from '@/lib/tax/investmentToDefaultLossInput';
+import { formatPercent } from '@/lib/formatPercent';
 
 interface InvestmentListProps {
   activeInvestments: Investment[];
@@ -108,8 +109,10 @@ export function InvestmentList({
   const { t } = useLanguage();
 
   // Section open state — active opens automatically when coming from KPI card
-  const [activeOpen, setActiveOpen] = useState(initialStatusFilter !== 'all');
-  const [incompleteOpen, setIncompleteOpen] = useState(false);
+  // Activas siempre abiertas al entrar (con todo plegado la página parecía vacía);
+  // las pendientes de completar, abiertas si hay alguna, porque piden una acción.
+  const [activeOpen, setActiveOpen] = useState(true);
+  const [incompleteOpen, setIncompleteOpen] = useState(incompleteInvestments.length > 0);
   const [completedOpen, setCompletedOpen] = useState(false);
 
   // Filters & sort (active section only)
@@ -481,7 +484,7 @@ export function InvestmentList({
                             )}
                           </TableCell>
                           <TableCell>{format(parseISO(inv.investmentDate), 'dd/MM/yyyy', { locale: es })}</TableCell>
-                          <TableCell>{inv.expectedReturn.toFixed(1)}%</TableCell>
+                          <TableCell>{formatPercent(inv.expectedReturn)}</TableCell>
                           <TableCell>
                             {maturity.severity ? (
                               <Badge className={cn('text-xs', maturityBadgeClass(maturity.severity))}>
@@ -661,7 +664,7 @@ export function InvestmentList({
                         <div className="flex flex-wrap items-center gap-1 mt-1 text-xs text-muted-foreground">
                           <span>{getPlatformLabel(inv.platform, inv.customPlatformName)}</span>
                           <span>· {formatCurrency(inv.amount)}</span>
-                          <span>· {inv.expectedReturn.toFixed(1)}%</span>
+                          <span>· {formatPercent(inv.expectedReturn)}</span>
                           {inv.expectedEndDate && (
                             maturity.severity ? (
                               <Badge className={cn('text-xs', maturityBadgeClass(maturity.severity))}>

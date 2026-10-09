@@ -40,7 +40,7 @@ describe('InvestmentDetail — retrasos', () => {
     expect(screen.getByText(/vencimiento prometido/i)).toBeTruthy();
     expect(screen.getByText(/retraso previsto de 6 meses/i)).toBeTruthy();
     expect(screen.getByText(/TAE ajustada por el retraso/i)).toBeTruthy();
-    expect(screen.getByText('6.7%')).toBeTruthy();
+    expect(screen.getByText('6,7 %')).toBeTruthy();
     expect(screen.getByText(/sin intereses extra/i)).toBeTruthy();
   });
 

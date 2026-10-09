@@ -1139,7 +1139,7 @@ export function InvestmentForm({
           render={({ field }) => (
             <FormItem>
               <FormLabel>
-                {isFuture ? t('future.form.estimatedAmount') : 'Monto (€)'}
+                {isFuture ? t('future.form.estimatedAmount') : t('investments.form.amount')}
               </FormLabel>
               <FormControl>
                 <NumericTextInput
@@ -1352,8 +1352,11 @@ export function InvestmentForm({
         )}
       />
 
-      <div className="sticky bottom-0 bg-background pt-4 pb-2 border-t mt-4 -mx-1 px-1 flex justify-end gap-2">
-        <Button type="button" variant="outline" onClick={() => setOpen(false)}>
+      {/* Pegada al borde inferior del diálogo (-bottom-6/-mb-6 compensan su p-6) para que no
+          asome el formulario por debajo. En móvil, rejilla de dos columnas: tres botones en
+          fila no caben en 390 px y ensanchaban todo el diálogo. */}
+      <div className="sticky -bottom-6 z-10 -mb-6 bg-background pt-4 pb-6 border-t mt-4 -mx-1 px-1 grid grid-cols-2 gap-2 sm:flex sm:justify-end">
+        <Button type="button" variant="outline" className={showDraftButtons ? undefined : 'col-span-2'} onClick={() => setOpen(false)}>
           {t('common.cancel')}
         </Button>
         {showDraftButtons && (
@@ -1361,7 +1364,7 @@ export function InvestmentForm({
             {t('investments.form.saveDraft')}
           </Button>
         )}
-        <Button type="submit">
+        <Button type="submit" className="col-span-2 order-first sm:order-none">
           {isFuture
             ? t('future.form.save')
             : isDraft ? t('investments.incomplete.cta') : (initialData ? t('investments.form.save.edit') : t('investments.form.save.new'))}

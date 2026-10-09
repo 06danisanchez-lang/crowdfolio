@@ -2,6 +2,7 @@ import { cn } from '@/lib/utils';
 import { LucideIcon } from 'lucide-react';
 import { HelpTooltip } from '@/components/ui/help-tooltip';
 import { ReactNode } from 'react';
+import { formatPercent } from '@/lib/formatPercent';
 
 interface KPICardProps {
   title: string;
@@ -44,7 +45,7 @@ export function KPICard({ title, value, subtitle, icon: Icon, trend, className, 
               trend.isPositive ? "text-status-active" : "text-destructive"
             )}>
               <span>{trend.isPositive ? '↑' : '↓'}</span>
-              <span>{Math.abs(trend.value).toFixed(1)}%</span>
+              <span>{formatPercent(Math.abs(trend.value))}</span>
             </div>
           )}
         </div>

@@ -1,6 +1,7 @@
 import { forwardRef } from 'react';
 import { Wallet, TrendingUp, PiggyBank } from 'lucide-react';
 import crowdfolioLogo from '@/assets/logo_crowdfolio.svg';
+import { formatPercent } from '@/lib/formatPercent';
 
 interface ShareableCardProps {
   totalInvested: number;
@@ -81,7 +82,7 @@ const ShareableCard = forwardRef<HTMLDivElement, ShareableCardProps>(
             </div>
             <div>
               <p className="text-sm text-gray-400 font-medium">Rentabilidad Media</p>
-              <p className="text-2xl font-bold text-white">{averageReturn.toFixed(1)}% <span className="text-base font-normal text-gray-400">anual</span></p>
+              <p className="text-2xl font-bold text-white">{formatPercent(averageReturn)} <span className="text-base font-normal text-gray-400">anual</span></p>
             </div>
           </div>
         </div>

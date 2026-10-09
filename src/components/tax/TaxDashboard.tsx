@@ -112,7 +112,7 @@ export function TaxDashboard({ isPro = false, onProRequired, onOpenInvestment }:
             Visualiza tus rendimientos y obligaciones fiscales
           </p>
         </div>
-        <div className="flex items-center gap-3">
+        <div className="flex flex-wrap items-center gap-3">
           {!hasNoData && <TaxExportButton summary={summary} expenses={expenses} enrichedPayments={enrichedPayments} defaultLossSummary={defaultLossSummary} manualGppOperations={manualGppOperations} userEmail={user?.email ?? ''} isPro={isPro} onProRequired={onProRequired} />}
           <TaxYearSelector
             selectedYear={selectedYear}
@@ -130,7 +130,9 @@ export function TaxDashboard({ isPro = false, onProRequired, onOpenInvestment }:
           key={inv.investmentId}
           className="flex flex-col sm:flex-row sm:items-center gap-3 justify-between rounded-lg border border-amber-300 bg-amber-50 dark:border-amber-700 dark:bg-amber-950/30 p-3"
         >
-          <span className="text-sm text-amber-800 dark:text-amber-300">{t('defaultLoss.notAssessedBanner.text')}</span>
+          <span className="text-sm text-amber-800 dark:text-amber-300">
+            <strong>{inv.projectName}</strong>: {t('defaultLoss.notAssessedBanner.text')}
+          </span>
           <Button size="sm" className="shrink-0" onClick={() => onOpenInvestment?.(inv.investmentId)}>
             {t('defaultLoss.notAssessedBanner.button')}
           </Button>
@@ -190,16 +192,17 @@ export function TaxDashboard({ isPro = false, onProRequired, onOpenInvestment }:
 
       {/* Detailed Tabs — siempre visibles: sin cobros se pueden anotar gastos igualmente */}
       <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-4">
-        <TabsList className="grid w-full grid-cols-3 lg:w-auto lg:grid-cols-none lg:flex">
-          <TabsTrigger value="breakdown" className="flex items-center gap-2">
+        {/* En móvil las tres pestañas no caben a la vez: fila con scroll horizontal */}
+        <TabsList className="flex w-full justify-start overflow-x-auto lg:w-auto">
+          <TabsTrigger value="breakdown" className="flex shrink-0 items-center gap-2">
             <Calculator className="h-4 w-4" />
             Desglose
           </TabsTrigger>
-          <TabsTrigger value="buckets" className="flex items-center gap-2">
+          <TabsTrigger value="buckets" className="flex shrink-0 items-center gap-2">
             <ArrowLeftRight className="h-4 w-4" />
             Bases imponibles
           </TabsTrigger>
-          <TabsTrigger value="expenses" className="flex items-center gap-2">
+          <TabsTrigger value="expenses" className="flex shrink-0 items-center gap-2">
             <Receipt className="h-4 w-4" />
             Gastos Deducibles
           </TabsTrigger>

@@ -218,7 +218,11 @@ export function InvestmentDetail({ investment, schedule = [], onClose, onUpdate,
 
   const handleExtend = async () => {
     if (!investment || !newEndDate) return;
-    await onUpdate(investment.id, buildMaturityChange(investment, toDateOnlyString(newEndDate), extendKind));
+    const result = await onUpdate(investment.id, buildMaturityChange(investment, toDateOnlyString(newEndDate), extendKind));
+    if (result?.error) {
+      toast.error(result.error);
+      return;
+    }
     resetForms();
   };
 
@@ -401,9 +405,13 @@ export function InvestmentDetail({ investment, schedule = [], onClose, onUpdate,
   const maturityMoved = !!promisedEndDate && !!investment.expectedEndDate && promisedEndDate !== investment.expectedEndDate;
   const isCompletedWithDelay = investment.status === 'completed' && !!investment.actualEndDate && delayDays > 0;
   const isRunningWithDelay = (investment.status === 'active' || investment.status === 'pending') && delayDays > 0;
-  const isPastCurrentMaturity = !!investment.expectedEndDate && today > new Date(investment.expectedEndDate);
+  const isPastCurrentMaturity = !!investment.expectedEndDate && toDateOnlyString(today) > investment.expectedEndDate;
   const realTAE = isCompletedWithDelay ? calculateRealTAE(investment, investment.payments) : 0;
   const delayAdjustedTAE = isRunningWithDelay ? calculateDelayAdjustedTAE(investment, investment.payments, today) : 0;
+  const isDelayed = isDelayedWithoutExtraInterest(investment);
+  // La comparación de TAE solo tiene sentido si baja: retraso o fecha ya pasada,
+  // y con una rentabilidad prevista conocida (no en variable/desconocida).
+  const showDelayTAE = investment.expectedReturn > 0 && (isDelayed || isPastCurrentMaturity);
   const formatDay = (d: string) => format(parseISO(d), 'dd MMM yyyy', { locale: es });
   const formatDelay = (days: number) =>
     days < 60
@@ -615,27 +623,29 @@ export function InvestmentDetail({ investment, schedule = [], onClose, onUpdate,
 
           {isRunningWithDelay && (
             <div className="rounded-lg border p-4" style={{ borderColor: '#e4ddcf' }}>
-              <div className="flex items-center justify-between gap-4">
-                <div className="space-y-1">
-                  <p className="text-xs text-muted-foreground">{t('investments.detail.expectedTAE')}</p>
-                  <p className="text-lg font-semibold" style={{ color: '#253765' }}>{investment.expectedReturn.toFixed(1)}%</p>
+              {showDelayTAE && (
+                <div className="mb-2 flex items-center justify-between gap-4">
+                  <div className="space-y-1">
+                    <p className="text-xs text-muted-foreground">{t('investments.detail.expectedTAE')}</p>
+                    <p className="text-lg font-semibold" style={{ color: '#253765' }}>{investment.expectedReturn.toFixed(1)}%</p>
+                  </div>
+                  <div className="space-y-1 text-right">
+                    <p className="flex items-center justify-end gap-1 text-xs text-muted-foreground">
+                      {t('investments.detail.delayAdjustedTAE')}
+                      <HelpTooltip content={t('investments.detail.delayAdjustedTooltip')} />
+                    </p>
+                    <p className="text-lg font-semibold" style={{ color: '#253765' }}>{delayAdjustedTAE.toFixed(1)}%</p>
+                  </div>
                 </div>
-                <div className="space-y-1 text-right">
-                  <p className="flex items-center justify-end gap-1 text-xs text-muted-foreground">
-                    {t('investments.detail.delayAdjustedTAE')}
-                    <HelpTooltip content={t('investments.detail.delayAdjustedTooltip')} />
-                  </p>
-                  <p className="text-lg font-semibold" style={{ color: '#253765' }}>{delayAdjustedTAE.toFixed(1)}%</p>
-                </div>
-              </div>
-              <p className="mt-2 text-sm text-muted-foreground">
+              )}
+              <p className="text-sm text-muted-foreground">
                 {isPastCurrentMaturity
                   ? `${t('investments.detail.runningDelayPrefix')} ${formatDelay(delayDays)} ${t('investments.detail.runningDelaySuffix')}`
-                  : `${t('investments.detail.movedDelayPrefix')} ${formatDelay(delayDays)}: ${t('investments.detail.movedDelayWas')} ${formatDay(promisedEndDate!)}, ${t('investments.detail.movedDelayNow')} ${formatDay(investment.expectedEndDate!)}.`}
+                  : `${t(isDelayed ? 'investments.detail.movedDelayPrefix' : 'investments.detail.extendedPrefix')} ${formatDelay(delayDays)}: ${t('investments.detail.movedDelayWas')} ${formatDay(promisedEndDate!)}, ${t('investments.detail.movedDelayNow')} ${formatDay(investment.expectedEndDate!)}.`}
               </p>
-              {isDelayedWithoutExtraInterest(investment) && (
-                <p className="mt-1 text-xs text-muted-foreground">{t('investments.detail.delayNoExtraInterest')}</p>
-              )}
+              <p className="mt-1 text-xs text-muted-foreground">
+                {t(isDelayed ? 'investments.detail.delayNoExtraInterest' : 'investments.detail.extendedKeepsInterest')}
+              </p>
             </div>
           )}
 

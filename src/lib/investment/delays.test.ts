@@ -29,25 +29,44 @@ const base: Investment = {
 const at = (d: string) => new Date(`${d}T12:00:00`);
 
 describe('buildMaturityChange', () => {
-  it('la primera vez guarda el vencimiento prometido', () => {
+  it('retraso: guarda el vencimiento prometido y hasta cuándo genera intereses', () => {
     expect(buildMaturityChange(base, '2026-07-01', 'delayed')).toEqual({
       expectedEndDate: '2026-07-01',
       originalEndDate: '2026-01-01',
-      wasExtended: false,
+      interestEndDate: '2026-01-01',
     });
   });
 
-  it('un segundo retraso no pisa la fecha prometida', () => {
+  it('prórroga: guarda el vencimiento prometido y marca la etiqueta', () => {
+    expect(buildMaturityChange(base, '2026-07-01', 'extended')).toEqual({
+      expectedEndDate: '2026-07-01',
+      originalEndDate: '2026-01-01',
+      wasExtended: true,
+    });
+  });
+
+  it('un segundo retraso no pisa la fecha prometida ni el fin de intereses', () => {
     const once = { ...base, ...buildMaturityChange(base, '2026-07-01', 'delayed') };
-    expect(buildMaturityChange(once, '2026-12-01', 'delayed').originalEndDate).toBe('2026-01-01');
+    expect(buildMaturityChange(once, '2026-12-01', 'delayed')).toEqual({ expectedEndDate: '2026-12-01' });
   });
 
-  it('prórroga marca wasExtended', () => {
-    expect(buildMaturityChange(base, '2026-07-01', 'extended').wasExtended).toBe(true);
+  it('prórroga y después retraso: intereses hasta el final de la prórroga', () => {
+    const extended = { ...base, ...buildMaturityChange(base, '2026-07-01', 'extended') };
+    const delayed = { ...extended, ...buildMaturityChange(extended, '2027-01-01', 'delayed') };
+    expect(getAccrualEndDate(delayed)).toBe('2026-07-01');
+    expect(Math.round(calculateInvestmentTotalReturn(delayed))).toBe(149);
+    expect(isDelayedWithoutExtraInterest(delayed)).toBe(true);
   });
 
-  it('adelantar la fecha no es un retraso', () => {
-    expect(buildMaturityChange(base, '2025-10-01', 'delayed').originalEndDate).toBeNull();
+  it('retraso y después prórroga oficial: vuelve a generar intereses hasta la nueva fecha', () => {
+    const delayed = { ...base, ...buildMaturityChange(base, '2026-07-01', 'delayed') };
+    const extended = { ...delayed, ...buildMaturityChange(delayed, '2027-01-01', 'extended') };
+    expect(extended.interestEndDate).toBeNull();
+    expect(getAccrualEndDate(extended)).toBe('2027-01-01');
+  });
+
+  it('adelantar la fecha es una corrección: solo cambia la fecha', () => {
+    expect(buildMaturityChange(base, '2025-10-01', 'extended')).toEqual({ expectedEndDate: '2025-10-01' });
   });
 });
 
@@ -64,6 +83,12 @@ describe('retraso sin intereses extra', () => {
 
   it('cuenta el retraso desde la fecha prometida aunque aún no haya llegado la nueva', () => {
     expect(getDelayDays(delayed, at('2026-02-01'))).toBe(181);
+  });
+
+  it('los días de retraso no dependen de la hora del día', () => {
+    const pending = { ...base, status: 'pending' as const };
+    expect(getDelayDays(pending, new Date('2026-01-10T08:00:00'))).toBe(9);
+    expect(getDelayDays(pending, new Date('2026-01-10T23:30:00'))).toBe(9);
   });
 
   it('TAE ajustada: 10 % a 12 meses cobrado a los 18 → ≈6,7 %', () => {

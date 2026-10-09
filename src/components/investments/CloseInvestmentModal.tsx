@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { buildMaturityChange } from '@/lib/investment/maturityChange';
+import { toast } from 'sonner';
 import { format } from 'date-fns';
 import { es } from 'date-fns/locale';
 import { CalendarIcon } from 'lucide-react';
@@ -43,7 +44,7 @@ const CLOSE_OPTIONS: CloseOption[] = [
   {
     value: 'extended',
     label: 'Prorrogada',
-    description: 'La plataforma ha extendido el plazo del proyecto',
+    description: 'La plataforma ha ampliado el plazo y sigue pagando intereses hasta la nueva fecha',
     emoji: '📅',
   },
   {
@@ -147,13 +148,18 @@ export function CloseInvestmentModal({ investment, onClose, onUpdate, onDefaulte
   const handleExtend = async () => {
     if (!investment || !newEndDate) return;
     setSaving(true);
-    await onUpdate(investment.id, {
+    const result = await onUpdate(investment.id, {
       status: 'active',
       ...buildMaturityChange(investment, format(newEndDate, 'yyyy-MM-dd'), 'extended'),
       actualEndDate: null,
       closeReason: null,
     });
     setSaving(false);
+    const saveError = (result as { error?: string } | undefined)?.error;
+    if (saveError) {
+      toast.error(saveError);
+      return;
+    }
     reset();
     onClose();
   };

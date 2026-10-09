@@ -43,8 +43,8 @@ describe('matchScheduleToPayments', () => {
   });
 
   it('amortizable: intereses y capital del mismo día son una sola cuota', () => {
-    const amort = [entry('2026-01-01', 'mixed'), entry('2026-02-01', 'mixed')];
-    const result = matchScheduleToPayments('amortizing', amort, [pay('2026-01-01', 'interest'), pay('2026-01-01', 'principal')]);
+    const amort = [entry('2026-01-01', 'mixed', 100), entry('2026-02-01', 'mixed', 100)];
+    const result = matchScheduleToPayments('amortizing', amort, [pay('2026-01-01', 'interest', 10), pay('2026-01-01', 'principal', 90)]);
     expect(open(result)).toEqual(['mixed@2026-02-01']);
   });
 
@@ -62,5 +62,30 @@ describe('matchScheduleToPayments', () => {
   it('otros modelos no se tocan', () => {
     const equity = [entry('2026-01-01', 'interest')];
     expect(matchScheduleToPayments('equity', equity, [pay('2026-01-01', 'interest')])).toBe(equity);
+  });
+});
+
+describe('matchScheduleToPayments: importes', () => {
+  const monthly = [entry('2026-01-01', 'interest'), entry('2026-02-01', 'interest'), entry('2026-03-01', 'interest')];
+
+  it('unos intereses de demora pequeños no cubren la cuota siguiente', () => {
+    const result = matchScheduleToPayments('periodic_fixed', monthly, [pay('2026-01-01', 'interest', 10), pay('2026-01-15', 'interest', 2)]);
+    expect(open(result)).toEqual(['interest@2026-02-01', 'interest@2026-03-01']);
+  });
+
+  it('un cobro de dos cuotas juntas cubre las dos', () => {
+    const result = matchScheduleToPayments('periodic_fixed', monthly, [pay('2026-02-01', 'interest', 20)]);
+    expect(open(result)).toEqual(['interest@2026-03-01']);
+  });
+
+  it('quien apunta el neto tras la retención también cuadra', () => {
+    const result = matchScheduleToPayments('periodic_fixed', monthly, [pay('2026-01-01', 'interest', 8.1), pay('2026-02-01', 'interest', 8.1)]);
+    expect(open(result)).toEqual(['interest@2026-03-01']);
+  });
+
+  it('amortizable: una cuota apuntada en días distintos cuenta una vez', () => {
+    const amort = [entry('2026-01-01', 'mixed', 100), entry('2026-02-01', 'mixed', 100)];
+    const result = matchScheduleToPayments('amortizing', amort, [pay('2026-01-01', 'interest', 10), pay('2026-01-03', 'principal', 90)]);
+    expect(open(result)).toEqual(['mixed@2026-02-01']);
   });
 });

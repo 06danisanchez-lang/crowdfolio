@@ -43,7 +43,12 @@ export function calculateTotalReturnPercent(
 const MS_PER_YEAR = 1000 * 60 * 60 * 24 * 365.25;
 const MS_PER_DAY = 1000 * 60 * 60 * 24;
 
-type DelayFields = Pick<Investment, 'expectedEndDate' | 'originalEndDate' | 'wasExtended'>;
+type DelayFields = Pick<Investment, 'expectedEndDate' | 'originalEndDate' | 'interestEndDate'>;
+
+/** Días naturales entre dos fechas 'YYYY-MM-DD' (b - a), sin horas ni zonas horarias. */
+export function daysBetweenDates(a: string, b: string): number {
+  return Math.round((Date.parse(`${b.slice(0, 10)}T00:00:00Z`) - Date.parse(`${a.slice(0, 10)}T00:00:00Z`)) / MS_PER_DAY);
+}
 
 /**
  * Vencimiento prometido al invertir, antes de prórrogas o retrasos.
@@ -54,23 +59,21 @@ export function getOriginalEndDate(investment: DelayFields): string | undefined 
 }
 
 /**
- * Hasta qué fecha genera rentabilidad la inversión, según lo que dijo el usuario
- * al mover el vencimiento:
- * - Prórroga (wasExtended): el contrato sigue con el mismo tipo hasta la nueva fecha.
- * - Retraso: cobrará lo prometido, pero más tarde; no se suponen intereses extra.
- *   Si la plataforma paga intereses de demora, se registran como cobros y la TAE
- *   real al cerrar los recoge.
+ * Hasta qué fecha genera rentabilidad la inversión:
+ * - Normal o tras una prórroga oficial: hasta el vencimiento actual (mismo tipo).
+ * - Tras un retraso: hasta interestEndDate (cobrará lo prometido, pero más tarde;
+ *   no se suponen intereses extra). Si la plataforma paga intereses de demora, se
+ *   registran como cobros y la TAE real al cerrar los recoge.
  */
 export function getAccrualEndDate(investment: DelayFields): string | undefined {
   const expected = investment.expectedEndDate || undefined;
-  if (investment.originalEndDate && !investment.wasExtended) {
-    if (!expected) return investment.originalEndDate;
-    return investment.originalEndDate < expected ? investment.originalEndDate : expected;
-  }
-  return expected;
+  const interestEnd = investment.interestEndDate || undefined;
+  if (!interestEnd) return expected;
+  if (!expected) return interestEnd;
+  return interestEnd < expected ? interestEnd : expected;
 }
 
-/** true si el vencimiento se ha movido por un retraso (no una prórroga). */
+/** true si la inversión va con un retraso sin intereses extra (no una prórroga). */
 export function isDelayedWithoutExtraInterest(investment: DelayFields): boolean {
   const accrualEnd = getAccrualEndDate(investment);
   return !!accrualEnd && !!investment.expectedEndDate && accrualEnd < investment.expectedEndDate;
@@ -212,15 +215,12 @@ export function calculateAccruedReturn(
   const todayStr = toDateOnlyString(today);
 
   if (inv.incomeModel === 'periodic_fixed' || inv.incomeModel === 'amortizing') {
+    // Lo previsto hasta hoy. No se sustituye por el cobro emparejado: el
+    // emparejado (scheduleMatching.ts) puede cubrir una cuota con varios cobros
+    // o varias cuotas con uno, así que su importe no es el de la cuota.
     return schedule
       .filter(e => e.type === 'interest' && e.expectedDate <= todayStr)
-      .reduce((sum, e) => {
-        if (e.matchedPaymentId && inv.payments) {
-          const real = inv.payments.find(p => p.id === e.matchedPaymentId);
-          return sum + (real ? real.amount : e.expectedAmount);
-        }
-        return sum + e.expectedAmount;
-      }, 0);
+      .reduce((sum, e) => sum + e.expectedAmount, 0);
   }
 
   // bullet, equity plusvalia/liquidacion: interés simple proporcional, hasta la
@@ -260,17 +260,15 @@ export function calculateRemainingReturn(
 export function getDelayDays(investment: Investment, today: Date = new Date()): number {
   const original = getOriginalEndDate(investment);
   if (!original) return 0;
-  const originalDate = new Date(original);
 
   if (investment.status === 'completed' && investment.actualEndDate) {
-    const actual = new Date(investment.actualEndDate);
-    return Math.round((actual.getTime() - originalDate.getTime()) / MS_PER_DAY);
+    return daysBetweenDates(original, investment.actualEndDate);
   }
 
   if (investment.status === 'active' || investment.status === 'pending') {
-    const current = investment.expectedEndDate ? new Date(investment.expectedEndDate) : originalDate;
-    const latest = today > current ? today : current;
-    return Math.round((latest.getTime() - originalDate.getTime()) / MS_PER_DAY);
+    const todayStr = toDateOnlyString(today);
+    const current = investment.expectedEndDate || original;
+    return daysBetweenDates(original, todayStr > current ? todayStr : current);
   }
 
   return 0;

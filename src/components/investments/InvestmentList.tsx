@@ -227,13 +227,13 @@ export function InvestmentList({
       );
     }
     if (status === 'active' || status === 'pending') {
-      if (inv.wasExtended) {
-        extraBadges.push(
-          <Badge key="extended" className="bg-orange-100 text-orange-800 border-orange-300 text-xs">Prorrogada</Badge>
-        );
-      } else if (isDelayedWithoutExtraInterest(inv)) {
+      if (isDelayedWithoutExtraInterest(inv)) {
         extraBadges.push(
           <Badge key="delayed" className="bg-orange-100 text-orange-800 border-orange-300 text-xs">Retrasada</Badge>
+        );
+      } else if (inv.wasExtended) {
+        extraBadges.push(
+          <Badge key="extended" className="bg-orange-100 text-orange-800 border-orange-300 text-xs">Prorrogada</Badge>
         );
       }
     }

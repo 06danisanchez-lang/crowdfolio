@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { buildMaturityChange } from '@/lib/investment/maturityChange';
+import { toast } from 'sonner';
 import { format } from 'date-fns';
 import { es } from 'date-fns/locale';
 import { CalendarIcon, CheckCircle2, XCircle, ChevronLeft } from 'lucide-react';
@@ -116,23 +117,29 @@ export function MaturityConfirmationModal({ investment, onClose, onUpdate, onClo
     setSaving(true);
     const newDateStr = newDate ? format(newDate, 'yyyy-MM-dd') : undefined;
 
+    let result: unknown;
     switch (selectedOption) {
       case 'extended':
       case 'delayed':
         if (!newDateStr) break;
-        await onUpdate(investment.id, {
+        result = await onUpdate(investment.id, {
           status: 'active',
           ...buildMaturityChange(investment, newDateStr, selectedOption),
         });
         break;
       case 'disputed':
-        await onUpdate(investment.id, {
+        result = await onUpdate(investment.id, {
           status: 'active',
           notes: `[DISPUTA] ${investment.notes ?? ''}`.trim(),
         });
         break;
     }
     setSaving(false);
+    const saveError = (result as { error?: string } | undefined)?.error;
+    if (saveError) {
+      toast.error(saveError);
+      return;
+    }
     reset();
     onClose();
   };

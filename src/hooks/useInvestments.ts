@@ -217,8 +217,7 @@ export function useInvestments() {
     investmentDate: string;
     expectedEndDate?: string;
     firstPaymentDate?: string | null;
-    originalEndDate?: string | null;
-    wasExtended?: boolean;
+    interestEndDate?: string | null;
   }): Promise<{ error?: string }> => {
     // Delete existing schedule
     const { error: deleteError } = await supabase.from('investment_schedule').delete().eq('investment_id', investmentId);
@@ -393,6 +392,7 @@ export function useInvestments() {
     if (updates.closeReason !== undefined) dbUpdates.close_reason = updates.closeReason;
     if (updates.wasExtended !== undefined) dbUpdates.was_extended = updates.wasExtended;
     if (updates.originalEndDate !== undefined) dbUpdates.original_end_date = updates.originalEndDate || null;
+    if (updates.interestEndDate !== undefined) dbUpdates.interest_end_date = updates.interestEndDate || null;
     if (updates.incomeModel !== undefined) dbUpdates.income_model = updates.incomeModel || null;
     if (updates.paymentFrequency !== undefined) dbUpdates.payment_frequency = updates.paymentFrequency || null;
     if (updates.firstPaymentDate !== undefined) dbUpdates.first_payment_date = updates.firstPaymentDate || null;
@@ -420,7 +420,7 @@ export function useInvestments() {
 
     // Regenerate schedule if income model fields changed
     let scheduleError: string | undefined;
-    if (current && (updates.incomeModel || updates.paymentFrequency || updates.firstPaymentDate !== undefined || updates.expectedReturn !== undefined || updates.expectedEndDate !== undefined || updates.amount !== undefined || updates.investmentDate !== undefined || updates.principalReturnType !== undefined || updates.equityType !== undefined || updates.originalEndDate !== undefined || updates.wasExtended !== undefined)) {
+    if (current && (updates.incomeModel || updates.paymentFrequency || updates.firstPaymentDate !== undefined || updates.expectedReturn !== undefined || updates.expectedEndDate !== undefined || updates.amount !== undefined || updates.investmentDate !== undefined || updates.principalReturnType !== undefined || updates.equityType !== undefined || updates.interestEndDate !== undefined)) {
       const merged = {
         amount: updates.amount ?? current.amount ?? 0,
         expectedReturn: updates.expectedReturn ?? current.expectedReturn ?? 0,
@@ -431,8 +431,7 @@ export function useInvestments() {
         investmentDate: updates.investmentDate ?? current.investmentDate ?? '',
         expectedEndDate: updates.expectedEndDate ?? current.expectedEndDate,
         firstPaymentDate: updates.firstPaymentDate !== undefined ? updates.firstPaymentDate : current.firstPaymentDate,
-        originalEndDate: updates.originalEndDate !== undefined ? updates.originalEndDate : current.originalEndDate,
-        wasExtended: updates.wasExtended ?? current.wasExtended,
+        interestEndDate: updates.interestEndDate !== undefined ? updates.interestEndDate : current.interestEndDate,
       };
       const scheduleResult = await saveScheduleForInvestment(id, merged);
       scheduleError = scheduleResult.error;

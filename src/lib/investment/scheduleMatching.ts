@@ -1,6 +1,8 @@
 import { IncomeModel, InvestmentScheduleEntry, Payment } from '@/types/investment';
 
-const round2 = (n: number): number => Math.round((n + Number.EPSILON) * 100) / 100;
+/** Una cuota de intereses se da por cobrada con al menos este porcentaje de lo
+ * previsto (deja margen para quien apunta el neto tras la retención del 19 %). */
+const MIN_COVERAGE = 0.8;
 /** Margen para dar por devuelto un tramo de capital (redondeos de la plataforma). */
 const PRINCIPAL_TOLERANCE_EUR = 1;
 
@@ -10,17 +12,20 @@ const PRINCIPAL_TOLERANCE_EUR = 1;
  * seguían «pendientes» aunque se hubieran cobrado, y Cobros las mostraba como
  * atrasadas.
  *
- * Por orden (la primera cuota con el primer cobro, la segunda con el segundo…),
- * no por cercanía de fechas: así un cobro que llega tarde sigue cubriendo la cuota
- * que tocaba, y las que quedan sin cubrir son las que de verdad faltan.
- * - periodic_fixed: cuotas de intereses ↔ cobros de intereses, por orden. El capital
- *   se da por devuelto cuando lo cobrado como capital alcanza lo previsto.
- * - amortizing: cada cuota (capital + intereses) ↔ un día con cobros de intereses o
- *   de capital (la cuota se puede registrar en uno o dos cobros del mismo día).
- * - Resto de modelos: sin cambios (equity rentas se resuelve en pendingPayments.ts).
+ * Por importes y en orden: los cobros se van sumando a una «bolsa» y cada cuota,
+ * de la más antigua a la más reciente, se da por cobrada cuando la bolsa la cubre.
+ * Así:
+ * - un cobro que llega tarde cubre la cuota que tocaba, no la siguiente;
+ * - un cobro pequeño (intereses de demora, un ajuste) no cubre una cuota entera;
+ * - un cobro de dos cuotas juntas cubre las dos.
+ * Tipos: periodic_fixed → cuotas de intereses con cobros de intereses, y el capital
+ * con cobros de capital; amortizing → cada cuota (capital + intereses) con cobros
+ * de intereses y de capital. Resto de modelos: sin cambios (equity rentas se
+ * resuelve en pendingPayments.ts).
  *
  * Las cuotas ya emparejadas u omitidas en la base de datos se respetan, y sus cobros
- * no se vuelven a usar.
+ * no se vuelven a usar. El importe del cobro emparejado no es el de la cuota: no
+ * usar matchedPaymentId para sumar importes.
  */
 export function matchScheduleToPayments(
   incomeModel: IncomeModel | null | undefined,
@@ -35,48 +40,43 @@ export function matchScheduleToPayments(
     .filter(p => !usedIds.has(p.id))
     .sort((a, b) => a.date.localeCompare(b.date));
 
-  const isOpen = (e: InvestmentScheduleEntry) =>
-    !e.matchedPaymentId && (e.status ?? 'pending') !== 'skipped' && e.status !== 'matched';
-  const byDate = (a: InvestmentScheduleEntry, b: InvestmentScheduleEntry) =>
-    a.expectedDate.localeCompare(b.expectedDate);
-
   const result = schedule.map(e => ({ ...e }));
-  const matchIn = (entry: InvestmentScheduleEntry, paymentId: string) => {
-    entry.matchedPaymentId = paymentId;
-    entry.status = 'matched';
-  };
+  const open = (types: InvestmentScheduleEntry['type'][]) =>
+    result
+      .filter(e => types.includes(e.type) && !e.matchedPaymentId && e.status !== 'skipped' && e.status !== 'matched')
+      .sort((a, b) => a.expectedDate.localeCompare(b.expectedDate));
 
   if (incomeModel === 'periodic_fixed') {
-    const interestPayments = free.filter(p => p.type === 'interest');
-    const interestEntries = result.filter(e => e.type === 'interest' && isOpen(e)).sort(byDate);
-    interestEntries.forEach((entry, i) => {
-      if (i < interestPayments.length) matchIn(entry, interestPayments[i].id);
-    });
-
-    const principalPayments = free.filter(p => p.type === 'principal');
-    let paid = round2(principalPayments.reduce((sum, p) => sum + p.amount, 0));
-    const lastPrincipal = principalPayments[principalPayments.length - 1];
-    for (const entry of result.filter(e => e.type === 'principal' && isOpen(e)).sort(byDate)) {
-      if (!lastPrincipal || paid < entry.expectedAmount - PRINCIPAL_TOLERANCE_EUR) break;
-      paid = round2(paid - entry.expectedAmount);
-      matchIn(entry, lastPrincipal.id);
-    }
-    return result;
+    matchByBalance(open(['interest']), free.filter(p => p.type === 'interest'), e => e.expectedAmount * MIN_COVERAGE);
+    matchByBalance(open(['principal']), free.filter(p => p.type === 'principal'), e => e.expectedAmount - PRINCIPAL_TOLERANCE_EUR);
+  } else {
+    matchByBalance(
+      open(['mixed', 'interest', 'principal']),
+      free.filter(p => p.type === 'interest' || p.type === 'principal'),
+      e => e.expectedAmount * MIN_COVERAGE,
+    );
   }
-
-  // amortizing: un día con cobros = una cuota
-  const firstPaymentByDay = new Map<string, Payment>();
-  for (const p of free) {
-    if ((p.type === 'interest' || p.type === 'principal') && !firstPaymentByDay.has(p.date)) {
-      firstPaymentByDay.set(p.date, p);
-    }
-  }
-  const installments = [...firstPaymentByDay.values()];
-  result
-    .filter(e => isOpen(e))
-    .sort(byDate)
-    .forEach((entry, i) => {
-      if (i < installments.length) matchIn(entry, installments[i].id);
-    });
   return result;
+}
+
+function matchByBalance(
+  entries: InvestmentScheduleEntry[],
+  payments: Payment[],
+  needed: (entry: InvestmentScheduleEntry) => number,
+): void {
+  let balance = 0;
+  let next = 0;
+  let lastId: string | null = null;
+  for (const entry of entries) {
+    const target = Math.max(needed(entry), 0.01);
+    while (balance + 1e-9 < target && next < payments.length) {
+      balance += payments[next].amount;
+      lastId = payments[next].id;
+      next++;
+    }
+    if (balance + 1e-9 < target || !lastId) return;
+    entry.matchedPaymentId = lastId;
+    entry.status = 'matched';
+    balance = Math.max(balance - entry.expectedAmount, 0);
+  }
 }

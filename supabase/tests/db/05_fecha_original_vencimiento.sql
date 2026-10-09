@@ -1,4 +1,4 @@
--- La fecha de vencimiento original se guarda y solo la puede tocar el dueño.
+-- Las fechas de retraso (vencimiento prometido, fin de intereses) se guardan y solo las toca el dueño.
 begin;
 
 insert into auth.users (id, email) values
@@ -12,17 +12,19 @@ select tests.check((select original_end_date from public.investments) is null,
 
 -- Ana registra un retraso: mueve el vencimiento y guarda la fecha prometida
 select tests.login('00000000-0000-0000-0000-00000000000a');
-update public.investments set original_end_date = expected_end_date, expected_end_date = '2026-07-01'
+update public.investments set original_end_date = expected_end_date, interest_end_date = expected_end_date, expected_end_date = '2026-07-01'
   where id = '10000000-0000-0000-0000-00000000000a';
 reset role;
-select tests.check((select original_end_date from public.investments) = '2026-01-01',
-  'Ana no puede guardar la fecha original de su inversión');
+select tests.check((select original_end_date from public.investments) = '2026-01-01'
+  and (select interest_end_date from public.investments) = '2026-01-01',
+  'Ana no puede guardar las fechas de retraso de su inversión');
 
 -- Beto no puede tocarla
 select tests.login('00000000-0000-0000-0000-00000000000b');
-update public.investments set original_end_date = '2020-01-01';
+update public.investments set original_end_date = '2020-01-01', interest_end_date = '2020-01-01';
 reset role;
-select tests.check((select original_end_date from public.investments) = '2026-01-01',
-  'Beto puede cambiar la fecha original de una inversión de Ana');
+select tests.check((select original_end_date from public.investments) = '2026-01-01'
+  and (select interest_end_date from public.investments) = '2026-01-01',
+  'Beto puede cambiar las fechas de retraso de una inversión de Ana');
 
 rollback;

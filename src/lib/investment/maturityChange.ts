@@ -1,26 +1,42 @@
 import { Investment } from '@/types/investment';
+import { getAccrualEndDate } from './calculations';
 
 /** Qué ha pasado con el vencimiento: prórroga oficial o cobro que llega tarde. */
 export type MaturityChangeKind = 'extended' | 'delayed';
 
+type MaturityFields = Pick<Investment, 'expectedEndDate' | 'originalEndDate' | 'interestEndDate' | 'wasExtended'>;
+
 /**
  * Cambios a guardar cuando el vencimiento se mueve a una fecha nueva.
- * - Guarda la fecha prometida al invertir (originalEndDate) la primera vez que se
- *   mueve hacia delante, para que el retraso no se pierda.
- * - Prórroga: el contrato sigue al mismo tipo hasta la nueva fecha (wasExtended).
- * - Retraso: se cobrará lo prometido, más tarde (wasExtended no cambia).
- * Ver getAccrualEndDate en calculations.ts.
+ * - La primera vez que se mueve hacia delante guarda la fecha prometida al
+ *   invertir (originalEndDate), para que el retraso no se pierda.
+ * - Prórroga: el contrato sigue al mismo tipo hasta la nueva fecha
+ *   (interestEndDate vacío, wasExtended para la etiqueta).
+ * - Retraso: cobrará lo prometido, más tarde. Los intereses se quedan donde
+ *   acababan antes de este cambio (interestEndDate), aunque hubiera prórrogas
+ *   anteriores.
+ * - Mover la fecha hacia atrás es una corrección: solo cambia la fecha.
+ * Solo devuelve los campos que cambian (una columna que no se manda no puede
+ * romper el guardado).
  */
 export function buildMaturityChange(
-  investment: Pick<Investment, 'expectedEndDate' | 'originalEndDate' | 'wasExtended'>,
+  investment: MaturityFields,
   newEndDate: string,
   kind: MaturityChangeKind,
-): Pick<Partial<Investment>, 'expectedEndDate' | 'originalEndDate' | 'wasExtended'> {
-  const promised = investment.originalEndDate || investment.expectedEndDate || null;
-  const movesLater = !!promised && newEndDate > promised;
-  return {
+): Pick<Partial<Investment>, 'expectedEndDate' | 'originalEndDate' | 'interestEndDate' | 'wasExtended'> {
+  const changes: Pick<Partial<Investment>, 'expectedEndDate' | 'originalEndDate' | 'interestEndDate' | 'wasExtended'> = {
     expectedEndDate: newEndDate,
-    originalEndDate: investment.originalEndDate || (movesLater ? promised : null),
-    wasExtended: kind === 'extended' ? true : investment.wasExtended ?? false,
   };
+  const current = investment.expectedEndDate || null;
+  if (!current || newEndDate <= current) return changes;
+
+  if (!investment.originalEndDate) changes.originalEndDate = current;
+
+  if (kind === 'extended') {
+    if (investment.interestEndDate) changes.interestEndDate = null;
+    if (!investment.wasExtended) changes.wasExtended = true;
+  } else if (!investment.interestEndDate) {
+    changes.interestEndDate = getAccrualEndDate(investment) ?? current;
+  }
+  return changes;
 }

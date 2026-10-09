@@ -1,9 +1,9 @@
 -- Instantánea del esquema `public` de PRODUCCIÓN (estructura, sin datos).
 -- NO EDITAR A MANO: se regenera con supabase/schema/dump_schema.sql (ver CLAUDE.md).
 --
--- snapshot_version: 20261009110228
--- última migración registrada en producción: 20261008200903
--- comprobación (md5 de la salida normalizada, 144 sentencias): a527c73059b7ad831a209546ab98320f
+-- snapshot_version: 20261009113334
+-- última migración registrada en producción: 20261009111435
+-- comprobación (md5 de la salida normalizada, 150 sentencias): ed3221b54940ed3b617dc1e9ff541099
 --
 -- scripts/db-test.sh carga primero supabase/schema/stubs.sql, después este
 -- archivo y por último las migraciones con versión > snapshot_version.
@@ -11,6 +11,37 @@
 set search_path = public, extensions;
 
 create type public.close_reason_type as enum ('on_time', 'early', 'extended', 'sold');
+
+create table public._backup_20261009_notifications (
+  id uuid,
+  user_id uuid,
+  title text,
+  message text,
+  type text,
+  read boolean,
+  data jsonb,
+  created_at timestamp with time zone,
+  dedupe_key text
+);
+
+create table public._backup_20261009_payments (
+  id uuid,
+  investment_id uuid,
+  date date,
+  amount numeric(12,2),
+  type text,
+  notes text,
+  created_at timestamp with time zone,
+  withholding_applied numeric(10,2),
+  original_amount numeric,
+  original_currency text,
+  exchange_rate numeric,
+  exchange_rate_date date,
+  amount_eur numeric,
+  foreign_withholding_amount numeric,
+  foreign_withholding_currency text,
+  exchange_rate_source text
+);
 
 create table public.future_investments (
   id uuid default gen_random_uuid() not null,
@@ -80,7 +111,9 @@ create table public.investments (
   loss_enforcement_initiator text,
   loss_assessed_at timestamp with time zone,
   loss_rules_version integer,
-  first_payment_date date
+  first_payment_date date,
+  original_end_date date,
+  interest_end_date date
 );
 
 create table public.notifications (
@@ -352,6 +385,10 @@ CREATE TRIGGER update_subscriptions_updated_at BEFORE UPDATE ON public.subscript
 
 CREATE TRIGGER update_tax_expenses_updated_at BEFORE UPDATE ON public.tax_expenses FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
 
+alter table public._backup_20261009_notifications enable row level security;
+
+alter table public._backup_20261009_payments enable row level security;
+
 alter table public.future_investments enable row level security;
 
 alter table public.investment_schedule enable row level security;
@@ -455,6 +492,10 @@ create policy "Users can manage their own tax expenses" on public.tax_expenses a
 create policy "Users can view their own promo codes" on public.used_promo_codes as permissive for select to public using ((auth.uid() = user_id));
 
 create policy "Users can view own role" on public.user_roles as permissive for select to public using ((auth.uid() = user_id));
+
+grant delete, insert, references, select, trigger, truncate, update on public._backup_20261009_notifications to service_role;
+
+grant delete, insert, references, select, trigger, truncate, update on public._backup_20261009_payments to service_role;
 
 grant delete, insert, references, select, trigger, truncate, update on public.future_investments to anon;
 

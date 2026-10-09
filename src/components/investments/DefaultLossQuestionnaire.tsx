@@ -1,5 +1,6 @@
 import { useMemo, useState } from 'react';
 import { z } from 'zod';
+import { parseSpanishNumber, formatSpanishNumber } from '@/lib/investment/parseSpanishNumber';
 import { format } from 'date-fns';
 import { ChevronDown, ChevronLeft, Info, AlertTriangle } from 'lucide-react';
 import { toast } from 'sonner';
@@ -20,6 +21,13 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } f
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 import { DefaultLossResult } from './DefaultLossResult';
 import { cn } from '@/lib/utils';
+
+/** Importe en formato español ("1.500,50"); NaN si no se puede interpretar.
+ * Antes parseFloat(v.replace(',', '.')) leía "1.500" como 1,5 €. */
+function parseAmount(raw: string): number {
+  const { value, error } = parseSpanishNumber(raw);
+  return error || value == null ? NaN : value;
+}
 
 type Step = 'equity' | 'p0' | 'p1' | 'p2' | 'pq' | 'p3' | 'p4' | 'result';
 
@@ -84,7 +92,7 @@ function amountSchema(max: number) {
   return z
     .string()
     .min(1, 'El importe es obligatorio')
-    .transform((v) => parseFloat(v.replace(',', '.')))
+    .transform((v) => parseAmount(v))
     .refine((v) => !isNaN(v) && v > 0, 'El importe debe ser mayor que 0')
     .refine((v) => isNaN(v) || v <= max, `El importe no puede superar ${formatCurrency(max)}`);
 }
@@ -141,7 +149,7 @@ export function DefaultLossQuestionnaire({ investment, onClose, onUpdate, onAddP
       insolvencyConcludedDate: initialAnswers.insolvencyConcludedDate ?? '',
       insolvencyOpen: initialAnswers.insolvencyStatus === 'open',
       quitaChoice: initialAnswers.quitaAmount != null ? 'yes' : 'no',
-      quitaAmount: initialAnswers.quitaAmount != null ? String(initialAnswers.quitaAmount) : '',
+      quitaAmount: initialAnswers.quitaAmount != null ? formatSpanishNumber(initialAnswers.quitaAmount) : '',
       quitaDate: initialAnswers.quitaDate ?? '',
       enforcementChoice: !initialAnswers.enforcementStarted
         ? 'no'
@@ -173,7 +181,7 @@ export function DefaultLossQuestionnaire({ investment, onClose, onUpdate, onAddP
     return {
       insolvencyStatus,
       insolvencyConcludedDate: insolvencyStatus === 'concluded_unpaid' ? answers.insolvencyConcludedDate : null,
-      quitaAmount: answers.quitaChoice === 'yes' ? parseFloat(answers.quitaAmount.replace(',', '.')) : null,
+      quitaAmount: answers.quitaChoice === 'yes' ? parseAmount(answers.quitaAmount) : null,
       quitaDate: answers.quitaChoice === 'yes' ? answers.quitaDate : null,
       enforcementStarted,
       enforcementDate: enforcementStarted ? answers.enforcementDate : null,
@@ -188,7 +196,7 @@ export function DefaultLossQuestionnaire({ investment, onClose, onUpdate, onAddP
       type: p.type, amount: p.amount, date: p.date,
     }));
     if (showRecoveryForm && recoveryAmount && recoveryDate) {
-      const parsed = parseFloat(recoveryAmount.replace(',', '.'));
+      const parsed = parseAmount(recoveryAmount);
       if (!isNaN(parsed)) pendingPayments.push({ type: 'principal', amount: parsed, date: recoveryDate });
     }
     return assessDefaultLoss({
@@ -307,7 +315,7 @@ export function DefaultLossQuestionnaire({ investment, onClose, onUpdate, onAddP
       return;
     }
     if (showRecoveryForm && recoveryAmount && recoveryDate && onAddPayment) {
-      const parsed = parseFloat(recoveryAmount.replace(',', '.'));
+      const parsed = parseAmount(recoveryAmount);
       const paymentResult = await onAddPayment(investment.id, {
         type: 'principal', amount: parsed, date: recoveryDate,
       });

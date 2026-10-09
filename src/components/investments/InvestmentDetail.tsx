@@ -5,6 +5,14 @@ import { es } from 'date-fns/locale';
 import { Plus, Trash2, CalendarIcon, Pencil, Check, X } from 'lucide-react';
 import { Investment, Payment, PLATFORMS, STATUS_OPTIONS, InvestmentScheduleEntry, IncomeModel, InvestmentStatus } from '@/types/investment';
 import { toDateOnlyString } from '@/lib/dateOnly';
+import { parseSpanishNumber, formatSpanishNumber } from '@/lib/investment/parseSpanishNumber';
+
+/** Importe escrito por el usuario en formato español ("1.500,50"). NaN si está
+ * vacío o no se puede interpretar: nunca parseFloat, que lee "1.500" como 1,5. */
+function parseAmountInput(raw: string): number {
+  const { value, error } = parseSpanishNumber(raw);
+  return error || value == null ? NaN : value;
+}
 import {
   getInvestmentDurationYears,
   calculateInvestmentTotalReturnPercent,
@@ -200,7 +208,8 @@ export function InvestmentDetail({ investment, schedule = [], onClose, onUpdate,
 
   const handlePartialReturn = async () => {
     if (!investment || !partialAmount) return;
-    const amount = parseFloat(partialAmount);
+    const amount = parseAmountInput(partialAmount);
+    if (!Number.isFinite(amount) || amount <= 0) return;
     await onAddPayment(investment.id, {
       date: toDateOnlyString(partialDate),
       amount,
@@ -215,11 +224,16 @@ export function InvestmentDetail({ investment, schedule = [], onClose, onUpdate,
 
   const handleUpdateReturn = async () => {
     if (!investment || !newReturnRate) return;
-    await onUpdate(investment.id, { expectedReturn: parseFloat(newReturnRate) });
+    const rate = parseAmountInput(newReturnRate);
+    if (!Number.isFinite(rate) || rate < 0 || rate > 100) return;
+    await onUpdate(investment.id, { expectedReturn: rate });
     resetForms();
   };
 
-  const parsedPaymentAmount = parseFloat(paymentAmount);
+  const parsedPaymentAmount = parseAmountInput(paymentAmount);
+  const paymentAmountError = paymentAmount.trim() !== '' && !(parsedPaymentAmount > 0)
+    ? 'Importe no válido (ej. 1.500,50)'
+    : null;
   const withholdingApplies = isWithholdingApplicable(paymentType);
   const proposedWithholding = investment
     ? getDefaultWithholding(parsedPaymentAmount, paymentType, investment.platform)
@@ -227,7 +241,7 @@ export function InvestmentDetail({ investment, schedule = [], onClose, onUpdate,
   const effectivePaymentWithholding = !withholdingApplies
     ? 0
     : withholdingTouched
-      ? (paymentWithholding === '' ? 0 : parseFloat(paymentWithholding))
+      ? (paymentWithholding.trim() === '' ? 0 : parseAmountInput(paymentWithholding))
       : proposedWithholding;
   const newPaymentWithholdingError = withholdingApplies && Number.isFinite(parsedPaymentAmount)
     ? validateWithholding(effectivePaymentWithholding, parsedPaymentAmount)
@@ -241,7 +255,7 @@ export function InvestmentDetail({ investment, schedule = [], onClose, onUpdate,
   };
 
   const handleAddPayment = () => {
-    if (investment && paymentAmount && !newPaymentWithholdingError) {
+    if (investment && parsedPaymentAmount > 0 && !newPaymentWithholdingError) {
       onAddPayment(investment.id, {
         date: toDateOnlyString(paymentDate),
         amount: parsedPaymentAmount,
@@ -254,13 +268,13 @@ export function InvestmentDetail({ investment, schedule = [], onClose, onUpdate,
 
   const startEditWithholding = (payment: Payment) => {
     setEditingWithholdingId(payment.id);
-    setEditingWithholdingValue(String(payment.withholdingApplied ?? 0));
+    setEditingWithholdingValue(formatSpanishNumber(payment.withholdingApplied ?? 0));
     setWithholdingError(null);
   };
 
   const saveWithholding = async (payment: Payment) => {
     if (!investment || !onUpdatePaymentWithholding) return;
-    const value = editingWithholdingValue === '' ? 0 : parseFloat(editingWithholdingValue);
+    const value = editingWithholdingValue.trim() === '' ? 0 : parseAmountInput(editingWithholdingValue);
     const validation = validateWithholding(value, payment.amount);
     if (validation) { setWithholdingError(validation); return; }
     const ok = await onUpdatePaymentWithholding(investment.id, payment.id, Math.round(value * 100) / 100);
@@ -624,12 +638,16 @@ export function InvestmentDetail({ investment, schedule = [], onClose, onUpdate,
                       />
                     </PopoverContent>
                   </Popover>
-                  <Input
-                    type="number"
-                    placeholder={t('investments.detail.amount')}
-                    value={paymentAmount}
-                    onChange={(e) => setPaymentAmount(e.target.value)}
-                  />
+                  <div>
+                    <Input
+                      type="text"
+                      inputMode="decimal"
+                      placeholder={t('investments.detail.amount')}
+                      value={paymentAmount}
+                      onChange={(e) => setPaymentAmount(e.target.value)}
+                    />
+                    {paymentAmountError && <p className="mt-1 text-xs text-destructive">{paymentAmountError}</p>}
+                  </div>
                   <Select value={paymentType} onValueChange={(v) => setPaymentType(v as typeof paymentType)}>
                     <SelectTrigger>
                       <SelectValue />
@@ -648,10 +666,9 @@ export function InvestmentDetail({ investment, schedule = [], onClose, onUpdate,
                     </label>
                     <Input
                       id="payment-withholding"
-                      type="number"
-                      min={0}
-                      step="0.01"
-                      value={withholdingTouched ? paymentWithholding : (proposedWithholding ? String(proposedWithholding) : '')}
+                      type="text"
+                      inputMode="decimal"
+                      value={withholdingTouched ? paymentWithholding : (proposedWithholding ? formatSpanishNumber(proposedWithholding) : '')}
                       placeholder="0,00"
                       onChange={(e) => { setWithholdingTouched(true); setPaymentWithholding(e.target.value); }}
                     />
@@ -667,7 +684,7 @@ export function InvestmentDetail({ investment, schedule = [], onClose, onUpdate,
                 )}
                 {/* Botones al final: en móvil la retención quedaba debajo de "Añadir" */}
                 <div className="mt-3 flex gap-2">
-                  <Button onClick={handleAddPayment} disabled={!paymentAmount || !!newPaymentWithholdingError}>
+                  <Button onClick={handleAddPayment} disabled={!(parsedPaymentAmount > 0) || !!newPaymentWithholdingError}>
                     {t('common.add')}
                   </Button>
                   <Button variant="ghost" onClick={resetPaymentForm}>
@@ -705,9 +722,8 @@ export function InvestmentDetail({ investment, schedule = [], onClose, onUpdate,
                             <div className="flex flex-col gap-1">
                               <div className="flex items-center gap-1">
                                 <Input
-                                  type="number"
-                                  min={0}
-                                  step="0.01"
+                                  type="text"
+                                  inputMode="decimal"
                                   className="h-8 w-28"
                                   aria-label="Retención practicada (€)"
                                   value={editingWithholdingValue}
@@ -832,13 +848,15 @@ export function InvestmentDetail({ investment, schedule = [], onClose, onUpdate,
                     <div className="space-y-1">
                       <p className="text-xs text-muted-foreground">{t('investments.action.returnedAmount')}</p>
                       <Input
-                        type="number"
-                        min="0"
-                        step="0.01"
-                        placeholder="0.00"
+                        type="text"
+                        inputMode="decimal"
+                        placeholder="0,00"
                         value={partialAmount}
                         onChange={e => setPartialAmount(e.target.value)}
                       />
+                      {partialAmount.trim() !== '' && !(parseAmountInput(partialAmount) > 0) && (
+                        <p className="text-xs text-destructive">Importe no válido (ej. 1.500,50)</p>
+                      )}
                     </div>
                     <div className="space-y-1">
                       <p className="text-xs text-muted-foreground">{t('investments.action.date')}</p>
@@ -856,7 +874,7 @@ export function InvestmentDetail({ investment, schedule = [], onClose, onUpdate,
                     </div>
                   </div>
                   <div className="flex gap-2">
-                    <Button size="sm" onClick={handlePartialReturn} disabled={!partialAmount}>{t('common.save')}</Button>
+                    <Button size="sm" onClick={handlePartialReturn} disabled={!(parseAmountInput(partialAmount) > 0)}>{t('common.save')}</Button>
                     <Button size="sm" variant="ghost" onClick={resetForms}>{t('common.cancel')}</Button>
                   </div>
                 </div>
@@ -869,16 +887,18 @@ export function InvestmentDetail({ investment, schedule = [], onClose, onUpdate,
                   <div className="space-y-1">
                     <p className="text-xs text-muted-foreground">{t('investments.action.newReturnRate')}</p>
                     <Input
-                      type="number"
-                      min="0"
-                      step="0.1"
-                      placeholder={investment.expectedReturn.toFixed(1)}
+                      type="text"
+                      inputMode="decimal"
+                      placeholder={formatSpanishNumber(investment.expectedReturn)}
                       value={newReturnRate}
                       onChange={e => setNewReturnRate(e.target.value)}
                     />
+                    {newReturnRate.trim() !== '' && !(parseAmountInput(newReturnRate) >= 0 && parseAmountInput(newReturnRate) <= 100) && (
+                      <p className="text-xs text-destructive">Rentabilidad no válida (entre 0 y 100, ej. 9,5)</p>
+                    )}
                   </div>
                   <div className="flex gap-2">
-                    <Button size="sm" onClick={handleUpdateReturn} disabled={!newReturnRate}>{t('common.save')}</Button>
+                    <Button size="sm" onClick={handleUpdateReturn} disabled={!(parseAmountInput(newReturnRate) >= 0 && parseAmountInput(newReturnRate) <= 100)}>{t('common.save')}</Button>
                     <Button size="sm" variant="ghost" onClick={resetForms}>{t('common.cancel')}</Button>
                   </div>
                 </div>

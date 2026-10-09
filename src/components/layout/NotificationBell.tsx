@@ -42,7 +42,7 @@ export function NotificationBell({
   onAddPayment,
   onOpenInvestment,
 }: NotificationBellProps) {
-  const { lang } = useLanguage();
+  const { lang, t } = useLanguage();
   const [, forceUpdate] = useState(0);
   const [savingId, setSavingId] = useState<string | null>(null);
 
@@ -99,7 +99,7 @@ export function NotificationBell({
   return (
     <Popover>
       <PopoverTrigger asChild>
-        <Button variant="ghost" size="icon" className="relative">
+        <Button variant="ghost" size="icon" className="relative" aria-label={t('nav.notifications')}>
           <Bell className="h-5 w-5" />
           {totalCount > 0 && (
             <Badge className="absolute -right-1 -top-1 h-5 w-5 rounded-full p-0 text-xs flex items-center justify-center bg-[#253765] text-white border-0">

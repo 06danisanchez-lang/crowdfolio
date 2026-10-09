@@ -3,6 +3,7 @@ import { Card, CardContent } from '@/components/ui/card';
 import { Euro, TrendingUp, TrendingDown, Receipt, Calculator, Percent } from 'lucide-react';
 import { HelpTooltip } from '@/components/ui/help-tooltip';
 import { HELP_CONTENT } from '@/lib/help/tooltipContent';
+import { formatPercent } from '@/lib/formatPercent';
 
 interface TaxSummaryCardsProps {
   summary: TaxSummary;
@@ -66,7 +67,7 @@ export function TaxSummaryCards({ summary }: TaxSummaryCardsProps) {
     },
     {
       title: 'Tipo Efectivo',
-      value: `${summary.effectiveRate.toFixed(1)}%`,
+      value: formatPercent(summary.effectiveRate),
       subtitle: 'Sobre base imponible',
       icon: Percent,
       color: 'text-slate-600 dark:text-slate-400',

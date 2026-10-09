@@ -78,6 +78,7 @@ import {
 } from '@/components/ui/table';
 import { cn } from '@/lib/utils';
 import { buildMaturityChange, MaturityChangeKind } from '@/lib/investment/maturityChange';
+import { formatPercent } from '@/lib/formatPercent';
 
 type ActionForm = 'extend' | 'partial-return' | 'update-return' | null;
 
@@ -497,7 +498,7 @@ export function InvestmentDetail({ investment, schedule = [], onClose, onUpdate,
             </div>
             <div className="space-y-1">
               <p className="text-sm text-muted-foreground">{t('investments.detail.annualReturn')}</p>
-              <p className="font-medium">{investment.expectedReturn.toFixed(1)}%</p>
+              <p className="font-medium">{formatPercent(investment.expectedReturn)}</p>
             </div>
             <div className="space-y-1">
               <p className="text-sm text-muted-foreground">{t('investments.detail.duration')}</p>
@@ -506,7 +507,7 @@ export function InvestmentDetail({ investment, schedule = [], onClose, onUpdate,
             <div className="space-y-1">
               <p className="text-sm text-muted-foreground">{t('investments.detail.totalReturn')}</p>
               <p className="font-medium">
-                {investment.incomeModel === 'variable_or_unknown' ? '—' : `${totalReturnPercent.toFixed(1)}%`}
+                {investment.incomeModel === 'variable_or_unknown' ? '—' : formatPercent(totalReturnPercent)}
               </p>
             </div>
             <div className="space-y-1">
@@ -546,7 +547,7 @@ export function InvestmentDetail({ investment, schedule = [], onClose, onUpdate,
                   <p className="text-xs text-muted-foreground">{t('investments.detail.loss')}</p>
                 </div>
                 <div>
-                  <p className={`text-xl font-bold ${defaultedRealReturnPercent < 0 ? 'text-destructive' : 'text-foreground'}`}>{defaultedRealReturnPercent.toFixed(1)}%</p>
+                  <p className={`text-xl font-bold ${defaultedRealReturnPercent < 0 ? 'text-destructive' : 'text-foreground'}`}>{formatPercent(defaultedRealReturnPercent)}</p>
                   <p className="text-xs text-muted-foreground">{t('investments.detail.realReturnDefaulted')}</p>
                 </div>
               </div>
@@ -561,7 +562,7 @@ export function InvestmentDetail({ investment, schedule = [], onClose, onUpdate,
                     "text-xl font-bold",
                     actualReturn > 0 ? "text-status-active" : "text-muted-foreground"
                   )}>
-                    {actualReturn.toFixed(1)}%
+                    {formatPercent(actualReturn)}
                   </p>
                   <p className="text-xs text-muted-foreground">{t('investments.detail.realReturn')}</p>
                 </div>
@@ -588,7 +589,7 @@ export function InvestmentDetail({ investment, schedule = [], onClose, onUpdate,
                     "text-xl font-bold",
                     actualReturn >= investment.expectedReturn ? "text-status-active" : "text-muted-foreground"
                   )}>
-                    {actualReturn.toFixed(1)}%
+                    {formatPercent(actualReturn)}
                   </p>
                   <p className="text-xs text-muted-foreground">{t('investments.detail.realReturn')}</p>
                 </div>
@@ -602,11 +603,11 @@ export function InvestmentDetail({ investment, schedule = [], onClose, onUpdate,
               <div className="flex items-center justify-between gap-4">
                 <div className="space-y-1">
                   <p className="text-xs text-muted-foreground">{t('investments.detail.expectedTAE')}</p>
-                  <p className="text-lg font-semibold" style={{ color: '#253765' }}>{investment.expectedReturn.toFixed(1)}%</p>
+                  <p className="text-lg font-semibold" style={{ color: '#253765' }}>{formatPercent(investment.expectedReturn)}</p>
                 </div>
                 <div className="space-y-1 text-right">
                   <p className="text-xs text-muted-foreground">{t('investments.detail.realTAE')}</p>
-                  <p className="text-lg font-semibold" style={{ color: '#253765' }}>{realTAE.toFixed(1)}%</p>
+                  <p className="text-lg font-semibold" style={{ color: '#253765' }}>{formatPercent(realTAE)}</p>
                 </div>
               </div>
               <p className={cn(
@@ -627,14 +628,14 @@ export function InvestmentDetail({ investment, schedule = [], onClose, onUpdate,
                 <div className="mb-2 flex items-center justify-between gap-4">
                   <div className="space-y-1">
                     <p className="text-xs text-muted-foreground">{t('investments.detail.expectedTAE')}</p>
-                    <p className="text-lg font-semibold" style={{ color: '#253765' }}>{investment.expectedReturn.toFixed(1)}%</p>
+                    <p className="text-lg font-semibold" style={{ color: '#253765' }}>{formatPercent(investment.expectedReturn)}</p>
                   </div>
                   <div className="space-y-1 text-right">
                     <p className="flex items-center justify-end gap-1 text-xs text-muted-foreground">
                       {t('investments.detail.delayAdjustedTAE')}
                       <HelpTooltip content={t('investments.detail.delayAdjustedTooltip')} />
                     </p>
-                    <p className="text-lg font-semibold" style={{ color: '#253765' }}>{delayAdjustedTAE.toFixed(1)}%</p>
+                    <p className="text-lg font-semibold" style={{ color: '#253765' }}>{formatPercent(delayAdjustedTAE)}</p>
                   </div>
                 </div>
               )}

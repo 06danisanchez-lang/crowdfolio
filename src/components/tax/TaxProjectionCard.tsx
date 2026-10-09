@@ -68,16 +68,17 @@ export function TaxProjectionCard({ summary, projection, year }: TaxProjectionCa
       </CardHeader>
       <CardContent className="space-y-6">
         {/* Comparison Grid */}
-        <div className="grid grid-cols-2 gap-6">
+        {/* Una columna en móvil: en dos, los importes se salían de la tarjeta */}
+        <div className="grid gap-6 sm:grid-cols-2">
           {/* Current/Real */}
           <div className="space-y-3">
             <h4 className="text-sm font-medium text-muted-foreground">Hasta ahora (real)</h4>
             <div className="space-y-2">
-              <div className="flex justify-between">
+              <div className="flex justify-between gap-3">
                 <span className="text-sm">Rendimientos</span>
                 <span className="font-medium">{formatCurrency(summary.grossIncome)}</span>
               </div>
-              <div className="flex justify-between">
+              <div className="flex justify-between gap-3">
                 <span className="text-sm">Retenciones</span>
                 <span className="font-medium text-orange-600">
                   {formatNegative(summary.withholdingsApplied)}
@@ -90,13 +91,13 @@ export function TaxProjectionCard({ summary, projection, year }: TaxProjectionCa
           <div className="space-y-3">
             <h4 className="text-sm font-medium text-muted-foreground">Pendiente (proyectado)</h4>
             <div className="space-y-2">
-              <div className="flex justify-between">
+              <div className="flex justify-between gap-3">
                 <span className="text-sm">Rendimientos</span>
                 <span className="font-medium text-primary">
                   +{formatCurrency(projection.projectedIncome)}
                 </span>
               </div>
-              <div className="flex justify-between">
+              <div className="flex justify-between gap-3">
                 <span className="text-sm">Retenciones</span>
                 <span className="font-medium text-orange-600">
                   {formatNegative(projection.projectedWithholdings)}
@@ -116,18 +117,18 @@ export function TaxProjectionCard({ summary, projection, year }: TaxProjectionCa
           </h4>
           
           <div className="space-y-2 text-sm">
-            <div className="flex justify-between">
+            <div className="flex justify-between gap-3">
               <span>Base imponible total</span>
               <span className="font-medium">
                 {/* Igual que el cálculo (projections.ts): la base no baja de 0 */}
                 {formatCurrency(Math.max(0, projection.totalProjectedGross - summary.deductibleExpenses))}
               </span>
             </div>
-            <div className="flex justify-between">
+            <div className="flex justify-between gap-3">
               <span>Cuota íntegra</span>
               <span className="font-medium">{formatCurrency(projection.totalProjectedTax)}</span>
             </div>
-            <div className="flex justify-between">
+            <div className="flex justify-between gap-3">
               <span>Retenciones totales</span>
               <span className="font-medium text-orange-600">
                 {formatNegative(summary.withholdingsApplied + projection.projectedWithholdings)}

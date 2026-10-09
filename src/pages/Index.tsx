@@ -264,6 +264,16 @@ const Index = () => {
     </div>
   );
 
+  const notificationBell = (
+    <NotificationBell
+      notifications={unreadNotifications}
+      unreadCount={unreadCount}
+      onMarkAsRead={markAsRead}
+      onAddPayment={registerPaymentFromNotification}
+      onOpenInvestment={openInvestmentDetail}
+    />
+  );
+
   const renderCurrentView = () => {
     switch (currentView) {
       case 'dashboard':
@@ -292,17 +302,12 @@ const Index = () => {
                     <h1 className="text-2xl sm:text-3xl font-bold">{t('nav.dashboard')}</h1>
                     <p className="text-sm text-muted-foreground">{t('dashboard.subtitle')}</p>
                   </div>
-                  <div className="flex items-center gap-2">
+                  <div className="flex flex-wrap items-center gap-2">
                     {investments.length > 0 && (
                       <ShareSuccessButton targetRef={shareableCardRef} disabled={investments.length === 0} />
                     )}
-                    <NotificationBell
-                      notifications={unreadNotifications}
-                      unreadCount={unreadCount}
-                      onMarkAsRead={markAsRead}
-                      onAddPayment={registerPaymentFromNotification}
-                      onOpenInvestment={openInvestmentDetail}
-                    />
+                    {/* En móvil la campana va en la cabecera de AppLayout (mobileBell) */}
+                    <div className="hidden lg:block">{notificationBell}</div>
                     <InvestmentForm onSubmit={addInvestment} onSubmitDraft={addDraftInvestment} investmentCount={activePendingCount} isPro={isPro} onProRequired={() => openUpgradeModal('unlimited_investments')} />
                   </div>
                 </div>
@@ -553,6 +558,7 @@ const Index = () => {
       incompleteCount={incompleteInvestments.length}
       notificationCount={unreadCount + alertCount}
       onOpenNotifications={() => setNotificationsSheetOpen(true)}
+      mobileBell={notificationBell}
     >
       <ErrorBoundary fallbackMessage="Ha ocurrido un error inesperado.">
       <div key={currentView}>

@@ -10,6 +10,7 @@ import {
   TableRow,
 } from '@/components/ui/table';
 import { Progress } from '@/components/ui/progress';
+import { formatPercent } from '@/lib/formatPercent';
 
 interface TaxBreakdownTableProps {
   summary: TaxSummary;
@@ -49,7 +50,7 @@ export function TaxBreakdownTable({ summary }: TaxBreakdownTableProps) {
                 <TableCell className="text-right">{formatCurrency(summary.interestIncome)}</TableCell>
                 <TableCell className="text-right">
                   {summary.grossIncome > 0
-                    ? `${((summary.interestIncome / summary.grossIncome) * 100).toFixed(1)}%`
+                    ? formatPercent((summary.interestIncome / summary.grossIncome) * 100)
                     : '0%'}
                 </TableCell>
               </TableRow>
@@ -58,7 +59,7 @@ export function TaxBreakdownTable({ summary }: TaxBreakdownTableProps) {
                 <TableCell className="text-right">{formatCurrency(summary.dividendIncome)}</TableCell>
                 <TableCell className="text-right">
                   {summary.grossIncome > 0
-                    ? `${((summary.dividendIncome / summary.grossIncome) * 100).toFixed(1)}%`
+                    ? formatPercent((summary.dividendIncome / summary.grossIncome) * 100)
                     : '0%'}
                 </TableCell>
               </TableRow>
@@ -113,7 +114,7 @@ export function TaxBreakdownTable({ summary }: TaxBreakdownTableProps) {
                           : `${formatCurrency(item.bracket.min)} - ${formatCurrency(item.bracket.max)}`}
                       </TableCell>
                       <TableCell className="text-right">{formatCurrency(item.amount)}</TableCell>
-                      <TableCell className="text-right">{(item.bracket.rate * 100).toFixed(0)}%</TableCell>
+                      <TableCell className="text-right">{formatPercent(item.bracket.rate * 100, 0)}</TableCell>
                       <TableCell className="text-right">{formatCurrency(item.tax)}</TableCell>
                     </TableRow>
                   ))}
@@ -148,7 +149,7 @@ export function TaxBreakdownTable({ summary }: TaxBreakdownTableProps) {
                         key={index}
                         className={`${colors[index]} transition-all`}
                         style={{ width: `${percentage}%` }}
-                        title={`${(item.bracket.rate * 100).toFixed(0)}%: ${formatCurrency(item.amount)}`}
+                        title={`${formatPercent(item.bracket.rate * 100, 0)}: ${formatCurrency(item.amount)}`}
                       />
                     );
                   })}
@@ -164,7 +165,7 @@ export function TaxBreakdownTable({ summary }: TaxBreakdownTableProps) {
                     return (
                       <div key={index} className="flex items-center gap-1">
                         <div className={`h-2 w-2 rounded-full ${colors[index]}`} />
-                        <span>{(item.bracket.rate * 100).toFixed(0)}%</span>
+                        <span>{formatPercent(item.bracket.rate * 100, 0)}</span>
                       </div>
                     );
                   })}

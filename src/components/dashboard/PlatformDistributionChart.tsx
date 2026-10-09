@@ -23,11 +23,13 @@ export function PlatformDistributionChart({ investments }: PlatformDistributionC
       return acc;
     }, {} as Record<Platform, number>);
 
+    const total = Object.values(platformTotals).reduce((s, v) => s + (v > 0 ? v : 0), 0);
     return Object.entries(platformTotals)
       .filter(([_, value]) => value > 0)
       .map(([platform, value]) => ({
         name: PLATFORMS.find(p => p.value === platform)?.label || platform,
         value,
+        share: total > 0 ? value / total : 0,
         platform: platform as Platform,
       }))
       .sort((a, b) => b.value - a.value);
@@ -41,6 +43,9 @@ export function PlatformDistributionChart({ investments }: PlatformDistributionC
       maximumFractionDigits: 0,
     }).format(value);
   };
+
+  const formatPercent = (share: number) =>
+    new Intl.NumberFormat('es-ES', { style: 'percent', maximumFractionDigits: 0 }).format(share);
 
   if (data.length === 0) {
     return (
@@ -61,8 +66,6 @@ export function PlatformDistributionChart({ investments }: PlatformDistributionC
           outerRadius={100}
           paddingAngle={2}
           dataKey="value"
-          label={({ name, percent }) => `${name} (${(percent * 100).toFixed(0)}%)`}
-          labelLine={false}
         >
           {data.map((entry) => (
             <Cell 
@@ -81,7 +84,18 @@ export function PlatformDistributionChart({ investments }: PlatformDistributionC
             borderRadius: 'var(--radius)',
           }}
         />
-        <Legend />
+        {/* El % va en la leyenda: las etiquetas alrededor del anillo se cortaban en
+            pantallas estrechas y repetían lo que ya decía la leyenda. */}
+        <Legend
+          formatter={(value: string, entry) => {
+            const share = (entry.payload as { share?: number } | undefined)?.share ?? 0;
+            return (
+              <span className="text-foreground">
+                {value} · {formatPercent(share)}
+              </span>
+            );
+          }}
+        />
       </PieChart>
     </ResponsiveContainer>
   );

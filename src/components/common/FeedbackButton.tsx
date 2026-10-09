@@ -1,6 +1,10 @@
 import { useState, useRef, useEffect } from 'react';
-import { X } from 'lucide-react';
+import { MessageSquare, X } from 'lucide-react';
 
+/**
+ * Entrada «Sugerencias» de la barra lateral. Antes era un botón flotante abajo a la
+ * derecha y tapaba importes (p. ej. la base imponible en Fiscalidad).
+ */
 export function FeedbackButton() {
   const [open, setOpen] = useState(false);
   const popoverRef = useRef<HTMLDivElement>(null);
@@ -26,11 +30,13 @@ export function FeedbackButton() {
     '&body=Hola%20equipo%20de%20Crowdfolio%2C%0A%0AQuiero%20compartir%20mi%20opini%C3%B3n%3A%0A%0A';
 
   return (
-    <div className="fixed bottom-6 right-6 z-50 flex flex-col items-end gap-3">
+    <>
       {open && (
         <div
           ref={popoverRef}
-          className="w-72 rounded-xl border bg-card shadow-xl p-4 space-y-3"
+          role="dialog"
+          aria-label="Sugerencias"
+          className="fixed bottom-4 left-4 z-50 w-72 rounded-xl border bg-card shadow-xl p-4 space-y-3 lg:left-[17rem]"
         >
           <div className="flex items-start justify-between gap-2">
             <p className="text-sm text-muted-foreground leading-relaxed">
@@ -65,16 +71,14 @@ export function FeedbackButton() {
 
       <button
         ref={buttonRef}
+        type="button"
         onClick={() => setOpen(v => !v)}
-        className="flex items-center gap-2 rounded-full px-4 py-2.5 text-sm font-semibold text-white shadow-lg transition-colors"
-        style={{ backgroundColor: '#253765' }}
-        onMouseEnter={e => (e.currentTarget.style.backgroundColor = '#1a2850')}
-        onMouseLeave={e => (e.currentTarget.style.backgroundColor = '#253765')}
-        aria-label="Sugerencias"
+        aria-expanded={open}
+        className="flex w-full items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium text-muted-foreground transition-colors hover:bg-accent hover:text-accent-foreground"
       >
-        <span>💬</span>
+        <MessageSquare className="h-4 w-4" />
         Sugerencias
       </button>
-    </div>
+    </>
   );
 }

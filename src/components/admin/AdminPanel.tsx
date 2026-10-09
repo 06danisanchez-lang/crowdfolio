@@ -27,6 +27,7 @@ import {
   CollapsibleTrigger,
 } from '@/components/ui/collapsible';
 import { PLATFORMS, STATUS_OPTIONS } from '@/types/investment';
+import { formatPercent } from '@/lib/formatPercent';
 
 export function AdminPanel() {
   const { userInvestments, isLoading, isAdmin, summary } = useAdminInvestments();
@@ -354,7 +355,7 @@ export function AdminPanel() {
                               <TableCell className="font-medium">{inv.projectName}</TableCell>
                               <TableCell>{getPlatformLabel(inv.platform)}</TableCell>
                               <TableCell>{formatCurrency(inv.amount)}</TableCell>
-                              <TableCell>{inv.expectedReturn.toFixed(1)}%</TableCell>
+                              <TableCell>{formatPercent(inv.expectedReturn)}</TableCell>
                               <TableCell>{formatDate(inv.investmentDate)}</TableCell>
                               <TableCell>{getStatusBadge(inv.status)}</TableCell>
                             </TableRow>

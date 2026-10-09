@@ -1,4 +1,4 @@
-import { useRef, useEffect, useState } from 'react';
+import { Fragment, useRef, useEffect, useState } from 'react';
 import {
   LayoutDashboard,
   Wallet,
@@ -37,6 +37,8 @@ interface AppLayoutProps {
   incompleteCount?: number;
   notificationCount?: number;
   onOpenNotifications?: () => void;
+  /** Campana de la cabecera móvil con los avisos de la página; sin ella solo muestra recordatorios. */
+  mobileBell?: React.ReactNode;
 }
 
 export function AppLayout({
@@ -46,6 +48,7 @@ export function AppLayout({
   incompleteCount = 0,
   notificationCount = 0,
   onOpenNotifications,
+  mobileBell,
 }: AppLayoutProps) {
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [upgradeOpen, setUpgradeOpen] = useState(false);
@@ -77,7 +80,7 @@ export function AppLayout({
     <div className="min-h-screen bg-background">
       {/* Mobile Header */}
       <header className="sticky top-0 z-50 flex h-14 items-center justify-between border-b bg-card px-4 lg:hidden">
-        <Button variant="ghost" size="icon" onClick={() => setSidebarOpen(!sidebarOpen)}>
+        <Button variant="ghost" size="icon" aria-label={t('nav.menu')} aria-expanded={sidebarOpen} onClick={() => setSidebarOpen(!sidebarOpen)}>
           <Menu className="h-5 w-5" />
         </Button>
         <div className="flex items-center gap-2">
@@ -95,14 +98,14 @@ export function AppLayout({
               <span className="hidden sm:inline">Pro</span>
             </Button>
           )}
-          <NotificationBell />
+          {mobileBell ?? <NotificationBell />}
         </div>
       </header>
 
       <div className="flex">
         {/* Sidebar */}
         <aside className={cn(
-          "fixed inset-y-0 left-0 z-40 w-64 transform border-r bg-card transition-transform lg:static lg:translate-x-0 flex flex-col",
+          "fixed inset-y-0 left-0 z-40 w-64 transform border-r bg-card transition-transform lg:sticky lg:top-0 lg:h-screen lg:shrink-0 lg:translate-x-0 flex flex-col",
           sidebarOpen ? "translate-x-0" : "-translate-x-full"
         )}>
           <div className="flex h-14 items-center gap-3 border-b px-6 shrink-0">
@@ -112,7 +115,7 @@ export function AppLayout({
 
           <nav className="flex-1 overflow-y-auto space-y-1 p-4">
             {[...navItemsBefore, ...navItemsAfter].map((item, idx) => (
-              <>
+              <Fragment key={item.id}>
                 {idx === navItemsBefore.length && onOpenNotifications && (
                   <button
                     key="notifications"
@@ -146,7 +149,7 @@ export function AppLayout({
                     </span>
                   )}
                 </button>
-              </>
+              </Fragment>
             ))}
             <button
               onClick={() => { setUpgradeOpen(true); setSidebarOpen(false); }}
@@ -176,6 +179,7 @@ export function AppLayout({
 
           <Separator />
           <div className="p-4 shrink-0 space-y-2">
+            <FeedbackButton />
             <div className="px-3 py-1">
               <LanguageToggle />
             </div>
@@ -228,7 +232,6 @@ export function AppLayout({
         </main>
       </div>
       <UpgradeModal open={upgradeOpen} onOpenChange={setUpgradeOpen} />
-      <FeedbackButton />
     </div>
   );
 }

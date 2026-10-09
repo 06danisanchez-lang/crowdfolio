@@ -1,5 +1,5 @@
 import { useRef, useState } from 'react';
-import ExcelJS from 'exceljs';
+import { loadExcelJS } from '@/lib/lazy/exportLibs';
 import { useLanguage } from '@/contexts/LanguageContext';
 import { Upload, Download, FileJson, FileSpreadsheet, AlertCircle, CheckCircle2, Info } from 'lucide-react';
 import { Investment, PLATFORMS, STATUS_OPTIONS } from '@/types/investment';
@@ -146,6 +146,7 @@ function excelCellToString(v: unknown): string {
 }
 
 async function parseXlsxToRows(buffer: ArrayBuffer): Promise<RawRow[]> {
+  const ExcelJS = await loadExcelJS();
   const workbook = new ExcelJS.Workbook();
   await workbook.xlsx.load(buffer);
   const ws = workbook.worksheets[0];

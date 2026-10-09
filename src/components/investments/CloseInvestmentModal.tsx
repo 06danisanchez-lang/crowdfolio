@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { buildMaturityChange } from '@/lib/investment/maturityChange';
 import { format } from 'date-fns';
 import { es } from 'date-fns/locale';
 import { CalendarIcon } from 'lucide-react';
@@ -148,10 +149,9 @@ export function CloseInvestmentModal({ investment, onClose, onUpdate, onDefaulte
     setSaving(true);
     await onUpdate(investment.id, {
       status: 'active',
-      expectedEndDate: format(newEndDate, 'yyyy-MM-dd'),
+      ...buildMaturityChange(investment, format(newEndDate, 'yyyy-MM-dd'), 'extended'),
       actualEndDate: null,
       closeReason: null,
-      wasExtended: true,
     });
     setSaving(false);
     reset();

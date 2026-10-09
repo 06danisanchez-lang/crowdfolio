@@ -18,7 +18,7 @@ import {
 } from 'lucide-react';
 import { Investment, DraftInvestment, PLATFORMS, STATUS_OPTIONS, Platform, InvestmentStatus, IncomeModel, InvestmentScheduleEntry, PaymentType, Payment } from '@/types/investment';
 import { getInvestmentCompletionStatus } from '@/lib/investment/completeness';
-import { calculateExpectedTotalReturn, calculateRealizedProfit, sumIncomePayments } from '@/lib/investment/calculations';
+import { calculateExpectedTotalReturn, calculateRealizedProfit, isDelayedWithoutExtraInterest, sumIncomePayments } from '@/lib/investment/calculations';
 import { getPrincipalReturned } from '@/lib/tax/principalReturned';
 import { getMaturitySeverity } from '@/hooks/useAlerts';
 import { getStatusLabel } from '@/lib/labels';
@@ -226,10 +226,16 @@ export function InvestmentList({
         <Badge key="sold" className="bg-purple-100 text-purple-800 border-purple-300 text-xs">Vendida</Badge>
       );
     }
-    if (inv.wasExtended && (status === 'active' || status === 'pending')) {
-      extraBadges.push(
-        <Badge key="extended" className="bg-orange-100 text-orange-800 border-orange-300 text-xs">Prorrogada</Badge>
-      );
+    if (status === 'active' || status === 'pending') {
+      if (inv.wasExtended) {
+        extraBadges.push(
+          <Badge key="extended" className="bg-orange-100 text-orange-800 border-orange-300 text-xs">Prorrogada</Badge>
+        );
+      } else if (isDelayedWithoutExtraInterest(inv)) {
+        extraBadges.push(
+          <Badge key="delayed" className="bg-orange-100 text-orange-800 border-orange-300 text-xs">Retrasada</Badge>
+        );
+      }
     }
 
     return <>{mainBadge}{extraBadges}</>;

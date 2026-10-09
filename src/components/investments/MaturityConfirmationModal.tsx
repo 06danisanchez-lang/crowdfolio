@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { buildMaturityChange } from '@/lib/investment/maturityChange';
 import { format } from 'date-fns';
 import { es } from 'date-fns/locale';
 import { CalendarIcon, CheckCircle2, XCircle, ChevronLeft } from 'lucide-react';
@@ -45,14 +46,14 @@ const REJECT_OPTIONS: {
   {
     value: 'extended',
     label: 'Proyecto prorrogado',
-    description: 'La plataforma ha extendido el plazo oficialmente',
+    description: 'La plataforma ha ampliado el plazo y sigue pagando intereses hasta la nueva fecha',
     needsDate: true,
     emoji: '📅',
   },
   {
     value: 'delayed',
     label: 'Pago retrasado',
-    description: 'El cobro llegará, pero con retraso',
+    description: 'Cobrarás lo prometido, pero más tarde (sin intereses extra)',
     needsDate: true,
     emoji: '⏳',
   },
@@ -118,7 +119,11 @@ export function MaturityConfirmationModal({ investment, onClose, onUpdate, onClo
     switch (selectedOption) {
       case 'extended':
       case 'delayed':
-        await onUpdate(investment.id, { status: 'active', expectedEndDate: newDateStr });
+        if (!newDateStr) break;
+        await onUpdate(investment.id, {
+          status: 'active',
+          ...buildMaturityChange(investment, newDateStr, selectedOption),
+        });
         break;
       case 'disputed':
         await onUpdate(investment.id, {

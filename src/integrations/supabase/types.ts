@@ -153,6 +153,7 @@ export type Database = {
           updated_at: string
           user_id: string
           was_extended: boolean
+          original_end_date: string | null
         }
         Insert: {
           actual_end_date?: string | null
@@ -196,6 +197,7 @@ export type Database = {
           updated_at?: string
           user_id: string
           was_extended?: boolean
+          original_end_date?: string | null
         }
         Update: {
           actual_end_date?: string | null
@@ -239,6 +241,7 @@ export type Database = {
           updated_at?: string
           user_id?: string
           was_extended?: boolean
+          original_end_date?: string | null
         }
         Relationships: []
       }

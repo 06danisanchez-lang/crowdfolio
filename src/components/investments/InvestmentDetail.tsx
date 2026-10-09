@@ -24,8 +24,10 @@ import {
   calculateExpectedTotalReturn,
   calculateAccruedReturn,
   calculateRealTAE,
-  calculateEstimatedTAEToday,
+  calculateDelayAdjustedTAE,
   getDelayDays,
+  getOriginalEndDate,
+  isDelayedWithoutExtraInterest,
   sumIncomePayments,
 } from '@/lib/investment/calculations';
 import { getPrincipalReturned } from '@/lib/tax/principalReturned';
@@ -75,6 +77,7 @@ import {
   TableRow,
 } from '@/components/ui/table';
 import { cn } from '@/lib/utils';
+import { buildMaturityChange, MaturityChangeKind } from '@/lib/investment/maturityChange';
 
 type ActionForm = 'extend' | 'partial-return' | 'update-return' | null;
 
@@ -123,6 +126,7 @@ export function InvestmentDetail({ investment, schedule = [], onClose, onUpdate,
   // Action forms
   const [activeForm, setActiveForm] = useState<ActionForm>(null);
   const [newEndDate, setNewEndDate] = useState<Date | undefined>(undefined);
+  const [extendKind, setExtendKind] = useState<MaturityChangeKind>('extended');
   const [partialAmount, setPartialAmount] = useState('');
   const [partialDate, setPartialDate] = useState<Date>(new Date());
   const [newReturnRate, setNewReturnRate] = useState('');
@@ -131,6 +135,7 @@ export function InvestmentDetail({ investment, schedule = [], onClose, onUpdate,
   const resetForms = () => {
     setActiveForm(null);
     setNewEndDate(undefined);
+    setExtendKind('extended');
     setPartialAmount('');
     setPartialFx(EMPTY_FOREIGN_AMOUNT);
     setNewReturnRate('');
@@ -213,7 +218,7 @@ export function InvestmentDetail({ investment, schedule = [], onClose, onUpdate,
 
   const handleExtend = async () => {
     if (!investment || !newEndDate) return;
-    await onUpdate(investment.id, { expectedEndDate: toDateOnlyString(newEndDate) });
+    await onUpdate(investment.id, buildMaturityChange(investment, toDateOnlyString(newEndDate), extendKind));
     resetForms();
   };
 
@@ -389,17 +394,21 @@ export function InvestmentDetail({ investment, schedule = [], onClose, onUpdate,
   const accruedReturn = calculateAccruedReturn(investment, schedule);
   const actualReturn = investment.amount > 0 ? ((totalPayments / investment.amount) * 100) : 0;
 
-  // TAE ajustada por retraso (solo se muestra si hay retraso real)
+  // Retraso respecto al vencimiento prometido al invertir (aunque se haya movido)
   const delayDays = getDelayDays(investment);
   const today = new Date();
+  const promisedEndDate = getOriginalEndDate(investment);
+  const maturityMoved = !!promisedEndDate && !!investment.expectedEndDate && promisedEndDate !== investment.expectedEndDate;
   const isCompletedWithDelay = investment.status === 'completed' && !!investment.actualEndDate && delayDays > 0;
-  const isRunningWithDelay =
-    (investment.status === 'active' || investment.status === 'pending') &&
-    !!investment.expectedEndDate &&
-    today > new Date(investment.expectedEndDate) &&
-    delayDays > 0;
+  const isRunningWithDelay = (investment.status === 'active' || investment.status === 'pending') && delayDays > 0;
+  const isPastCurrentMaturity = !!investment.expectedEndDate && today > new Date(investment.expectedEndDate);
   const realTAE = isCompletedWithDelay ? calculateRealTAE(investment, investment.payments) : 0;
-  const estimatedTAEToday = isRunningWithDelay ? calculateEstimatedTAEToday(investment, investment.payments, today) : 0;
+  const delayAdjustedTAE = isRunningWithDelay ? calculateDelayAdjustedTAE(investment, investment.payments, today) : 0;
+  const formatDay = (d: string) => format(parseISO(d), 'dd MMM yyyy', { locale: es });
+  const formatDelay = (days: number) =>
+    days < 60
+      ? `${days} ${t('investments.detail.delayDays')}`
+      : `${Math.round(days / 30.44)} ${t('investments.detail.delayMonths')}`;
   const taeDiffPp = realTAE - investment.expectedReturn;
 
   const sortedSchedule = [...schedule].sort(
@@ -503,6 +512,11 @@ export function InvestmentDetail({ investment, schedule = [], onClose, onUpdate,
                   ? format(parseISO(investment.expectedEndDate), 'dd MMM yyyy', { locale: es })
                   : t('investments.detail.notSpecified')}
               </p>
+              {maturityMoved && (
+                <p className="text-xs text-muted-foreground">
+                  {t('investments.detail.promisedMaturity')}: <span className="line-through">{formatDay(promisedEndDate!)}</span>
+                </p>
+              )}
             </div>
           </div>
 
@@ -594,23 +608,34 @@ export function InvestmentDetail({ investment, schedule = [], onClose, onUpdate,
                 {taeDiffPp >= 0 ? '+' : ''}{taeDiffPp.toFixed(1)} pp
               </p>
               <p className="mt-1 text-sm text-muted-foreground">
-                {t('investments.detail.closedWithDelayPrefix')} {delayDays} {t('investments.detail.closedWithDelaySuffix')}
+                {t('investments.detail.closedWithDelayPrefix')} {formatDelay(delayDays)} {t('investments.detail.closedWithDelaySuffix')}
               </p>
             </div>
           )}
 
           {isRunningWithDelay && (
             <div className="rounded-lg border p-4" style={{ borderColor: '#e4ddcf' }}>
-              <div className="flex items-center gap-2">
-                <span aria-hidden="true">⚠️</span>
-                <p className="text-sm font-semibold" style={{ color: '#79c6fa' }}>
-                  {t('investments.detail.estimatedTAEToday')}: {estimatedTAEToday.toFixed(1)}%
-                </p>
-                <HelpTooltip content={t('investments.detail.estimatedTAETooltip')} />
+              <div className="flex items-center justify-between gap-4">
+                <div className="space-y-1">
+                  <p className="text-xs text-muted-foreground">{t('investments.detail.expectedTAE')}</p>
+                  <p className="text-lg font-semibold" style={{ color: '#253765' }}>{investment.expectedReturn.toFixed(1)}%</p>
+                </div>
+                <div className="space-y-1 text-right">
+                  <p className="flex items-center justify-end gap-1 text-xs text-muted-foreground">
+                    {t('investments.detail.delayAdjustedTAE')}
+                    <HelpTooltip content={t('investments.detail.delayAdjustedTooltip')} />
+                  </p>
+                  <p className="text-lg font-semibold" style={{ color: '#253765' }}>{delayAdjustedTAE.toFixed(1)}%</p>
+                </div>
               </div>
-              <p className="mt-1 text-sm text-muted-foreground">
-                {t('investments.detail.runningDelayPrefix')} {delayDays} {t('investments.detail.runningDelaySuffix')}
+              <p className="mt-2 text-sm text-muted-foreground">
+                {isPastCurrentMaturity
+                  ? `${t('investments.detail.runningDelayPrefix')} ${formatDelay(delayDays)} ${t('investments.detail.runningDelaySuffix')}`
+                  : `${t('investments.detail.movedDelayPrefix')} ${formatDelay(delayDays)}: ${t('investments.detail.movedDelayWas')} ${formatDay(promisedEndDate!)}, ${t('investments.detail.movedDelayNow')} ${formatDay(investment.expectedEndDate!)}.`}
               </p>
+              {isDelayedWithoutExtraInterest(investment) && (
+                <p className="mt-1 text-xs text-muted-foreground">{t('investments.detail.delayNoExtraInterest')}</p>
+              )}
             </div>
           )}
 
@@ -906,6 +931,24 @@ export function InvestmentDetail({ investment, schedule = [], onClose, onUpdate,
               {/* Prorrogar */}
               {activeForm === 'extend' && (
                 <div className="mt-3 rounded-lg border bg-card p-4 space-y-3">
+                  <p className="text-sm font-medium">{t('investments.action.extendKindQuestion')}</p>
+                  <div className="grid gap-2 sm:grid-cols-2">
+                    {(['extended', 'delayed'] as const).map(kind => (
+                      <button
+                        key={kind}
+                        type="button"
+                        onClick={() => setExtendKind(kind)}
+                        className={cn(
+                          'rounded-md border p-3 text-left text-sm transition-colors',
+                          extendKind === kind ? 'border-primary bg-primary/5' : 'hover:bg-muted/50',
+                        )}
+                        aria-pressed={extendKind === kind}
+                      >
+                        <span className="font-medium">{t(`investments.action.extendKind.${kind}`)}</span>
+                        <span className="mt-0.5 block text-xs text-muted-foreground">{t(`investments.action.extendKind.${kind}.hint`)}</span>
+                      </button>
+                    ))}
+                  </div>
                   <p className="text-sm font-medium">{t('investments.action.newEndDate')}</p>
                   <Popover>
                     <PopoverTrigger asChild>

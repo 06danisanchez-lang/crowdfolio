@@ -1,0 +1,12 @@
+-- Retrasos: no perder la fecha de vencimiento prometida.
+--
+-- Cuando el usuario indica que una inversión se ha prorrogado o que el cobro llega
+-- con retraso, la app movía expected_end_date a la nueva fecha y olvidaba la
+-- original. Desde ese momento la inversión parecía ir "a tiempo": la ficha no
+-- mostraba el retraso y la rentabilidad media de la cartera volvía a la prometida.
+--
+-- original_end_date guarda la fecha prometida al invertir. Solo se rellena la
+-- primera vez que la fecha se mueve por prórroga o retraso; NULL = nunca se ha
+-- movido (vale expected_end_date). No hace falta rellenar filas antiguas: las que
+-- ya se movieron no tienen forma de recuperar su fecha original.
+alter table public.investments add column if not exists original_end_date date;

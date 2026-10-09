@@ -256,3 +256,22 @@ export function generateSchedule(input: ScheduleInput): InvestmentScheduleEntry[
 
   return entries;
 }
+
+/**
+ * Calendario de una inversión cuyo vencimiento se ha movido por un RETRASO (no una
+ * prórroga): los cobros son los prometidos (generados hasta accrualEndDate, el
+ * vencimiento original), pero los del último día —el capital y la última cuota—
+ * se esperan en la nueva fecha. Sin retraso, es el calendario normal.
+ * Ver getAccrualEndDate en calculations.ts.
+ */
+export function generateScheduleWithDelay(
+  input: ScheduleInput,
+  accrualEndDate: string | undefined,
+): InvestmentScheduleEntry[] {
+  const newEnd = input.expectedEndDate;
+  if (!accrualEndDate || !newEnd || accrualEndDate >= newEnd) {
+    return generateSchedule(input);
+  }
+  const entries = generateSchedule({ ...input, expectedEndDate: accrualEndDate });
+  return entries.map(e => (e.expectedDate === accrualEndDate ? { ...e, expectedDate: newEnd } : e));
+}

@@ -27,6 +27,8 @@ export interface RawInvestmentRow {
   actual_end_date: string | null;
   close_reason: string | null;
   was_extended: boolean | null;
+  original_end_date?: string | null;
+  interest_end_date?: string | null;
   loss_insolvency_status: string | null;
   loss_insolvency_concluded_date: string | null;
   loss_quita_amount: number | null;
@@ -78,6 +80,8 @@ export function mapRawInvestmentRow(
     actualEndDate: inv.actual_end_date || undefined,
     closeReason: (inv.close_reason as CloseReasonType) || undefined,
     wasExtended: inv.was_extended ?? false,
+    originalEndDate: inv.original_end_date || undefined,
+    interestEndDate: inv.interest_end_date || undefined,
     lossInsolvencyStatus: (inv.loss_insolvency_status as LossInsolvencyStatus) || undefined,
     lossInsolvencyConcludedDate: inv.loss_insolvency_concluded_date || undefined,
     lossQuitaAmount: inv.loss_quita_amount != null ? Number(inv.loss_quita_amount) : undefined,
@@ -127,6 +131,8 @@ export function draftToInvestment(raw: DraftInvestment): Investment {
     actualEndDate: raw.actualEndDate,
     closeReason: raw.closeReason,
     wasExtended: raw.wasExtended,
+    originalEndDate: raw.originalEndDate,
+    interestEndDate: raw.interestEndDate,
     lossInsolvencyStatus: raw.lossInsolvencyStatus,
     lossInsolvencyConcludedDate: raw.lossInsolvencyConcludedDate,
     lossQuitaAmount: raw.lossQuitaAmount,

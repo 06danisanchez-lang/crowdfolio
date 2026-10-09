@@ -105,6 +105,12 @@ export interface Investment extends InvestmentFxFields {
   actualEndDate?: string | null;
   closeReason?: CloseReasonType | null;
   wasExtended?: boolean;
+  /** Vencimiento prometido al invertir. Solo existe si la fecha se ha movido por
+   * prórroga o retraso; si no, vale expectedEndDate. Ver getOriginalEndDate(). */
+  originalEndDate?: string | null;
+  /** Hasta cuándo genera intereses si se marcó un retraso (cobrará lo prometido,
+   * más tarde). Vacío = hasta expectedEndDate. Ver getAccrualEndDate(). */
+  interestEndDate?: string | null;
   lossInsolvencyStatus?: LossInsolvencyStatus | null;
   lossInsolvencyConcludedDate?: string | null;
   lossQuitaAmount?: number | null;
@@ -184,6 +190,12 @@ export interface DraftInvestment extends InvestmentFxFields {
   actualEndDate?: string | null;
   closeReason?: CloseReasonType | null;
   wasExtended?: boolean;
+  /** Vencimiento prometido al invertir. Solo existe si la fecha se ha movido por
+   * prórroga o retraso; si no, vale expectedEndDate. Ver getOriginalEndDate(). */
+  originalEndDate?: string | null;
+  /** Hasta cuándo genera intereses si se marcó un retraso (cobrará lo prometido,
+   * más tarde). Vacío = hasta expectedEndDate. Ver getAccrualEndDate(). */
+  interestEndDate?: string | null;
   lossInsolvencyStatus?: LossInsolvencyStatus | null;
   lossInsolvencyConcludedDate?: string | null;
   lossQuitaAmount?: number | null;

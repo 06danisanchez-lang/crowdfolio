@@ -1,6 +1,7 @@
 import { Investment } from '@/types/investment';
 import { calculateProgressiveTax } from '@/lib/tax/calculations';
 import { getDefaultWithholdingRate } from './withholding';
+import { getAccrualEndDate } from '@/lib/investment/calculations';
 
 export interface ProjectedInvestment {
   investmentId: string;
@@ -33,9 +34,9 @@ export function calculateProjectedIncome(
   const today = new Date();
 
   const investmentStart = new Date(investment.investmentDate);
-  const investmentEnd = investment.expectedEndDate 
-    ? new Date(investment.expectedEndDate) 
-    : yearEnd;
+  // Hasta cuándo genera intereses (tras un retraso, la fecha prometida).
+  const accrualEnd = getAccrualEndDate(investment);
+  const investmentEnd = accrualEnd ? new Date(accrualEnd) : yearEnd;
 
   // Calculate effective period within the year
   const effectiveStart = investmentStart > yearStart ? investmentStart : yearStart;

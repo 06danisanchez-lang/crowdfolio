@@ -40,6 +40,45 @@ export function calculateTotalReturnPercent(
   return annualReturnPercent * durationYears;
 }
 
+const MS_PER_YEAR = 1000 * 60 * 60 * 24 * 365.25;
+const MS_PER_DAY = 1000 * 60 * 60 * 24;
+
+type DelayFields = Pick<Investment, 'expectedEndDate' | 'originalEndDate' | 'interestEndDate'>;
+
+/** Días naturales entre dos fechas 'YYYY-MM-DD' (b - a), sin horas ni zonas horarias. */
+export function daysBetweenDates(a: string, b: string): number {
+  return Math.round((Date.parse(`${b.slice(0, 10)}T00:00:00Z`) - Date.parse(`${a.slice(0, 10)}T00:00:00Z`)) / MS_PER_DAY);
+}
+
+/**
+ * Vencimiento prometido al invertir, antes de prórrogas o retrasos.
+ * originalEndDate solo existe si la fecha se ha movido; si no, es expectedEndDate.
+ */
+export function getOriginalEndDate(investment: DelayFields): string | undefined {
+  return investment.originalEndDate || investment.expectedEndDate || undefined;
+}
+
+/**
+ * Hasta qué fecha genera rentabilidad la inversión:
+ * - Normal o tras una prórroga oficial: hasta el vencimiento actual (mismo tipo).
+ * - Tras un retraso: hasta interestEndDate (cobrará lo prometido, pero más tarde;
+ *   no se suponen intereses extra). Si la plataforma paga intereses de demora, se
+ *   registran como cobros y la TAE real al cerrar los recoge.
+ */
+export function getAccrualEndDate(investment: DelayFields): string | undefined {
+  const expected = investment.expectedEndDate || undefined;
+  const interestEnd = investment.interestEndDate || undefined;
+  if (!interestEnd) return expected;
+  if (!expected) return interestEnd;
+  return interestEnd < expected ? interestEnd : expected;
+}
+
+/** true si la inversión va con un retraso sin intereses extra (no una prórroga). */
+export function isDelayedWithoutExtraInterest(investment: DelayFields): boolean {
+  const accrualEnd = getAccrualEndDate(investment);
+  return !!accrualEnd && !!investment.expectedEndDate && accrualEnd < investment.expectedEndDate;
+}
+
 /**
  * Calcula el rendimiento total esperado de una inversión usando interés simple.
  * SOLO VÁLIDO para inversiones tipo 'bullet'.
@@ -48,7 +87,7 @@ export function calculateTotalReturnPercent(
 export function calculateInvestmentTotalReturn(investment: Investment): number {
   const durationYears = getInvestmentDurationYears(
     investment.investmentDate,
-    investment.expectedEndDate
+    getAccrualEndDate(investment)
   );
   return calculateTotalReturnAmount(
     investment.amount,
@@ -65,7 +104,7 @@ export function calculateInvestmentTotalReturn(investment: Investment): number {
 export function calculateInvestmentTotalReturnPercent(investment: Investment): number {
   const durationYears = getInvestmentDurationYears(
     investment.investmentDate,
-    investment.expectedEndDate
+    getAccrualEndDate(investment)
   );
   return calculateTotalReturnPercent(investment.expectedReturn, durationYears);
 }
@@ -176,20 +215,19 @@ export function calculateAccruedReturn(
   const todayStr = toDateOnlyString(today);
 
   if (inv.incomeModel === 'periodic_fixed' || inv.incomeModel === 'amortizing') {
+    // Lo previsto hasta hoy. No se sustituye por el cobro emparejado: el
+    // emparejado (scheduleMatching.ts) puede cubrir una cuota con varios cobros
+    // o varias cuotas con uno, así que su importe no es el de la cuota.
     return schedule
       .filter(e => e.type === 'interest' && e.expectedDate <= todayStr)
-      .reduce((sum, e) => {
-        if (e.matchedPaymentId && inv.payments) {
-          const real = inv.payments.find(p => p.id === e.matchedPaymentId);
-          return sum + (real ? real.amount : e.expectedAmount);
-        }
-        return sum + e.expectedAmount;
-      }, 0);
+      .reduce((sum, e) => sum + e.expectedAmount, 0);
   }
 
-  // bullet, equity plusvalia/liquidacion: interés simple proporcional
+  // bullet, equity plusvalia/liquidacion: interés simple proporcional, hasta la
+  // fecha en que deja de generar rentabilidad (la original si es un retraso).
   const start = new Date(inv.investmentDate);
-  const end = today < new Date(inv.expectedEndDate ?? today) ? today : new Date(inv.expectedEndDate!);
+  const accrualEnd = getAccrualEndDate(inv);
+  const end = today < new Date(accrualEnd ?? today) ? today : new Date(accrualEnd!);
   const yearsElapsed = Math.max((end.getTime() - start.getTime()) / (1000 * 60 * 60 * 24 * 365.25), 0);
   return inv.amount * (inv.expectedReturn / 100) * yearsElapsed;
 }
@@ -211,22 +249,26 @@ export function calculateRemainingReturn(
 }
 
 /**
- * Días de retraso de una inversión respecto a su fecha de vencimiento prevista.
- * - Completada con actualEndDate: actualEndDate - expectedEndDate
- * - Activa/pendiente: hoy - expectedEndDate
+ * Días de retraso respecto al vencimiento prometido al invertir (getOriginalEndDate),
+ * aunque luego se haya movido por prórroga o retraso.
+ * - Completada con actualEndDate: actualEndDate - vencimiento original.
+ * - Activa/pendiente: la fecha más tardía entre hoy y el vencimiento actual, menos el
+ *   original. Así una inversión retrasada al 1 de julio cuenta ya todo el retraso
+ *   previsto, y si vuelve a pasarse la fecha el retraso sigue creciendo cada día.
  * Positivo = retraso, negativo o cero = a tiempo / anticipado.
  */
 export function getDelayDays(investment: Investment, today: Date = new Date()): number {
-  if (!investment.expectedEndDate) return 0;
-  const expected = new Date(investment.expectedEndDate);
+  const original = getOriginalEndDate(investment);
+  if (!original) return 0;
 
   if (investment.status === 'completed' && investment.actualEndDate) {
-    const actual = new Date(investment.actualEndDate);
-    return Math.round((actual.getTime() - expected.getTime()) / (1000 * 60 * 60 * 24));
+    return daysBetweenDates(original, investment.actualEndDate);
   }
 
   if (investment.status === 'active' || investment.status === 'pending') {
-    return Math.round((today.getTime() - expected.getTime()) / (1000 * 60 * 60 * 24));
+    const todayStr = toDateOnlyString(today);
+    const current = investment.expectedEndDate || original;
+    return daysBetweenDates(original, todayStr > current ? todayStr : current);
   }
 
   return 0;
@@ -279,22 +321,49 @@ export function calculateEstimatedTAEToday(
 }
 
 /**
+ * TAE de una inversión activa/pendiente teniendo en cuenta el retraso: lo prometido
+ * (generado hasta getAccrualEndDate) repartido entre el tiempo hasta que se cobre,
+ * que es el vencimiento actual o, si ya ha pasado, hoy.
+ *
+ * Ejemplo: 10 % anual a 12 meses que se retrasa a 18 meses sin intereses extra →
+ * 10 % × 12/18 = 6,7 %. En una prórroga (el contrato sigue al mismo tipo) no baja
+ * hasta que se pase la nueva fecha.
+ *
+ * Si la inversión sigue pagando intereses durante el retraso, lo cobrado puede dar
+ * una TAE mayor (calculateEstimatedTAEToday); se usa la mayor de las dos.
+ */
+export function calculateDelayAdjustedTAE(
+  investment: Investment,
+  payments: Payment[],
+  today: Date = new Date(),
+): number {
+  const accrualEnd = getAccrualEndDate(investment);
+  if (!accrualEnd || !investment.expectedEndDate) return investment.expectedReturn;
+
+  const start = new Date(investment.investmentDate).getTime();
+  const current = new Date(investment.expectedEndDate);
+  const payout = today > current ? today : current;
+  const promisedYears = (new Date(accrualEnd).getTime() - start) / MS_PER_YEAR;
+  const realYears = (payout.getTime() - start) / MS_PER_YEAR;
+  if (promisedYears <= 0 || realYears <= 0 || promisedYears >= realYears) return investment.expectedReturn;
+
+  const diluted = investment.expectedReturn * (promisedYears / realYears);
+  const fromCollected = calculateEstimatedTAEToday(investment, payments, today);
+  return Math.max(diluted, fromCollected);
+}
+
+/**
  * TAE más rigurosa disponible para una inversión:
  * - Completada con actualEndDate -> TAE real (duración y cobros reales)
- * - Activa/pendiente con retraso (hoy > expectedEndDate) -> TAE estimada a hoy
- * - Sin retraso -> expectedReturn original, sin cambios
+ * - Activa/pendiente -> TAE ajustada por retraso (igual a la prometida si va a tiempo)
  */
 export function getEffectiveTAE(investment: Investment, payments: Payment[], today: Date = new Date()): number {
   if (investment.status === 'completed' && investment.actualEndDate) {
     return calculateRealTAE(investment, payments);
   }
 
-  if (
-    (investment.status === 'active' || investment.status === 'pending') &&
-    investment.expectedEndDate &&
-    today > new Date(investment.expectedEndDate)
-  ) {
-    return calculateEstimatedTAEToday(investment, payments, today);
+  if (investment.status === 'active' || investment.status === 'pending') {
+    return calculateDelayAdjustedTAE(investment, payments, today);
   }
 
   return investment.expectedReturn;

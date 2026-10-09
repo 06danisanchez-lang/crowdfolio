@@ -1,4 +1,6 @@
 import { useState } from 'react';
+import { buildMaturityChange } from '@/lib/investment/maturityChange';
+import { toast } from 'sonner';
 import { format } from 'date-fns';
 import { es } from 'date-fns/locale';
 import { CalendarIcon, CheckCircle2, XCircle, ChevronLeft } from 'lucide-react';
@@ -45,14 +47,14 @@ const REJECT_OPTIONS: {
   {
     value: 'extended',
     label: 'Proyecto prorrogado',
-    description: 'La plataforma ha extendido el plazo oficialmente',
+    description: 'La plataforma ha ampliado el plazo y sigue pagando intereses hasta la nueva fecha',
     needsDate: true,
     emoji: '📅',
   },
   {
     value: 'delayed',
     label: 'Pago retrasado',
-    description: 'El cobro llegará, pero con retraso',
+    description: 'Cobrarás lo prometido, pero más tarde (sin intereses extra)',
     needsDate: true,
     emoji: '⏳',
   },
@@ -115,19 +117,29 @@ export function MaturityConfirmationModal({ investment, onClose, onUpdate, onClo
     setSaving(true);
     const newDateStr = newDate ? format(newDate, 'yyyy-MM-dd') : undefined;
 
+    let result: unknown;
     switch (selectedOption) {
       case 'extended':
       case 'delayed':
-        await onUpdate(investment.id, { status: 'active', expectedEndDate: newDateStr });
+        if (!newDateStr) break;
+        result = await onUpdate(investment.id, {
+          status: 'active',
+          ...buildMaturityChange(investment, newDateStr, selectedOption),
+        });
         break;
       case 'disputed':
-        await onUpdate(investment.id, {
+        result = await onUpdate(investment.id, {
           status: 'active',
           notes: `[DISPUTA] ${investment.notes ?? ''}`.trim(),
         });
         break;
     }
     setSaving(false);
+    const saveError = (result as { error?: string } | undefined)?.error;
+    if (saveError) {
+      toast.error(saveError);
+      return;
+    }
     reset();
     onClose();
   };

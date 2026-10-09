@@ -2,9 +2,10 @@ import { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { Investment, InvestmentSummary, Platform, InvestmentStatus, Payment, DraftInvestment, IncomeModel, PaymentFrequency, PrincipalReturnType, EquityType, InvestmentScheduleEntry, PaymentType } from '@/types/investment';
-import { calculateInvestmentTotalReturn, calculateExpectedReturnFromSchedule, calculateAccruedReturn, calculateRemainingReturn, getEffectiveTAE } from '@/lib/investment/calculations';
+import { calculateInvestmentTotalReturn, calculateExpectedReturnFromSchedule, calculateAccruedReturn, calculateRemainingReturn, getEffectiveTAE, getAccrualEndDate } from '@/lib/investment/calculations';
 import { isInvestmentComplete, getInvestmentCompletionStatus } from '@/lib/investment/completeness';
-import { generateSchedule } from '@/lib/investment/scheduleGenerator';
+import { generateScheduleWithDelay } from '@/lib/investment/scheduleGenerator';
+import { matchScheduleToPayments } from '@/lib/investment/scheduleMatching';
 import { isBlockedDefaultedTransition, isBlockedIncomeModelChange } from '@/lib/investment/defaultTransitionGuard';
 import { toDateOnlyString } from '@/lib/dateOnly';
 import { getDefaultWithholding } from '@/lib/tax/withholding';
@@ -128,6 +129,13 @@ export function useInvestments() {
         )
       );
 
+      // Cuotas previstas ↔ cobros registrados (en memoria; ver scheduleMatching.ts)
+      for (const inv of mapped) {
+        if (schedMap[inv.id]) {
+          schedMap[inv.id] = matchScheduleToPayments(inv.incomeModel, schedMap[inv.id], inv.payments ?? []);
+        }
+      }
+
       setAllRawInvestments(mapped);
       setScheduleMap(schedMap);
       hasLoadedRef.current = true;
@@ -209,6 +217,7 @@ export function useInvestments() {
     investmentDate: string;
     expectedEndDate?: string;
     firstPaymentDate?: string | null;
+    interestEndDate?: string | null;
   }): Promise<{ error?: string }> => {
     // Delete existing schedule
     const { error: deleteError } = await supabase.from('investment_schedule').delete().eq('investment_id', investmentId);
@@ -219,7 +228,7 @@ export function useInvestments() {
 
     if (!investment.expectedEndDate) return {};
 
-    const entries = generateSchedule({
+    const entries = generateScheduleWithDelay({
       id: investmentId,
       amount: investment.amount,
       expectedReturn: investment.expectedReturn,
@@ -230,7 +239,7 @@ export function useInvestments() {
       investmentDate: investment.investmentDate,
       expectedEndDate: investment.expectedEndDate,
       firstPaymentDate: investment.firstPaymentDate,
-    });
+    }, getAccrualEndDate(investment));
 
     if (entries.length > 0) {
       const rows = entries.map(e => ({
@@ -382,6 +391,8 @@ export function useInvestments() {
     if (updates.actualEndDate !== undefined) dbUpdates.actual_end_date = updates.actualEndDate;
     if (updates.closeReason !== undefined) dbUpdates.close_reason = updates.closeReason;
     if (updates.wasExtended !== undefined) dbUpdates.was_extended = updates.wasExtended;
+    if (updates.originalEndDate !== undefined) dbUpdates.original_end_date = updates.originalEndDate || null;
+    if (updates.interestEndDate !== undefined) dbUpdates.interest_end_date = updates.interestEndDate || null;
     if (updates.incomeModel !== undefined) dbUpdates.income_model = updates.incomeModel || null;
     if (updates.paymentFrequency !== undefined) dbUpdates.payment_frequency = updates.paymentFrequency || null;
     if (updates.firstPaymentDate !== undefined) dbUpdates.first_payment_date = updates.firstPaymentDate || null;
@@ -409,7 +420,7 @@ export function useInvestments() {
 
     // Regenerate schedule if income model fields changed
     let scheduleError: string | undefined;
-    if (current && (updates.incomeModel || updates.paymentFrequency || updates.firstPaymentDate !== undefined || updates.expectedReturn !== undefined || updates.expectedEndDate !== undefined || updates.amount !== undefined || updates.investmentDate !== undefined || updates.principalReturnType !== undefined || updates.equityType !== undefined)) {
+    if (current && (updates.incomeModel || updates.paymentFrequency || updates.firstPaymentDate !== undefined || updates.expectedReturn !== undefined || updates.expectedEndDate !== undefined || updates.amount !== undefined || updates.investmentDate !== undefined || updates.principalReturnType !== undefined || updates.equityType !== undefined || updates.interestEndDate !== undefined)) {
       const merged = {
         amount: updates.amount ?? current.amount ?? 0,
         expectedReturn: updates.expectedReturn ?? current.expectedReturn ?? 0,
@@ -420,6 +431,7 @@ export function useInvestments() {
         investmentDate: updates.investmentDate ?? current.investmentDate ?? '',
         expectedEndDate: updates.expectedEndDate ?? current.expectedEndDate,
         firstPaymentDate: updates.firstPaymentDate !== undefined ? updates.firstPaymentDate : current.firstPaymentDate,
+        interestEndDate: updates.interestEndDate !== undefined ? updates.interestEndDate : current.interestEndDate,
       };
       const scheduleResult = await saveScheduleForInvestment(id, merged);
       scheduleError = scheduleResult.error;

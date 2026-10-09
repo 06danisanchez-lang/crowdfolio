@@ -52,7 +52,7 @@ import { toast } from 'sonner';
 import { Skeleton } from '@/components/ui/skeleton';
 import { View } from '@/types/investment';
 import { cn } from '@/lib/utils';
-import { paymentFromDueNotification } from '@/lib/notifications/paymentFromDueNotification';
+import { paymentFromDueNotification, hasMatchingPayment } from '@/lib/notifications/paymentFromDueNotification';
 
 const Index = () => {
   const { t } = useLanguage();
@@ -127,6 +127,17 @@ const Index = () => {
     setPendingOpenInvestmentId(investmentId);
   };
 
+  // «Sí, cobrado» desde un aviso: no vuelve a apuntar un cobro que ya está
+  // registrado (avisos repetidos del mismo cobro, o ya anotado a mano).
+  const registerPaymentFromNotification = async (
+    investmentId: string,
+    payment: { date: string; amount: number; type: 'interest' },
+  ) => {
+    const inv = investments.find(i => i.id === investmentId);
+    if (inv && hasMatchingPayment(inv.payments, payment)) return;
+    await addPayment(investmentId, payment);
+  };
+
   const handleSheetPaid = async (notification: Notification) => {
     const data = notification.data as Record<string, unknown>;
     const toRegister = paymentFromDueNotification(data);
@@ -139,7 +150,7 @@ const Index = () => {
     }
     setSavingNotificationId(notification.id);
     try {
-      await addPayment(toRegister.investmentId, toRegister.payment);
+      await registerPaymentFromNotification(toRegister.investmentId, toRegister.payment);
       markAsRead(notification.id);
     } finally {
       setSavingNotificationId(null);
@@ -281,7 +292,7 @@ const Index = () => {
                       notifications={unreadNotifications}
                       unreadCount={unreadCount}
                       onMarkAsRead={markAsRead}
-                      onAddPayment={async (investmentId, payment) => { await addPayment(investmentId, payment); }}
+                      onAddPayment={registerPaymentFromNotification}
                       onOpenInvestment={openInvestmentDetail}
                     />
                     <InvestmentForm onSubmit={addInvestment} onSubmitDraft={addDraftInvestment} investmentCount={activePendingCount} isPro={isPro} onProRequired={() => openUpgradeModal('unlimited_investments')} />

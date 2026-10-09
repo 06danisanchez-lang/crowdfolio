@@ -253,6 +253,15 @@ export function FutureInvestmentList({ onAddInvestment, investmentCount: externa
       incomeModel: data.incomeModel || 'bullet',
       paymentFrequency: data.paymentFrequency,
       principalReturnType: data.principalReturnType,
+      // Antes se perdían al convertir: un equity llegaba sin tipo y el primer
+      // cobro conocido se olvidaba.
+      equityType: data.equityType || undefined,
+      firstPaymentDate: data.firstPaymentDate || null,
+      currency: data.currency,
+      originalAmount: data.originalAmount,
+      exchangeRate: data.exchangeRate,
+      exchangeRateDate: data.exchangeRateDate,
+      exchangeRateSource: data.exchangeRateSource,
       status: data.status,
       investmentDate: data.investmentDate instanceof Date
         ? toDateOnlyString(data.investmentDate)

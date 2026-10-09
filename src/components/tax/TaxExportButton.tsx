@@ -52,12 +52,19 @@ const GPP_REASON_LABEL: Record<ManualGppOperation['reason'], string> = {
   liquidation: 'Liquidación de la sociedad',
   sale: 'Venta',
   loss: 'Cierre con pérdida',
+  exchange: 'Diferencia de cambio (divisa)',
 };
 
 const GPP_MANUAL_NOTE =
   'Ganancias y pérdidas patrimoniales (base del ahorro) por el cierre de inversiones en participaciones. ' +
   'Crowdfolio NO las incluye en la base imponible ni en la cuota de este informe: decláralas manualmente ' +
-  'en tu IRPF con estos datos y consúltalo con tu asesor.';
+  'en tu IRPF con estos datos y consúltalo con tu asesor. Las diferencias de cambio son las de recuperar ' +
+  'capital de préstamos en otra divisa: revisa con tu asesor en qué ejercicio se realizan.';
+
+const FOREIGN_WITHHOLDING_NOTE =
+  'Impuesto pagado en el extranjero por rentas de plataformas extranjeras. Se puede deducir en la renta ' +
+  '(deducción por doble imposición internacional, art. 80 LIRPF) con un límite que depende del resto de tus ' +
+  'rentas del ahorro; por eso no se resta de la cuota de este informe.';
 
 const TRIGGER_LABEL_KEYS: Record<string, string> = {
   quita: 'tax.defaultLoss.trigger.quita',
@@ -77,6 +84,7 @@ export function TaxExportButton({
 }: ExtendedTaxExportButtonProps) {
   const { t } = useLanguage();
   const [isExporting, setIsExporting] = useState(false);
+  const foreignWithholdingEur = summary.foreignIncome?.foreignWithholdingEur ?? 0;
 
   const hasAnyDefaultLoss =
     defaultLossSummary.declarable.rows.length > 0 ||
@@ -302,6 +310,17 @@ export function TaxExportButton({
       erRow.height = 20;
       applyStyle(erRow.getCell(1), S.creamLabel);
       applyStyle(erRow.getCell(2), S.creamVal);
+
+      // Rentas del extranjero: retención en origen (art. 80 LIRPF). No se
+      // descuenta de la cuota: el límite depende de rentas que la app no ve.
+      if (foreignWithholdingEur > 0) {
+        addSectionSep('── Doble Imposición Internacional ──');
+        addSummaryRow('Retención soportada en el extranjero (informativo)', foreignWithholdingEur, S.dataOdd as XStyle);
+        const fxNoteRow = wsR.addRow([FOREIGN_WITHHOLDING_NOTE, '']);
+        fxNoteRow.height = 48;
+        wsR.mergeCells(fxNoteRow.number, 1, fxNoteRow.number, 2);
+        applyStyle(wsR.getCell(fxNoteRow.number, 1), S.legalNote);
+      }
 
       // Pérdidas por impago (Fase 5) — base imponible GENERAL, nunca entran en
       // taxableBase/estimatedTax (ver useTaxSummary.ts/defaultLossSummary.ts).
@@ -698,6 +717,9 @@ export function TaxExportButton({
           ['Tipo Efectivo', formatPercentage(summary.effectiveRate)],
           ...(manualGppOperations.length > 0
             ? [['GPP a declarar manualmente (no incluidas arriba)', formatCurrency(manualGppOperations.reduce((sum, op) => sum + op.result, 0))]]
+            : []),
+          ...(foreignWithholdingEur > 0
+            ? [['Retención soportada en el extranjero (art. 80 LIRPF, informativo)', formatCurrency(foreignWithholdingEur)]]
             : []),
         ],
         theme: 'striped',

@@ -25,6 +25,11 @@ export interface DraftFormValues {
   firstPaymentDate?: string;
   principalReturnType?: string;
   equityType?: string;
+  currency?: string;
+  fxOriginalAmount?: number | null;
+  fxRate?: number | null;
+  fxRateDate?: string | null;
+  fxRateSource?: string | null;
 }
 
 export interface DraftPayload {

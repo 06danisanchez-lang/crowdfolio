@@ -1,3 +1,4 @@
+import type { ForeignIncomeSummary } from '@/lib/currency/fx';
 import type { MissingWithholdingSummary } from '@/lib/tax/withholding';
 
 // Rendimientos del capital mobiliario (art. 26.1.a LIRPF): solo son deducibles
@@ -45,6 +46,8 @@ export interface TaxSummary {
   liquidacionSinRetencion: EnrichedPayment[];
   // Cobros de plataformas españolas sin retención registrada (ver lib/tax/withholding.ts)
   incomeWithoutWithholding: MissingWithholdingSummary;
+  /** Rentas de inversiones en otra divisa y retención en origen (art. 80 LIRPF). */
+  foreignIncome?: ForeignIncomeSummary;
 }
 
 export interface EnrichedPayment {

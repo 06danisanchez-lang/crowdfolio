@@ -16,6 +16,7 @@ const GPP_REASON_LABEL: Record<ManualGppOperation['reason'], string> = {
   liquidation: 'Liquidación de la sociedad',
   sale: 'Venta',
   loss: 'Cierre con pérdida',
+  exchange: 'Diferencia de cambio (divisa)',
 };
 
 const fmt = (v: number) =>
@@ -127,12 +128,13 @@ export function TaxBucketsCard({ summary, defaultLossSummary, manualGppOperation
                 <AlertTriangle className="h-4 w-4 shrink-0 text-amber-600 dark:text-amber-400" />
                 <span>
                   Estas operaciones no entran en el cálculo de Crowdfolio. Declara cada una manualmente en tu IRPF
-                  con estos datos y consúltalo con tu asesor.
+                  con estos datos y consúltalo con tu asesor. En las diferencias de cambio, revisa con él en qué
+                  ejercicio se realizan (depende de cuándo cambiaste esa divisa a euros).
                 </span>
               </div>
               <div className="rounded-md border divide-y text-sm">
-                {manualGppOperations.map((op) => (
-                  <div key={op.investmentId} className="px-3 py-2.5 space-y-1.5">
+                {manualGppOperations.map((op, i) => (
+                  <div key={`${op.investmentId}-${op.reason}-${op.transmissionDate}-${i}`} className="px-3 py-2.5 space-y-1.5">
                     <div className="flex items-start justify-between gap-4">
                       <div>
                         <p className="font-medium">{op.projectName}</p>

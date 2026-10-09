@@ -29,7 +29,8 @@ export interface ManualGppOperation {
   transmissionValue: number;
   /** Positivo = ganancia, negativo = pérdida. */
   result: number;
-  reason: 'liquidation' | 'sale' | 'loss';
+  /** 'exchange' = diferencia de cambio al recuperar capital de un préstamo en otra divisa (lib/currency/fx.ts). */
+  reason: 'liquidation' | 'sale' | 'loss' | 'exchange';
 }
 
 const round2 = (v: number) => Math.round(v * 100) / 100;

@@ -8,7 +8,8 @@ import { generateSchedule } from '@/lib/investment/scheduleGenerator';
 import { isBlockedDefaultedTransition, isBlockedIncomeModelChange } from '@/lib/investment/defaultTransitionGuard';
 import { toDateOnlyString } from '@/lib/dateOnly';
 import { getDefaultWithholding } from '@/lib/tax/withholding';
-import { RawInvestmentRow, mapRawInvestmentRow, draftToInvestment } from '@/lib/investment/mapInvestmentRow';
+import { RawInvestmentRow, mapRawInvestmentRow, draftToInvestment, mapPaymentRow, fxFieldsToColumns, paymentFxColumns, mapFxColumns } from '@/lib/investment/mapInvestmentRow';
+import { isForeignCurrency, isMissingForeignData } from '@/lib/currency/fx';
 
 const FETCH_TIMEOUT_MS = 15_000;
 
@@ -122,12 +123,7 @@ export function useInvestments() {
           inv,
           paymentsData
             .filter(p => p.investment_id === inv.id)
-            .map(p => ({
-              id: p.id as string, date: p.date as string, amount: Number(p.amount),
-              type: p.type as PaymentType,
-              notes: (p.notes as string) || undefined,
-              withholdingApplied: p.withholding_applied != null ? Number(p.withholding_applied) : 0,
-            })),
+            .map(mapPaymentRow),
           autoPendingIds.has(inv.id) ? 'pending' : undefined,
         )
       );
@@ -269,6 +265,7 @@ export function useInvestments() {
       equity_type: investment.equityType || null,
       notes: investment.notes || null,
       source_url: investment.sourceUrl || null,
+      ...fxFieldsToColumns(investment, investment.amount),
     }).select().single();
     if (error) { console.error('Error adding investment:', error); return null; }
 
@@ -297,6 +294,7 @@ export function useInvestments() {
       principalReturnType: (data as Record<string, unknown>).principal_return_type as PrincipalReturnType || undefined,
       equityType: (data as Record<string, unknown>).equity_type as EquityType || undefined,
       sourceUrl: (data as Record<string, unknown>).source_url as string || undefined,
+      ...mapFxColumns(data),
       notes: data.notes || undefined, createdAt: data.created_at, updatedAt: data.updated_at,
       payments: [],
     };
@@ -319,6 +317,11 @@ export function useInvestments() {
     principalReturnType?: string | null;
     status?: string;
     notes?: string | null;
+    currency?: string;
+    originalAmount?: number;
+    exchangeRate?: number;
+    exchangeRateDate?: string;
+    exchangeRateSource?: 'ecb' | 'manual';
   }) => {
     if (!user) return null;
     const { data, error } = await supabase.from('investments').insert({
@@ -336,6 +339,7 @@ export function useInvestments() {
       principal_return_type: draft.principalReturnType || null,
       status: draft.status || 'active',
       notes: draft.notes || null,
+      ...fxFieldsToColumns(draft, draft.amount),
     }).select().single();
     if (error) { console.error('Error adding draft investment:', error); return null; }
     await fetchInvestments();
@@ -392,6 +396,11 @@ export function useInvestments() {
     if (updates.lossEnforcementInitiator !== undefined) dbUpdates.loss_enforcement_initiator = updates.lossEnforcementInitiator;
     if (updates.lossAssessedAt !== undefined) dbUpdates.loss_assessed_at = updates.lossAssessedAt;
     if (updates.lossRulesVersion !== undefined) dbUpdates.loss_rules_version = updates.lossRulesVersion;
+    // Divisa: solo si el formulario la manda (currency presente). Se reescriben
+    // todas las columnas juntas para que nunca queden a medias.
+    if (updates.currency !== undefined) {
+      Object.assign(dbUpdates, fxFieldsToColumns(updates, updates.amount ?? current?.amount ?? null));
+    }
     const { error } = await supabase.from('investments').update(dbUpdates).eq('id', id);
     if (error) {
       console.error('Error updating investment:', error);
@@ -453,20 +462,24 @@ export function useInvestments() {
     // Sin retención explícita (p. ej. "Sí, cobrado" desde una notificación) se
     // propone la de la plataforma: 19 % si es española, 0 si no. Un 0 explícito
     // del formulario se respeta.
-    const platform = rawInvestmentsRef.current.find(inv => inv.id === investmentId)?.platform;
+    const target = rawInvestmentsRef.current.find(inv => inv.id === investmentId);
+    const platform = target?.platform;
+    // Una inversión en otra divisa no admite cobros sin tipo de cambio: `amount`
+    // tiene que ser euros y no hay forma de saberlo sin la conversión.
+    if (isMissingForeignData(target?.currency, payment)) {
+      console.error('Blocked payment without exchange rate on a foreign-currency investment', { investmentId });
+      return null;
+    }
     const withholdingApplied = payment.withholdingApplied
-      ?? getDefaultWithholding(payment.amount, payment.type, platform);
+      ?? getDefaultWithholding(payment.amount, payment.type, isForeignCurrency(target?.currency) ? 'other' : platform);
     const { data, error } = await supabase.from('payments').insert({
       investment_id: investmentId, date: payment.date, amount: payment.amount,
       type: payment.type, notes: payment.notes || null,
       withholding_applied: withholdingApplied,
+      ...paymentFxColumns(payment),
     }).select().single();
     if (error) { console.error('Error adding payment:', error); return null; }
-    const newPayment: Payment = {
-      id: data.id, date: data.date, amount: Number(data.amount),
-      type: data.type as PaymentType, notes: data.notes || undefined,
-      withholdingApplied: data.withholding_applied != null ? Number(data.withholding_applied) : 0,
-    };
+    const newPayment: Payment = mapPaymentRow(data as Record<string, unknown>);
     setAllRawInvestments(prev => prev.map(inv =>
       inv.id === investmentId
         ? { ...inv, payments: [...inv.payments, newPayment], updatedAt: new Date().toISOString() }
@@ -489,6 +502,10 @@ export function useInvestments() {
     payments: Omit<Payment, 'id'>[],
     closeUpdates: Pick<Partial<Investment>, 'actualEndDate' | 'closeReason'>,
   ): Promise<{ error?: string }> => {
+    const target = rawInvestmentsRef.current.find(inv => inv.id === investmentId);
+    if (payments.some(p => isMissingForeignData(target?.currency, p))) {
+      return { error: 'Falta el tipo de cambio del cobro. La inversión sigue abierta.' };
+    }
     let insertedIds: string[] = [];
     if (payments.length > 0) {
       const { data, error } = await supabase.from('payments').insert(
@@ -496,6 +513,7 @@ export function useInvestments() {
           investment_id: investmentId, date: p.date, amount: p.amount,
           type: p.type, notes: p.notes || null,
           withholding_applied: p.withholdingApplied ?? 0,
+          ...paymentFxColumns(p),
         })),
       ).select('id');
       if (error) {

@@ -47,9 +47,40 @@ export interface Payment {
   /** Retención a cuenta del IRPF practicada por la plataforma, en euros.
    * Solo intereses y dividendos (ver lib/tax/withholding.ts). */
   withholdingApplied?: number;
+  // ── Cobros de inversiones en otra divisa (ver lib/currency/fx.ts) ──
+  // `amount` es SIEMPRE el importe en euros: originalAmount × exchangeRate.
+  /** Importe cobrado en la divisa de la inversión. */
+  originalAmount?: number;
+  /** ISO 4217 de originalAmount. Vacío = cobro en euros. */
+  originalCurrency?: string;
+  /** Euros por 1 unidad de originalCurrency, del día del cobro. */
+  exchangeRate?: number;
+  /** Fecha del tipo de cambio (la del BCE puede ser anterior si el cobro cae en festivo). */
+  exchangeRateDate?: string;
+  exchangeRateSource?: ExchangeRateSource;
+  /** = amount cuando el cobro es en otra divisa. */
+  amountEur?: number;
+  /** Retención practicada en el país de la plataforma, en su divisa. */
+  foreignWithholdingAmount?: number;
+  foreignWithholdingCurrency?: string;
 }
 
-export interface Investment {
+/** 'ecb' = tipo de referencia del BCE propuesto por la app; 'manual' = escrito por el usuario. */
+export type ExchangeRateSource = 'ecb' | 'manual';
+
+/** Campos de divisa de una inversión. `amount` sigue siendo SIEMPRE euros. */
+export interface InvestmentFxFields {
+  /** ISO 4217. Vacío o 'EUR' = inversión en euros. */
+  currency?: string;
+  /** Importe invertido en `currency`. */
+  originalAmount?: number;
+  /** Euros por 1 unidad de `currency`, del día de la inversión. */
+  exchangeRate?: number;
+  exchangeRateDate?: string;
+  exchangeRateSource?: ExchangeRateSource;
+}
+
+export interface Investment extends InvestmentFxFields {
   id: string;
   platform: Platform;
   customPlatformName?: string;
@@ -112,17 +143,25 @@ export interface InvestmentSummary {
   };
 }
 
-export const PLATFORMS: { value: Platform; label: string; color: string }[] = [
-  { value: 'urbanitae', label: 'Urbanitae', color: 'platform-urbanitae' },
-  { value: 'housers', label: 'Housers', color: 'platform-housers' },
-  { value: 'estateguru', label: 'Estateguru', color: 'platform-estateguru' },
-  { value: 'crowdcube', label: 'Crowdcube', color: 'platform-crowdcube' },
-  { value: 'brickstarter', label: 'Brickstarter', color: 'platform-brickstarter' },
-  { value: 'wecity', label: 'Wecity', color: 'platform-wecity' },
+/**
+ * Catálogo de plataformas. `defaultCurrency` es la divisa que el formulario
+ * propone al elegir la plataforma en una inversión nueva; el usuario la puede
+ * cambiar. 'other' no propone nada (euros salvo que se elija otra).
+ * - urbanitae, housers, brickstarter, wecity: España, EUR.
+ * - estateguru: Estonia, EUR.
+ * - crowdcube: Reino Unido, capta en libras (GBP).
+ */
+export const PLATFORMS: { value: Platform; label: string; color: string; country?: string; defaultCurrency?: string }[] = [
+  { value: 'urbanitae', label: 'Urbanitae', color: 'platform-urbanitae', country: 'ES', defaultCurrency: 'EUR' },
+  { value: 'housers', label: 'Housers', color: 'platform-housers', country: 'ES', defaultCurrency: 'EUR' },
+  { value: 'estateguru', label: 'Estateguru', color: 'platform-estateguru', country: 'EE', defaultCurrency: 'EUR' },
+  { value: 'crowdcube', label: 'Crowdcube', color: 'platform-crowdcube', country: 'GB', defaultCurrency: 'GBP' },
+  { value: 'brickstarter', label: 'Brickstarter', color: 'platform-brickstarter', country: 'ES', defaultCurrency: 'EUR' },
+  { value: 'wecity', label: 'Wecity', color: 'platform-wecity', country: 'ES', defaultCurrency: 'EUR' },
   { value: 'other', label: 'Otra', color: 'platform-other' },
 ];
 
-export interface DraftInvestment {
+export interface DraftInvestment extends InvestmentFxFields {
   id: string;
   platform?: Platform | null;
   customPlatformName?: string;

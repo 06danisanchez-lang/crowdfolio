@@ -157,6 +157,28 @@ export function TaxDashboard({ isPro = false, onProRequired, onOpenInvestment }:
           </AlertDescription>
         </Alert>
       )}
+      {summary.foreignIncome && summary.foreignIncome.paymentsMissingFx > 0 && (
+        <Alert className="border-amber-300 bg-amber-50 text-amber-900 dark:border-amber-700 dark:bg-amber-950/30 dark:text-amber-200">
+          <AlertTriangle className="h-4 w-4 text-amber-600 dark:text-amber-400" />
+          <AlertDescription className="text-sm">
+            {summary.foreignIncome.paymentsMissingFx === 1 ? 'Hay 1 cobro' : `Hay ${summary.foreignIncome.paymentsMissingFx} cobros`}{' '}
+            de inversiones en otra divisa sin tipo de cambio guardado. No se puede asegurar que su importe esté en euros:
+            revísalos en la ficha de la inversión antes de usar el informe.
+          </AlertDescription>
+        </Alert>
+      )}
+      {summary.foreignIncome && summary.foreignIncome.foreignWithholdingEur > 0 && (
+        <Alert>
+          <Info className="h-4 w-4" />
+          <AlertDescription className="text-sm">
+            Te retuvieron{' '}
+            <strong>{new Intl.NumberFormat('es-ES', { style: 'currency', currency: 'EUR' }).format(summary.foreignIncome.foreignWithholdingEur)}</strong>{' '}
+            en el extranjero. Puedes deducirlo en la renta (deducción por doble imposición internacional, art. 80 LIRPF),
+            con un límite que depende del resto de tus rentas del ahorro, que Crowdfolio no ve. Por eso no se descuenta de la
+            cuota estimada: indícalo en tu declaración o coméntalo con tu asesor.
+          </AlertDescription>
+        </Alert>
+      )}
       {!hasNoData && (
         <>
           <TaxSummaryCards summary={summary} />

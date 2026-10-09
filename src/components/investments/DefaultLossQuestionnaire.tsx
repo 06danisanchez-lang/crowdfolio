@@ -1,6 +1,8 @@
 import { useMemo, useState } from 'react';
 import { z } from 'zod';
 import { parseSpanishNumber, formatSpanishNumber } from '@/lib/investment/parseSpanishNumber';
+import { ForeignAmountField } from '@/components/common/ForeignAmountField';
+import { EMPTY_FOREIGN_AMOUNT, buildForeignPaymentFields, foreignAmountToEur, isForeignCurrency, type ForeignAmountInput } from '@/lib/currency/fx';
 import { format } from 'date-fns';
 import { ChevronDown, ChevronLeft, Info, AlertTriangle } from 'lucide-react';
 import { toast } from 'sonner';
@@ -163,6 +165,9 @@ export function DefaultLossQuestionnaire({ investment, onClose, onUpdate, onAddP
   const [answers, setAnswers] = useState<WizardAnswers>(buildInitialWizard);
   const [showRecoveryForm, setShowRecoveryForm] = useState(false);
   const [recoveryAmount, setRecoveryAmount] = useState('');
+  // Inversión en otra divisa: el capital recuperado se escribe en la divisa y
+  // recoveryAmount guarda su equivalente en euros (lo que validan los pasos).
+  const [recoveryFx, setRecoveryFx] = useState<ForeignAmountInput>(EMPTY_FOREIGN_AMOUNT);
   const [recoveryDate, setRecoveryDate] = useState('');
   const [fieldError, setFieldError] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
@@ -213,6 +218,7 @@ export function DefaultLossQuestionnaire({ investment, onClose, onUpdate, onAddP
     setAnswers(EMPTY_ANSWERS);
     setShowRecoveryForm(false);
     setRecoveryAmount('');
+    setRecoveryFx(EMPTY_FOREIGN_AMOUNT);
     setRecoveryDate('');
     setFieldError(null);
   };
@@ -316,8 +322,12 @@ export function DefaultLossQuestionnaire({ investment, onClose, onUpdate, onAddP
     }
     if (showRecoveryForm && recoveryAmount && recoveryDate && onAddPayment) {
       const parsed = parseAmount(recoveryAmount);
+      const fxFields = isForeignCurrency(investment.currency)
+        ? buildForeignPaymentFields(investment.currency!, recoveryFx, recoveryDate)
+        : null;
       const paymentResult = await onAddPayment(investment.id, {
         type: 'principal', amount: parsed, date: recoveryDate,
+        ...(fxFields ?? {}),
       });
       if (!paymentResult) {
         setSaving(false);
@@ -387,6 +397,7 @@ export function DefaultLossQuestionnaire({ investment, onClose, onUpdate, onAddP
               </Button>
             ) : (
               <div className="space-y-3 rounded-lg border p-3">
+                {!isForeignCurrency(investment.currency) && (
                 <div className="space-y-1.5">
                   <p className="text-sm font-medium">{t('defaultLoss.q.p0.recoveryAmountLabel')}</p>
                   <Input
@@ -395,6 +406,7 @@ export function DefaultLossQuestionnaire({ investment, onClose, onUpdate, onAddP
                     onChange={(e) => setRecoveryAmount(e.target.value)}
                   />
                 </div>
+                )}
                 <div className="space-y-1.5">
                   <p className="text-sm font-medium">{t('defaultLoss.q.p0.recoveryDateLabel')}</p>
                   <Input
@@ -403,9 +415,23 @@ export function DefaultLossQuestionnaire({ investment, onClose, onUpdate, onAddP
                     onChange={(e) => setRecoveryDate(e.target.value)}
                   />
                 </div>
+                {isForeignCurrency(investment.currency) && (
+                  <ForeignAmountField
+                    idPrefix="recovery"
+                    currency={investment.currency!}
+                    date={recoveryDate || null}
+                    value={recoveryFx}
+                    onChange={(v) => {
+                      setRecoveryFx(v);
+                      const eur = foreignAmountToEur(v);
+                      setRecoveryAmount(eur != null ? formatSpanishNumber(eur) : '');
+                    }}
+                    amountLabel="Capital recuperado"
+                  />
+                )}
                 <Button
                   type="button" variant="ghost" size="sm"
-                  onClick={() => { setShowRecoveryForm(false); setRecoveryAmount(''); setRecoveryDate(''); }}
+                  onClick={() => { setShowRecoveryForm(false); setRecoveryAmount(''); setRecoveryDate(''); setRecoveryFx(EMPTY_FOREIGN_AMOUNT); }}
                 >
                   {t('defaultLoss.q.p0.removeRecovery')}
                 </Button>

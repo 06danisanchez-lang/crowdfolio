@@ -1,9 +1,9 @@
 -- Instantánea del esquema `public` de PRODUCCIÓN (estructura, sin datos).
 -- NO EDITAR A MANO: se regenera con supabase/schema/dump_schema.sql (ver CLAUDE.md).
 --
--- snapshot_version: 20261008184625
--- última migración registrada en producción: 20261008173335
--- comprobación (md5 de la salida normalizada, 143 sentencias): bbd0b49d26ce546dca5510c0054c9a2f
+-- snapshot_version: 20261009110228
+-- última migración registrada en producción: 20261008200903
+-- comprobación (md5 de la salida normalizada, 144 sentencias): a527c73059b7ad831a209546ab98320f
 --
 -- scripts/db-test.sh carga primero supabase/schema/stubs.sql, después este
 -- archivo y por último las migraciones con versión > snapshot_version.
@@ -91,7 +91,8 @@ create table public.notifications (
   type text default 'new_opportunity'::text,
   read boolean default false,
   data jsonb,
-  created_at timestamp with time zone default now() not null
+  created_at timestamp with time zone default now() not null,
+  dedupe_key text
 );
 
 create table public.opportunities (
@@ -273,6 +274,8 @@ CREATE INDEX idx_payments_investment_id ON public.payments USING btree (investme
 
 CREATE INDEX idx_tax_expenses_year ON public.tax_expenses USING btree (user_id, year);
 
+CREATE UNIQUE INDEX notifications_user_dedupe_key ON public.notifications USING btree (user_id, dedupe_key);
+
 CREATE OR REPLACE FUNCTION public.handle_new_user()
  RETURNS trigger
  LANGUAGE plpgsql
@@ -318,6 +321,7 @@ $function$
 CREATE OR REPLACE FUNCTION public.update_updated_at_column()
  RETURNS trigger
  LANGUAGE plpgsql
+ SET search_path TO ''
 AS $function$
   BEGIN
     NEW.updated_at = now();
@@ -326,9 +330,9 @@ AS $function$
   $function$
 ;
 
-revoke all on function handle_new_user() from public; grant execute on function handle_new_user() to authenticated; grant execute on function handle_new_user() to anon; grant execute on function handle_new_user() to service_role; grant execute on function handle_new_user() to public;
+revoke all on function handle_new_user() from public; grant execute on function handle_new_user() to service_role;
 
-revoke all on function handle_new_user_subscription() from public; grant execute on function handle_new_user_subscription() to authenticated; grant execute on function handle_new_user_subscription() to anon; grant execute on function handle_new_user_subscription() to service_role; grant execute on function handle_new_user_subscription() to public;
+revoke all on function handle_new_user_subscription() from public; grant execute on function handle_new_user_subscription() to service_role;
 
 revoke all on function has_role(uuid,text) from public; grant execute on function has_role(uuid,text) to authenticated; grant execute on function has_role(uuid,text) to service_role;
 

@@ -29,7 +29,14 @@ Supabase (Postgres + RLS + Edge Functions), Stripe (pendiente de activar).
 3. **PR en español** que explique qué cambia *para el usuario* y cómo se ha probado.
    El CI (`.github/workflows/ci.yml`) tiene que estar en verde: tipos, lint, tests,
    build y base de datos de pruebas.
-4. **Dani da el OK** antes de fusionar. Sin OK explícito no se fusiona.
+4. **Quién da el OK para fusionar** (regla acordada con Dani el 09/10/2026):
+   - **Claude fusiona solo**, con el CI en verde, lo que no toca datos ni dinero:
+     documentación, rendimiento, textos, diseño, imágenes, refactors sin cambio de
+     comportamiento y arreglos de pantallas que no calculan nada fiscal.
+   - **Hace falta el OK de Dani** para: migraciones de base de datos, cualquier cambio en
+     cálculos fiscales o de cartera (importes, retenciones, impagos, informe), borrar algo
+     (código con datos detrás, datos, cuentas) y cambios de configuración de Supabase,
+     Vercel o Stripe. En el PR, explicar en llano qué cambia; basta con que diga «sí».
 5. Tras fusionar: Vercel publica solo; las Edge Functions que cambian se despliegan
    solas (`deploy-functions.yml`). Comprobar la web en producción.
 6. **Poner al día la copia del Mac** cuando haya cambios en `main`:
@@ -50,13 +57,14 @@ Producción es la única base real. Por eso:
   2. `scripts/db-test.sh` en verde. Si toca permisos, añadir o ampliar una prueba en
      `supabase/tests/db/` que falle sin el cambio.
   3. PR fusionado con el OK de Dani.
-  4. Aplicar en producción con la herramienta `apply_migration` de Supabase (deja la
-     versión registrada). Si la migración borra algo (`drop`, `delete`…), Supabase pide
-     una confirmación que desde la sesión en la nube no llega y se cancela sola. En ese
-     caso, pasar a Dani el SQL para pegarlo en el SQL Editor, con un `insert into
-     supabase_migrations.schema_migrations (version, name, statements)` usando la misma
-     versión del archivo para que quede registrada. Después, comprobar el resultado en
-     producción. Nunca `supabase db push`, nunca SQL que no salga de una migración del repo.
+  4. Aplicar en producción con `execute_sql`: el SQL del archivo seguido de un `insert into
+     supabase_migrations.schema_migrations (version, name, statements)` con la MISMA
+     versión del archivo, todo en una llamada (va en una transacción: si algo falla no se
+     aplica nada). Después, comprobar el resultado en otra consulta. (`apply_migration`
+     registra la hora actual como versión, no la del archivo.) Si la migración borra algo
+     (`drop`, `delete`…), Supabase pide una confirmación que desde la sesión en la nube no
+     llega y se cancela sola: pasar a Dani ese mismo SQL para el SQL Editor. Nunca
+     `supabase db push`, nunca SQL que no salga de una migración del repo.
   5. Regenerar la instantánea (abajo) en un PR pequeño.
 - **Cambios de datos en producción** (`update`/`delete`/`insert` a mano): solo con OK de
   Dani para esa operación concreta, y antes copiar las filas afectadas a una tabla

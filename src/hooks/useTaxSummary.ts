@@ -2,7 +2,7 @@ import { useState, useEffect, useMemo, useRef } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { TaxSummary, EnrichedPayment } from '@/types/tax';
-import { Investment, Payment } from '@/types/investment';
+import { Investment, InvestmentScheduleEntry, Payment } from '@/types/investment';
 import { calculateProgressiveTax, calculateEffectiveRate } from '@/lib/tax/calculations';
 import { calculateYearlyProjection, TaxProjection } from '@/lib/tax/projections';
 import { useTaxExpenses } from './useTaxExpenses';
@@ -107,6 +107,8 @@ export function useTaxSummary(year: number) {
   const { user } = useAuth();
   const [payments, setPayments] = useState<PaymentWithInvestment[]>([]);
   const [projectionInvestments, setProjectionInvestments] = useState<Investment[]>([]);
+  // Calendario de cobros de las periódicas activas: la proyección suma sus cuotas futuras.
+  const [projectionSchedules, setProjectionSchedules] = useState<Record<string, InvestmentScheduleEntry[]>>({});
   const [investmentRows, setInvestmentRows] = useState<InvestmentRow[]>([]);
   // Pagos 'principal' de inversiones defaulted, histórico completo (sin acotar por año
   // ni por el ejercicio fiscal seleccionado) — necesario para calcular cuánto capital
@@ -170,6 +172,9 @@ export function useTaxSummary(year: number) {
               amount: inv.amount != null ? Number(inv.amount) : null,
               investmentDate: inv.investment_date,
               incomeModel: inv.income_model,
+              // Sin la frecuencia, toda periódica/amortizable salía "incompleta" y se quedaba
+              // fuera de la proyección (y contaba en el aviso de pendientes de completar).
+              paymentFrequency: inv.payment_frequency,
               status: inv.status,
               expectedReturn: inv.expected_return != null ? Number(inv.expected_return) : null,
               expectedEndDate: inv.expected_end_date,
@@ -193,6 +198,7 @@ export function useTaxSummary(year: number) {
           clearTimeout(timeoutId);
           if (requestIdRef.current !== currentId) return;
           setProjectionInvestments(trackingReadyActive);
+          setProjectionSchedules({});
           setInvestmentRows(allRows);
           setPayments([]);
           setEnrichedPayments([]);
@@ -240,6 +246,27 @@ export function useTaxSummary(year: number) {
           }
         }
 
+        // Calendario de cobros de las periódicas activas (para la proyección de fin de año).
+        // investment_schedule no tiene user_id: se acota por las inversiones del usuario.
+        const periodicIds = trackingReadyActive.filter(i => i.incomeModel === 'periodic_fixed').map(i => i.id);
+        const scheduleMap: Record<string, InvestmentScheduleEntry[]> = {};
+        if (periodicIds.length > 0) {
+          const { data: schedData, error: schedError } = await supabase
+            .from('investment_schedule')
+            .select('investment_id, expected_date, expected_amount, type')
+            .in('investment_id', periodicIds);
+          if (schedError) throw schedError;
+          for (const row of schedData || []) {
+            const list = scheduleMap[row.investment_id] ?? (scheduleMap[row.investment_id] = []);
+            list.push({
+              investmentId: row.investment_id,
+              expectedDate: row.expected_date,
+              expectedAmount: Number(row.expected_amount),
+              type: row.type as InvestmentScheduleEntry['type'],
+            });
+          }
+        }
+
         // Fetch ALL payments for the year — no completeness filter
         const startDate = `${year}-01-01`;
         const endDate = `${year}-12-31`;
@@ -269,6 +296,7 @@ export function useTaxSummary(year: number) {
 
         setExcludedIncompleteCount(excludedCount);
         setProjectionInvestments(trackingReadyActive);
+        setProjectionSchedules(scheduleMap);
         setInvestmentRows(allRows);
         setDefaultedPrincipalPayments(defaultedPrincipalMap);
         setCompletedEquityPayments(completedEquityMap);
@@ -468,8 +496,8 @@ export function useTaxSummary(year: number) {
       const current = paymentsByInvestment.get(p.investment_id) || 0;
       paymentsByInvestment.set(p.investment_id, current + p.amount);
     });
-    return calculateYearlyProjection(projectionInvestments, paymentsByInvestment, summary.grossIncome, summary.withholdingsApplied, totalExpenses, year);
-  }, [projectionInvestments, payments, summary, totalExpenses, year]);
+    return calculateYearlyProjection(projectionInvestments, paymentsByInvestment, summary.grossIncome, summary.withholdingsApplied, totalExpenses, year, { scheduleByInvestment: projectionSchedules });
+  }, [projectionInvestments, projectionSchedules, payments, summary, totalExpenses, year]);
 
   const [availableYears, setAvailableYears] = useState<number[]>([]);
 

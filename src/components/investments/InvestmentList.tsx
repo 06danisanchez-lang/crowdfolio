@@ -561,6 +561,7 @@ export function InvestmentList({
                       expectedReturn: draft.expectedReturn,
                       expectedEndDate: draft.expectedEndDate,
                       incomeModel: draft.incomeModel,
+                      paymentFrequency: draft.paymentFrequency,
                       status: draft.status,
                     });
                     return (

@@ -1,4 +1,4 @@
-import { useState, useRef } from 'react';
+import { useState, useRef, useMemo } from 'react';
 import { useLanguage } from '@/contexts/LanguageContext';
 import { Wallet, TrendingUp, PiggyBank, CalendarClock, Target, Crown, Bell, BarChart3, CheckCircle2, Banknote, Lock } from 'lucide-react';
 import { ErrorBoundary } from '@/components/ErrorBoundary';
@@ -98,7 +98,12 @@ const Index = () => {
   // For Free plan limit: count ALL active+pending (incl. locked) toward the 3-investment cap
   const activePendingCount = allInvestments.filter(i => i.status === 'active' || i.status === 'pending').length;
 
-  const { alerts, alertCount, hasUrgentAlerts } = useAlerts(activeInvestments, scheduleMap);
+  // Las vencidas pendientes de cerrar también avisan (están en completedInvestments con status 'pending').
+  const alertInvestments = useMemo(
+    () => [...activeInvestments, ...completedInvestments.filter(i => i.status === 'pending')],
+    [activeInvestments, completedInvestments],
+  );
+  const { alerts, alertCount, hasUrgentAlerts } = useAlerts(alertInvestments, scheduleMap);
 
   const {
     notifications,
@@ -235,7 +240,7 @@ const Index = () => {
       <KPICard
         title={t('dashboard.kpi.historicalInvested')}
         value={formatCurrency(summary.historicalSummary.totalInvested)}
-        subtitle={`${completedInvestments.length} ${t('dashboard.kpi.projects')}`}
+        subtitle={`${summary.historicalSummary.completedCount} ${t('dashboard.kpi.projects')}`}
         icon={Wallet}
         helpContent={HELP_CONTENT.dashboard.historicalInvested}
       />
@@ -529,7 +534,7 @@ const Index = () => {
               <h1 className="text-xl sm:text-2xl lg:text-3xl font-bold">{t('tax.title')}</h1>
               <p className="text-muted-foreground">{t('tax.subtitle')}</p>
             </div>
-            <TaxDashboard isPro={isPro} onProRequired={() => openUpgradeModal('export_irpf')} onOpenInvestment={openInvestmentDetail} />
+            <TaxDashboard isPro={isPro} onProRequired={() => openUpgradeModal('export_irpf')} onOpenInvestment={openInvestmentDetail} onViewIncomplete={() => handleViewChange('investments')} />
           </div>
         );
       case 'profile':

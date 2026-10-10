@@ -1,7 +1,7 @@
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { TrendingUp, TrendingDown, Calculator, AlertTriangle, ChevronDown, ChevronUp } from 'lucide-react';
-import { TaxProjection } from '@/lib/tax/projections';
+import { ProjectedInvestment, TaxProjection } from '@/lib/tax/projections';
 import { TaxSummary } from '@/types/tax';
 import { Button } from '@/components/ui/button';
 import { useState } from 'react';
@@ -12,6 +12,16 @@ interface TaxProjectionCardProps {
   summary: TaxSummary;
   projection: TaxProjection;
   year: number;
+}
+
+/** Explica en pocas palabras de dónde sale lo proyectado de cada inversión. */
+function projectionBasisLabel(inv: ProjectedInvestment): string {
+  if (inv.basis === 'maturity' && inv.maturityDate) {
+    const [y, m, d] = inv.maturityDate.split('-');
+    return `vence el ${d}/${m}/${y}`;
+  }
+  if (inv.basis === 'schedule') return inv.monthsActive === 1 ? '1 cobro previsto' : `${inv.monthsActive} cobros previstos`;
+  return 'estimación prorrateada';
 }
 
 export function TaxProjectionCard({ summary, projection, year }: TaxProjectionCardProps) {
@@ -183,7 +193,7 @@ export function TaxProjectionCard({ summary, projection, year }: TaxProjectionCa
                   <div>
                     <p className="font-medium">{inv.projectName}</p>
                     <p className="text-xs text-muted-foreground">
-                      {getPlatformLabel(inv.platform)} · {inv.monthsActive} meses
+                      {getPlatformLabel(inv.platform)} · {projectionBasisLabel(inv)}
                     </p>
                   </div>
                   <div className="text-right">
@@ -204,7 +214,8 @@ export function TaxProjectionCard({ summary, projection, year }: TaxProjectionCa
         <div className="flex items-start gap-2 rounded-md bg-amber-500/10 p-3 text-xs text-amber-700 dark:text-amber-400">
           <AlertTriangle className="h-4 w-4 flex-shrink-0 mt-0.5" />
           <p>
-            Estimación basada en las rentabilidades esperadas de tus inversiones activas. 
+            Estimación con tus inversiones activas: las de pago único cuentan solo si vencen este año,
+            las de cobros periódicos según su calendario, y las de equity o rentabilidad variable no se proyectan.
             Los resultados reales pueden variar.
           </p>
         </div>

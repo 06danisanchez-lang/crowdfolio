@@ -19,6 +19,7 @@ import {
 } from '@/components/ui/select';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { cn } from '@/lib/utils';
+import { groupByMonth, isCapitalReturn, sumReceived } from '@/lib/payments/receivedSummary';
 
 interface PaymentsViewProps {
   onProRequired?: () => void;
@@ -59,10 +60,9 @@ export function PaymentsView({ onProRequired }: PaymentsViewProps) {
   const filteredReceived = useMemo(() => received.filter(matchesFilters), [received, matchesFilters]);
   const filteredExpected = useMemo(() => expected.filter(matchesFilters), [expected, matchesFilters]);
 
-  const filteredReceivedTotal = useMemo(
-    () => filteredReceived.filter(r => r.type !== 'capital_return').reduce((sum, r) => sum + r.amount, 0),
-    [filteredReceived],
-  );
+  // Rendimientos y capital devuelto por separado: sumados juntos, el total parecía ganancia.
+  const filteredReceivedTotals = useMemo(() => sumReceived(filteredReceived), [filteredReceived]);
+  const receivedByMonth = useMemo(() => groupByMonth(filteredReceived), [filteredReceived]);
   const filteredExpectedTotal = useMemo(() => filteredExpected.reduce((sum, r) => sum + r.amount, 0), [filteredExpected]);
 
   const hasActiveFilters = platformFilter !== 'all' || investmentFilter !== 'all' || !!dateFrom || !!dateTo;
@@ -191,32 +191,53 @@ export function PaymentsView({ onProRequired }: PaymentsViewProps) {
           <Card>
             <CardHeader className="flex flex-row items-center justify-between gap-3 pb-3">
               <CardTitle className="text-base">{t('payments.received.title')}</CardTitle>
-              <div className="text-right">
-                <p className="text-xs text-muted-foreground">{t('payments.total.label')}</p>
-                <p className="text-lg font-semibold text-[#253765]">{formatCurrency(filteredReceivedTotal)}</p>
+              <div className="flex gap-6 text-right">
+                <div>
+                  <p className="text-xs text-muted-foreground">{t('payments.total.income')}</p>
+                  <p className="text-lg font-semibold text-[#253765]">{formatCurrency(filteredReceivedTotals.income)}</p>
+                </div>
+                {filteredReceivedTotals.capital > 0 && (
+                  <div>
+                    <p className="text-xs text-muted-foreground">{t('payments.total.capital')}</p>
+                    <p className="text-lg font-semibold text-muted-foreground">{formatCurrency(filteredReceivedTotals.capital)}</p>
+                  </div>
+                )}
               </div>
             </CardHeader>
             <CardContent>
               {filteredReceived.length === 0 ? (
                 <p className="py-6 text-center text-sm text-muted-foreground">{t('payments.received.empty')}</p>
               ) : (
-                <div className="space-y-2">
-                  {filteredReceived.map((row: ReceivedPaymentRow) => (
-                    <div key={row.id} className="flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-4 rounded-md border p-3">
-                      <div className="min-w-0 flex-1">
-                        <p className="truncate font-medium">{row.investmentName}</p>
-                        <div className="mt-1 flex flex-wrap items-center gap-1 text-xs text-muted-foreground">
-                          <span>{getPlatformLabel(row.platform, row.customPlatformName)}</span>
-                          <span>· {format(parseISO(row.date), 'dd/MM/yyyy', { locale: es })}</span>
+                <div className="space-y-5">
+                  {receivedByMonth.map((group) => (
+                    <section key={group.month} className="space-y-2">
+                      <div className="flex flex-wrap items-baseline justify-between gap-x-3 border-b pb-1">
+                        <h3 className="text-sm font-semibold capitalize">
+                          {format(parseISO(`${group.month}-01`), 'MMMM yyyy', { locale: es })}
+                        </h3>
+                        <p className="text-xs text-muted-foreground">
+                          {t('payments.total.income')} {formatCurrency(group.income)}
+                          {group.capital > 0 && <> · {t('payments.total.capital')} {formatCurrency(group.capital)}</>}
+                        </p>
+                      </div>
+                      {group.rows.map((row: ReceivedPaymentRow) => (
+                        <div key={row.id} className="flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-4 rounded-md border p-3">
+                          <div className="min-w-0 flex-1">
+                            <p className="truncate font-medium">{row.investmentName}</p>
+                            <div className="mt-1 flex flex-wrap items-center gap-1 text-xs text-muted-foreground">
+                              <span>{getPlatformLabel(row.platform, row.customPlatformName)}</span>
+                              <span>· {format(parseISO(row.date), 'dd/MM/yyyy', { locale: es })}</span>
+                            </div>
+                          </div>
+                          <div className="flex shrink-0 items-center gap-2">
+                            <Badge variant="outline" className="text-xs">{getReceivedTypeLabel(row.type)}</Badge>
+                            <span className={cn('font-semibold', isCapitalReturn(row.type) ? 'text-muted-foreground' : 'text-[#253765]')}>
+                              {formatCurrency(row.amount)}
+                            </span>
+                          </div>
                         </div>
-                      </div>
-                      <div className="flex shrink-0 items-center gap-2">
-                        <Badge variant="outline" className="text-xs">{getReceivedTypeLabel(row.type)}</Badge>
-                        <span className={cn('font-semibold', row.type === 'capital_return' ? 'text-muted-foreground' : 'text-[#253765]')}>
-                          {formatCurrency(row.amount)}
-                        </span>
-                      </div>
-                    </div>
+                      ))}
+                    </section>
                   ))}
                 </div>
               )}

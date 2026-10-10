@@ -54,7 +54,9 @@ export function useAlerts(
     const allAlerts: Alert[] = [];
 
     investments.forEach(investment => {
-      if (investment.status !== 'active') return;
+      // pending = venció y falta que el usuario confirme el cierre: también avisa.
+      const isPendingClose = investment.status === 'pending';
+      if (investment.status !== 'active' && !isPendingClose) return;
 
       // Maturity alerts (within 30 days or already overdue)
       if (investment.expectedEndDate) {
@@ -66,8 +68,10 @@ export function useAlerts(
             id: `overdue-${investment.id}`,
             type: 'overdue',
             severity: getMaturitySeverity(daysUntilMaturity)!,
-            title: 'Inversión vencida',
-            message: `Esta inversión venció hace ${Math.abs(daysUntilMaturity)} días`,
+            title: isPendingClose ? 'Vencida, pendiente de cerrar' : 'Inversión vencida',
+            message: isPendingClose
+              ? `Venció hace ${Math.abs(daysUntilMaturity)} días: confirma si te han devuelto el capital`
+              : `Esta inversión venció hace ${Math.abs(daysUntilMaturity)} días`,
             investmentId: investment.id,
             investmentName: investment.projectName,
             platform: investment.platform,
@@ -95,6 +99,8 @@ export function useAlerts(
           });
         }
       }
+
+      if (isPendingClose) return; // de una vencida solo interesa cerrarla
 
       // Expected-payment alerts from the real schedule.
       // Periodic_fixed / amortizing use matchedPaymentId; equity rentas check capital_return payments.

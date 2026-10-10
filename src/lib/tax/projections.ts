@@ -1,7 +1,16 @@
-import { Investment } from '@/types/investment';
+import { Investment, InvestmentScheduleEntry } from '@/types/investment';
 import { calculateProgressiveTax } from '@/lib/tax/calculations';
 import { getDefaultWithholdingRate } from './withholding';
-import { getAccrualEndDate } from '@/lib/investment/calculations';
+import { calculateInvestmentTotalReturn, getAccrualEndDate } from '@/lib/investment/calculations';
+import { toDateOnlyString } from '@/lib/dateOnly';
+
+/**
+ * De dónde sale lo proyectado de una inversión:
+ * - maturity: pago único (bullet) que vence dentro del ejercicio → todos sus intereses ese año.
+ * - schedule: cuotas de intereses del calendario de cobros que caen en lo que queda de año.
+ * - prorata: periódica sin calendario (o amortizable): rentabilidad anual prorrateada.
+ */
+export type ProjectionBasis = 'maturity' | 'schedule' | 'prorata';
 
 export interface ProjectedInvestment {
   investmentId: string;
@@ -10,6 +19,9 @@ export interface ProjectedInvestment {
   projectedAmount: number;
   projectedWithholding: number;
   monthsActive: number;
+  basis: ProjectionBasis;
+  /** Solo en basis 'maturity': fecha de vencimiento (YYYY-MM-DD). */
+  maturityDate?: string;
 }
 
 export interface TaxProjection {
@@ -22,56 +34,97 @@ export interface TaxProjection {
 }
 
 /**
- * Calculate the projected income for an investment in a given year
+ * Rentabilidad anual prorrateada a los meses del ejercicio en que la inversión está viva,
+ * menos lo ya cobrado este año. Es la estimación de siempre; solo se usa como respaldo
+ * para inversiones periódicas sin calendario de cobros y para las amortizables.
  */
-export function calculateProjectedIncome(
+function prorataProjection(
   investment: Investment,
   year: number,
-  alreadyReceivedAmount: number
+  alreadyReceivedAmount: number,
 ): { projectedAmount: number; monthsActive: number } {
   const yearStart = new Date(year, 0, 1);
   const yearEnd = new Date(year, 11, 31);
-  const today = new Date();
 
   const investmentStart = new Date(investment.investmentDate);
   // Hasta cuándo genera intereses (tras un retraso, la fecha prometida).
   const accrualEnd = getAccrualEndDate(investment);
   const investmentEnd = accrualEnd ? new Date(accrualEnd) : yearEnd;
 
-  // Calculate effective period within the year
   const effectiveStart = investmentStart > yearStart ? investmentStart : yearStart;
   const effectiveEnd = investmentEnd < yearEnd ? investmentEnd : yearEnd;
-
-  // If investment doesn't overlap with the year, no projection
   if (effectiveStart > yearEnd || effectiveEnd < yearStart) {
     return { projectedAmount: 0, monthsActive: 0 };
   }
 
-  // Calculate months active in the year
   const msPerMonth = 1000 * 60 * 60 * 24 * 30.44;
   const monthsActive = Math.round((effectiveEnd.getTime() - effectiveStart.getTime()) / msPerMonth);
-
-  // Calculate expected annual return
   const annualReturn = investment.amount * (investment.expectedReturn / 100);
-  
-  // Prorate based on months active
   const expectedForYear = (annualReturn * monthsActive) / 12;
 
-  // Only project what's pending (after today)
-  if (today >= yearEnd) {
-    // Year has ended, no projection needed
-    return { projectedAmount: 0, monthsActive };
+  return { projectedAmount: Math.max(0, expectedForYear - alreadyReceivedAmount), monthsActive };
+}
+
+/**
+ * Rendimientos que una inversión activa debería cobrar en lo que queda del ejercicio
+ * `year`, según cómo paga:
+ *
+ * - bullet: los intereses se cobran (y tributan) de una vez al vencer. Solo hay
+ *   proyección si vence después de hoy y dentro del ejercicio; si vence otro año, 0.
+ *   Sin fecha de vencimiento no se puede saber cuándo cobrará: 0.
+ * - periodic_fixed con calendario: suma de las cuotas de intereses con fecha posterior
+ *   a hoy y dentro del ejercicio. Sin calendario, prorrateo.
+ * - amortizing: prorrateo (las cuotas mezclan capital e intereses).
+ * - equity y variable_or_unknown: 0, no hay un rendimiento fijo que proyectar.
+ *
+ * Fuera del ejercicio en curso no hay nada que proyectar.
+ */
+export function calculateProjectedIncome(
+  investment: Investment,
+  year: number,
+  alreadyReceivedAmount: number,
+  options: { today?: Date; schedule?: InvestmentScheduleEntry[] } = {},
+): { projectedAmount: number; monthsActive: number; basis: ProjectionBasis; maturityDate?: string } {
+  const today = options.today ?? new Date();
+  const todayStr = toDateOnlyString(today);
+  const yearEndStr = `${year}-12-31`;
+  const none = (basis: ProjectionBasis) => ({ projectedAmount: 0, monthsActive: 0, basis });
+
+  if (today.getFullYear() !== year) return none('prorata');
+
+  switch (investment.incomeModel) {
+    case 'bullet': {
+      const maturity = getAccrualEndDate(investment);
+      if (!maturity || maturity <= todayStr || maturity > yearEndStr) return none('maturity');
+      const totalInterest = calculateInvestmentTotalReturn(investment);
+      const months = Math.max(0, Math.round(
+        (new Date(maturity).getTime() - new Date(investment.investmentDate).getTime()) / (1000 * 60 * 60 * 24 * 30.44),
+      ));
+      return {
+        projectedAmount: Math.max(0, totalInterest - alreadyReceivedAmount),
+        monthsActive: months,
+        basis: 'maturity',
+        maturityDate: maturity,
+      };
+    }
+    case 'periodic_fixed': {
+      const schedule = options.schedule ?? [];
+      if (schedule.length === 0) return { ...prorataProjection(investment, year, alreadyReceivedAmount), basis: 'prorata' };
+      const upcoming = schedule.filter(
+        (e) => e.type === 'interest' && e.expectedDate > todayStr && e.expectedDate <= yearEndStr,
+      );
+      return {
+        projectedAmount: upcoming.reduce((sum, e) => sum + e.expectedAmount, 0),
+        monthsActive: upcoming.length,
+        basis: 'schedule',
+      };
+    }
+    case 'amortizing':
+      return { ...prorataProjection(investment, year, alreadyReceivedAmount), basis: 'prorata' };
+    default:
+      // equity, variable_or_unknown
+      return none('prorata');
   }
-
-  // Calculate what should have been received by now
-  const currentMonth = today.getMonth();
-  const monthsPassed = Math.max(0, currentMonth - effectiveStart.getMonth() + 1);
-  const expectedByNow = (annualReturn * monthsPassed) / 12;
-
-  // Projected = total expected for year - what's already received
-  const projectedAmount = Math.max(0, expectedForYear - alreadyReceivedAmount);
-
-  return { projectedAmount, monthsActive };
 }
 
 /**
@@ -83,10 +136,11 @@ export function calculateYearlyProjection(
   currentGrossIncome: number,
   currentWithholdings: number,
   deductibleExpenses: number,
-  year: number
+  year: number,
+  options: { today?: Date; scheduleByInvestment?: Record<string, InvestmentScheduleEntry[]> } = {},
 ): TaxProjection {
-  const currentYear = new Date().getFullYear();
-  const isCurrentYear = year === currentYear;
+  const today = options.today ?? new Date();
+  const isCurrentYear = year === today.getFullYear();
 
   // Only active investments can generate future income
   const activeInvestments = investments.filter(inv => inv.status === 'active');
@@ -95,10 +149,11 @@ export function calculateYearlyProjection(
 
   for (const investment of activeInvestments) {
     const alreadyReceived = paymentsByInvestment.get(investment.id) || 0;
-    const { projectedAmount, monthsActive } = calculateProjectedIncome(
+    const { projectedAmount, monthsActive, basis, maturityDate } = calculateProjectedIncome(
       investment,
       year,
-      alreadyReceived
+      alreadyReceived,
+      { today, schedule: options.scheduleByInvestment?.[investment.id] },
     );
 
     if (projectedAmount > 0 && isCurrentYear) {
@@ -110,6 +165,8 @@ export function calculateYearlyProjection(
         // Misma regla que al registrar un cobro: 19 % solo en plataformas españolas.
         projectedWithholding: Math.round(projectedAmount * getDefaultWithholdingRate(investment.platform) * 100) / 100,
         monthsActive,
+        basis,
+        maturityDate,
       });
     }
   }

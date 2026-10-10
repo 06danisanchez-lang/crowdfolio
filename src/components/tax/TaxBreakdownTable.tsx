@@ -68,7 +68,7 @@ export function TaxBreakdownTable({ summary }: TaxBreakdownTableProps) {
                 <TableCell className="text-right font-semibold">
                   {formatCurrency(summary.grossIncome)}
                 </TableCell>
-                <TableCell className="text-right font-semibold">100%</TableCell>
+                <TableCell className="text-right font-semibold">{formatPercent(100)}</TableCell>
               </TableRow>
               <TableRow>
                 <TableCell className="text-muted-foreground">Devolución de Principal</TableCell>

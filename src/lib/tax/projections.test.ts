@@ -87,6 +87,27 @@ describe('calculateProjectedIncome — periódicas', () => {
   });
 });
 
+describe('calculateProjectedIncome — amortizables', () => {
+  const amort = inv({ incomeModel: 'amortizing', paymentFrequency: 'semiannual', amount: 5000, expectedReturn: 15, investmentDate: '2026-09-23', expectedEndDate: '2028-09-22' });
+  // Cuota francesa semestral (7,5 % por periodo, 4 periodos) ≈ 1492,82 €
+  const schedule: InvestmentScheduleEntry[] = ['2027-03-23', '2027-09-23', '2028-03-23', '2028-09-22'].map((d) => ({
+    investmentId: 'i1', expectedDate: d, expectedAmount: 1492.82, type: 'mixed' as const,
+  }));
+
+  it('no proyecta nada si la primera cuota cae el año que viene', () => {
+    const r = calculateProjectedIncome(amort, 2026, 0, { today: TODAY, schedule });
+    expect(r.basis).toBe('schedule');
+    expect(r.projectedAmount).toBe(0);
+  });
+
+  it('proyecta solo la parte de intereses de las cuotas de este año', () => {
+    const r = calculateProjectedIncome(amort, 2027, 0, { today: new Date('2027-01-10T12:00:00'), schedule });
+    // 1.ª cuota: 5000 × 7,5 % = 375; 2.ª: (5000 − 1117,82) × 7,5 % ≈ 291,16
+    expect(r.projectedAmount).toBeCloseTo(666.16, 1);
+    expect(r.monthsActive).toBe(2);
+  });
+});
+
 describe('calculateProjectedIncome — sin rendimiento fijo', () => {
   it('equity y variable no proyectan nada', () => {
     expect(calculateProjectedIncome(inv({ incomeModel: 'equity', expectedEndDate: '2030-01-01' }), 2026, 0, { today: TODAY }).projectedAmount).toBe(0);

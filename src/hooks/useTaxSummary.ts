@@ -246,9 +246,11 @@ export function useTaxSummary(year: number) {
           }
         }
 
-        // Calendario de cobros de las periódicas activas (para la proyección de fin de año).
+        // Calendario de cobros de las periódicas y amortizables activas (proyección de fin de año).
         // investment_schedule no tiene user_id: se acota por las inversiones del usuario.
-        const periodicIds = trackingReadyActive.filter(i => i.incomeModel === 'periodic_fixed').map(i => i.id);
+        const periodicIds = trackingReadyActive
+          .filter(i => i.incomeModel === 'periodic_fixed' || i.incomeModel === 'amortizing')
+          .map(i => i.id);
         const scheduleMap: Record<string, InvestmentScheduleEntry[]> = {};
         if (periodicIds.length > 0) {
           const { data: schedData, error: schedError } = await supabase

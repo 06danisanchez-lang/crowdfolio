@@ -8,7 +8,7 @@ import { toDateOnlyString } from '@/lib/dateOnly';
  * De dónde sale lo proyectado de una inversión:
  * - maturity: pago único (bullet) que vence dentro del ejercicio → todos sus intereses ese año.
  * - schedule: cuotas de intereses del calendario de cobros que caen en lo que queda de año.
- * - prorata: periódica sin calendario (o amortizable): rentabilidad anual prorrateada.
+ * - prorata: periódica o amortizable sin calendario: rentabilidad anual prorrateada.
  */
 export type ProjectionBasis = 'maturity' | 'schedule' | 'prorata';
 
@@ -65,6 +65,35 @@ function prorataProjection(
   return { projectedAmount: Math.max(0, expectedForYear - alreadyReceivedAmount), monthsActive };
 }
 
+const PERIODS_PER_YEAR: Record<string, number> = { monthly: 12, quarterly: 4, semiannual: 2, annual: 1 };
+
+/**
+ * Intereses de las cuotas de una amortizable (francesa) que caen en (desde, hasta].
+ * El calendario guarda cada cuota entera (capital + intereses); los intereses se
+ * reconstruyen con el saldo pendiente por el tipo del periodo, igual que al generarlo.
+ */
+function amortizingInterestBetween(
+  investment: Investment,
+  schedule: InvestmentScheduleEntry[],
+  fromExclusive: string,
+  toInclusive: string,
+): { interest: number; count: number } {
+  const ratePerPeriod = (investment.expectedReturn / 100) / (PERIODS_PER_YEAR[investment.paymentFrequency ?? ''] ?? 12);
+  const entries = [...schedule].sort((a, b) => a.expectedDate.localeCompare(b.expectedDate));
+  let balance = investment.amount;
+  let interest = 0;
+  let count = 0;
+  for (const e of entries) {
+    const periodInterest = Math.max(0, balance * ratePerPeriod);
+    if (e.expectedDate > fromExclusive && e.expectedDate <= toInclusive) {
+      interest += periodInterest;
+      count += 1;
+    }
+    balance = Math.max(0, balance - (e.expectedAmount - periodInterest));
+  }
+  return { interest: Math.round(interest * 100) / 100, count };
+}
+
 /**
  * Rendimientos que una inversión activa debería cobrar en lo que queda del ejercicio
  * `year`, según cómo paga:
@@ -74,7 +103,8 @@ function prorataProjection(
  *   Sin fecha de vencimiento no se puede saber cuándo cobrará: 0.
  * - periodic_fixed con calendario: suma de las cuotas de intereses con fecha posterior
  *   a hoy y dentro del ejercicio. Sin calendario, prorrateo.
- * - amortizing: prorrateo (las cuotas mezclan capital e intereses).
+ * - amortizing con calendario: la parte de intereses de las cuotas que quedan este año.
+ *   Sin calendario, prorrateo.
  * - equity y variable_or_unknown: 0, no hay un rendimiento fijo que proyectar.
  *
  * Fuera del ejercicio en curso no hay nada que proyectar.
@@ -119,8 +149,12 @@ export function calculateProjectedIncome(
         basis: 'schedule',
       };
     }
-    case 'amortizing':
-      return { ...prorataProjection(investment, year, alreadyReceivedAmount), basis: 'prorata' };
+    case 'amortizing': {
+      const schedule = options.schedule ?? [];
+      if (schedule.length === 0) return { ...prorataProjection(investment, year, alreadyReceivedAmount), basis: 'prorata' };
+      const { interest, count } = amortizingInterestBetween(investment, schedule, todayStr, yearEndStr);
+      return { projectedAmount: interest, monthsActive: count, basis: 'schedule' };
+    }
     default:
       // equity, variable_or_unknown
       return none('prorata');

@@ -5,12 +5,14 @@ import LandingSections from '@/components/landing/LandingSections';
 import crowdfolioMark from '@/assets/icon_crowdfolio.svg';
 
 const REVEAL_CSS = `
-  .cf-reveal { opacity:0; transform:translateY(24px); transition:opacity .7s cubic-bezier(.22,.61,.36,1), transform .7s cubic-bezier(.22,.61,.36,1); }
-  .cf-reveal.in  { opacity:1; transform:none; }
-  .cf-reveal.d1  { transition-delay:.08s; }
-  .cf-reveal.d2  { transition-delay:.16s; }
-  .cf-reveal.d3  { transition-delay:.24s; }
-  @media(prefers-reduced-motion:reduce){ .cf-reveal{ opacity:1; transform:none; transition:none; } }
+  /* Una sola entrada animada: la portada al cargar. El resto de secciones aparece sin efectos. */
+  #top .cf-reveal { opacity:0; transform:translateY(24px); transition:opacity .7s cubic-bezier(.22,.61,.36,1), transform .7s cubic-bezier(.22,.61,.36,1); }
+  #top .cf-reveal.in  { opacity:1; transform:none; }
+  #top .cf-reveal.d1  { transition-delay:.08s; }
+  #top .cf-reveal.d2  { transition-delay:.16s; }
+  #top .cf-reveal.d3  { transition-delay:.32s; }
+  @media(prefers-reduced-motion:reduce){ #top .cf-reveal{ opacity:1; transform:none; transition:none; } }
+  @media(max-width:640px){ .cf-hero-shot { max-width:340px; margin:0 auto; } }
   .cf-nav-links, .cf-nav-login { display:flex; }
   @media(max-width:720px){ .cf-nav-links { display:none !important; } .cf-nav-login { display:none !important; } }
 `;
@@ -34,20 +36,13 @@ export default function Landing() {
     style.textContent = REVEAL_CSS;
     document.head.appendChild(style);
 
-    const observer = new IntersectionObserver(
-      (entries) => entries.forEach(e => {
-        if (e.isIntersecting) { e.target.classList.add('in'); observer.unobserve(e.target); }
-      }),
-      { threshold: 0.1 }
-    );
-
+    // La portada entra una sola vez al cargar (también la captura, aunque quede bajo el pliegue).
     const t = setTimeout(() => {
-      document.querySelectorAll('.cf-reveal').forEach(el => observer.observe(el));
+      document.querySelectorAll('#top .cf-reveal').forEach(el => el.classList.add('in'));
     }, 80);
 
     return () => {
       clearTimeout(t);
-      observer.disconnect();
       document.getElementById('cf-landing-styles')?.remove();
     };
   }, []);

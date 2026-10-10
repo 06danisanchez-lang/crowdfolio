@@ -1,10 +1,11 @@
-import crowdfolioLogo from '@/assets/logo_crowdfolio.svg';
+import dashboardDesktop from '@/assets/landing/dashboard-desktop.webp';
+import dashboardMobile from '@/assets/landing/dashboard-mobile.webp';
 
 export default function HeroSection() {
   return (
     <section id="top" style={{
       position: 'relative', overflow: 'hidden',
-      padding: 'clamp(88px,13vh,148px) 0 clamp(92px,14vh,156px)',
+      padding: 'clamp(72px,11vh,124px) 0 0',
       background: '#253765',
     }}>
       {/* Radial glow */}
@@ -20,42 +21,28 @@ export default function HeroSection() {
         textAlign: 'center',
         display: 'flex', flexDirection: 'column', alignItems: 'center',
       }}>
-        {/* Logo badge */}
-        <div className="cf-reveal" style={{
-          background: '#ffffff', borderRadius: 18,
-          padding: 'clamp(14px,2vw,20px) clamp(16px,2.5vw,24px)',
-          boxShadow: '0 8px 20px rgba(10,18,40,0.18), 0 30px 60px rgba(10,18,40,0.30)',
-          marginBottom: 38,
-          display: 'inline-block',
-        }}>
-          <img src={crowdfolioLogo} alt="Crowdfolio" style={{ width: 'min(148px,62vw)', height: 'auto', display: 'block' }} />
-        </div>
-
-        {/* H1 */}
-        <h1 className="cf-reveal d1" style={{
+        <h1 className="cf-reveal" style={{
           fontFamily: "'Playfair Display', Georgia, serif",
           fontWeight: 600,
-          fontSize: 'clamp(38px,5.4vw,64px)',
+          fontSize: 'clamp(36px,5.4vw,64px)',
           lineHeight: 1.12,
           letterSpacing: '-0.015em',
           color: '#e4ddcf',
-          marginBottom: 26,
+          marginBottom: 24,
           textWrap: 'balance',
         } as React.CSSProperties}>
-          Tu cartera de crowdfunding inmobiliario,{' '}
-          <em style={{ fontStyle: 'italic', color: '#79c6fa' }}>en un solo lugar.</em>
+          Tu cartera de crowdfunding inmobiliario, en un solo lugar.
         </h1>
 
-        {/* Subtitle */}
-        <p className="cf-reveal d2" style={{
+        <p className="cf-reveal d1" style={{
           fontSize: 'clamp(17px,1.9vw,20px)',
           lineHeight: 1.6,
-          color: 'rgba(255,255,255,0.72)',
+          color: 'rgba(255,255,255,0.74)',
           maxWidth: 620,
-          margin: '0 auto 38px',
+          margin: '0 auto 36px',
           textWrap: 'pretty',
         } as React.CSSProperties}>
-          Visualiza toda tu cartera, planifica tus próximas inversiones, recibe alertas de tus proyectos y genera tu informe fiscal para la Renta. Todo en un mismo lugar.
+          Visualiza toda tu cartera, planifica tus próximas inversiones, recibe alertas de tus proyectos y genera tu informe fiscal para la Renta.
         </p>
 
         {/* CTAs */}
@@ -85,14 +72,34 @@ export default function HeroSection() {
           >Iniciar sesión</a>
         </div>
 
-        {/* Trust line */}
-        <p className="cf-reveal d3" style={{
-          marginTop: 30,
-          fontFamily: "'Hanken Grotesk', monospace", fontSize: 13,
-          letterSpacing: '0.05em', color: '#8493b5',
-        }}>
-          Gratis para empezar · Sin tarjeta · En 2 minutos
+        <p className="cf-reveal d2" style={{ marginTop: 22, fontSize: 14.5, color: '#9aa8c6' }}>
+          Gratis para empezar y sin tarjeta.
         </p>
+      </div>
+
+      {/* Captura real de la app (cartera de ejemplo). Se corta en el borde inferior
+          para que se lea como "la app sigue ahí abajo". */}
+      <div className="cf-reveal d3" style={{
+        position: 'relative', zIndex: 1,
+        maxWidth: 1080, margin: 'clamp(48px,7vh,72px) auto 0',
+        padding: '0 clamp(16px,4vw,32px)',
+      }}>
+        <div className="cf-hero-shot" style={{
+          borderRadius: '14px 14px 0 0', overflow: 'hidden',
+          border: '1px solid rgba(150,176,224,0.22)', borderBottom: 'none',
+          boxShadow: '0 -2px 0 rgba(255,255,255,0.04), 0 30px 80px rgba(10,18,40,0.45)',
+          background: '#f8f7f4',
+        }}>
+          <picture>
+            <source media="(max-width: 640px)" srcSet={dashboardMobile} />
+            <img
+              src={dashboardDesktop}
+              alt="Pantalla de inicio de Crowdfolio con una cartera de ejemplo: capital activo, beneficio acumulado, alertas y próximos vencimientos"
+              width={1600} height={975}
+              style={{ display: 'block', width: '100%', height: 'auto' }}
+            />
+          </picture>
+        </div>
       </div>
     </section>
   );

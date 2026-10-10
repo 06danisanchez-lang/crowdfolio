@@ -4,6 +4,7 @@ import { useSubscription } from '@/contexts/SubscriptionContext';
 import { Investment, InvestmentSummary, InvestmentScheduleEntry } from '@/types/investment';
 import { calculateAccruedReturn, calculateRemainingReturn } from '@/lib/investment/calculations';
 import { getInvestmentCompletionStatus } from '@/lib/investment/completeness';
+import { splitFinished } from '@/lib/investment/portfolioBuckets';
 
 const FREE_INVESTMENT_LIMIT = 3;
 
@@ -39,14 +40,16 @@ function computeSummary(
   const getAccruedReturn = (inv: Investment) => calculateAccruedReturn(inv, scheduleMap[inv.id] ?? [], today);
   const getRemainingReturn = (inv: Investment) => calculateRemainingReturn(inv, scheduleMap[inv.id] ?? [], today);
 
-  const activeCapital = activeInvestments.reduce((s, i) => s + i.amount, 0);
+  // Vencidas sin confirmar (pending): siguen en cartera, no en el histórico.
+  const { pending: pendingInvestments, closed: closedInvestments } = splitFinished(completedInvestments);
+  const activeCapital = [...activeInvestments, ...pendingInvestments].reduce((s, i) => s + i.amount, 0);
   const accruedProfit = forecastReady.reduce((s, i) => s + getAccruedReturn(i), 0);
   const remainingProfit = forecastReady.reduce((s, i) => s + getRemainingReturn(i), 0);
   const estimatedTotal = forecastReady.reduce((s, i) => s + i.amount, 0) + accruedProfit + remainingProfit;
 
-  const histTotalInvested = completedInvestments.reduce((s, i) => s + i.amount, 0);
-  const histTotalCollected = completedInvestments.reduce((s, i) => s + i.payments.reduce((ps, p) => ps + p.amount, 0), 0);
-  const histRealizedProfit = completedInvestments.reduce(
+  const histTotalInvested = closedInvestments.reduce((s, i) => s + i.amount, 0);
+  const histTotalCollected = closedInvestments.reduce((s, i) => s + i.payments.reduce((ps, p) => ps + p.amount, 0), 0);
+  const histRealizedProfit = closedInvestments.reduce(
     (s, i) => s + i.payments.filter(p => p.type === 'dividend' || p.type === 'interest').reduce((ps, p) => ps + p.amount, 0),
     0,
   );
@@ -64,14 +67,14 @@ function computeSummary(
       estimatedTotal,
       accruedProfit,
       remainingProfit,
-      count: activeInvestments.length,
+      count: activeInvestments.length + pendingInvestments.length,
       withEndDateCount: forecastReady.length,
     },
     historicalSummary: {
       totalInvested: histTotalInvested,
       totalCollected: histTotalCollected,
       realizedProfit: histRealizedProfit,
-      completedCount: completedInvestments.length,
+      completedCount: closedInvestments.length,
     },
   };
 }

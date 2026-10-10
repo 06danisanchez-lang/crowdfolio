@@ -693,6 +693,8 @@ export const translations: Record<Lang, Record<string, string>> = {
     'payments.expected.title': 'Esperados',
     'payments.expected.empty': 'No hay cobros pendientes.',
     'payments.total.label': 'Total',
+    'payments.total.income': 'Rendimientos',
+    'payments.total.capital': 'Capital devuelto',
     'payments.filters.investment': 'Inversión',
     'payments.filters.allInvestments': 'Todas las inversiones',
     'payments.filters.dateFrom': 'Desde',
@@ -702,6 +704,7 @@ export const translations: Record<Lang, Record<string, string>> = {
     'payments.dueToday': 'hoy',
 
     'tax.incomplete.warning': '{count} inversiones no se incluyen en este informe porque están pendientes de completar.',
+    'tax.incomplete.viewLink': 'Ver cuáles',
     // Import / Export
     'investments.import': 'Importar',
     'investments.export': 'Exportar',
@@ -1411,6 +1414,8 @@ export const translations: Record<Lang, Record<string, string>> = {
     'payments.expected.title': 'Expected',
     'payments.expected.empty': 'No pending payments.',
     'payments.total.label': 'Total',
+    'payments.total.income': 'Income',
+    'payments.total.capital': 'Capital returned',
     'payments.filters.investment': 'Investment',
     'payments.filters.allInvestments': 'All investments',
     'payments.filters.dateFrom': 'From',
@@ -1420,6 +1425,7 @@ export const translations: Record<Lang, Record<string, string>> = {
     'payments.dueToday': 'today',
 
     'tax.incomplete.warning': '{count} investments are not included in this report because they are pending completion.',
+    'tax.incomplete.viewLink': 'See which',
     // Import / Export
     'investments.import': 'Import',
     'investments.export': 'Export',

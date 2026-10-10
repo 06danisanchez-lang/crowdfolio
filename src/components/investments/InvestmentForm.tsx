@@ -786,6 +786,7 @@ export function InvestmentForm({
       ? (initialData.expectedEndDate instanceof Date ? toDateOnlyString(initialData.expectedEndDate) : initialData.expectedEndDate as string)
       : null,
     incomeModel: 'incomeModel' in initialData ? (initialData as Investment).incomeModel : null,
+    paymentFrequency: 'paymentFrequency' in initialData ? (initialData as Investment).paymentFrequency : null,
     status: 'status' in initialData ? (initialData as Investment).status : null,
   }) : null;
 

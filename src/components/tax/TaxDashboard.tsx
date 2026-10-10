@@ -25,9 +25,11 @@ interface TaxDashboardProps {
   onProRequired?: () => void;
   /** Navega a la ficha de una inversión desde el aviso de cuestionario sin completar (Fase 4). */
   onOpenInvestment?: (investmentId: string) => void;
+  /** Lleva a Inversiones, donde se listan las pendientes de completar. */
+  onViewIncomplete?: () => void;
 }
 
-export function TaxDashboard({ isPro = false, onProRequired, onOpenInvestment }: TaxDashboardProps) {
+export function TaxDashboard({ isPro = false, onProRequired, onOpenInvestment, onViewIncomplete }: TaxDashboardProps) {
   const [selectedYear, setSelectedYear] = useState(new Date().getFullYear());
   const [expenseFormOpen, setExpenseFormOpen] = useState(false);
   const [prefillCategory, setPrefillCategory] = useState<TaxExpenseCategory | undefined>();
@@ -141,8 +143,13 @@ export function TaxDashboard({ isPro = false, onProRequired, onOpenInvestment }:
 
       {/* KPI Summary Cards */}
       {excludedIncompleteCount > 0 && (
-        <div className="flex items-center gap-2 p-3 rounded-lg bg-muted/50 border text-sm text-muted-foreground">
+        <div className="flex flex-wrap items-center gap-x-2 gap-y-1 p-3 rounded-lg bg-muted/50 border text-sm text-muted-foreground">
           <span>{t('tax.incomplete.warning').replace('{count}', String(excludedIncompleteCount))}</span>
+          {onViewIncomplete && (
+            <button type="button" onClick={onViewIncomplete} className="font-medium text-foreground underline underline-offset-2 hover:no-underline">
+              {t('tax.incomplete.viewLink')}
+            </button>
+          )}
         </div>
       )}
       {summary.incomeWithoutWithholding.count > 0 && (

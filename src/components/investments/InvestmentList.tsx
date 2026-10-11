@@ -18,7 +18,8 @@ import {
 } from 'lucide-react';
 import { Investment, DraftInvestment, PLATFORMS, STATUS_OPTIONS, Platform, InvestmentStatus, IncomeModel, InvestmentScheduleEntry, PaymentType, Payment } from '@/types/investment';
 import { getInvestmentCompletionStatus } from '@/lib/investment/completeness';
-import { calculateExpectedTotalReturn, calculateRealizedProfit, isDelayedWithoutExtraInterest, sumIncomePayments } from '@/lib/investment/calculations';
+import { calculateExpectedTotalReturn, calculateRealizedProfit, getDelayDays, isDelayedWithoutExtraInterest, sumIncomePayments } from '@/lib/investment/calculations';
+import { formatDelay } from '@/lib/investment/riskSummary';
 import { getPrincipalReturned } from '@/lib/tax/principalReturned';
 import { getMaturitySeverity } from '@/hooks/useAlerts';
 import { getStatusLabel } from '@/lib/labels';
@@ -230,13 +231,15 @@ export function InvestmentList({
       );
     }
     if (status === 'active' || status === 'pending') {
-      if (isDelayedWithoutExtraInterest(inv)) {
+      // Retraso contado desde el vencimiento prometido (igual que la ficha y el apartado
+      // «Retrasos e impagos»), no desde la fecha actual.
+      const delayDays = getDelayDays(inv);
+      const kindLabel = isDelayedWithoutExtraInterest(inv) ? 'Retrasada' : inv.wasExtended ? 'Prorrogada' : delayDays > 0 ? 'Retraso' : null;
+      if (kindLabel) {
         extraBadges.push(
-          <Badge key="delayed" className="bg-orange-100 text-orange-800 border-orange-300 text-xs">Retrasada</Badge>
-        );
-      } else if (inv.wasExtended) {
-        extraBadges.push(
-          <Badge key="extended" className="bg-orange-100 text-orange-800 border-orange-300 text-xs">Prorrogada</Badge>
+          <Badge key="delay" className="bg-orange-100 text-orange-800 border-orange-300 text-xs">
+            {delayDays > 0 ? `${kindLabel} · ${formatDelay(delayDays)}` : kindLabel}
+          </Badge>
         );
       }
     }

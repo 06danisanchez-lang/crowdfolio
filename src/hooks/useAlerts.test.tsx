@@ -22,6 +22,12 @@ describe('useAlerts', () => {
     expect(overdue[0].title).toBe('Vencida, pendiente de cerrar');
   });
 
+  it('cuenta el retraso desde la fecha prometida, no desde la última', () => {
+    const moved = { ...inv('movida', 'pending', -20), originalEndDate: daysFromToday(-200) } as Investment;
+    const { result } = renderHook(() => useAlerts([moved], {}));
+    expect(result.current.alerts[0].message).toBe('Lleva 7 meses de retraso: confirma si te han devuelto el capital');
+  });
+
   it('no avisa de las cerradas', () => {
     const { result } = renderHook(() => useAlerts([inv('cerrada', 'completed', -20)], {}));
     expect(result.current.alerts).toHaveLength(0);

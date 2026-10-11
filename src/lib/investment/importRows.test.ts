@@ -20,6 +20,18 @@ describe('buildInvestmentFromRow (importación CSV/XLSX)', () => {
     expect(complete).toBe(true);
   });
 
+  it('vencimiento prometido anterior al actual: llega como retraso', () => {
+    const [inv] = buildInvestmentFromRow(row({ originalEndDate: '01/08/2024' }));
+    expect(inv.originalEndDate).toBe('2024-08-01');
+    expect(inv.interestEndDate).toBe('2024-08-01');
+    expect(inv.wasExtended).toBe(false);
+  });
+
+  it('sin vencimiento prometido no marca retraso', () => {
+    const [inv] = buildInvestmentFromRow(row());
+    expect(inv.originalEndDate).toBeUndefined();
+  });
+
   it('YYYY-MM-DD no resta un día', () => {
     const [inv] = buildInvestmentFromRow(row({ investmentDate: '2024-01-01' }));
     expect(inv.investmentDate).toBe('2024-01-01');

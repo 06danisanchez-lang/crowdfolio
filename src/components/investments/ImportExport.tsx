@@ -59,6 +59,9 @@ const HEADER_MAP: Record<string, string> = {
   'fecha inversion (yyyy-mm-dd)': 'investmentDate',
   'fecha vencimiento': 'expectedEndDate',
   'fecha vencimiento (yyyy-mm-dd)': 'expectedEndDate',
+  'vencimiento prometido': 'originalEndDate',
+  'fecha vencimiento prometido': 'originalEndDate',
+  'vencimiento prometido (yyyy-mm-dd)': 'originalEndDate',
   'rendimiento esperado': 'expectedReturn',
   'rendimiento esperado (%)': 'expectedReturn',
   'notas': 'notes',
@@ -169,6 +172,8 @@ function normalizeImportedDates(inv: Investment): Investment {
     ...inv,
     investmentDate: parseImportDate(inv.investmentDate) ?? inv.investmentDate,
     expectedEndDate: inv.expectedEndDate ? (parseImportDate(inv.expectedEndDate) ?? inv.expectedEndDate) : inv.expectedEndDate,
+    originalEndDate: inv.originalEndDate ? (parseImportDate(inv.originalEndDate) ?? inv.originalEndDate) : inv.originalEndDate,
+    interestEndDate: inv.interestEndDate ? (parseImportDate(inv.interestEndDate) ?? inv.interestEndDate) : inv.interestEndDate,
     firstPaymentDate: inv.firstPaymentDate ? (parseImportDate(inv.firstPaymentDate) ?? inv.firstPaymentDate) : inv.firstPaymentDate,
     payments: (inv.payments ?? []).map(p => ({ ...p, date: parseImportDate(p.date) ?? p.date })),
   };
@@ -238,6 +243,7 @@ export function ImportExport({
       'Plataforma', 'Nombre Proyecto', 'Monto', 'Fecha Inversión',
       'Fecha Vencimiento', 'Rendimiento Esperado', 'Estado', 'Notas',
       'Modelo de Rendimiento', 'Frecuencia de Pago', 'Tipo Devolución Principal',
+      'Vencimiento Prometido',
     ];
     const rows = investments.map(inv => [
       inv.platform === 'other' ? inv.customPlatformName || 'Otra' : PLATFORMS.find(p => p.value === inv.platform)?.label,
@@ -251,6 +257,7 @@ export function ImportExport({
       inv.incomeModel || '',
       inv.paymentFrequency || '',
       inv.principalReturnType || '',
+      inv.originalEndDate?.split('T')[0] || '',
     ]);
     const csv = [headers, ...rows].map(row => row.map(cell => `"${cell}"`).join(',')).join('\n');
     const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });

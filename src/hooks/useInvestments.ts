@@ -1,9 +1,9 @@
 import { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
-import { Investment, InvestmentSummary, Platform, InvestmentStatus, Payment, DraftInvestment, IncomeModel, PaymentFrequency, PrincipalReturnType, EquityType, InvestmentScheduleEntry, PaymentType } from '@/types/investment';
-import { calculateInvestmentTotalReturn, calculateExpectedReturnFromSchedule, calculateAccruedReturn, calculateRemainingReturn, getEffectiveTAE, getAccrualEndDate } from '@/lib/investment/calculations';
-import { isInvestmentComplete, getInvestmentCompletionStatus } from '@/lib/investment/completeness';
+import { Investment, InvestmentSummary, Platform, InvestmentStatus, Payment, DraftInvestment, IncomeModel, PaymentFrequency, PrincipalReturnType, EquityType, InvestmentScheduleEntry } from '@/types/investment';
+import { getAccrualEndDate } from '@/lib/investment/calculations';
+import { isInvestmentComplete } from '@/lib/investment/completeness';
 import { generateScheduleWithDelay } from '@/lib/investment/scheduleGenerator';
 import { matchScheduleToPayments } from '@/lib/investment/scheduleMatching';
 import { isBlockedDefaultedTransition, isBlockedIncomeModelChange } from '@/lib/investment/defaultTransitionGuard';
@@ -11,7 +11,7 @@ import { toDateOnlyString } from '@/lib/dateOnly';
 import { getDefaultWithholding } from '@/lib/tax/withholding';
 import { RawInvestmentRow, mapRawInvestmentRow, draftToInvestment, mapPaymentRow, fxFieldsToColumns, paymentFxColumns, mapFxColumns } from '@/lib/investment/mapInvestmentRow';
 import { isForeignCurrency, isMissingForeignData } from '@/lib/currency/fx';
-import { splitFinished } from '@/lib/investment/portfolioBuckets';
+import { computePortfolioSummary } from '@/lib/investment/portfolioSummary';
 
 const FETCH_TIMEOUT_MS = 15_000;
 
@@ -645,99 +645,10 @@ export function useInvestments() {
   }, [user]);
 
   // ── 5B: Summary using separated arrays ──
-  const summary: InvestmentSummary = useMemo(() => {
-    // forecastReady: active investments with calculable return forecast.
-    // variable_or_unknown always excluded. equity rentas excluded (variable amounts).
-    // equity plusvalia/liquidacion included (simple interest projection possible).
-    const forecastReady = activeInvestments.filter(inv => {
-      if (inv.incomeModel === 'variable_or_unknown') return false;
-      if (inv.incomeModel === 'equity') {
-        return inv.equityType === 'plusvalia' || inv.equityType === 'liquidacion';
-      }
-      const status = getInvestmentCompletionStatus({
-        platform: inv.platform,
-        projectName: inv.projectName,
-        amount: inv.amount,
-        investmentDate: inv.investmentDate,
-        expectedReturn: inv.expectedReturn,
-        expectedEndDate: inv.expectedEndDate,
-        incomeModel: inv.incomeModel,
-        paymentFrequency: inv.paymentFrequency,
-        hasSchedule: (scheduleMap[inv.id]?.length || 0) > 0,
-        status: inv.status,
-      });
-      return status.isForecastReady;
-    });
-
-    const today = new Date();
-
-    const getAccruedReturn = (inv: Investment): number => {
-      const schedule = scheduleMap[inv.id] ?? [];
-      return calculateAccruedReturn(inv, schedule, today);
-    };
-
-    const getRemainingReturn = (inv: Investment): number => {
-      const schedule = scheduleMap[inv.id] ?? [];
-      return calculateRemainingReturn(inv, schedule, today);
-    };
-
-    // Vencidas sin confirmar (pending): siguen en cartera, no en el histórico.
-    const { pending: pendingInvestments, closed: closedInvestments } = splitFinished(completedInvestments);
-
-    // activeSummary — activas + vencidas pendientes de cerrar
-    const activeCapital    = [...activeInvestments, ...pendingInvestments].reduce((s, i) => s + i.amount, 0);
-    const accruedProfit    = forecastReady.reduce((s, i) => s + getAccruedReturn(i), 0);
-    const remainingProfit  = forecastReady.reduce((s, i) => s + getRemainingReturn(i), 0);
-    const estimatedTotal   = forecastReady.reduce((s, i) => s + i.amount, 0) + accruedProfit + remainingProfit;
-
-    // historicalSummary — solo las cerradas de verdad (completed)
-    const historicalTotalInvested = closedInvestments.reduce((s, i) => s + i.amount, 0);
-    const historicalTotalCollected = closedInvestments.reduce((s, i) => s + i.payments.reduce((ps, p) => ps + p.amount, 0), 0);
-    const historicalRealizedProfit = closedInvestments.reduce((s, i) => s + i.payments
-      .filter(p => p.type === 'dividend' || p.type === 'interest')
-      .reduce((ps, p) => ps + p.amount, 0), 0);
-
-    // Global metrics use investments (active + completed, no incompletes)
-    const totalCollected = investments.reduce((s, i) => s + i.payments.reduce((ps, p) => ps + p.amount, 0), 0);
-
-    return {
-      totalInvested: investments.reduce((sum, inv) => sum + inv.amount, 0),
-      totalReturns: totalCollected,
-      accruedReturns: accruedProfit,
-      activeInvestments: activeInvestments.length,
-      completedInvestments: completedInvestments.length,
-      averageReturn: (() => {
-        const totalCapital = forecastReady.reduce((sum, inv) => sum + inv.amount, 0);
-        if (totalCapital <= 0) return 0;
-        return forecastReady.reduce((sum, inv) => sum + getEffectiveTAE(inv, inv.payments) * inv.amount, 0) / totalCapital;
-      })(),
-      byPlatform: investments.reduce((acc, inv) => {
-        if (!acc[inv.platform]) acc[inv.platform] = { invested: 0, returns: 0, count: 0 };
-        acc[inv.platform].invested += inv.amount;
-        acc[inv.platform].returns += inv.payments.reduce((sum, p) => sum + p.amount, 0);
-        acc[inv.platform].count += 1;
-        return acc;
-      }, {} as Record<Platform, { invested: number; returns: number; count: number }>),
-      byStatus: investments.reduce((acc, inv) => {
-        acc[inv.status] = (acc[inv.status] || 0) + 1;
-        return acc;
-      }, {} as Record<InvestmentStatus, number>),
-      activeSummary: {
-        capital: activeCapital,
-        estimatedTotal,
-        accruedProfit,
-        remainingProfit,
-        count: activeInvestments.length + pendingInvestments.length,
-        withEndDateCount: forecastReady.length,
-      },
-      historicalSummary: {
-        totalInvested: historicalTotalInvested,
-        totalCollected: historicalTotalCollected,
-        realizedProfit: historicalRealizedProfit,
-        completedCount: closedInvestments.length,
-      },
-    };
-  }, [investments, activeInvestments, completedInvestments, scheduleMap]);
+  const summary: InvestmentSummary = useMemo(
+    () => computePortfolioSummary(investments, activeInvestments, completedInvestments, scheduleMap),
+    [investments, activeInvestments, completedInvestments, scheduleMap],
+  );
 
   return {
     investments, activeInvestments, completedInvestments,

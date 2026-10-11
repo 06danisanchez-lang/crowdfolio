@@ -1,83 +1,10 @@
 import { useMemo } from 'react';
 import { useInvestments } from './useInvestments';
 import { useSubscription } from '@/contexts/SubscriptionContext';
-import { Investment, InvestmentSummary, InvestmentScheduleEntry } from '@/types/investment';
-import { calculateAccruedReturn, calculateRemainingReturn } from '@/lib/investment/calculations';
-import { getInvestmentCompletionStatus } from '@/lib/investment/completeness';
-import { splitFinished } from '@/lib/investment/portfolioBuckets';
+import { Investment } from '@/types/investment';
+import { computePortfolioSummary } from '@/lib/investment/portfolioSummary';
 
 const FREE_INVESTMENT_LIMIT = 3;
-
-function computeSummary(
-  investments: Investment[],
-  activeInvestments: Investment[],
-  completedInvestments: Investment[],
-  scheduleMap: Record<string, InvestmentScheduleEntry[]>,
-  baseSummary: InvestmentSummary,
-): InvestmentSummary {
-  const today = new Date();
-
-  const forecastReady = activeInvestments.filter(inv => {
-    if (inv.incomeModel === 'variable_or_unknown') return false;
-    if (inv.incomeModel === 'equity') {
-      return inv.equityType === 'plusvalia' || inv.equityType === 'liquidacion';
-    }
-    const s = getInvestmentCompletionStatus({
-      platform: inv.platform,
-      projectName: inv.projectName,
-      amount: inv.amount,
-      investmentDate: inv.investmentDate,
-      expectedReturn: inv.expectedReturn,
-      expectedEndDate: inv.expectedEndDate,
-      incomeModel: inv.incomeModel,
-      paymentFrequency: inv.paymentFrequency,
-      hasSchedule: (scheduleMap[inv.id]?.length || 0) > 0,
-      status: inv.status,
-    });
-    return s.isForecastReady;
-  });
-
-  const getAccruedReturn = (inv: Investment) => calculateAccruedReturn(inv, scheduleMap[inv.id] ?? [], today);
-  const getRemainingReturn = (inv: Investment) => calculateRemainingReturn(inv, scheduleMap[inv.id] ?? [], today);
-
-  // Vencidas sin confirmar (pending): siguen en cartera, no en el histórico.
-  const { pending: pendingInvestments, closed: closedInvestments } = splitFinished(completedInvestments);
-  const activeCapital = [...activeInvestments, ...pendingInvestments].reduce((s, i) => s + i.amount, 0);
-  const accruedProfit = forecastReady.reduce((s, i) => s + getAccruedReturn(i), 0);
-  const remainingProfit = forecastReady.reduce((s, i) => s + getRemainingReturn(i), 0);
-  const estimatedTotal = forecastReady.reduce((s, i) => s + i.amount, 0) + accruedProfit + remainingProfit;
-
-  const histTotalInvested = closedInvestments.reduce((s, i) => s + i.amount, 0);
-  const histTotalCollected = closedInvestments.reduce((s, i) => s + i.payments.reduce((ps, p) => ps + p.amount, 0), 0);
-  const histRealizedProfit = closedInvestments.reduce(
-    (s, i) => s + i.payments.filter(p => p.type === 'dividend' || p.type === 'interest').reduce((ps, p) => ps + p.amount, 0),
-    0,
-  );
-  const totalCollected = investments.reduce((s, i) => s + i.payments.reduce((ps, p) => ps + p.amount, 0), 0);
-
-  return {
-    ...baseSummary,
-    totalInvested: investments.reduce((s, i) => s + i.amount, 0),
-    totalReturns: totalCollected,
-    accruedReturns: accruedProfit,
-    activeInvestments: activeInvestments.length,
-    completedInvestments: completedInvestments.length,
-    activeSummary: {
-      capital: activeCapital,
-      estimatedTotal,
-      accruedProfit,
-      remainingProfit,
-      count: activeInvestments.length + pendingInvestments.length,
-      withEndDateCount: forecastReady.length,
-    },
-    historicalSummary: {
-      totalInvested: histTotalInvested,
-      totalCollected: histTotalCollected,
-      realizedProfit: histRealizedProfit,
-      completedCount: closedInvestments.length,
-    },
-  };
-}
 
 export function useActiveInvestments() {
   const investmentsData = useInvestments();
@@ -127,7 +54,7 @@ export function useActiveInvestments() {
   const filteredSummary = useMemo(
     () =>
       allowedIds
-        ? computeSummary(filteredInvestments, filteredActive, filteredCompleted, scheduleMap, summary)
+        ? computePortfolioSummary(filteredInvestments, filteredActive, filteredCompleted, scheduleMap)
         : summary,
     [allowedIds, filteredInvestments, filteredActive, filteredCompleted, scheduleMap, summary],
   );

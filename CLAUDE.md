@@ -109,9 +109,9 @@ comprobar que el md5 coincide calculándolo en producción con
 - Pro = (plan activo de Stripe) **o** (`is_beta_pro` y `pro_until > now()`), ambos en
   `subscriptions`. `plan = 'free'` en un beta Pro es intencionado.
 - El cálculo fiscal está entero en el cliente (`useTaxSummary.ts`, `src/lib/tax/`). No
-  pasar lógica fiscal a Edge Functions. `calculate-tax`, `scheduled-scraper` y
-  `scrape-opportunities` se quitaron del repo (código muerto); pueden seguir desplegadas
-  en Supabase hasta que Dani las borre desde el panel.
+  pasar lógica fiscal a Edge Functions. Las Edge Functions desplegadas son exactamente las
+  de `supabase/functions/` (`calculate-tax`, `scheduled-scraper`, `scrape-opportunities` y
+  `apply-promo-code` se borraron del repo y de Supabase el 11/10/2026).
 - Toda consulta del cliente sobre datos del usuario filtra por `user_id` aunque RLS ya
   lo haga: un admin tiene políticas que le dejan leer todo (ver PR #26).
 - Mantenerlo simple: no construir problemas que todavía no existen.

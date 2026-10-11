@@ -16,7 +16,7 @@ export default function Terminos() {
         <Card>
           <CardHeader>
             <CardTitle className="text-2xl">Términos y Condiciones de Uso</CardTitle>
-            <p className="mt-1 text-sm font-medium text-[#79c6fa]">Última actualización: 6 de junio de 2026</p>
+            <p className="mt-1 text-sm font-medium text-[#79c6fa]">Última actualización: 11 de octubre de 2026</p>
           </CardHeader>
           <CardContent className="prose prose-sm dark:prose-invert max-w-none space-y-8 text-sm leading-relaxed">
 
@@ -80,7 +80,6 @@ export default function Terminos() {
                   <li>1 inversión futura.</li>
                   <li>Resumen fiscal orientativo (visible, no exportable).</li>
                   <li>Notificaciones ilimitadas.</li>
-                  <li>Importación de inversiones vía CSV o Excel.</li>
                 </ul>
                 <p className="text-muted-foreground">Las inversiones en estado "completada" o "en mora" no computan a efectos del límite de 3.</p>
               </div>

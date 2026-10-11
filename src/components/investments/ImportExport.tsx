@@ -28,6 +28,13 @@ import { ZodError } from 'zod';
 import { parseImportDate } from '@/lib/investment/parseImportDate';
 import { buildInvestmentFromRow, RawRow } from '@/lib/investment/importRows';
 
+/**
+ * Importar está oculto desde el 11/10/2026: sin la lectura con IA, el Excel de
+ * un usuario casi nunca trae nuestras columnas y acaba en borradores vacíos o en
+ * error. Se recupera poniendo esto a true (el código sigue intacto).
+ */
+const IMPORT_ENABLED = false;
+
 // ─── Types ────────────────────────────────────────────────────────────────────
 
 interface ImportExportProps {
@@ -365,7 +372,8 @@ export function ImportExport({
 
   return (
     <div className="flex gap-2">
-      {/* ── Import Dialog ── */}
+      {/* ── Import Dialog (oculto, ver IMPORT_ENABLED) ── */}
+      {IMPORT_ENABLED && (
       <Dialog open={importOpen} onOpenChange={handleDialogOpenChange}>
         <DialogTrigger asChild>
           <Button variant="outline">
@@ -461,6 +469,7 @@ export function ImportExport({
           )}
         </DialogContent>
       </Dialog>
+      )}
 
       {/* ── Export Dialog (unchanged) ── */}
       <Dialog>

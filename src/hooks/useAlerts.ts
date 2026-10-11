@@ -1,6 +1,8 @@
 import { useMemo } from 'react';
 import { Investment, InvestmentScheduleEntry } from '@/types/investment';
 import { parseISO, differenceInDays } from 'date-fns';
+import { getDelayDays } from '@/lib/investment/calculations';
+import { formatDelay } from '@/lib/investment/riskSummary';
 import { getPendingScheduleEntries } from '@/lib/investment/pendingPayments';
 
 export type AlertType = 'maturity' | 'overdue' | 'expected-payment';
@@ -64,14 +66,17 @@ export function useAlerts(
         const daysUntilMaturity = differenceInDays(endDate, today);
 
         if (daysUntilMaturity < 0) {
+          // Retraso sobre la fecha prometida (si la plataforma ya la había movido,
+          // cuenta desde la original, no desde la última).
+          const delay = formatDelay(Math.max(getDelayDays(investment, today), Math.abs(daysUntilMaturity)));
           allAlerts.push({
             id: `overdue-${investment.id}`,
             type: 'overdue',
             severity: getMaturitySeverity(daysUntilMaturity)!,
             title: isPendingClose ? 'Vencida, pendiente de cerrar' : 'Inversión vencida',
             message: isPendingClose
-              ? `Venció hace ${Math.abs(daysUntilMaturity)} días: confirma si te han devuelto el capital`
-              : `Esta inversión venció hace ${Math.abs(daysUntilMaturity)} días`,
+              ? `Lleva ${delay} de retraso: confirma si te han devuelto el capital`
+              : `Lleva ${delay} de retraso sobre la fecha prometida`,
             investmentId: investment.id,
             investmentName: investment.projectName,
             platform: investment.platform,

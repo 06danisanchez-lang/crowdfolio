@@ -219,7 +219,10 @@ export function InvestmentDetail({ investment, schedule = [], onClose, onUpdate,
 
   const handleExtend = async () => {
     if (!investment || !newEndDate) return;
-    const result = await onUpdate(investment.id, buildMaturityChange(investment, toDateOnlyString(newEndDate), extendKind));
+    const newEnd = toDateOnlyString(newEndDate);
+    // Una vencida «Por confirmar» con fecha nueva vuelve a estar activa.
+    const reopen = investment.status === 'pending' && newEnd >= toDateOnlyString(new Date()) ? { status: 'active' as const } : {};
+    const result = await onUpdate(investment.id, { ...buildMaturityChange(investment, newEnd, extendKind), ...reopen });
     if (result?.error) {
       toast.error(result.error);
       return;
@@ -914,8 +917,8 @@ export function InvestmentDetail({ investment, schedule = [], onClose, onUpdate,
             </div>
           )}
 
-          {/* Actions — only for active investments */}
-          {investment.status === 'active' && (
+          {/* Acciones: activas y vencidas sin confirmar («Por confirmar») */}
+          {(investment.status === 'active' || investment.status === 'pending') && (
             <div>
               <h4 className="mb-3 font-semibold">{t('investments.action.title')}</h4>
 

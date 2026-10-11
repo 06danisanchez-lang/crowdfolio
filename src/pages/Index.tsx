@@ -22,6 +22,8 @@ import { ImportExport } from '@/components/investments/ImportExport';
 
 import { TaxDashboard } from '@/components/tax/TaxDashboard';
 import { PaymentsView } from '@/components/payments/PaymentsView';
+import { RiskView } from '@/components/risk/RiskView';
+import { RiskDashboardCard } from '@/components/risk/RiskDashboardCard';
 import { FutureInvestmentList } from '@/components/future-investments/FutureInvestmentList';
 import { ShareableCard } from '@/components/dashboard/ShareableCard';
 import { ShareSuccessButton } from '@/components/dashboard/ShareSuccessButton';
@@ -356,6 +358,10 @@ const Index = () => {
                   </div>
                 )}
 
+                {investments.length > 0 && (
+                  <RiskDashboardCard investments={investments} onOpen={() => setCurrentView('risk')} />
+                )}
+
                 {/* Mobile: toggle tabs */}
                 {isMobile ? (
                   <>
@@ -505,6 +511,22 @@ const Index = () => {
               initialStatusFilter={investmentsFilter}
               openInvestmentId={pendingOpenInvestmentId}
               onInvestmentOpened={() => setPendingOpenInvestmentId(null)}
+            />
+          </div>
+        );
+      case 'risk':
+        return (
+          <div className="px-4 pt-4 pb-6 sm:px-6 lg:px-8">
+            <div className="mb-6">
+              <h1 className="text-xl sm:text-2xl lg:text-3xl font-bold">Retrasos e impagos</h1>
+              <p className="text-muted-foreground">
+                Tus inversiones con retraso, vencidas sin cobrar o en impago, de todas las plataformas.
+              </p>
+            </div>
+            <RiskView
+              investments={investments}
+              lockedInvestments={lockedInvestments}
+              onOpenInvestment={openInvestmentDetail}
             />
           </div>
         );

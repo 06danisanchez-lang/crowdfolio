@@ -1,3 +1,4 @@
+import { buildMaturityFromForm } from './maturityChange';
 import { Investment, PLATFORMS, Platform, IncomeModel, PaymentFrequency, PrincipalReturnType } from '@/types/investment';
 import { parseImportDate } from '@/lib/investment/parseImportDate';
 import { parseSpanishNumber } from '@/lib/investment/parseSpanishNumber';
@@ -63,6 +64,11 @@ export function buildInvestmentFromRow(raw: RawRow): [Investment, boolean] {
   // No se rellena con hoy: sin fecha válida la inversión queda como borrador.
   const investmentDate = parseImportDate(raw.investmentDate);
   const expectedEndDate = parseImportDate(raw.expectedEndDate) ?? undefined;
+  // Vencimiento prometido (opcional): si es anterior al actual, la inversión llega
+  // retrasada. Sin más datos se trata como retraso (no se suponen intereses extra);
+  // el usuario puede cambiarlo a prórroga al editarla.
+  const promised = parseImportDate(raw.originalEndDate) ?? undefined;
+  const maturity = buildMaturityFromForm(null, { expectedEndDate, promisedEndDate: promised, kind: 'delayed' });
 
   // expectedReturn — no silent default; fuera de 0-100 % se trata como inválido
   // (igual que el formulario).
@@ -98,6 +104,7 @@ export function buildInvestmentFromRow(raw: RawRow): [Investment, boolean] {
     amount: (amount != null && !isNaN(amount) && amount > 0) ? amount : 0,
     investmentDate: investmentDate ?? toDateOnlyString(new Date()),
     expectedEndDate,
+    ...maturity,
     expectedReturn: (expectedReturn != null && !isNaN(expectedReturn)) ? expectedReturn : 0,
     incomeModel: incomeModel ?? 'variable_or_unknown',
     paymentFrequency,

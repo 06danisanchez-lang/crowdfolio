@@ -40,3 +40,64 @@ export function buildMaturityChange(
   }
   return changes;
 }
+
+type MaturityUpdate = Pick<Partial<Investment>, 'originalEndDate' | 'interestEndDate' | 'wasExtended'>;
+
+/** Prórroga o retraso según lo que ya tiene guardado la inversión (por defecto, retraso). */
+export function deriveMaturityKind(investment: Pick<Investment, 'interestEndDate' | 'wasExtended'> | null | undefined): MaturityChangeKind {
+  if (investment?.interestEndDate) return 'delayed';
+  if (investment?.wasExtended) return 'extended';
+  return 'delayed';
+}
+
+function fromPromised(promised: string, kind: MaturityChangeKind): MaturityUpdate {
+  return kind === 'extended'
+    ? { originalEndDate: promised, interestEndDate: null, wasExtended: true }
+    : { originalEndDate: promised, interestEndDate: promised, wasExtended: false };
+}
+
+/**
+ * Campos de vencimiento a guardar desde el formulario de alta o de edición, que
+ * tiene dos fechas: el vencimiento actual y el prometido al invertir (opcional).
+ *
+ * - Alta: si el prometido es anterior al actual, la inversión ya llega movida
+ *   (prórroga o retraso según `kind`; si el usuario no lo sabe, retraso: no se
+ *   suponen intereses extra).
+ * - Edición, el usuario cambia el prometido: es una corrección; se guarda tal cual
+ *   (vacío o no anterior al actual = sin retraso).
+ * - Edición, mueve el vencimiento actual hacia delante sin tocar el prometido:
+ *   igual que el botón «Prorrogar» (buildMaturityChange), así no se pierde la fecha
+ *   original.
+ * - Edición, solo cambia prórroga ↔ retraso: se aplica sobre el prometido guardado.
+ * Devuelve solo lo que cambia ({} si nada).
+ */
+export function buildMaturityFromForm(
+  previous: MaturityFields | null,
+  input: { expectedEndDate?: string; promisedEndDate?: string; kind: MaturityChangeKind },
+): MaturityUpdate {
+  const expected = input.expectedEndDate || null;
+  const rawPromised = input.promisedEndDate || null;
+  const promised = rawPromised && expected && rawPromised < expected ? rawPromised : null;
+
+  if (!previous) return promised ? fromPromised(promised, input.kind) : {};
+
+  const prevPromised = previous.originalEndDate || null;
+  const prevExpected = previous.expectedEndDate || null;
+
+  if (rawPromised !== prevPromised) {
+    return promised
+      ? fromPromised(promised, input.kind)
+      : { originalEndDate: null, interestEndDate: null, wasExtended: false };
+  }
+
+  if (expected && prevExpected && expected > prevExpected) {
+    const { expectedEndDate: _ignored, ...rest } = buildMaturityChange(previous, expected, input.kind);
+    void _ignored;
+    return rest;
+  }
+
+  if (prevPromised && input.kind !== deriveMaturityKind(previous)) {
+    return fromPromised(prevPromised, input.kind);
+  }
+  return {};
+}

@@ -275,6 +275,11 @@ export function useInvestments() {
       equity_type: investment.equityType || null,
       notes: investment.notes || null,
       source_url: investment.sourceUrl || null,
+      // Vencimiento prometido si la inversión llega ya prorrogada o retrasada
+      // (buildMaturityFromForm).
+      original_end_date: investment.originalEndDate || null,
+      interest_end_date: investment.interestEndDate || null,
+      was_extended: investment.wasExtended ?? false,
       ...fxFieldsToColumns(investment, investment.amount),
     }).select().single();
     if (error) { console.error('Error adding investment:', error); return null; }
@@ -290,6 +295,7 @@ export function useInvestments() {
       investmentDate: investment.investmentDate,
       expectedEndDate: investment.expectedEndDate,
       firstPaymentDate: investment.firstPaymentDate,
+      interestEndDate: investment.interestEndDate,
     });
 
     const created: Investment = {
@@ -607,6 +613,9 @@ export function useInvestments() {
         first_payment_date: inv.firstPaymentDate || null,
         principal_return_type: inv.principalReturnType || null,
         notes: inv.notes || null,
+        original_end_date: inv.originalEndDate || null,
+        interest_end_date: inv.interestEndDate || null,
+        was_extended: inv.wasExtended ?? false,
       }).select().single();
       if (error) { console.error('Error importing investment:', error); continue; }
 
@@ -620,6 +629,7 @@ export function useInvestments() {
         investmentDate: inv.investmentDate,
         expectedEndDate: inv.expectedEndDate,
         firstPaymentDate: inv.firstPaymentDate,
+        interestEndDate: inv.interestEndDate,
       });
 
       if (inv.payments && inv.payments.length > 0) {

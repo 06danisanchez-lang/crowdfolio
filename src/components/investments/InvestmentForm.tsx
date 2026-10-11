@@ -7,6 +7,7 @@ import { CalendarIcon, Plus, AlertTriangle, Info } from 'lucide-react';
 import { Investment, Platform, InvestmentStatus, PLATFORMS, STATUS_OPTIONS, INCOME_MODEL_OPTIONS, PAYMENT_FREQUENCY_OPTIONS, PRINCIPAL_RETURN_TYPE_OPTIONS, EQUITY_TYPE_OPTIONS, IncomeModel, PaymentFrequency, PrincipalReturnType, EquityType } from '@/types/investment';
 import { getInvestmentCompletionStatus } from '@/lib/investment/completeness';
 import { generateSchedule } from '@/lib/investment/scheduleGenerator';
+import { buildMaturityFromForm, deriveMaturityKind, MaturityChangeKind } from '@/lib/investment/maturityChange';
 import { parseSpanishNumber, formatSpanishNumber } from '@/lib/investment/parseSpanishNumber';
 import { PLAN_FEATURES } from '@/lib/stripe/config';
 import { toDateOnlyString, fromDateOnlyString } from '@/lib/dateOnly';
@@ -191,6 +192,20 @@ function checkFirstPaymentDateRange(
   }
 }
 
+// Vencimiento prometido (opcional): posterior a la inversión y no posterior al
+// vencimiento actual (si es igual, no hay retraso).
+function checkPromisedEndDate(
+  data: { investmentDate?: Date; expectedEndDate?: Date; promisedEndDate?: Date },
+  ctx: z.RefinementCtx,
+) {
+  if (!data.promisedEndDate) return;
+  if (data.investmentDate && data.promisedEndDate <= data.investmentDate) {
+    ctx.addIssue({ code: z.ZodIssueCode.custom, path: ['promisedEndDate'], message: 'El vencimiento prometido debe ser posterior a la fecha de inversión' });
+  } else if (data.expectedEndDate && data.promisedEndDate > data.expectedEndDate) {
+    ctx.addIssue({ code: z.ZodIssueCode.custom, path: ['promisedEndDate'], message: 'El vencimiento prometido no puede ser posterior al vencimiento actual' });
+  }
+}
+
 const EXPECTED_RETURN_MIN_MSG = 'La rentabilidad esperada no puede ser negativa';
 const EXPECTED_RETURN_MAX_MSG = 'La rentabilidad esperada no puede superar el 100 %';
 const expectedReturnSchema = z.number().min(0, EXPECTED_RETURN_MIN_MSG).max(100, EXPECTED_RETURN_MAX_MSG);
@@ -202,6 +217,8 @@ const investmentSchema = z.object({
   amount: z.number().min(1, 'El monto debe ser mayor a 0'),
   investmentDate: z.date(),
   expectedEndDate: z.date().optional(),
+  promisedEndDate: z.date().optional(),
+  maturityKind: z.enum(['extended', 'delayed'] as const).optional(),
   expectedReturn: expectedReturnSchema,
   incomeModel: z.enum(['bullet', 'periodic_fixed', 'amortizing', 'variable_or_unknown', 'equity'] as const),
   paymentFrequency: z.enum(['monthly', 'quarterly', 'semiannual', 'annual'] as const).optional(),
@@ -241,6 +258,7 @@ const investmentSchema = z.object({
     });
   }
   checkFirstPaymentDateRange(data, ctx);
+  checkPromisedEndDate(data, ctx);
 });
 
 const draftInvestmentSchema = z.object({
@@ -250,6 +268,8 @@ const draftInvestmentSchema = z.object({
   amount: z.number().nullable().optional(),
   investmentDate: z.date().optional(),
   expectedEndDate: z.date().optional(),
+  promisedEndDate: z.date().optional(),
+  maturityKind: z.enum(['extended', 'delayed'] as const).optional(),
   expectedReturn: expectedReturnSchema.nullable().optional(),
   incomeModel: z.enum(['bullet', 'periodic_fixed', 'amortizing', 'variable_or_unknown', 'equity'] as const).optional(),
   paymentFrequency: z.enum(['monthly', 'quarterly', 'semiannual', 'annual'] as const).optional(),
@@ -268,6 +288,7 @@ const draftInvestmentSchema = z.object({
   fxRateSource: z.enum(['ecb', 'manual'] as const).nullable().optional(),
 }).superRefine((data, ctx) => {
   checkFirstPaymentDateRange(data, ctx);
+  checkPromisedEndDate(data, ctx);
 });
 
 const futureInvestmentSchema = z.object({
@@ -292,6 +313,8 @@ interface EditFormValues {
   amount?: number;
   investmentDate?: Date;
   expectedEndDate?: Date;
+  promisedEndDate?: Date;
+  maturityKind?: MaturityChangeKind;
   expectedReturn?: number;
   incomeModel?: IncomeModel;
   paymentFrequency?: PaymentFrequency;
@@ -331,6 +354,10 @@ function buildEditFormValues(initialData: Investment | FutureInvestmentFormData)
     expectedEndDate: initialData.expectedEndDate
       ? (initialData.expectedEndDate instanceof Date ? initialData.expectedEndDate : fromDateOnlyString(initialData.expectedEndDate))
       : undefined,
+    promisedEndDate: 'originalEndDate' in initialData && (initialData as Investment).originalEndDate
+      ? fromDateOnlyString((initialData as Investment).originalEndDate!)
+      : undefined,
+    maturityKind: deriveMaturityKind('status' in initialData ? (initialData as Investment) : null),
     expectedReturn: initialData.expectedReturn || undefined,
     incomeModel: 'incomeModel' in initialData ? initialData.incomeModel || undefined : undefined,
     paymentFrequency: 'paymentFrequency' in initialData ? initialData.paymentFrequency || undefined : undefined,
@@ -429,6 +456,7 @@ export function InvestmentForm({
             status: 'active',
             investmentDate: new Date(),
             currency: EUR,
+            maturityKind: 'delayed',
           },
   });
 
@@ -619,6 +647,23 @@ export function InvestmentForm({
     }
   }, [open, initialData, form]);
 
+  // Vencimiento anterior guardado (edición) para no perder la fecha prometida.
+  const previousMaturity = initialData && !isFuture && 'status' in initialData
+    ? {
+        expectedEndDate: (initialData as Investment).expectedEndDate || undefined,
+        originalEndDate: (initialData as Investment).originalEndDate,
+        interestEndDate: (initialData as Investment).interestEndDate,
+        wasExtended: (initialData as Investment).wasExtended,
+      }
+    : null;
+
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const maturitySubmitFields = (data: any) => buildMaturityFromForm(previousMaturity, {
+    expectedEndDate: data.expectedEndDate ? toDateOnlyString(data.expectedEndDate) : undefined,
+    promisedEndDate: data.promisedEndDate ? toDateOnlyString(data.promisedEndDate) : undefined,
+    kind: (data.maturityKind as MaturityChangeKind | undefined) ?? 'delayed',
+  });
+
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const handleSubmit = (data: any) => {
     if (isFuture) {
@@ -650,6 +695,7 @@ export function InvestmentForm({
           fxOriginalAmount: 'investments.field.foreignAmount',
           investmentDate: 'investments.field.investmentDate',
           expectedEndDate: 'investments.field.expectedEndDate',
+          promisedEndDate: 'Vencimiento prometido',
           expectedReturn: 'investments.field.expectedReturn',
           incomeModel: 'investments.field.incomeModel',
           status: 'investments.field.status',
@@ -721,6 +767,7 @@ export function InvestmentForm({
         sourceUrl: data.sourceUrl || undefined,
         investmentDate: toDateOnlyString(data.investmentDate),
         expectedEndDate: data.expectedEndDate ? toDateOnlyString(data.expectedEndDate) : undefined,
+        ...maturitySubmitFields(data),
         ...fxSubmitFields(data),
       });
     }
@@ -804,6 +851,94 @@ export function InvestmentForm({
   };
 
   // ─── B1: Render helpers ────────────────────────────────────────
+
+  // Vencimiento prometido: para inversiones que la plataforma ya ha movido. Con él,
+  // CF sabe cuánto retraso lleva aunque se dé de alta con la fecha nueva.
+  const watchExpectedEnd = form.watch('expectedEndDate') as Date | undefined;
+  const watchPromisedEnd = form.watch('promisedEndDate') as Date | undefined;
+  const watchMaturityKind = (form.watch('maturityKind') as MaturityChangeKind | undefined) ?? 'delayed';
+  const expectedEndStr = watchExpectedEnd ? toDateOnlyString(watchExpectedEnd) : undefined;
+  const promisedEndStr = watchPromisedEnd ? toDateOnlyString(watchPromisedEnd) : undefined;
+  const maturityMovedForward = !!expectedEndStr && !!previousMaturity?.expectedEndDate && expectedEndStr > previousMaturity.expectedEndDate;
+  const showMaturityKind = (!!promisedEndStr && !!expectedEndStr && promisedEndStr < expectedEndStr) || (maturityMovedForward && !promisedEndStr);
+  const [showPromised, setShowPromised] = useState(false);
+
+  const renderPromisedMaturity = () => (
+    <div className="space-y-3 rounded-lg border p-3">
+      {!(showPromised || watchPromisedEnd || maturityMovedForward) ? (
+        <button
+          type="button"
+          className="text-left text-sm text-primary underline-offset-2 hover:underline"
+          onClick={() => setShowPromised(true)}
+        >
+          ¿La plataforma ha movido el vencimiento? Indica la fecha que te prometieron
+        </button>
+      ) : (
+        <FormField
+          control={form.control}
+          name="promisedEndDate"
+          render={({ field }) => (
+            <FormItem className="flex flex-col">
+              <FormLabel>
+                Vencimiento prometido al invertir
+                <span className="text-muted-foreground text-xs font-normal ml-1">(Opcional)</span>
+              </FormLabel>
+              <p className="text-xs text-muted-foreground">
+                Si la plataforma ha cambiado la fecha, pon aquí la original y arriba la actual. Así CF calcula cuánto retraso lleva.
+              </p>
+              <div className="flex gap-2">
+                <Popover>
+                  <PopoverTrigger asChild>
+                    <FormControl>
+                      <Button
+                        variant="outline"
+                        className={cn('w-full pl-3 text-left font-normal', !field.value && 'text-muted-foreground')}
+                      >
+                        {field.value ? format(field.value, 'dd/MM/yyyy') : <span>{maturityMovedForward && previousMaturity?.expectedEndDate ? `Se guardará ${format(fromDateOnlyString(previousMaturity.expectedEndDate), 'dd/MM/yyyy')}` : 'Selecciona una fecha'}</span>}
+                        <CalendarIcon className="ml-auto h-4 w-4 opacity-50" />
+                      </Button>
+                    </FormControl>
+                  </PopoverTrigger>
+                  <PopoverContent className="w-auto p-0" align="start">
+                    <Calendar mode="single" selected={field.value} onSelect={field.onChange} initialFocus />
+                  </PopoverContent>
+                </Popover>
+                {field.value && (
+                  <Button type="button" variant="ghost" size="sm" onClick={() => field.onChange(undefined)}>
+                    Quitar
+                  </Button>
+                )}
+              </div>
+              <FormMessage />
+            </FormItem>
+          )}
+        />
+      )}
+      {showMaturityKind && (
+        <div className="space-y-2">
+          <p className="text-sm font-medium">{t('investments.action.extendKindQuestion')}</p>
+          <div className="grid gap-2 sm:grid-cols-2">
+            {(['extended', 'delayed'] as const).map(kind => (
+              <button
+                key={kind}
+                type="button"
+                onClick={() => form.setValue('maturityKind', kind)}
+                className={cn(
+                  'rounded-md border p-3 text-left text-sm transition-colors',
+                  watchMaturityKind === kind ? 'border-primary bg-primary/5' : 'hover:bg-muted/50',
+                )}
+                aria-pressed={watchMaturityKind === kind}
+              >
+                <span className="font-medium">{t(`investments.action.extendKind.${kind}`)}</span>
+                <span className="mt-0.5 block text-xs text-muted-foreground">{t(`investments.action.extendKind.${kind}.hint`)}</span>
+              </button>
+            ))}
+          </div>
+          <p className="text-xs text-muted-foreground">Si no lo sabes, déjalo en «Retraso»: CF no supondrá intereses extra.</p>
+        </div>
+      )}
+    </div>
+  );
 
   const renderBanners = () => (
     <>
@@ -1278,6 +1413,7 @@ export function InvestmentForm({
           )}
         />
       </div>
+      {!isFuture && renderPromisedMaturity()}
     </>
   );
 

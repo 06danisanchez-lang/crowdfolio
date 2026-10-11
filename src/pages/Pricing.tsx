@@ -2,6 +2,7 @@ import { ArrowLeft } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { PricingTable } from '@/components/subscription/PricingTable';
 import crowdfolioLogo from '@/assets/logo_crowdfolio.svg';
+import { PAYMENTS_ENABLED } from '@/lib/stripe/config';
 
 interface PricingProps {
   onBack?: () => void;
@@ -31,7 +32,9 @@ export default function Pricing({ onBack }: PricingProps) {
         <div className="mb-12 text-center">
           <h1 className="mb-4 text-2xl sm:text-3xl lg:text-4xl font-bold">Elige tu plan</h1>
           <p className="mx-auto max-w-2xl text-lg text-muted-foreground">
-            Empieza gratis y actualiza cuando necesites más. Sin compromisos, cancela cuando quieras.
+            {PAYMENTS_ENABLED
+              ? 'Empieza gratis y actualiza cuando necesites más. Sin compromisos, cancela cuando quieras.'
+              : 'Estamos en beta: al registrarte tienes un mes de Pro gratis. Los pagos todavía no están disponibles.'}
           </p>
         </div>
 

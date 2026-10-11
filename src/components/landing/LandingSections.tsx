@@ -291,7 +291,10 @@ function Pricing() {
             }}
               onMouseEnter={e => { const el = e.currentTarget as HTMLAnchorElement; el.style.background = '#9ad5ff'; el.style.borderColor = '#9ad5ff'; el.style.transform = 'translateY(-1px)'; }}
               onMouseLeave={e => { const el = e.currentTarget as HTMLAnchorElement; el.style.background = '#79c6fa'; el.style.borderColor = '#79c6fa'; el.style.transform = 'none'; }}
-            >Empezar con Pro</a>
+            >Probar Pro gratis un mes</a>
+            <p style={{ fontSize: 13, color: '#b6c2da', textAlign: 'center', margin: '12px 0 0', lineHeight: 1.5 }}>
+              Estamos en beta: al registrarte tienes un mes de Pro gratis. Los pagos aún no están disponibles.
+            </p>
           </div>
         </div>
       </div>

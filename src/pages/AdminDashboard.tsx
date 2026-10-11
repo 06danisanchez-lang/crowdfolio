@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
-import { useAdminDashboard, type AdminUser } from '@/hooks/useAdminDashboard';
+import { useAdminDashboard } from '@/hooks/useAdminDashboard';
 import { useQueryClient } from '@tanstack/react-query';
 import { useNavigate, Navigate } from 'react-router-dom';
 import { Shield, Users, Crown, TrendingUp, ArrowLeft, Eye } from 'lucide-react';
@@ -10,6 +10,8 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
 import AdminUserDetailSheet from '@/components/admin/AdminUserDetailSheet';
+import { AdminProBadge } from '@/components/admin/AdminProBadge';
+import { formatAdminDate } from '@/lib/admin/proStatus';
 import {
   Table,
   TableBody,
@@ -18,8 +20,6 @@ import {
   TableHeader,
   TableRow,
 } from '@/components/ui/table';
-import { format } from 'date-fns';
-import { es } from 'date-fns/locale';
 
 function formatCurrency(value: number) {
   return new Intl.NumberFormat('es-ES', { style: 'currency', currency: 'EUR' }).format(value);
@@ -72,9 +72,11 @@ export default function AdminDashboard() {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
   const { data, isLoading, error } = useAdminDashboard();
-  const [selectedUser, setSelectedUser] = useState<AdminUser | null>(null);
+  // Se guarda el id (no una copia del usuario) para que la ficha se actualice al dar Pro.
+  const [selectedUserId, setSelectedUserId] = useState<string | null>(null);
+  const selectedUser = data?.users.find((u) => u.userId === selectedUserId) ?? null;
 
-  const handleUserDeleted = () => {
+  const refreshAdminData = () => {
     queryClient.invalidateQueries({ queryKey: ['admin-dashboard'] });
   };
 
@@ -166,7 +168,7 @@ export default function AdminDashboard() {
                     <TableHead>Usuario</TableHead>
                     <TableHead>Email</TableHead>
                     <TableHead>Plan</TableHead>
-                    <TableHead>Vencimiento</TableHead>
+                    <TableHead>Pro hasta</TableHead>
                     <TableHead>Volumen</TableHead>
                     <TableHead className="text-right">Acciones</TableHead>
                   </TableRow>
@@ -183,7 +185,7 @@ export default function AdminDashboard() {
                     <TableRow
                       key={u.userId}
                       className="cursor-pointer"
-                      onClick={() => setSelectedUser(u)}
+                      onClick={() => setSelectedUserId(u.userId)}
                     >
                       <TableCell className="font-medium">
                         {u.fullName || '—'}
@@ -192,18 +194,10 @@ export default function AdminDashboard() {
                         {u.email || '—'}
                       </TableCell>
                       <TableCell>
-                        {u.subscriptionStatus === 'active' ? (
-                          <Badge className="bg-amber-500/10 text-amber-600 hover:bg-amber-500/20 border-amber-500/30">
-                            Pro
-                          </Badge>
-                        ) : (
-                          <Badge variant="secondary">Free</Badge>
-                        )}
+                        <AdminProBadge pro={u.pro} />
                       </TableCell>
                       <TableCell className="text-muted-foreground">
-                        {u.subscriptionEnd
-                          ? format(new Date(u.subscriptionEnd), 'dd MMM yyyy', { locale: es })
-                          : '—'}
+                        {u.pro.proEnd ? formatAdminDate(u.pro.proEnd) : '—'}
                       </TableCell>
                       <TableCell className="font-medium">
                         {formatCurrency(u.totalInvested)}
@@ -214,7 +208,7 @@ export default function AdminDashboard() {
                           size="sm"
                           onClick={(e) => {
                             e.stopPropagation();
-                            setSelectedUser(u);
+                            setSelectedUserId(u.userId);
                           }}
                         >
                           <Eye className="mr-1 h-4 w-4" />
@@ -234,9 +228,10 @@ export default function AdminDashboard() {
           user={selectedUser}
           open={!!selectedUser}
           onOpenChange={(open) => {
-            if (!open) setSelectedUser(null);
+            if (!open) setSelectedUserId(null);
           }}
-          onUserDeleted={handleUserDeleted}
+          onUserDeleted={refreshAdminData}
+          onProChanged={refreshAdminData}
         />
       </div>
     </div>

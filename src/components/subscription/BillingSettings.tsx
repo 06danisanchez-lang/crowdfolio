@@ -5,14 +5,19 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { useSubscription } from '@/contexts/SubscriptionContext';
-import { STRIPE_PRICES, formatPrice, PAYMENTS_ENABLED, PAYMENTS_DISABLED_LABEL } from '@/lib/stripe/config';
+import { STRIPE_PRICES, formatPrice, PAYMENTS_ENABLED } from '@/lib/stripe/config';
+import { formatLongDate } from '@/lib/proContact';
 import { toast } from '@/hooks/use-toast';
-import { PromoCodeInput } from './PromoCodeInput';
+import { ProContactNotice } from './ProContactNotice';
 
 export function BillingSettings() {
   const { t } = useLanguage();
   const { subscription, isPro, openCheckout, openCustomerPortal, refreshSubscription, isLoading } = useSubscription();
   const [isProcessing, setIsProcessing] = useState<string | null>(null);
+
+  // Pro de prueba o dado a mano (sin suscripción de pago detrás).
+  const isManualPro = isPro && !subscription.subscribed;
+  const proEnd = subscription.subscribed ? subscription.subscriptionEnd : subscription.proUntil;
 
   const handleCheckout = async (plan: 'monthly' | 'yearly') => {
     setIsProcessing(plan);
@@ -74,7 +79,7 @@ export function BillingSettings() {
       {/* Current Plan */}
       <Card>
         <CardHeader>
-        <CardTitle className="flex items-center gap-2">
+          <CardTitle className="flex items-center gap-2">
             <CreditCard className="h-5 w-5" />
             {t('subscription.billing.title')}
           </CardTitle>
@@ -83,7 +88,7 @@ export function BillingSettings() {
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
-          <div className="flex items-center justify-between rounded-lg border p-4">
+          <div className="flex flex-col gap-3 rounded-lg border p-4 sm:flex-row sm:items-center sm:justify-between">
             <div className="flex items-center gap-3">
               {isPro ? (
                 <Crown className="h-8 w-8 text-primary" />
@@ -99,19 +104,17 @@ export function BillingSettings() {
                   </h3>
                   {isPro && (
                     <Badge variant="secondary">
-                      {subscription.plan === 'yearly' ? 'Anual' : 'Mensual'}
+                      {isManualPro || !PAYMENTS_ENABLED
+                        ? 'Gratis'
+                        : subscription.plan === 'yearly' ? 'Anual' : 'Mensual'}
                     </Badge>
                   )}
                 </div>
-                {isPro && subscription.subscriptionEnd && (
+                {isPro && proEnd && (
                   <p className="text-sm text-muted-foreground">
                     <Calendar className="mr-1 inline h-3 w-3" />
-                    Se renueva el{' '}
-                    {new Date(subscription.subscriptionEnd).toLocaleDateString('es-ES', {
-                      day: 'numeric',
-                      month: 'long',
-                      year: 'numeric',
-                    })}
+                    {PAYMENTS_ENABLED && !isManualPro ? 'Se renueva el' : 'Hasta el'}{' '}
+                    {formatLongDate(proEnd)}
                   </p>
                 )}
                 {!isPro && (
@@ -121,29 +124,35 @@ export function BillingSettings() {
                 )}
               </div>
             </div>
-            <div>
-              {isPro ? (
-                <Button
-                  variant="outline"
-                  onClick={handleManageSubscription}
-                  disabled={!PAYMENTS_ENABLED || isProcessing === 'portal'}
-                >
-                  {isProcessing === 'portal' && (
-                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                  )}
-                  {PAYMENTS_ENABLED ? t('subscription.billing.manage') : PAYMENTS_DISABLED_LABEL}
-                </Button>
-              ) : (
-                <Button onClick={() => handleCheckout('yearly')} disabled={!PAYMENTS_ENABLED || isProcessing !== null}>
-                  {isProcessing === 'yearly' && (
-                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                  )}
-                  <Crown className="mr-2 h-4 w-4" />
-                  {PAYMENTS_ENABLED ? t('subscription.billing.upgradeToPro') : PAYMENTS_DISABLED_LABEL}
-                </Button>
-              )}
-            </div>
+            {PAYMENTS_ENABLED && (
+              <div>
+                {isPro ? (
+                  <Button
+                    variant="outline"
+                    onClick={handleManageSubscription}
+                    disabled={isProcessing === 'portal'}
+                  >
+                    {isProcessing === 'portal' && (
+                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                    )}
+                    {t('subscription.billing.manage')}
+                  </Button>
+                ) : (
+                  <Button onClick={() => handleCheckout('yearly')} disabled={isProcessing !== null}>
+                    {isProcessing === 'yearly' && (
+                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                    )}
+                    <Crown className="mr-2 h-4 w-4" />
+                    {t('subscription.billing.upgradeToPro')}
+                  </Button>
+                )}
+              </div>
+            )}
           </div>
+
+          {!PAYMENTS_ENABLED && isPro && (
+            <ProContactNotice lead="Cuando termine, tu cuenta pasa al plan gratuito." />
+          )}
 
           <Button
             variant="ghost"
@@ -163,7 +172,7 @@ export function BillingSettings() {
       {!isPro && (
         <Card>
           <CardHeader>
-          <CardTitle className="flex items-center gap-2">
+            <CardTitle className="flex items-center gap-2">
               <Crown className="h-5 w-5 text-primary" />
               {t('subscription.billing.upgradeToPro')}
             </CardTitle>
@@ -171,60 +180,57 @@ export function BillingSettings() {
               {t('subscription.billing.upgradeDesc')}
             </CardDescription>
           </CardHeader>
-          <CardContent className="grid gap-4 md:grid-cols-2">
-            <div className="rounded-lg border p-4">
-              <div className="mb-2 flex items-baseline justify-between">
-                <h4 className="font-medium">{t('subscription.monthly')}</h4>
-                <span className="text-2xl font-bold">
-                  {formatPrice(STRIPE_PRICES.monthly.amount)}
-                </span>
+          {PAYMENTS_ENABLED ? (
+            <CardContent className="grid gap-4 md:grid-cols-2">
+              <div className="rounded-lg border p-4">
+                <div className="mb-2 flex items-baseline justify-between">
+                  <h4 className="font-medium">{t('subscription.monthly')}</h4>
+                  <span className="text-2xl font-bold">
+                    {formatPrice(STRIPE_PRICES.monthly.amount)}
+                  </span>
+                </div>
+                <p className="mb-4 text-sm text-muted-foreground">/{t('subscription.perMonth')}</p>
+                <Button
+                  variant="outline"
+                  className="w-full"
+                  onClick={() => handleCheckout('monthly')}
+                  disabled={isProcessing !== null}
+                >
+                  {isProcessing === 'monthly' && (
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  )}
+                  {t('subscription.billing.chooseMonthly')}
+                  <ArrowRight className="ml-2 h-4 w-4" />
+                </Button>
               </div>
-              <p className="mb-4 text-sm text-muted-foreground">/{t('subscription.perMonth')}</p>
-              <Button
-                variant="outline"
-                className="w-full"
-                onClick={() => handleCheckout('monthly')}
-                disabled={!PAYMENTS_ENABLED || isProcessing !== null}
-              >
-                {isProcessing === 'monthly' && (
-                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                )}
-                {PAYMENTS_ENABLED ? t('subscription.billing.chooseMonthly') : PAYMENTS_DISABLED_LABEL}
-                {PAYMENTS_ENABLED && <ArrowRight className="ml-2 h-4 w-4" />}
-              </Button>
-            </div>
 
-            <div className="relative rounded-lg border-2 border-primary p-4">
-              <Badge className="absolute -top-2 right-4">Ahorra 17%</Badge>
-              <div className="mb-2 flex items-baseline justify-between">
-                <h4 className="font-medium">{t('subscription.yearly')}</h4>
-                <span className="text-2xl font-bold">
-                  {formatPrice(STRIPE_PRICES.yearly.amount)}
-                </span>
+              <div className="relative rounded-lg border-2 border-primary p-4">
+                <Badge className="absolute -top-2 right-4">Ahorra 17%</Badge>
+                <div className="mb-2 flex items-baseline justify-between">
+                  <h4 className="font-medium">{t('subscription.yearly')}</h4>
+                  <span className="text-2xl font-bold">
+                    {formatPrice(STRIPE_PRICES.yearly.amount)}
+                  </span>
+                </div>
+                <p className="mb-4 text-sm text-muted-foreground">/{t('subscription.perYear')} (4,92€/{t('subscription.perMonth')})</p>
+                <Button
+                  className="w-full"
+                  onClick={() => handleCheckout('yearly')}
+                  disabled={isProcessing !== null}
+                >
+                  {isProcessing === 'yearly' && (
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  )}
+                  {t('subscription.billing.chooseYearly')}
+                  <ArrowRight className="ml-2 h-4 w-4" />
+                </Button>
               </div>
-              <p className="mb-4 text-sm text-muted-foreground">/{t('subscription.perYear')} (4,92€/{t('subscription.perMonth')})</p>
-              <Button
-                className="w-full"
-                onClick={() => handleCheckout('yearly')}
-                disabled={!PAYMENTS_ENABLED || isProcessing !== null}
-              >
-                {isProcessing === 'yearly' && (
-                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                )}
-                {PAYMENTS_ENABLED ? t('subscription.billing.chooseYearly') : PAYMENTS_DISABLED_LABEL}
-                {PAYMENTS_ENABLED && <ArrowRight className="ml-2 h-4 w-4" />}
-              </Button>
-            </div>
-          </CardContent>
-        </Card>
-      )}
-
-      {/* Promo Code Section (only for free users) */}
-      {!isPro && (
-        <Card>
-          <CardContent className="pt-6">
-            <PromoCodeInput />
-          </CardContent>
+            </CardContent>
+          ) : (
+            <CardContent>
+              <ProContactNotice className="max-w-md" buttonClassName="sm:w-auto" />
+            </CardContent>
+          )}
         </Card>
       )}
     </div>

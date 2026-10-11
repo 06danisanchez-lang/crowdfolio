@@ -96,7 +96,7 @@ comprobar que el md5 coincide calculándolo en producción con
   y no se tocan.
 - Cuentas de prueba (los correos llegan al Gmail de Dani):
   - `06danisanchez+test@gmail.com`: gratuita, sin Pro. Para probar límites del plan
-    gratuito y el código `CROWDFOUNDER`.
+    gratuito y el aviso de caducidad del Pro.
   - `06danisanchez+test2@gmail.com`: con Pro de beta.
 - Las previews de Vercel usan la base de datos de producción: lo que se cree en una
   preview existe de verdad. Marcar los datos de prueba con `TEST` y borrarlos al acabar.
@@ -108,6 +108,10 @@ comprobar que el md5 coincide calculándolo en producción con
   columnas de divisa son solo para auditoría.
 - Pro = (plan activo de Stripe) **o** (`is_beta_pro` y `pro_until > now()`), ambos en
   `subscriptions`. `plan = 'free'` en un beta Pro es intencionado.
+- Pro sin pagos: el alta da 30 días de Pro (trigger). No hay códigos promocionales. Se
+  amplía solo a mano, desde el panel de admin («Dar Pro», función `admin_set_pro_until`).
+  Mientras `PAYMENTS_ENABLED` sea `false`, ningún botón lleva a un pago: todos muestran
+  `ProContactNotice` (pagos no disponibles + correo prellenado a soporte).
 - El cálculo fiscal está entero en el cliente (`useTaxSummary.ts`, `src/lib/tax/`). No
   pasar lógica fiscal a Edge Functions. `calculate-tax`, `scheduled-scraper` y
   `scrape-opportunities` se quitaron del repo (código muerto); pueden seguir desplegadas

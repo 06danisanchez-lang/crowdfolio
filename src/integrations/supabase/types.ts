@@ -600,7 +600,10 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
-      [_ in never]: never
+      admin_set_pro_until: {
+        Args: { _target_user: string; _until: string }
+        Returns: string
+      }
     }
     Enums: {
       close_reason_type: "on_time" | "early" | "extended" | "sold"

@@ -7,10 +7,11 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { useSubscription } from '@/contexts/SubscriptionContext';
 import { useAuth } from '@/contexts/AuthContext';
 import { useLanguage } from '@/contexts/LanguageContext';
-import { STRIPE_PRICES, formatPrice, PAYMENTS_ENABLED, PAYMENTS_DISABLED_LABEL } from '@/lib/stripe/config';
+import { STRIPE_PRICES, formatPrice, PAYMENTS_ENABLED } from '@/lib/stripe/config';
+import { formatLongDate } from '@/lib/proContact';
 import { toast } from '@/hooks/use-toast';
 import { cn } from '@/lib/utils';
-import { PromoCodeInput } from './PromoCodeInput';
+import { ProContactNotice } from './ProContactNotice';
 
 export function PricingTable() {
   const { subscription, isPro, openCheckout, openCustomerPortal } = useSubscription();
@@ -188,52 +189,59 @@ export function PricingTable() {
               ))}
             </ul>
 
-            {isPro ? (
+            {!PAYMENTS_ENABLED ? (
+              isPro ? null : user ? (
+                <ProContactNotice />
+              ) : (
+                <div className="space-y-2">
+                  <Button className="w-full" onClick={() => navigate('/auth')}>
+                    <Crown className="mr-2 h-4 w-4" />
+                    Crear cuenta con 1 mes de Pro gratis
+                  </Button>
+                  <p className="text-center text-xs text-muted-foreground">
+                    Los pagos todavía no están disponibles: al registrarte tienes Pro gratis durante un mes.
+                  </p>
+                </div>
+              )
+            ) : isPro ? (
               <Button
                 variant="outline"
                 className="w-full"
                 onClick={handleManageSubscription}
-                disabled={!PAYMENTS_ENABLED || isLoading === 'portal'}
+                disabled={isLoading === 'portal'}
               >
                 {isLoading === 'portal' && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                {PAYMENTS_ENABLED ? t('subscription.billing.manage') : PAYMENTS_DISABLED_LABEL}
+                {t('subscription.billing.manage')}
               </Button>
             ) : (
               <Button
                 className="w-full"
                 onClick={() => handleCheckout(billingPeriod)}
-                disabled={!PAYMENTS_ENABLED || isLoading !== null}
+                disabled={isLoading !== null}
               >
                 {isLoading === billingPeriod ? (
                   <Loader2 className="mr-2 h-4 w-4 animate-spin" />
                 ) : (
                   <Crown className="mr-2 h-4 w-4" />
                 )}
-                {PAYMENTS_ENABLED ? t('subscription.cta.default') : PAYMENTS_DISABLED_LABEL}
+                {t('subscription.cta.default')}
               </Button>
             )}
           </CardContent>
         </Card>
       </div>
 
-      {/* Código promocional — requiere sesión (apply-promo-code valida el usuario) */}
-      {user && !isPro && (
-        <Card className="max-w-md mx-auto">
-          <CardContent className="pt-6">
-            <PromoCodeInput />
-          </CardContent>
-        </Card>
-      )}
-
-      {/* Subscription Info */}
-      {isPro && subscription.subscriptionEnd && (
+      {/* Hasta cuándo dura el Pro */}
+      {isPro && subscription.isBetaPro && subscription.proUntil && !subscription.subscribed && (
         <p className="text-center text-sm text-muted-foreground">
-          {t('subscription.billing.renewsOn')}{' '}
-          {new Date(subscription.subscriptionEnd).toLocaleDateString('es-ES', {
-            day: 'numeric',
-            month: 'long',
-            year: 'numeric',
-          })}
+          Tu Pro gratuito dura hasta el {formatLongDate(subscription.proUntil)}. Si quieres seguir después,
+          escríbenos a soporte y te lo ampliamos.
+        </p>
+      )}
+      {isPro && subscription.subscribed && subscription.subscriptionEnd && (
+        <p className="text-center text-sm text-muted-foreground">
+          {PAYMENTS_ENABLED ? t('subscription.billing.renewsOn') : 'Tu Pro dura hasta el'}{' '}
+          {formatLongDate(subscription.subscriptionEnd)}
         </p>
       )}
     </div>

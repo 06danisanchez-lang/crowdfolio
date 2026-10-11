@@ -11,7 +11,8 @@ import {
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { useSubscription } from '@/contexts/SubscriptionContext';
-import { STRIPE_PRICES, formatPrice, PAYMENTS_ENABLED, PAYMENTS_DISABLED_LABEL } from '@/lib/stripe/config';
+import { STRIPE_PRICES, formatPrice, PAYMENTS_ENABLED } from '@/lib/stripe/config';
+import { ProContactNotice } from './ProContactNotice';
 import { toast } from '@/hooks/use-toast';
 
 interface UpgradeModalProps {
@@ -72,12 +73,16 @@ export function UpgradeModal({ open, onOpenChange, feature = 'default' }: Upgrad
             </DialogTitle>
           </div>
           <DialogDescription className="pt-2">
-            {isPro ? t('subscription.activeBenefits') : t('subscription.noCommitment')}
+            {isPro
+              ? t('subscription.activeBenefits')
+              : PAYMENTS_ENABLED
+                ? t('subscription.noCommitment')
+                : 'Con Pro tienes todo esto:'}
           </DialogDescription>
         </DialogHeader>
 
         <div className="space-y-4 py-4">
-          {!isPro && (
+          {!isPro && PAYMENTS_ENABLED && (
             <>
               {/* Plan Toggle */}
               <div className="flex rounded-lg border p-1">
@@ -136,20 +141,20 @@ export function UpgradeModal({ open, onOpenChange, feature = 'default' }: Upgrad
             ))}
           </ul>
 
-          {!isPro && (
+          {!isPro && PAYMENTS_ENABLED && (
             <>
               <Button
                 className="w-full"
                 size="lg"
                 onClick={() => handleCheckout(selectedPlan)}
-                disabled={!PAYMENTS_ENABLED || isLoading !== null}
+                disabled={isLoading !== null}
               >
                 {isLoading === selectedPlan ? (
                   <Loader2 className="mr-2 h-4 w-4 animate-spin" />
                 ) : (
                   <Crown className="mr-2 h-4 w-4" />
                 )}
-                {PAYMENTS_ENABLED ? ctaLabel : PAYMENTS_DISABLED_LABEL}
+                {ctaLabel}
               </Button>
 
               <p className="text-center text-xs text-muted-foreground">
@@ -157,6 +162,8 @@ export function UpgradeModal({ open, onOpenChange, feature = 'default' }: Upgrad
               </p>
             </>
           )}
+
+          {!isPro && !PAYMENTS_ENABLED && <ProContactNotice className="pt-2" />}
         </div>
       </DialogContent>
     </Dialog>

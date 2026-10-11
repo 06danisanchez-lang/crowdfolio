@@ -2,6 +2,7 @@ import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { getPlatformLabel } from '@/lib/labels';
+import { getAdminProStatus, type AdminProStatus } from '@/lib/admin/proStatus';
 
 export interface AdminUserInvestment {
   id: string;
@@ -15,9 +16,9 @@ export interface AdminUser {
   userId: string;
   fullName: string | null;
   email: string | null;
-  plan: 'free' | 'monthly' | 'yearly';
-  subscriptionStatus: string;
-  subscriptionEnd: string | null;
+  plan: 'free' | 'monthly' | 'yearly' | 'pro';
+  /** Pro de verdad (suscripción vigente o Pro de prueba / dado a mano), con su fecha de fin. */
+  pro: AdminProStatus;
   totalInvested: number;
   investments: AdminUserInvestment[];
   investmentCount: number;
@@ -41,7 +42,7 @@ export function useAdminDashboard() {
     queryFn: async () => {
       const [profilesRes, subscriptionsRes, investmentsRes] = await Promise.all([
         supabase.from('profiles').select('id, email, full_name'),
-        supabase.from('subscriptions').select('user_id, plan, status, current_period_end'),
+        supabase.from('subscriptions').select('user_id, plan, status, current_period_end, is_beta_pro, pro_until'),
         supabase.from('investments').select('id, user_id, amount, platform, custom_platform_name, project_name, status'),
       ]);
 
@@ -84,8 +85,7 @@ export function useAdminDashboard() {
           fullName: p.full_name,
           email: p.email,
           plan: (sub?.plan ?? 'free') as AdminUser['plan'],
-          subscriptionStatus: sub?.status ?? 'free',
-          subscriptionEnd: sub?.current_period_end ?? null,
+          pro: getAdminProStatus(sub),
           totalInvested,
           investments: userInvestments,
           investmentCount,
@@ -93,7 +93,7 @@ export function useAdminDashboard() {
         };
       });
 
-      const proUsers = users.filter((u) => u.subscriptionStatus === 'active').length;
+      const proUsers = users.filter((u) => u.pro.isPro).length;
       const totalVolume = users.reduce((sum, u) => sum + u.totalInvested, 0);
 
       // --- Analytics: Platform Market Share (investments only) ---

@@ -33,6 +33,8 @@ import { Briefcase, Hash, TrendingUp, Trash2, Loader2 } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import { getStatusLabel } from '@/lib/labels';
+import AdminGrantPro from './AdminGrantPro';
+import { AdminProBadge } from './AdminProBadge';
 
 function formatCurrency(value: number) {
   return new Intl.NumberFormat('es-ES', { style: 'currency', currency: 'EUR' }).format(value);
@@ -53,9 +55,10 @@ interface Props {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   onUserDeleted?: () => void;
+  onProChanged?: () => void;
 }
 
-export default function AdminUserDetailSheet({ user, open, onOpenChange, onUserDeleted }: Props) {
+export default function AdminUserDetailSheet({ user, open, onOpenChange, onUserDeleted, onProChanged }: Props) {
   const [isDeleting, setIsDeleting] = useState(false);
 
   if (!user) return null;
@@ -98,13 +101,7 @@ export default function AdminUserDetailSheet({ user, open, onOpenChange, onUserD
         <SheetHeader>
           <SheetTitle className="flex items-center gap-2">
             {user.fullName || 'Sin nombre'}
-            {user.subscriptionStatus === 'active' ? (
-              <Badge className="bg-amber-500/10 text-amber-600 hover:bg-amber-500/20 border-amber-500/30">
-                Pro
-              </Badge>
-            ) : (
-              <Badge variant="secondary">Free</Badge>
-            )}
+            <AdminProBadge pro={user.pro} />
           </SheetTitle>
           <SheetDescription>{user.email || '—'}</SheetDescription>
         </SheetHeader>
@@ -127,6 +124,11 @@ export default function AdminUserDetailSheet({ user, open, onOpenChange, onUserD
             <p className="text-sm font-bold">{formatCurrency(user.averageTicket)}</p>
           </div>
         </div>
+
+        <Separator className="my-5" />
+
+        {/* Dar Pro a mano */}
+        <AdminGrantPro key={user.userId} user={user} onGranted={() => onProChanged?.()} />
 
         <Separator className="my-5" />
 

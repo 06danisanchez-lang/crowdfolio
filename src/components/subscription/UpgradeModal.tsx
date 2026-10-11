@@ -12,6 +12,7 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { useSubscription } from '@/contexts/SubscriptionContext';
 import { STRIPE_PRICES, formatPrice, PAYMENTS_ENABLED, PAYMENTS_DISABLED_LABEL } from '@/lib/stripe/config';
+import { PaymentsUnavailableNotice } from './PaymentsUnavailableNotice';
 import { toast } from '@/hooks/use-toast';
 
 interface UpgradeModalProps {
@@ -152,9 +153,13 @@ export function UpgradeModal({ open, onOpenChange, feature = 'default' }: Upgrad
                 {PAYMENTS_ENABLED ? ctaLabel : PAYMENTS_DISABLED_LABEL}
               </Button>
 
-              <p className="text-center text-xs text-muted-foreground">
-                {t('subscription.noCommitment')}
-              </p>
+              {PAYMENTS_ENABLED ? (
+                <p className="text-center text-xs text-muted-foreground">
+                  {t('subscription.noCommitment')}
+                </p>
+              ) : (
+                <PaymentsUnavailableNotice />
+              )}
             </>
           )}
         </div>

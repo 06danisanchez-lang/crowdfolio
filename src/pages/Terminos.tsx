@@ -92,8 +92,8 @@ export default function Terminos() {
               </div>
 
               <div className="space-y-2">
-                <h3 className="font-semibold">5.3 Código promocional CROWDFOUNDER</h3>
-                <p className="text-muted-foreground">Los usuarios que utilicen el código <strong className="text-foreground">CROWDFOUNDER</strong> durante el periodo promocional obtendrán acceso al plan Pro de forma gratuita durante 365 días. Este código es de uso único por cuenta, intransferible y no canjeable por dinero en efectivo. Crowdfolio se reserva el derecho de revocar la promoción en caso de uso fraudulento.</p>
+                <h3 className="font-semibold">5.3 Periodo de prueba</h3>
+                <p className="text-muted-foreground">Al registrarse, cada usuario disfruta del plan Pro sin coste durante 30 días. Al terminar, la cuenta pasa al plan gratuito salvo que contrate el plan Pro. Mientras la contratación no esté disponible, Crowdfolio puede ampliar el periodo de prueba a petición del usuario en soporte@crowdfolio.es.</p>
               </div>
 
               <div className="space-y-2">

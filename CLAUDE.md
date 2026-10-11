@@ -96,7 +96,7 @@ comprobar que el md5 coincide calculándolo en producción con
   y no se tocan.
 - Cuentas de prueba (los correos llegan al Gmail de Dani):
   - `06danisanchez+test@gmail.com`: gratuita, sin Pro. Para probar límites del plan
-    gratuito y el código `CROWDFOUNDER`.
+    gratuito.
   - `06danisanchez+test2@gmail.com`: con Pro de beta.
 - Las previews de Vercel usan la base de datos de producción: lo que se cree en una
   preview existe de verdad. Marcar los datos de prueba con `TEST` y borrarlos al acabar.

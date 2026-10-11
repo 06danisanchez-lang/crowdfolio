@@ -10,7 +10,7 @@ import { useLanguage } from '@/contexts/LanguageContext';
 import { STRIPE_PRICES, formatPrice, PAYMENTS_ENABLED, PAYMENTS_DISABLED_LABEL } from '@/lib/stripe/config';
 import { toast } from '@/hooks/use-toast';
 import { cn } from '@/lib/utils';
-import { PromoCodeInput } from './PromoCodeInput';
+import { PaymentsUnavailableNotice } from './PaymentsUnavailableNotice';
 
 export function PricingTable() {
   const { subscription, isPro, openCheckout, openCustomerPortal } = useSubscription();
@@ -216,14 +216,7 @@ export function PricingTable() {
         </Card>
       </div>
 
-      {/* Código promocional — requiere sesión (apply-promo-code valida el usuario) */}
-      {user && !isPro && (
-        <Card className="max-w-md mx-auto">
-          <CardContent className="pt-6">
-            <PromoCodeInput />
-          </CardContent>
-        </Card>
-      )}
+      {!isPro && <PaymentsUnavailableNotice className="max-w-md mx-auto" />}
 
       {/* Subscription Info */}
       {isPro && subscription.subscriptionEnd && (

@@ -9,7 +9,6 @@ import {
   DialogFooter,
 } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
-import { PromoCodeInput } from './PromoCodeInput';
 
 export const BetaExpiredModal = () => {
   const { subscription, isLoading } = useSubscription();
@@ -32,9 +31,8 @@ export const BetaExpiredModal = () => {
             Tu prueba gratuita de Pro ha finalizado
           </DialogTitle>
           <DialogDescription className="text-base pt-2 leading-relaxed">
-            Tu mes de prueba gratuita de CrowdFolio Pro ha finalizado. Estamos en
-            fase beta, así que la versión de pago todavía no está disponible
-            públicamente, pero si quieres seguir disfrutando de Pro, escríbenos a{' '}
+            Tu mes de prueba gratuita de CrowdFolio Pro ha finalizado. Los pagos
+            todavía no están disponibles, pero si quieres seguir con Pro, escríbenos a{' '}
             <a
               href="mailto:soporte@crowdfolio.es"
               className="font-medium underline underline-offset-2 hover:opacity-80"
@@ -44,9 +42,6 @@ export const BetaExpiredModal = () => {
             y te lo activamos encantados.
           </DialogDescription>
         </DialogHeader>
-        <div className="rounded-lg border p-4">
-          <PromoCodeInput />
-        </div>
         <DialogFooter className="sm:justify-center pt-2">
           <Button onClick={() => setOpen(false)} className="w-full sm:w-auto">
             Entendido

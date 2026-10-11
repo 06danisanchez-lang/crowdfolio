@@ -7,7 +7,7 @@ import { Badge } from '@/components/ui/badge';
 import { useSubscription } from '@/contexts/SubscriptionContext';
 import { STRIPE_PRICES, formatPrice, PAYMENTS_ENABLED, PAYMENTS_DISABLED_LABEL } from '@/lib/stripe/config';
 import { toast } from '@/hooks/use-toast';
-import { PromoCodeInput } from './PromoCodeInput';
+import { PaymentsUnavailableNotice } from './PaymentsUnavailableNotice';
 
 export function BillingSettings() {
   const { t } = useLanguage();
@@ -216,14 +216,8 @@ export function BillingSettings() {
               </Button>
             </div>
           </CardContent>
-        </Card>
-      )}
-
-      {/* Promo Code Section (only for free users) */}
-      {!isPro && (
-        <Card>
-          <CardContent className="pt-6">
-            <PromoCodeInput />
+          <CardContent className="pt-0">
+            <PaymentsUnavailableNotice />
           </CardContent>
         </Card>
       )}

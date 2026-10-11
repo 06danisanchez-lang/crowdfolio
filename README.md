@@ -74,7 +74,6 @@ El CI de GitHub ejecuta todo esto en cada PR.
 
 | Función | Para qué |
 |---------|----------|
-| `apply-promo-code` | Canjea códigos promocionales (p. ej. `CROWDFOUNDER`) |
 | `check-subscription` | Estado de la suscripción en Stripe |
 | `create-checkout` | Abre el pago de Stripe |
 | `customer-portal` | Portal de Stripe para gestionar la suscripción |

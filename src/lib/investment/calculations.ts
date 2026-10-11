@@ -80,20 +80,55 @@ export function isDelayedWithoutExtraInterest(investment: DelayFields): boolean 
 }
 
 /**
+ * Capital que queda por devolver: lo invertido menos las devoluciones de capital
+ * registradas (pagos 'principal'). Nunca negativo.
+ */
+export function getOutstandingCapital(investment: Pick<Investment, 'amount' | 'payments'>): number {
+  const returned = (investment.payments ?? [])
+    .filter(p => p.type === 'principal')
+    .reduce((sum, p) => sum + p.amount, 0);
+  return Math.max(investment.amount - returned, 0);
+}
+
+/**
+ * Interés simple al tipo prometido, desde la fecha de inversión hasta `end`, sobre el
+ * capital pendiente: cada devolución parcial de capital (pago 'principal') baja la base
+ * desde su fecha. Sin devoluciones es amount × tipo × años, como siempre.
+ */
+export function calculateSimpleInterestOnOutstanding(
+  investment: Pick<Investment, 'amount' | 'expectedReturn' | 'investmentDate' | 'payments'>,
+  end: Date,
+): number {
+  const start = new Date(investment.investmentDate).getTime();
+  const endMs = end.getTime();
+  if (!(endMs > start)) return 0;
+  const rate = investment.expectedReturn / 100;
+  const returns = (investment.payments ?? [])
+    .filter(p => p.type === 'principal')
+    .map(p => ({ at: Math.max(new Date(p.date).getTime(), start), amount: p.amount }))
+    .filter(r => r.at < endMs)
+    .sort((a, b) => a.at - b.at);
+
+  let balance = investment.amount;
+  let from = start;
+  let interest = 0;
+  for (const r of returns) {
+    interest += balance * rate * ((r.at - from) / MS_PER_YEAR);
+    balance = Math.max(balance - r.amount, 0);
+    from = r.at;
+  }
+  interest += balance * rate * ((endMs - from) / MS_PER_YEAR);
+  return Math.max(interest, 0);
+}
+
+/**
  * Calcula el rendimiento total esperado de una inversión usando interés simple.
  * SOLO VÁLIDO para inversiones tipo 'bullet'.
  * Para periodic_fixed / amortizing, usar calculateExpectedReturnFromSchedule.
  */
 export function calculateInvestmentTotalReturn(investment: Investment): number {
-  const durationYears = getInvestmentDurationYears(
-    investment.investmentDate,
-    getAccrualEndDate(investment)
-  );
-  return calculateTotalReturnAmount(
-    investment.amount,
-    investment.expectedReturn,
-    durationYears
-  );
+  const accrualEnd = getAccrualEndDate(investment);
+  return calculateSimpleInterestOnOutstanding(investment, accrualEnd ? new Date(accrualEnd) : new Date());
 }
 
 /**
@@ -102,11 +137,8 @@ export function calculateInvestmentTotalReturn(investment: Investment): number {
  * Para periodic_fixed / amortizing, usar calculateExpectedReturnFromSchedule.
  */
 export function calculateInvestmentTotalReturnPercent(investment: Investment): number {
-  const durationYears = getInvestmentDurationYears(
-    investment.investmentDate,
-    getAccrualEndDate(investment)
-  );
-  return calculateTotalReturnPercent(investment.expectedReturn, durationYears);
+  if (investment.amount <= 0) return 0;
+  return (calculateInvestmentTotalReturn(investment) / investment.amount) * 100;
 }
 
 /**
@@ -225,11 +257,10 @@ export function calculateAccruedReturn(
 
   // bullet, equity plusvalia/liquidacion: interés simple proporcional, hasta la
   // fecha en que deja de generar rentabilidad (la original si es un retraso).
-  const start = new Date(inv.investmentDate);
+  // Sobre el capital pendiente: las devoluciones parciales bajan la base.
   const accrualEnd = getAccrualEndDate(inv);
   const end = today < new Date(accrualEnd ?? today) ? today : new Date(accrualEnd!);
-  const yearsElapsed = Math.max((end.getTime() - start.getTime()) / (1000 * 60 * 60 * 24 * 365.25), 0);
-  return inv.amount * (inv.expectedReturn / 100) * yearsElapsed;
+  return calculateSimpleInterestOnOutstanding(inv, end);
 }
 
 export function calculateRemainingReturn(

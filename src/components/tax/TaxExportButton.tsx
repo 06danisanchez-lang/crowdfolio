@@ -12,6 +12,7 @@ import {
 } from '@/components/ui/dropdown-menu';
 import { TaxSummary, TaxExpense, TAX_EXPENSE_CATEGORIES, EnrichedPayment } from '@/types/tax';
 import type { DefaultLossYearSummary, DefaultLossImputationRow } from '@/lib/tax/defaultLossSummary';
+import { countInstallments, MissingIncome, NO_MISSING_INCOME } from '@/lib/tax/missingIncome';
 import type { ManualGppOperation } from '@/lib/tax/manualGppOperations';
 import { getTaxBreakdown, formatCurrency, formatPercentage } from '@/lib/tax/calculations';
 import { toast } from '@/hooks/use-toast';
@@ -43,6 +44,8 @@ interface ExtendedTaxExportButtonProps {
   defaultLossSummary: DefaultLossYearSummary;
   /** Cierres equity con ganancia/pérdida patrimonial a declarar manualmente. */
   manualGppOperations?: ManualGppOperation[];
+  /** Lo que le falta al informe (ver lib/tax/missingIncome.ts). Si está incompleto, se exporta como borrador. */
+  missingIncome?: MissingIncome;
   userEmail: string;
   onProRequired?: () => void;
   isPro?: boolean;
@@ -78,6 +81,7 @@ export function TaxExportButton({
   enrichedPayments,
   defaultLossSummary,
   manualGppOperations = [],
+  missingIncome = NO_MISSING_INCOME,
   userEmail,
   onProRequired,
   isPro = true,
@@ -85,6 +89,13 @@ export function TaxExportButton({
   const { t } = useLanguage();
   const [isExporting, setIsExporting] = useState(false);
   const foreignWithholdingEur = summary.foreignIncome?.foreignWithholdingEur ?? 0;
+  // Faltan cobros que el usuario dice haber recibido: el documento no puede pasar por definitivo.
+  const isDraft = missingIncome.isIncomplete;
+  const draftCount = countInstallments(missingIncome.assumed);
+  const draftNotice = `BORRADOR · INCOMPLETO: faltan los cobros de ${draftCount === 1 ? '1 cuota' : `${draftCount} cuotas`} de intereses que marcaste como cobradas. No lo presentes hasta registrarlos.`;
+  const fileBase = `Resumen_IRPF_${summary.year}${isDraft ? '_BORRADOR' : ''}`;
+  const missingLines = (items: MissingIncome['assumed']) =>
+    items.map(i => `${i.projectName}: ${i.dates.map(d => d.split('-').reverse().join('/')).join(', ')}`);
 
   const hasAnyDefaultLoss =
     defaultLossSummary.declarable.rows.length > 0 ||
@@ -269,7 +280,17 @@ export function TaxExportButton({
       wsR.columns = [{ width: 45 }, { width: 24 }];
       wsR.views = [{ state: 'frozen', ySplit: 1 }];
 
-      addTitleRows(wsR, `RESUMEN FISCAL IRPF ${summary.year}`, BRANDING, 2);
+      addTitleRows(wsR, `RESUMEN FISCAL IRPF ${summary.year}${isDraft ? ' · BORRADOR' : ''}`, BRANDING, 2);
+      if (isDraft) {
+        const b = wsR.addRow([`${draftNotice} Ver la hoja «Faltan datos».`]);
+        b.height = 36;
+        wsR.mergeCells(b.number, 1, b.number, 2);
+        const c = wsR.getCell(b.number, 1);
+        c.font = { bold: true, color: { argb: 'FFB91C1C' } };
+        c.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFFEE2E2' } };
+        c.alignment = { wrapText: true, vertical: 'middle' };
+        wsR.addRow([]);
+      }
 
       const addSummaryRow = (label: string, value: number, valStyle: XStyle) => {
         const row = wsR.addRow([label, value]);
@@ -644,18 +665,45 @@ export function TaxExportButton({
       }
 
       // ── Download ──────────────────────────────────────────────────────────
+      // ── Faltan datos ─────────────────────────────────────────────────────
+      if (missingIncome.assumed.length > 0 || missingIncome.unconfirmed.length > 0) {
+        const wsF = workbook.addWorksheet('Faltan datos');
+        wsF.properties.tabColor = { argb: 'FFB91C1C' };
+        wsF.columns = [{ width: 40 }, { width: 70 }];
+        addTitleRows(wsF, `LO QUE FALTA EN ESTE INFORME (${summary.year})`, BRANDING, 2);
+        const section = (title: string, note: string, items: MissingIncome['assumed']) => {
+          if (items.length === 0) return;
+          const h = wsF.addRow([title]);
+          wsF.mergeCells(h.number, 1, h.number, 2);
+          applyStyle(wsF.getCell(h.number, 1), S.sectionHeader);
+          const n = wsF.addRow([note]);
+          wsF.mergeCells(n.number, 1, n.number, 2);
+          n.getCell(1).alignment = { wrapText: true };
+          n.height = 30;
+          addTableHeader(wsF, ['Inversión', 'Cuotas (fecha prevista)'], 2);
+          for (const item of items) wsF.addRow([item.projectName, item.dates.map(d => d.split('-').reverse().join('/')).join(', ')]);
+          wsF.addRow([]);
+        };
+        section('Cuotas cobradas sin registrar (el informe está incompleto)',
+          'Marcadas como cobradas, pero sin importe ni retención: sus intereses NO están sumados en este informe.',
+          missingIncome.assumed);
+        section('Cuotas vencidas sin cobro registrado (aviso)',
+          'Para Crowdfolio no han llegado (retrasos), así que no suman. Si las cobraste, regístralas y vuelve a exportar.',
+          missingIncome.unconfirmed);
+      }
+
       const buffer = await workbook.xlsx.writeBuffer();
       const blob = new Blob([buffer], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
       const url = URL.createObjectURL(blob);
       const a = document.createElement('a');
       a.href = url;
-      a.download = `Resumen_IRPF_${summary.year}.xlsx`;
+      a.download = `${fileBase}.xlsx`;
       document.body.appendChild(a);
       a.click();
       document.body.removeChild(a);
       URL.revokeObjectURL(url);
 
-      toast({ title: 'Excel generado', description: `Archivo Resumen_IRPF_${summary.year}.xlsx descargado correctamente.` });
+      toast({ title: 'Excel generado', description: `Archivo ${fileBase}.xlsx descargado correctamente.` });
     } catch (error) {
       console.error('Error exporting Excel:', error);
       toast({ title: 'Error', description: 'No se pudo generar el archivo Excel.', variant: 'destructive' });
@@ -692,6 +740,35 @@ export function TaxExportButton({
       doc.setTextColor(0, 0, 0);
 
       yPos += 15;
+
+      // ── Borrador: lo que falta ───────────────────────────────────────────────
+      const drawMissing = (title: string, note: string, items: MissingIncome['assumed'], color: [number, number, number]) => {
+        if (items.length === 0) return;
+        const lines = [
+          ...doc.splitTextToSize(note, pageWidth - 36),
+          ...missingLines(items).slice(0, 12).flatMap(l => doc.splitTextToSize(`• ${l}`, pageWidth - 36)),
+          ...(items.length > 12 ? [`… y ${items.length - 12} inversiones más`] : []),
+        ];
+        const h = 10 + lines.length * 4.5;
+        doc.setDrawColor(...color);
+        doc.setLineWidth(0.6);
+        doc.rect(14, yPos, pageWidth - 28, h);
+        doc.setTextColor(...color);
+        doc.setFontSize(10);
+        doc.setFont('helvetica', 'bold');
+        doc.text(title, 18, yPos + 6);
+        doc.setFont('helvetica', 'normal');
+        doc.setFontSize(8.5);
+        doc.text(lines, 18, yPos + 11);
+        doc.setTextColor(0, 0, 0);
+        yPos += h + 8;
+      };
+      if (isDraft) {
+        drawMissing('BORRADOR · INCOMPLETO', draftNotice, missingIncome.assumed, [185, 28, 28]);
+      }
+      drawMissing('Aviso: cuotas vencidas sin cobro registrado',
+        'Para Crowdfolio no han llegado (retrasos), así que no suman. Si las cobraste, regístralas y vuelve a exportar.',
+        missingIncome.unconfirmed, [120, 120, 120]);
 
       // ── Resumen General ──────────────────────────────────────────────────────
       doc.setFontSize(14);
@@ -1137,9 +1214,22 @@ export function TaxExportButton({
         pageWidth / 2, footerY + 4, { align: 'center' }
       );
 
-      doc.save(`Resumen_IRPF_${summary.year}.pdf`);
+      if (isDraft) {
+        const pages = doc.getNumberOfPages();
+        for (let i = 1; i <= pages; i++) {
+          doc.setPage(i);
+          const w = doc.internal.pageSize.getWidth();
+          doc.setFontSize(9);
+          doc.setFont('helvetica', 'bold');
+          doc.setTextColor(185, 28, 28);
+          doc.text(`BORRADOR · INCOMPLETO · faltan cobros de ${summary.year}`, w - 10, 8, { align: 'right' });
+        }
+        doc.setTextColor(0, 0, 0);
+      }
 
-      toast({ title: 'PDF generado', description: `Archivo Resumen_IRPF_${summary.year}.pdf descargado correctamente.` });
+      doc.save(`${fileBase}.pdf`);
+
+      toast({ title: 'PDF generado', description: `Archivo ${fileBase}.pdf descargado correctamente.` });
     } catch (error) {
       console.error('Error exporting PDF:', error);
       toast({ title: 'Error', description: 'No se pudo generar el archivo PDF.', variant: 'destructive' });

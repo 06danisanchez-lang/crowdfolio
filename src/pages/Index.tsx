@@ -572,7 +572,7 @@ const Index = () => {
               <h1 className="text-xl sm:text-2xl lg:text-3xl font-bold">{t('tax.title')}</h1>
               <p className="text-muted-foreground">{t('tax.subtitle')}</p>
             </div>
-            <TaxDashboard isPro={isPro} onProRequired={() => openUpgradeModal('export_irpf')} onOpenInvestment={openInvestmentDetail} onViewIncomplete={() => handleViewChange('investments')} />
+            <TaxDashboard isPro={isPro} onProRequired={() => openUpgradeModal('export_irpf')} onOpenInvestment={openInvestmentDetail} onViewIncomplete={() => handleViewChange('investments')} onViewPayments={() => handleViewChange('payments')} />
           </div>
         );
       case 'profile':

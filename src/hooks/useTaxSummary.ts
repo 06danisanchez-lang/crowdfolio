@@ -14,6 +14,8 @@ import { findIncomeWithoutWithholding } from '@/lib/tax/withholding';
 import { mapFxColumns } from '@/lib/investment/mapInvestmentRow';
 import { computeExchangeDifferences, summarizeForeignIncome } from '@/lib/currency/fx';
 import type { ManualGppOperation } from '@/lib/tax/manualGppOperations';
+import { findMissingIncome, MissingIncome, MissingIncomeInvestment, NO_MISSING_INCOME } from '@/lib/tax/missingIncome';
+import { toDateOnlyString } from '@/lib/dateOnly';
 
 const FETCH_TIMEOUT_MS = 15_000;
 
@@ -32,6 +34,7 @@ interface PaymentWithInvestment {
 
 interface InvestmentRow {
   id: string;
+  assumed_paid_until?: string | null;
   platform: string;
   custom_platform_name: string | null;
   project_name: string;
@@ -121,6 +124,7 @@ export function useTaxSummary(year: number) {
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [excludedIncompleteCount, setExcludedIncompleteCount] = useState(0);
+  const [missingIncome, setMissingIncome] = useState<MissingIncome>(NO_MISSING_INCOME);
   const [enrichedPayments, setEnrichedPayments] = useState<EnrichedPayment[]>([]);
   const [retryCount, setRetryCount] = useState(0);
   const requestIdRef = useRef(0);
@@ -205,6 +209,7 @@ export function useTaxSummary(year: number) {
           setDefaultedPrincipalPayments({});
           setCompletedEquityPayments({});
           setExcludedIncompleteCount(excludedCount);
+          setMissingIncome(NO_MISSING_INCOME);
           setIsLoading(false);
           return;
         }
@@ -269,6 +274,42 @@ export function useTaxSummary(year: number) {
           }
         }
 
+        // Lo que le falta al informe: cuotas de intereses del año sin cobro registrado
+        // (ver lib/tax/missingIncome.ts). Calendario y cobros de TODAS las periódicas
+        // y amortizables (también las cerradas), sin filtrar por año para emparejar bien.
+        const periodicRows = allRows.filter(i =>
+          (i.income_model === 'periodic_fixed' || i.income_model === 'amortizing') && i.status !== 'draft' && i.status !== 'defaulted');
+        let nextMissing: MissingIncome = NO_MISSING_INCOME;
+        if (periodicRows.length > 0) {
+          const ids = periodicRows.map(i => i.id);
+          const [{ data: mSched, error: mSchedError }, { data: mPays, error: mPaysError }] = await Promise.all([
+            supabase.from('investment_schedule').select('investment_id, expected_date, expected_amount, type').in('investment_id', ids),
+            supabase.from('payments').select('id, investment_id, date, amount, type').in('investment_id', ids),
+          ]);
+          if (mSchedError) throw mSchedError;
+          if (mPaysError) throw mPaysError;
+          const schedules: Record<string, InvestmentScheduleEntry[]> = {};
+          for (const row of mSched || []) {
+            (schedules[row.investment_id] ??= []).push({
+              investmentId: row.investment_id, expectedDate: row.expected_date,
+              expectedAmount: Number(row.expected_amount), type: row.type as InvestmentScheduleEntry['type'], status: 'pending',
+            });
+          }
+          const paysBy: Record<string, MissingIncomeInvestment['payments']> = {};
+          for (const p of mPays || []) {
+            (paysBy[p.investment_id] ??= []).push({ id: p.id, date: p.date, amount: Number(p.amount), type: p.type as Payment['type'] });
+          }
+          nextMissing = findMissingIncome({
+            year,
+            today: toDateOnlyString(new Date()),
+            schedules,
+            investments: periodicRows.map(i => ({
+              id: i.id, projectName: i.project_name, incomeModel: i.income_model as MissingIncomeInvestment['incomeModel'],
+              status: i.status, assumedPaidUntil: i.assumed_paid_until ?? null, payments: paysBy[i.id] ?? [],
+            })),
+          });
+        }
+
         // Fetch ALL payments for the year — no completeness filter
         const startDate = `${year}-01-01`;
         const endDate = `${year}-12-31`;
@@ -297,6 +338,7 @@ export function useTaxSummary(year: number) {
         }));
 
         setExcludedIncompleteCount(excludedCount);
+        setMissingIncome(nextMissing);
         setProjectionInvestments(trackingReadyActive);
         setProjectionSchedules(scheduleMap);
         setInvestmentRows(allRows);
@@ -528,7 +570,7 @@ export function useTaxSummary(year: number) {
     defaultLossSummary,
     manualGppOperations,
     notAssessedDefaultedInvestments,
-    error, excludedIncompleteCount,
+    error, excludedIncompleteCount, missingIncome,
     isLoading: isLoading || expensesLoading, availableYears,
     refetch: () => setRetryCount(c => c + 1),
   };

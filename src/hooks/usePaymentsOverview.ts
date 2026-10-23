@@ -1,6 +1,7 @@
 import { useMemo } from 'react';
 import { useActiveInvestments } from './useActiveInvestments';
 import { getPendingScheduleEntries } from '@/lib/investment/pendingPayments';
+import { TargetInvestment } from '@/lib/payments/importPayments';
 import { Payment, Platform, InvestmentScheduleEntry, PLATFORMS } from '@/types/investment';
 
 export interface ReceivedPaymentRow {
@@ -40,7 +41,25 @@ export interface PlatformOption {
  * inherited automatically — locked investments' payments/schedule never surface here.
  */
 export function usePaymentsOverview() {
-  const { investments, scheduleMap, isLoading, error, isLimited, lockedCount } = useActiveInvestments();
+  const {
+    investments, incompleteInvestments, scheduleMap, isLoading, error, isLimited, lockedCount, importPayments,
+  } = useActiveInvestments();
+
+  // Inversiones a las que se pueden importar cobros: las visibles en el plan y los borradores.
+  const importTargets = useMemo<TargetInvestment[]>(
+    () => [...investments, ...incompleteInvestments].map(inv => ({
+      id: inv.id,
+      platform: inv.platform,
+      customPlatformName: inv.customPlatformName,
+      projectName: inv.projectName,
+      investmentDate: inv.investmentDate,
+      incomeModel: inv.incomeModel,
+      status: inv.status,
+      currency: inv.currency,
+      payments: inv.payments.map(p => ({ date: p.date, amount: p.amount, type: p.type })),
+    })),
+    [investments, incompleteInvestments],
+  );
 
   const received = useMemo<ReceivedPaymentRow[]>(() => {
     const rows: ReceivedPaymentRow[] = [];
@@ -128,5 +147,7 @@ export function usePaymentsOverview() {
     error,
     isLimited,
     lockedCount,
+    importTargets,
+    importPayments,
   };
 }

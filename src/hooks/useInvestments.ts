@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
-import { Investment, InvestmentSummary, Platform, InvestmentStatus, Payment, DraftInvestment, IncomeModel, PaymentFrequency, PrincipalReturnType, EquityType, InvestmentScheduleEntry, ImportInvestmentInput } from '@/types/investment';
+import { Investment, InvestmentSummary, Platform, InvestmentStatus, Payment, DraftInvestment, IncomeModel, PaymentFrequency, PrincipalReturnType, EquityType, InvestmentScheduleEntry, ImportInvestmentInput, PaymentType } from '@/types/investment';
 import { getAccrualEndDate } from '@/lib/investment/calculations';
 import { isInvestmentComplete } from '@/lib/investment/completeness';
 import { generateScheduleWithDelay } from '@/lib/investment/scheduleGenerator';
@@ -14,6 +14,9 @@ import { isForeignCurrency, isMissingForeignData } from '@/lib/currency/fx';
 import { computePortfolioSummary } from '@/lib/investment/portfolioSummary';
 
 const FETCH_TIMEOUT_MS = 15_000;
+
+/** Evento de ventana: los datos de inversiones han cambiado fuera de esta copia del hook. */
+export const INVESTMENTS_UPDATED_EVENT = 'investments-updated';
 
 export function useInvestments() {
   const { user } = useAuth();
@@ -157,6 +160,14 @@ export function useInvestments() {
     fetchInvestments();
     // eslint-disable-next-line react-hooks/exhaustive-deps
     return () => { ++requestIdRef.current; };
+  }, [fetchInvestments]);
+
+  // Varias pantallas tienen su propia copia de las inversiones (Inicio, Cobros…).
+  // Tras una importación se avisa a todas para que vuelvan a leer los datos.
+  useEffect(() => {
+    const onUpdated = () => { fetchInvestments(); };
+    window.addEventListener(INVESTMENTS_UPDATED_EVENT, onUpdated);
+    return () => window.removeEventListener(INVESTMENTS_UPDATED_EVENT, onUpdated);
   }, [fetchInvestments]);
 
   // ── 5A: Ternary separation — incomplete / active / completed ──
@@ -584,6 +595,36 @@ export function useInvestments() {
     return true;
   }, []);
 
+  /**
+   * Guarda cobros importados (ver lib/payments/importPayments.ts): en bruto y
+   * con la retención aparte, ya comprobados. Devuelve cuántos se han guardado.
+   */
+  const importPayments = useCallback(async (rows: {
+    investmentId: string; date: string; amount: number; type: PaymentType; withholdingApplied: number; notes?: string;
+  }[]): Promise<{ inserted: number; failed: number }> => {
+    if (!user) return { inserted: 0, failed: rows.length };
+    const toRow = (r: typeof rows[number]) => ({
+      investment_id: r.investmentId, date: r.date, amount: r.amount, type: r.type,
+      withholding_applied: r.withholdingApplied, notes: r.notes || null,
+    });
+    let inserted = 0;
+    const CHUNK = 200;
+    for (let i = 0; i < rows.length; i += CHUNK) {
+      const chunk = rows.slice(i, i + CHUNK);
+      const { error } = await supabase.from('payments').insert(chunk.map(toRow));
+      if (!error) { inserted += chunk.length; continue; }
+      // Un lote se rechaza entero si falla una fila: de una en una para no perder las demás.
+      console.error('Error importing payments (batch), retrying one by one:', error);
+      for (const r of chunk) {
+        const { error: rowError } = await supabase.from('payments').insert(toRow(r));
+        if (rowError) console.error('Error importing payment:', rowError);
+        else inserted++;
+      }
+    }
+    window.dispatchEvent(new Event(INVESTMENTS_UPDATED_EVENT));
+    return { inserted, failed: rows.length - inserted };
+  }, [user]);
+
   const deletePayment = useCallback(async (investmentId: string, paymentId: string) => {
     const { error } = await supabase.from('payments').delete().eq('id', paymentId);
     if (error) { console.error('Error deleting payment:', error); return; }
@@ -667,9 +708,9 @@ export function useInvestments() {
         if (paymentsError) console.error('Error importing payments:', paymentsError);
       }
     }
-    await fetchInvestments();
+    window.dispatchEvent(new Event(INVESTMENTS_UPDATED_EVENT));
     return { inserted: insertedIds.size, failed: withIds.length - insertedIds.size };
-  }, [user, fetchInvestments, saveScheduleForInvestment]);
+  }, [user, saveScheduleForInvestment]);
 
   const exportInvestments = useCallback(() => JSON.stringify(investments, null, 2), [investments]);
 
@@ -692,7 +733,7 @@ export function useInvestments() {
     incompleteInvestments, incompleteCount, allInvestmentsCount,
     isLoading, error, summary, scheduleMap,
     addInvestment, addDraftInvestment, updateInvestment, deleteInvestment,
-    addPayment, closeEquityInvestment, updatePaymentWithholding, deletePayment, importInvestments,
+    addPayment, closeEquityInvestment, updatePaymentWithholding, deletePayment, importInvestments, importPayments,
     exportInvestments, clearAllInvestments, refetch: fetchInvestments,
   };
 }

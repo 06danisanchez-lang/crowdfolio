@@ -214,6 +214,7 @@ export function InvestmentDetail({ investment, schedule = [], onClose, onUpdate,
       matched: { key: 'investments.schedule.status.matched', className: 'bg-status-active text-white' },
       missed: { key: 'investments.schedule.status.missed', className: 'bg-status-defaulted text-white' },
       skipped: { key: 'investments.schedule.status.skipped', className: 'bg-muted text-muted-foreground' },
+      assumed: { key: 'investments.schedule.status.assumed', className: 'bg-amber-100 text-amber-900 dark:bg-amber-900/40 dark:text-amber-200' },
     };
     const cfg = map[status] || map.pending;
     return <Badge className={cn('text-xs', cfg.className)}>{t(cfg.key)}</Badge>;
@@ -659,6 +660,12 @@ export function InvestmentDetail({ investment, schedule = [], onClose, onUpdate,
           {sortedSchedule.length > 0 && (
             <div>
               <h4 className="mb-3 font-semibold">{t('investments.detail.expectedSchedule')}</h4>
+              <PastInstallmentsNote
+                assumedPaidUntil={investment.assumedPaidUntil}
+                pastPendingCount={sortedSchedule.filter(e => (e.status ?? 'pending') === 'pending' && e.expectedDate < toDateOnlyString(new Date())).length}
+                onMark={() => onUpdate(investment.id, { assumedPaidUntil: toDateOnlyString(new Date()) })}
+                onUndo={() => onUpdate(investment.id, { assumedPaidUntil: null })}
+              />
               <div className="rounded-lg border bg-card">
                 <Table>
                   <TableHeader>
@@ -1126,5 +1133,36 @@ export function InvestmentDetail({ investment, schedule = [], onClose, onUpdate,
         </AlertDialogContent>
       </AlertDialog>
     </Dialog>
+  );
+}
+
+/**
+ * Cuotas pasadas sin cobro registrado: el usuario puede decir que ya le han
+ * llegado («cobrada, falta el detalle») o deshacerlo. No crea ningún cobro.
+ */
+function PastInstallmentsNote({ assumedPaidUntil, pastPendingCount, onMark, onUndo }: {
+  assumedPaidUntil?: string | null;
+  pastPendingCount: number;
+  onMark: () => void;
+  onUndo: () => void;
+}) {
+  if (assumedPaidUntil) {
+    return (
+      <div className="mb-3 rounded-md border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-900 dark:border-amber-800 dark:bg-amber-950/30 dark:text-amber-200">
+        Las cuotas hasta el {format(parseISO(assumedPaidUntil), 'dd/MM/yyyy')} están marcadas como cobradas, pero falta registrar
+        sus cobros: hasta entonces el informe fiscal las cuenta como datos que faltan. Puedes importarlos desde Cobros.{' '}
+        <button type="button" className="font-medium underline underline-offset-2" onClick={onUndo}>Deshacer</button>
+      </div>
+    );
+  }
+  if (pastPendingCount === 0) return null;
+  return (
+    <div className="mb-3 flex flex-col gap-2 rounded-md border px-3 py-2 text-xs text-muted-foreground sm:flex-row sm:items-center sm:justify-between">
+      <span>
+        {pastPendingCount === 1 ? 'Hay 1 cuota pasada' : `Hay ${pastPendingCount} cuotas pasadas`} sin cobro registrado.
+        Si ya te {pastPendingCount === 1 ? 'ha llegado' : 'han llegado todas'}, márcalo y registra el detalle cuando puedas.
+      </span>
+      <Button size="sm" variant="outline" className="shrink-0" onClick={onMark}>Ya las he cobrado</Button>
+    </div>
   );
 }

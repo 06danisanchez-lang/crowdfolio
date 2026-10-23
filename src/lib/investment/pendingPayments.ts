@@ -28,7 +28,8 @@ export function getPendingScheduleEntries(
   const result: PendingScheduleEntry[] = [];
 
   for (const entry of schedule) {
-    if (entry.status === 'matched' || entry.status === 'skipped') continue;
+    // 'assumed': cobrada según el usuario, falta registrar el cobro (no es un retraso).
+    if (entry.status === 'matched' || entry.status === 'skipped' || entry.status === 'assumed') continue;
 
     const entryDate = parseISO(entry.expectedDate);
 

@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { useLanguage } from '@/contexts/LanguageContext';
 import { format, parseISO } from 'date-fns';
 import { es } from 'date-fns/locale';
-import { Plus, Trash2, CalendarIcon, Pencil, Check, X } from 'lucide-react';
+import { Plus, Trash2, CalendarIcon, Pencil, Check, X, ChevronRight } from 'lucide-react';
 import { Investment, Payment, PLATFORMS, STATUS_OPTIONS, InvestmentScheduleEntry, IncomeModel, InvestmentStatus } from '@/types/investment';
 import { toDateOnlyString } from '@/lib/dateOnly';
 import { parseSpanishNumber, formatSpanishNumber } from '@/lib/investment/parseSpanishNumber';
@@ -95,9 +95,11 @@ interface InvestmentDetailProps {
   onOpenCloseModal?: (id: string) => void;
   /** Abre DefaultLossQuestionnaire en modo 'update' para esta inversión (Fase 4). */
   onUpdateFiscalStatus?: (investment: Investment) => void;
+  /** Abre Cobros filtrado por esta inversión (recibidos y esperados). */
+  onViewPayments?: (investmentId: string) => void;
 }
 
-export function InvestmentDetail({ investment, schedule = [], onClose, onUpdate, onDelete, onAddPayment, onDeletePayment, onUpdatePaymentWithholding, onOpenCloseModal, onUpdateFiscalStatus }: InvestmentDetailProps) {
+export function InvestmentDetail({ investment, schedule = [], onClose, onUpdate, onDelete, onAddPayment, onDeletePayment, onUpdatePaymentWithholding, onOpenCloseModal, onUpdateFiscalStatus, onViewPayments }: InvestmentDetailProps) {
   const { t } = useLanguage();
   const [showAddPayment, setShowAddPayment] = useState(false);
   const [paymentDate, setPaymentDate] = useState<Date>(new Date());
@@ -681,6 +683,13 @@ export function InvestmentDetail({ investment, schedule = [], onClose, onUpdate,
                         </TableCell>
                         <TableCell>
                           {getScheduleStatusBadge(entry.status || 'pending')}
+                          {entry.status === 'matched' && (() => {
+                            // Qué cobro la cubre (solo la fecha: el importe del cobro no es el de la cuota).
+                            const paid = entry.matchedPaymentId ? investment.payments.find(p => p.id === entry.matchedPaymentId) : undefined;
+                            return paid ? (
+                              <p className="mt-1 text-xs text-muted-foreground">Cobro del {format(parseISO(paid.date), 'dd/MM/yyyy')}</p>
+                            ) : null;
+                          })()}
                         </TableCell>
                       </TableRow>
                     ))}
@@ -694,10 +703,18 @@ export function InvestmentDetail({ investment, schedule = [], onClose, onUpdate,
           <div>
             <div className="mb-3 flex items-center justify-between">
               <h4 className="font-semibold">{t('investments.detail.payments')}</h4>
-              <Button size="sm" variant="outline" onClick={() => setShowAddPayment(true)}>
-                <Plus className="mr-2 h-4 w-4" />
-                {t('investments.detail.addPayment')}
-              </Button>
+              <div className="flex items-center gap-2">
+                {onViewPayments && (
+                  <Button size="sm" variant="ghost" onClick={() => onViewPayments(investment.id)}>
+                    Ver en Cobros
+                    <ChevronRight className="ml-1 h-4 w-4" />
+                  </Button>
+                )}
+                <Button size="sm" variant="outline" onClick={() => setShowAddPayment(true)}>
+                  <Plus className="mr-2 h-4 w-4" />
+                  {t('investments.detail.addPayment')}
+                </Button>
+              </div>
             </div>
 
             {showAddPayment && (

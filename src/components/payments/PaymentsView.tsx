@@ -1,7 +1,7 @@
 import { useCallback, useMemo, useState } from 'react';
 import { format, parseISO, startOfDay, endOfDay } from 'date-fns';
 import { es } from 'date-fns/locale';
-import { Banknote, CalendarClock, Lock, Crown, Filter } from 'lucide-react';
+import { Banknote, CalendarClock, Lock, Crown, Filter, ChevronRight } from 'lucide-react';
 import { useLanguage } from '@/contexts/LanguageContext';
 import { usePaymentsOverview, ReceivedPaymentRow, ExpectedPaymentRow } from '@/hooks/usePaymentsOverview';
 import { Payment, InvestmentScheduleEntry } from '@/types/investment';
@@ -24,9 +24,13 @@ import { ImportPaymentsDialog } from './ImportPaymentsDialog';
 
 interface PaymentsViewProps {
   onProRequired?: () => void;
+  /** Abre la ficha de la inversión de un cobro. */
+  onOpenInvestment?: (investmentId: string) => void;
+  /** Llega filtrada a los cobros de esta inversión (desde su ficha). */
+  initialInvestmentId?: string | null;
 }
 
-export function PaymentsView({ onProRequired }: PaymentsViewProps) {
+export function PaymentsView({ onProRequired, onOpenInvestment, initialInvestmentId }: PaymentsViewProps) {
   const { t } = useLanguage();
   const {
     received,
@@ -42,7 +46,7 @@ export function PaymentsView({ onProRequired }: PaymentsViewProps) {
   } = usePaymentsOverview();
 
   const [platformFilter, setPlatformFilter] = useState<string>('all');
-  const [investmentFilter, setInvestmentFilter] = useState<string>('all');
+  const [investmentFilter, setInvestmentFilter] = useState<string>(initialInvestmentId ?? 'all');
   const [dateFrom, setDateFrom] = useState('');
   const [dateTo, setDateTo] = useState('');
 
@@ -230,7 +234,7 @@ export function PaymentsView({ onProRequired }: PaymentsViewProps) {
                       {group.rows.map((row: ReceivedPaymentRow) => (
                         <div key={row.id} className="flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-4 rounded-md border p-3">
                           <div className="min-w-0 flex-1">
-                            <p className="truncate font-medium">{row.investmentName}</p>
+                            <InvestmentLink name={row.investmentName} onOpen={onOpenInvestment && (() => onOpenInvestment(row.investmentId))} />
                             <div className="mt-1 flex flex-wrap items-center gap-1 text-xs text-muted-foreground">
                               <span>{getPlatformLabel(row.platform, row.customPlatformName)}</span>
                               <span>· {format(parseISO(row.date), 'dd/MM/yyyy', { locale: es })}</span>
@@ -275,7 +279,7 @@ export function PaymentsView({ onProRequired }: PaymentsViewProps) {
                       )}
                     >
                       <div className="min-w-0 flex-1">
-                        <p className="truncate font-medium">{row.investmentName}</p>
+                        <InvestmentLink name={row.investmentName} onOpen={onOpenInvestment && (() => onOpenInvestment(row.investmentId))} />
                         <div className="mt-1 flex flex-wrap items-center gap-1 text-xs text-muted-foreground">
                           <span>{getPlatformLabel(row.platform, row.customPlatformName)}</span>
                           <span>· {format(parseISO(row.date), 'dd/MM/yyyy', { locale: es })}</span>
@@ -301,5 +305,21 @@ export function PaymentsView({ onProRequired }: PaymentsViewProps) {
         </TabsContent>
       </Tabs>
     </div>
+  );
+}
+
+/** Nombre de la inversión; si se puede, enlace a su ficha. */
+function InvestmentLink({ name, onOpen }: { name: string; onOpen?: () => void }) {
+  if (!onOpen) return <p className="truncate font-medium">{name}</p>;
+  return (
+    <button
+      type="button"
+      onClick={onOpen}
+      className="group inline-flex max-w-full items-center gap-1 text-left font-medium hover:text-[#253765] hover:underline underline-offset-2"
+      title="Ver la inversión"
+    >
+      <span className="truncate">{name}</span>
+      <ChevronRight className="h-3.5 w-3.5 shrink-0 text-muted-foreground group-hover:text-[#253765]" />
+    </button>
   );
 }

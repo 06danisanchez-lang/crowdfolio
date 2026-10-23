@@ -14,8 +14,12 @@ import { normalizeText, SheetRow } from './importSheet';
  * Solo se guarda lo que se entiende sin dudas. Lo dudoso (un número que puede
  * leerse de dos formas, una fecha que no existe, un tipo de rendimiento que no
  * reconocemos) se deja VACÍO y la inversión queda como borrador para que el
- * usuario lo complete. Nunca se rellena con un valor inventado (0 €, la fecha
- * de hoy…): no se distinguiría de un dato real y la fecha cuenta para el IRPF.
+ * usuario lo complete; el valor original va a las notas para que lo tenga a
+ * mano. Nunca se rellena con un valor inventado (0 €, la fecha de hoy…): no se
+ * distinguiría de un dato real y la fecha cuenta para el IRPF.
+ *
+ * Los valores «para todo el archivo» (plataforma, tipo, frecuencia) los elige
+ * el usuario en la pantalla de importación: son datos suyos, no supuestos.
  */
 
 export type RawRow = Record<string, string>;
@@ -47,8 +51,34 @@ export interface ImportCandidate {
   missing: string[];
   /** Avisos de la fila (p. ej. un valor que no se ha entendido). */
   warnings: string[];
-  /** Ya existe en la cartera (misma plataforma, nombre, importe y fecha). */
+  /** Ya existe en la cartera. */
   duplicate: boolean;
+  /** El archivo dice que está finalizada (devuelta, cobrada, cerrada…). */
+  finished: boolean;
+  /** Su vencimiento ya ha pasado. */
+  pastDue: boolean;
+}
+
+export type DateOrder = 'dmy' | 'mdy';
+
+export interface BuildOptions {
+  /** Plataforma para las filas que no la indican. */
+  defaultPlatform?: { platform: Platform; customPlatformName?: string } | null;
+  /** Tipo de rendimiento para las filas que no lo indican (o no se entiende). */
+  defaultIncomeModel?: IncomeModel | null;
+  /** Frecuencia para las periódicas o amortizables que no la indican. */
+  defaultFrequency?: PaymentFrequency | null;
+  /** Orden de las fechas escritas como texto. Por defecto día/mes (España). */
+  dateOrder?: DateOrder;
+  /** Nombres de plataformas «Otra» que ya usa el usuario: se reutiliza su forma de escribirlas. */
+  knownCustomPlatforms?: string[];
+  /**
+   * La columna de rentabilidad viene en tanto por uno (0,09 = 9 %): todas sus
+   * cifras están entre 0 y 1. Ver detectFractionReturns.
+   */
+  returnsAsFraction?: boolean;
+  /** Hoy, 'YYYY-MM-DD' (para las pruebas). */
+  today?: string;
 }
 
 // ─── Valores reconocidos ─────────────────────────────────────────────────────
@@ -81,6 +111,14 @@ const PRINCIPAL_WORDS: Record<string, PrincipalReturnType> = {
   'unknown': 'unknown', 'desconocido': 'unknown',
 };
 
+/** Estados del archivo que significan que la inversión ya terminó. */
+const FINISHED_STEMS = [
+  'finaliz', 'cerrad', 'devuelt', 'complet', 'cobrad', 'amortizad', 'vendid', 'liquidad', 'terminad',
+  'reembols', 'repaid', 'finish', 'closed', 'matured',
+];
+/** Estados que indican impago: se importa, pero el impago se registra en la ficha (cuestionario fiscal). */
+const DEFAULT_STEMS = ['impago', 'default', 'fallid', 'moros', 'incumpl', 'concurso', 'ejecucion judicial'];
+
 function lookup<T>(table: Record<string, T>, raw: string | undefined): T | undefined {
   const key = normalizeText(raw ?? '');
   if (!key) return undefined;
@@ -90,18 +128,25 @@ function lookup<T>(table: Record<string, T>, raw: string | undefined): T | undef
   return table[plain];
 }
 
-/** Plataforma por nombre. Una que no está en el catálogo queda como «Otra» con su nombre. */
-export function matchPlatform(raw: string | undefined): { platform: Platform; customPlatformName?: string } | null {
+/**
+ * Plataforma por nombre. Una que no está en el catálogo queda como «Otra» con
+ * su nombre (escrito igual que en las inversiones que el usuario ya tiene).
+ */
+export function matchPlatform(
+  raw: string | undefined,
+  knownCustom: string[] = [],
+): { platform: Platform; customPlatformName?: string } | null {
   const text = (raw ?? '').trim();
   if (!text) return null;
   const n = normalizeText(text);
   const known = PLATFORMS.find(p => p.value !== 'other' && (normalizeText(p.label) === n || p.value === n || n.startsWith(`${p.value} `)));
   if (known) return { platform: known.value };
-  if (n === 'otra' || n === 'other') return null;
-  return { platform: 'other', customPlatformName: text };
+  if (n === 'otra' || n === 'other' || n === 'otras') return null;
+  const existing = knownCustom.find(c => normalizeText(c) === n);
+  return { platform: 'other', customPlatformName: existing ?? text };
 }
 
-/** Plataformas cuyo importe no viene en euros: el importe se tiene que revisar a mano. */
+/** Divisa de la plataforma (Crowdcube opera en libras). */
 function platformCurrency(platform: Platform): string {
   return PLATFORMS.find(p => p.value === platform)?.defaultCurrency ?? 'EUR';
 }
@@ -125,57 +170,89 @@ export function parseImportNumber(raw: string | undefined): number | null {
   return parsed.value;
 }
 
-/** Como parseImportDate, y además «01/02/24» (año de dos cifras = 20xx). */
-function parseLooseDate(raw: string | undefined): string | null {
+const TEXT_DATE = /^(\d{1,2})([/.-])(\d{1,2})\2(\d{2}|\d{4})$/;
+
+/**
+ * Fecha de texto o de celda → 'YYYY-MM-DD'. Día/mes por defecto; mes/día si
+ * el usuario lo ha elegido. Año de dos cifras = 20xx.
+ */
+function parseLooseDate(raw: string | undefined, order: DateOrder): string | null {
   const s = (raw ?? '').trim();
-  const short = /^(\d{1,2})[/.-](\d{1,2})[/.-](\d{2})$/.exec(s);
-  if (short) return parseImportDate(`${short[1]}/${short[2]}/20${short[3]}`);
+  const m = TEXT_DATE.exec(s);
+  if (m) {
+    const [day, month] = order === 'mdy' ? [m[3], m[1]] : [m[1], m[3]];
+    const year = m[4].length === 2 ? `20${m[4]}` : m[4];
+    return parseImportDate(`${day}/${month}/${year}`);
+  }
   return parseImportDate(s);
 }
 
 const DATE_FIELDS = ['investmentDate', 'expectedEndDate', 'originalEndDate'] as const;
 
 /**
- * Fechas escritas mes/día (Excel en inglés): si en una columna alguna fecha
- * solo tiene sentido como mes/día (13/25/2024 no existe, 01/25/2024 sí) y
- * ninguna como día/mes, la columna entera es mes/día y se le da la vuelta.
- * Si hay de las dos, se queda como día/mes y las que no existen se quedan vacías.
+ * ¿Están las fechas de texto escritas mes/día (Excel en inglés)? Solo se
+ * sugiere 'mdy' si alguna fecha solo existe leída así (01/25/2024) y ninguna
+ * solo existe leída día/mes (25/01/2024). El usuario lo confirma en pantalla:
+ * una sola errata no debe girar todas las fechas sin que se entere.
  */
-export function fixUsDateColumns(rows: SheetRow[]): SheetRow[] {
-  const out = rows.map(r => ({ ...r, raw: { ...r.raw } }));
-  for (const field of DATE_FIELDS) {
-    let firstOver12 = false;
-    let secondOver12 = false;
-    for (const r of out) {
-      const m = /^(\d{1,2})[/.-](\d{1,2})[/.-](\d{2}|\d{4})$/.exec(r.raw[field] ?? '');
+export function detectDateOrder(rows: SheetRow[]): { suggested: DateOrder; ambiguous: boolean } {
+  let firstOver12 = false;
+  let secondOver12 = false;
+  for (const r of rows) {
+    for (const field of DATE_FIELDS) {
+      const m = TEXT_DATE.exec((r.raw[field] ?? '').trim());
       if (!m) continue;
       if (Number(m[1]) > 12) firstOver12 = true;
-      if (Number(m[2]) > 12) secondOver12 = true;
-    }
-    if (secondOver12 && !firstOver12) {
-      for (const r of out) {
-        const v = r.raw[field];
-        const m = v ? /^(\d{1,2})([/.-])(\d{1,2})\2(\d{2}|\d{4})$/.exec(v) : null;
-        if (m) r.raw[field] = `${m[3]}/${m[1]}/${m[4]}`;
-      }
+      if (Number(m[3]) > 12) secondOver12 = true;
     }
   }
-  return out;
+  if (secondOver12 && !firstOver12) return { suggested: 'mdy', ambiguous: true };
+  return { suggested: 'dmy', ambiguous: secondOver12 && firstOver12 };
+}
+
+/**
+ * ¿La rentabilidad viene en tanto por uno? Pasa cuando el formato % de la
+ * celda se ha perdido (al pegar datos, o en un CSV): un 9 % llega como 0,09.
+ * Solo si TODAS las cifras de la columna están entre 0 y 0,30: una cartera entera
+ * al 0,09 % no existe. Si se mezclan (9,5 y 0,09), no se toca nada y las
+ * dudosas se quedan vacías.
+ */
+export function detectFractionReturns(rows: SheetRow[]): boolean {
+  let count = 0;
+  for (const r of rows) {
+    const raw = r.raw.expectedReturn;
+    if (!raw || raw.includes('%')) { if (raw) return false; continue; }
+    const v = parseImportNumber(raw);
+    if (v === null) continue;
+    if (v === 0) continue;
+    // Hasta 0,30 (30 %): más es increíble en este sector y «0,5» puede ser un 0,5 %.
+    if (v < 0 || v > 0.3) return false;
+    count++;
+  }
+  return count > 0;
 }
 
 // ─── Fila → inversión ────────────────────────────────────────────────────────
 
-interface BuildOptions {
-  /** Plataforma elegida para todo el archivo (si no hay columna de plataforma o la celda está vacía). */
-  defaultPlatform?: { platform: Platform; customPlatformName?: string } | null;
-}
+const MAX_AMOUNT = 10_000_000;
+const MIN_DATE = '2000-01-01';
 
-export function buildInvestmentFromRow(raw: RawRow, opts: BuildOptions = {}): Omit<ImportCandidate, 'rowNumber' | 'duplicate'> {
+type BuiltRow = Omit<ImportCandidate, 'rowNumber' | 'duplicate'>;
+
+export function buildInvestmentFromRow(raw: RawRow, opts: BuildOptions = {}): BuiltRow {
+  const today = opts.today ?? toDateOnlyString(new Date());
+  const order = opts.dateOrder ?? 'dmy';
   const warnings: string[] = [];
   const notesExtra: string[] = [];
+  /** Valores del archivo que no se han podido usar: van a las notas. */
+  const unread: string[] = [];
+  const notUnderstood = (label: string, value: string, warning: string) => {
+    warnings.push(warning);
+    unread.push(`${label} «${value}»`);
+  };
 
   // Plataforma
-  const fromCell = matchPlatform(raw.platform);
+  const fromCell = matchPlatform(raw.platform, opts.knownCustomPlatforms);
   const platformInfo = fromCell ?? opts.defaultPlatform ?? null;
 
   // Nombre
@@ -184,8 +261,12 @@ export function buildInvestmentFromRow(raw: RawRow, opts: BuildOptions = {}): Om
   // Importe: solo en euros. Si el archivo o la plataforma dicen otra divisa,
   // se deja vacío (hay que poner el tipo de cambio en el formulario).
   let amount = parseImportNumber(raw.amount);
-  if (raw.amount && amount === null) warnings.push(`Importe «${raw.amount}» no reconocido`);
-  if (amount !== null && amount <= 0) amount = null;
+  if (raw.amount && amount === null) {
+    notUnderstood('importe', raw.amount, `Importe «${raw.amount}» no reconocido`);
+  } else if (amount !== null && (amount <= 0 || amount >= MAX_AMOUNT)) {
+    notUnderstood('importe', raw.amount, `Importe «${raw.amount}» fuera de lo normal: revísalo`);
+    amount = null;
+  }
   const currencyCell = normalizeText(raw.currency ?? '');
   const fileCurrency = currencyCell && !['eur', 'euro', 'euros', 'e'].includes(currencyCell) ? raw.currency!.trim().toUpperCase() : null;
   const foreignCurrency = fileCurrency ?? (platformInfo && platformCurrency(platformInfo.platform) !== 'EUR' ? platformCurrency(platformInfo.platform) : null);
@@ -195,11 +276,20 @@ export function buildInvestmentFromRow(raw: RawRow, opts: BuildOptions = {}): Om
     amount = null;
   }
 
-  // Fechas
-  const investmentDate = parseLooseDate(raw.investmentDate);
-  if (raw.investmentDate && !investmentDate) warnings.push(`Fecha de inversión «${raw.investmentDate}» no reconocida`);
-  let expectedEndDate = parseLooseDate(raw.expectedEndDate) ?? undefined;
-  if (raw.expectedEndDate && !expectedEndDate) warnings.push(`Vencimiento «${raw.expectedEndDate}» no reconocido`);
+  // Fecha de inversión: ni futura ni absurda (un 0 en Excel es 1900).
+  let investmentDate = parseLooseDate(raw.investmentDate, order);
+  if (raw.investmentDate && !investmentDate) {
+    notUnderstood('fecha de inversión', raw.investmentDate, `Fecha de inversión «${raw.investmentDate}» no reconocida`);
+  } else if (investmentDate && (investmentDate > today || investmentDate < MIN_DATE)) {
+    notUnderstood('fecha de inversión', raw.investmentDate, `Fecha de inversión «${raw.investmentDate}» dudosa: revísala`);
+    investmentDate = null;
+  }
+
+  // Vencimiento
+  let expectedEndDate = parseLooseDate(raw.expectedEndDate, order) ?? undefined;
+  if (raw.expectedEndDate && !expectedEndDate) {
+    notUnderstood('vencimiento', raw.expectedEndDate, `Vencimiento «${raw.expectedEndDate}» no reconocido`);
+  }
   // Sin fecha de vencimiento pero con plazo en meses: fecha de inversión + plazo.
   if (!expectedEndDate && investmentDate && raw.termMonths) {
     const months = parseImportNumber(raw.termMonths);
@@ -208,33 +298,57 @@ export function buildInvestmentFromRow(raw: RawRow, opts: BuildOptions = {}): Om
     }
   }
   if (expectedEndDate && investmentDate && expectedEndDate <= investmentDate) {
-    warnings.push('El vencimiento es anterior a la fecha de inversión');
+    notUnderstood('vencimiento', raw.expectedEndDate || raw.termMonths || '', 'El vencimiento es anterior a la fecha de inversión');
     expectedEndDate = undefined;
   }
   // Vencimiento prometido (opcional): si es anterior al actual, la inversión
   // llega retrasada. Sin más datos se trata como retraso (no se suponen
   // intereses extra); el usuario puede cambiarlo a prórroga al editarla.
-  const promised = parseLooseDate(raw.originalEndDate) ?? undefined;
+  const promised = parseLooseDate(raw.originalEndDate, order) ?? undefined;
   const maturity = buildMaturityFromForm(null, { expectedEndDate, promisedEndDate: promised, kind: 'delayed' });
 
   // Rentabilidad anual en %. Entre 0 y 1 (sin ser 0) es ambiguo: puede ser
   // 0,08 % o un 8 % escrito como 0,08. Se deja vacío.
-  const parsedReturn = parseImportNumber(raw.expectedReturn);
+  let parsedReturn = parseImportNumber(raw.expectedReturn);
+  if (parsedReturn !== null && opts.returnsAsFraction && !raw.expectedReturn.includes('%')) {
+    parsedReturn = Math.round(parsedReturn * 100 * 1e6) / 1e6;
+  }
   let expectedReturn: number | null = parsedReturn;
   if (parsedReturn !== null && (parsedReturn < 0 || parsedReturn > 100 || (parsedReturn > 0 && parsedReturn < 1))) {
-    warnings.push(`Rentabilidad «${raw.expectedReturn}» dudosa: revísala`);
+    notUnderstood('rentabilidad', raw.expectedReturn, `Rentabilidad «${raw.expectedReturn}» dudosa: revísala`);
     expectedReturn = null;
   } else if (raw.expectedReturn && parsedReturn === null) {
-    warnings.push(`Rentabilidad «${raw.expectedReturn}» no reconocida`);
+    notUnderstood('rentabilidad', raw.expectedReturn, `Rentabilidad «${raw.expectedReturn}» no reconocida`);
   }
 
-  // Tipo de rendimiento, frecuencia y devolución del capital
-  const incomeModel = lookup(INCOME_MODEL_WORDS, raw.incomeModel) ?? null;
-  if (raw.incomeModel && !incomeModel) warnings.push(`Tipo «${raw.incomeModel}» no reconocido`);
-  const paymentFrequency = lookup(FREQUENCY_WORDS, raw.paymentFrequency);
-  if (raw.paymentFrequency && !paymentFrequency) warnings.push(`Frecuencia «${raw.paymentFrequency}» no reconocida`);
+  // Tipo de rendimiento: el de la fila; si la celda está vacía, el elegido para
+  // el archivo. Si la fila dice algo que no entendemos («Préstamo») no se pisa
+  // con el del archivo: el usuario lo decide en esa inversión.
+  let incomeModel = lookup(INCOME_MODEL_WORDS, raw.incomeModel) ?? null;
+  if (raw.incomeModel && !incomeModel) {
+    notUnderstood('tipo', raw.incomeModel, `Tipo «${raw.incomeModel}» no reconocido`);
+  }
+  if (!incomeModel && !raw.incomeModel && opts.defaultIncomeModel) incomeModel = opts.defaultIncomeModel;
+
+  // Frecuencia: solo tiene sentido en periódicas y amortizables.
+  const needsFrequency = incomeModel === 'periodic_fixed' || incomeModel === 'amortizing';
+  let paymentFrequency = lookup(FREQUENCY_WORDS, raw.paymentFrequency);
+  if (raw.paymentFrequency && !paymentFrequency) {
+    notUnderstood('frecuencia', raw.paymentFrequency, `Frecuencia «${raw.paymentFrequency}» no reconocida`);
+  }
+  if (!paymentFrequency && !raw.paymentFrequency && needsFrequency && opts.defaultFrequency) paymentFrequency = opts.defaultFrequency;
+
   const principalReturnType = lookup(PRINCIPAL_WORDS, raw.principalReturnType);
 
+  // Estado según el archivo
+  const statusText = normalizeText(raw.status ?? '');
+  const finished = !!statusText && FINISHED_STEMS.some(s => statusText.includes(s));
+  if (statusText && DEFAULT_STEMS.some(s => statusText.includes(s))) {
+    warnings.push('En el archivo figura como impago: regístralo desde la ficha');
+    notesExtra.push(`Estado en el archivo: ${raw.status!.trim()}`);
+  }
+
+  if (unread.length > 0) notesExtra.push(`Del archivo, sin leer: ${unread.join(', ')}`);
   const notes = [raw.notes?.trim(), ...notesExtra].filter(Boolean).join(' · ') || undefined;
 
   // Lo que falta para que sea una inversión activa (mismas reglas que completeness.ts)
@@ -246,9 +360,7 @@ export function buildInvestmentFromRow(raw: RawRow, opts: BuildOptions = {}): Om
   if (!incomeModel) missing.push('investments.field.incomeModel');
   if (expectedReturn === null) missing.push('investments.field.expectedReturn');
   if (!expectedEndDate) missing.push('investments.field.expectedEndDate');
-  if ((incomeModel === 'periodic_fixed' || incomeModel === 'amortizing') && !paymentFrequency) {
-    missing.push('investments.field.paymentFrequency');
-  }
+  if (needsFrequency && !paymentFrequency) missing.push('investments.field.paymentFrequency');
   // Equity: el tipo de retorno (plusvalía, rentas o liquidación) decide qué
   // cobros tributan; no viene en ningún Excel, así que siempre lo elige el usuario.
   if (incomeModel === 'equity') missing.push('investments.field.equityType');
@@ -258,6 +370,8 @@ export function buildInvestmentFromRow(raw: RawRow, opts: BuildOptions = {}): Om
     complete,
     missing,
     warnings,
+    finished,
+    pastDue: !!expectedEndDate && expectedEndDate < today,
     investment: {
       platform: platformInfo?.platform ?? 'other',
       customPlatformName: platformInfo?.customPlatformName,
@@ -268,7 +382,7 @@ export function buildInvestmentFromRow(raw: RawRow, opts: BuildOptions = {}): Om
       ...maturity,
       expectedReturn,
       incomeModel,
-      paymentFrequency,
+      paymentFrequency: needsFrequency ? paymentFrequency : undefined,
       principalReturnType,
       status: complete ? 'active' : 'draft',
       notes,
@@ -276,7 +390,7 @@ export function buildInvestmentFromRow(raw: RawRow, opts: BuildOptions = {}): Om
   };
 }
 
-// ─── Archivo completo ────────────────────────────────────────────────────────
+// ─── Repetidas ───────────────────────────────────────────────────────────────
 
 /** Lo mínimo que hace falta de una inversión ya guardada para detectar repetidas. */
 export interface ExistingInvestmentKey {
@@ -287,11 +401,25 @@ export interface ExistingInvestmentKey {
   investmentDate?: string | null;
 }
 
-function duplicateKey(inv: ExistingInvestmentKey): string | null {
-  if (!inv.projectName || inv.amount == null || !inv.investmentDate) return null;
-  const platform = inv.platform === 'other' ? `other:${normalizeText(inv.customPlatformName ?? '')}` : inv.platform;
-  return [platform, normalizeText(inv.projectName), Number(inv.amount).toFixed(2), inv.investmentDate.slice(0, 10)].join('|');
+function platformKey(platform: string | null | undefined, custom: string | null | undefined): string {
+  return platform === 'other' ? `other:${normalizeText(custom ?? '')}` : (platform ?? '');
 }
+
+/**
+ * ¿Es la misma inversión? Misma plataforma y nombre, y ni el importe ni la
+ * fecha se contradicen. Si a una de las dos le falta el importe o la fecha
+ * (un borrador de una importación anterior), basta con lo que tienen las dos:
+ * así volver a subir el mismo archivo no duplica los borradores.
+ */
+function isSameInvestment(a: ImportedInvestment, b: ExistingInvestmentKey): boolean {
+  const amountB = b.amount != null && b.amount > 0 ? Number(b.amount) : null;
+  if (a.amount != null && amountB != null && Math.abs(a.amount - amountB) > 0.005) return false;
+  const dateB = b.investmentDate ? b.investmentDate.slice(0, 10) : null;
+  if (a.investmentDate && dateB && a.investmentDate !== dateB) return false;
+  return true;
+}
+
+// ─── Archivo completo ────────────────────────────────────────────────────────
 
 /**
  * Todas las filas del archivo. Las que no tienen nombre de proyecto no se
@@ -302,16 +430,58 @@ export function buildImportCandidates(
   existing: ExistingInvestmentKey[],
   opts: BuildOptions = {},
 ): { candidates: ImportCandidate[]; withoutName: number[] } {
-  const existingKeys = new Set(existing.map(duplicateKey).filter(Boolean) as string[]);
+  const byName = new Map<string, ExistingInvestmentKey[]>();
+  for (const ex of existing) {
+    if (!ex.projectName) continue;
+    const key = `${platformKey(ex.platform, ex.customPlatformName)}|${normalizeText(ex.projectName)}`;
+    byName.set(key, [...(byName.get(key) ?? []), ex]);
+  }
+  const knownCustomPlatforms = opts.knownCustomPlatforms ?? Array.from(new Set(
+    existing.filter(e => e.platform === 'other' && e.customPlatformName).map(e => e.customPlatformName!),
+  ));
+
   const candidates: ImportCandidate[] = [];
   const withoutName: number[] = [];
-  for (const row of fixUsDateColumns(rows)) {
-    const built = buildInvestmentFromRow(row.raw, opts);
-    if (!built.investment.projectName) { withoutName.push(row.rowNumber); continue; }
+  for (const row of rows) {
+    const built = buildInvestmentFromRow(row.raw, { ...opts, knownCustomPlatforms });
+    const inv = built.investment;
+    if (!inv.projectName) { withoutName.push(row.rowNumber); continue; }
     // Fila de ejemplo de la plantilla que el usuario no ha borrado.
-    if (normalizeText(built.investment.projectName).startsWith('ejemplo ')) continue;
-    const key = duplicateKey(built.investment);
-    candidates.push({ ...built, rowNumber: row.rowNumber, duplicate: key !== null && existingKeys.has(key) });
+    if (normalizeText(inv.projectName).startsWith('ejemplo ')) continue;
+    const sameName = byName.get(`${platformKey(inv.platform, inv.customPlatformName)}|${normalizeText(inv.projectName)}`) ?? [];
+    const duplicate = sameName.some(ex => isSameInvestment(inv, ex));
+    candidates.push({ ...built, rowNumber: row.rowNumber, duplicate });
   }
   return { candidates, withoutName };
+}
+
+export interface ImportSelection {
+  /** Las que se van a guardar, en el orden del archivo. */
+  accepted: ImportCandidate[];
+  /** Fuera por el límite del plan gratuito. */
+  overLimit: number;
+  duplicates: number;
+  finished: number;
+  /** Vencidas que no constan como finalizadas. */
+  pastDue: number;
+}
+
+/** Qué se importa según las casillas de la pantalla y el plan. */
+export function selectForImport(
+  candidates: ImportCandidate[],
+  opts: { includeDuplicates: boolean; includeFinished: boolean; includePastDue: boolean; slots: number },
+): ImportSelection {
+  const eligible = candidates.filter(c =>
+    (opts.includeDuplicates || !c.duplicate) &&
+    (opts.includeFinished || !c.finished) &&
+    (opts.includePastDue || c.finished || !c.pastDue),
+  );
+  const accepted = eligible.slice(0, Math.max(0, opts.slots));
+  return {
+    accepted,
+    overLimit: eligible.length - accepted.length,
+    duplicates: candidates.filter(c => c.duplicate).length,
+    finished: candidates.filter(c => c.finished).length,
+    pastDue: candidates.filter(c => c.pastDue && !c.finished).length,
+  };
 }

@@ -1,5 +1,8 @@
 import { describe, it, expect } from 'vitest';
-import { buildInvestmentFromRow, buildImportCandidates, fixUsDateColumns, matchPlatform, parseImportNumber } from './importRows';
+import {
+  buildInvestmentFromRow, buildImportCandidates, detectDateOrder, detectFractionReturns, matchPlatform, parseImportNumber,
+  selectForImport,
+} from './importRows';
 
 const row = (overrides: Record<string, string> = {}) => ({
   platform: 'Urbanitae',
@@ -142,20 +145,95 @@ describe('parseImportNumber', () => {
   });
 });
 
-describe('fixUsDateColumns', () => {
-  it('columna mes/día → se le da la vuelta', () => {
-    const rows = fixUsDateColumns([
+describe('formato de fecha', () => {
+  it('sugiere mes/día solo si alguna fecha solo existe así y ninguna al revés', () => {
+    expect(detectDateOrder([
       { rowNumber: 2, raw: { investmentDate: '01/25/2024' } },
       { rowNumber: 3, raw: { investmentDate: '03/02/2024' } },
-    ]);
-    expect(rows.map(r => r.raw.investmentDate)).toEqual(['25/01/2024', '02/03/2024']);
-  });
-  it('columna día/mes → se queda igual', () => {
-    const rows = fixUsDateColumns([
+    ])).toEqual({ suggested: 'mdy', ambiguous: true });
+    expect(detectDateOrder([
       { rowNumber: 2, raw: { investmentDate: '25/01/2024' } },
       { rowNumber: 3, raw: { investmentDate: '03/02/2024' } },
-    ]);
-    expect(rows.map(r => r.raw.investmentDate)).toEqual(['25/01/2024', '03/02/2024']);
+    ])).toEqual({ suggested: 'dmy', ambiguous: false });
+    expect(detectDateOrder([
+      { rowNumber: 2, raw: { investmentDate: '25/01/2024', expectedEndDate: '01/25/2025' } },
+    ])).toEqual({ suggested: 'dmy', ambiguous: true });
+  });
+
+  it('mes/día solo se aplica si se elige', () => {
+    expect(buildInvestmentFromRow(row({ investmentDate: '03/02/2024' })).investment.investmentDate).toBe('2024-02-03');
+    expect(buildInvestmentFromRow(row({ investmentDate: '03/02/2024' }), { dateOrder: 'mdy' }).investment.investmentDate).toBe('2024-03-02');
+    // Las celdas de fecha de Excel (ISO) no se giran nunca.
+    expect(buildInvestmentFromRow(row({ investmentDate: '2024-03-02' }), { dateOrder: 'mdy' }).investment.investmentDate).toBe('2024-03-02');
+  });
+});
+
+describe('valores dudosos', () => {
+  const opts = { today: '2026-10-23' };
+  it('fecha de inversión futura o absurda → vacía', () => {
+    expect(buildInvestmentFromRow(row({ investmentDate: '01/02/2030' }), opts).investment.investmentDate).toBeNull();
+    expect(buildInvestmentFromRow(row({ investmentDate: '31/12/1899' }), opts).investment.investmentDate).toBeNull();
+  });
+  it('importe 0, negativo o desorbitado → vacío', () => {
+    expect(buildInvestmentFromRow(row({ amount: '0' })).investment.amount).toBeNull();
+    expect(buildInvestmentFromRow(row({ amount: '-500' })).investment.amount).toBeNull();
+    expect(buildInvestmentFromRow(row({ amount: '25.000.000' })).investment.amount).toBeNull();
+  });
+  it('lo que no se entiende va a las notas para tenerlo a mano', () => {
+    const r = buildInvestmentFromRow(row({ incomeModel: 'Préstamo', amount: '1,500.00', notes: 'Mía' }));
+    expect(r.investment.notes).toBe('Mía · Del archivo, sin leer: importe «1,500.00», tipo «Préstamo»');
+  });
+});
+
+describe('rentabilidad en tanto por uno', () => {
+  const rows = (...vals: string[]) => vals.map((v, i) => ({ rowNumber: i + 2, raw: { expectedReturn: v } }));
+  it('solo si toda la columna está entre 0 y 0,30', () => {
+    expect(detectFractionReturns(rows('0,09', '0,105', ''))).toBe(true);
+    expect(detectFractionReturns(rows('0,09', '9,5'))).toBe(false);
+    expect(detectFractionReturns(rows('9 %', '0,09'))).toBe(false);
+    expect(detectFractionReturns(rows('0'))).toBe(false);
+    expect(detectFractionReturns(rows('0,5'))).toBe(false);
+  });
+  it('0,09 → 9 %', () => {
+    expect(buildInvestmentFromRow(row({ expectedReturn: '0,09' }), { returnsAsFraction: true }).investment.expectedReturn).toBe(9);
+    expect(buildInvestmentFromRow(row({ expectedReturn: '0,105' }), { returnsAsFraction: true }).investment.expectedReturn).toBe(10.5);
+  });
+});
+
+describe('datos para todo el archivo', () => {
+  it('tipo y frecuencia elegidos se aplican a las filas que no los tienen', () => {
+    const r = buildInvestmentFromRow(row({ incomeModel: '' }), { defaultIncomeModel: 'periodic_fixed', defaultFrequency: 'quarterly' });
+    expect(r.investment.incomeModel).toBe('periodic_fixed');
+    expect(r.investment.paymentFrequency).toBe('quarterly');
+    expect(r.complete).toBe(true);
+  });
+  it('un tipo que no se entiende no se pisa con el del archivo', () => {
+    const r = buildInvestmentFromRow(row({ incomeModel: 'Préstamo' }), { defaultIncomeModel: 'bullet' });
+    expect(r.investment.incomeModel).toBeNull();
+  });
+  it('el valor de la fila manda sobre el del archivo', () => {
+    const r = buildInvestmentFromRow(row({ incomeModel: 'Pago único' }), { defaultIncomeModel: 'equity' });
+    expect(r.investment.incomeModel).toBe('bullet');
+  });
+  it('la frecuencia no se pone en las que no la usan', () => {
+    const r = buildInvestmentFromRow(row(), { defaultFrequency: 'monthly' });
+    expect(r.investment.paymentFrequency).toBeUndefined();
+  });
+});
+
+describe('estado del archivo', () => {
+  it('finalizada / impago', () => {
+    expect(buildInvestmentFromRow(row({ status: 'Finalizado' })).finished).toBe(true);
+    expect(buildInvestmentFromRow(row({ status: 'Devuelta' })).finished).toBe(true);
+    expect(buildInvestmentFromRow(row({ status: 'En curso' })).finished).toBe(false);
+    const impago = buildInvestmentFromRow(row({ status: 'Impago' }));
+    expect(impago.finished).toBe(false);
+    expect(impago.investment.status).toBe('active'); // el impago se registra en la ficha, con su cuestionario
+    expect(impago.warnings.join()).toContain('impago');
+  });
+  it('vencida', () => {
+    expect(buildInvestmentFromRow(row(), { today: '2026-10-23' }).pastDue).toBe(true);
+    expect(buildInvestmentFromRow(row({ expectedEndDate: '01/01/2030' }), { today: '2026-10-23' }).pastDue).toBe(false);
   });
 });
 
@@ -171,5 +249,46 @@ describe('buildImportCandidates', () => {
     );
     expect(candidates.map(c => c.duplicate)).toEqual([true, false]);
     expect(withoutName).toEqual([4]);
+  });
+
+  it('segundo ticket en el mismo proyecto (otro importe o fecha) no es repetida', () => {
+    const existing = [{ platform: 'urbanitae', projectName: 'Proyecto', amount: 1000, investmentDate: '2024-02-01' }];
+    expect(buildImportCandidates([{ rowNumber: 2, raw: row() }], existing).candidates[0].duplicate).toBe(false);
+  });
+
+  it('volver a subir el archivo no duplica los borradores de la vez anterior', () => {
+    const existing = [{ platform: 'urbanitae', projectName: 'Proyecto', amount: null, investmentDate: null }];
+    expect(buildImportCandidates([{ rowNumber: 2, raw: row() }], existing).candidates[0].duplicate).toBe(true);
+  });
+
+  it('reutiliza cómo escribe el usuario una plataforma «Otra»', () => {
+    const existing = [{ platform: 'other', customPlatformName: 'Civislend', projectName: 'X', amount: 1, investmentDate: '2024-01-01' }];
+    const { candidates } = buildImportCandidates([{ rowNumber: 2, raw: row({ platform: 'CIVISLEND' }) }], existing);
+    expect(candidates[0].investment.customPlatformName).toBe('Civislend');
+  });
+
+  it('se salta la fila de ejemplo de la plantilla', () => {
+    const { candidates } = buildImportCandidates([{ rowNumber: 2, raw: row({ projectName: 'EJEMPLO · Residencial Ruzafa' }) }], []);
+    expect(candidates).toEqual([]);
+  });
+});
+
+describe('selectForImport', () => {
+  const base = buildImportCandidates([
+    { rowNumber: 2, raw: row({ projectName: 'A', expectedEndDate: '01/01/2030' }) },
+    { rowNumber: 3, raw: row({ projectName: 'B', status: 'Finalizada' }) },
+    { rowNumber: 4, raw: row({ projectName: 'C' }) }, // vencida
+    { rowNumber: 5, raw: row({ projectName: 'D', expectedEndDate: '01/01/2030' }) },
+  ], [{ platform: 'urbanitae', projectName: 'D', amount: 1500.5, investmentDate: '2024-02-01' }], { today: '2026-10-23' }).candidates;
+
+  it('por defecto: fuera repetidas y finalizadas; dentro las vencidas', () => {
+    const s = selectForImport(base, { includeDuplicates: false, includeFinished: false, includePastDue: true, slots: Infinity });
+    expect(s.accepted.map(c => c.investment.projectName)).toEqual(['A', 'C']);
+    expect([s.duplicates, s.finished, s.pastDue]).toEqual([1, 1, 1]);
+  });
+  it('casillas y límite del plan', () => {
+    const s = selectForImport(base, { includeDuplicates: true, includeFinished: true, includePastDue: false, slots: 2 });
+    expect(s.accepted.map(c => c.investment.projectName)).toEqual(['A', 'B']);
+    expect(s.overLimit).toBe(1);
   });
 });

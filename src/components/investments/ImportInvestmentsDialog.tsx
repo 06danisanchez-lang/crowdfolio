@@ -7,19 +7,25 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
+import { Checkbox } from '@/components/ui/checkbox';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import {
   Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger,
 } from '@/components/ui/dialog';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { ImportInvestmentInput, Investment, Platform, PLATFORMS } from '@/types/investment';
+import {
+  ImportInvestmentInput, IncomeModel, INCOME_MODEL_OPTIONS, Investment, PaymentFrequency,
+  PAYMENT_FREQUENCY_OPTIONS, Platform, PLATFORMS,
+} from '@/types/investment';
 import { PLAN_FEATURES } from '@/lib/stripe/config';
 import { investmentsArraySchema, MAX_IMPORT_FILE_SIZE, MAX_INVESTMENTS_PER_IMPORT } from '@/lib/validation/investmentSchema';
 import { parseImportDate } from '@/lib/investment/parseImportDate';
 import {
   ColumnMapping, detectHeaderRow, FIELD_LABEL, gridToRows, guessMapping, IMPORT_FIELDS, ImportField,
 } from '@/lib/investment/importSheet';
-import { buildImportCandidates, ExistingInvestmentKey, ImportCandidate } from '@/lib/investment/importRows';
+import {
+  buildImportCandidates, DateOrder, detectDateOrder, detectFractionReturns, ExistingInvestmentKey, ImportCandidate, selectForImport,
+} from '@/lib/investment/importRows';
 import { pickBestSheet, readSpreadsheetFile, SheetData } from '@/lib/investment/readSpreadsheet';
 import { downloadImportTemplate } from '@/lib/investment/importTemplate';
 import { formatCurrency } from '@/lib/tax/calculations';
@@ -29,10 +35,11 @@ import { formatCurrency } from '@/lib/tax/calculations';
  *
  * 1. El usuario sube su archivo (el suyo propio, el que descarga de la
  *    plataforma o nuestra plantilla).
- * 2. Proponemos qué es cada columna; él puede corregirlo. Si el archivo no dice
- *    la plataforma, la elige para todo el archivo.
+ * 2. Proponemos qué es cada columna; él puede corregirlo. Lo que el archivo no
+ *    dice (plataforma, tipo de rendimiento, frecuencia) lo puede elegir una
+ *    vez para todas las filas.
  * 3. Vista previa: qué inversiones quedan listas y a cuáles les falta algo.
- *    Las que ya están en su cartera no se vuelven a importar.
+ *    Las repetidas y las finalizadas no se importan salvo que lo pida.
  * 4. Se guarda todo: lo que falta queda en «Pendientes de completar».
  */
 
@@ -44,7 +51,6 @@ interface Props {
 }
 
 const NONE = '__none__';
-const FILE_PLATFORM_NONE = '__none__';
 
 function columnLetter(i: number): string {
   let s = '';
@@ -77,6 +83,7 @@ function formatZodError(error: ZodError): string {
 }
 
 const plural = (n: number, one: string, many: string) => `${n} ${n === 1 ? one : many}`;
+const toDisplayDate = (iso: string) => iso.split('-').reverse().join('/');
 
 export function ImportInvestmentsDialog({ existing, onImport, isPro, currentActivePendingCount }: Props) {
   const { t } = useLanguage();
@@ -88,8 +95,16 @@ export function ImportInvestmentsDialog({ existing, onImport, isPro, currentActi
   const [sheetIndex, setSheetIndex] = useState(0);
   const [headerRow, setHeaderRow] = useState(0);
   const [mapping, setMapping] = useState<ColumnMapping>([]);
-  const [filePlatform, setFilePlatform] = useState<string>(FILE_PLATFORM_NONE);
+  // Lo que el usuario elige para las filas que no lo indican
+  const [filePlatform, setFilePlatform] = useState<string>(NONE);
   const [fileCustomPlatform, setFileCustomPlatform] = useState('');
+  const [fileIncomeModel, setFileIncomeModel] = useState<string>(NONE);
+  const [fileFrequency, setFileFrequency] = useState<string>(NONE);
+  const [dateOrder, setDateOrder] = useState<DateOrder | null>(null);
+  // Qué se importa
+  const [includeDuplicates, setIncludeDuplicates] = useState(false);
+  const [includeFinished, setIncludeFinished] = useState(false);
+  const [includePastDue, setIncludePastDue] = useState(true);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const sheet = sheets[sheetIndex];
@@ -97,7 +112,9 @@ export function ImportInvestmentsDialog({ existing, onImport, isPro, currentActi
 
   const reset = () => {
     setError(null); setBusy(false); setFileName(''); setSheets([]); setSheetIndex(0);
-    setHeaderRow(0); setMapping([]); setFilePlatform(FILE_PLATFORM_NONE); setFileCustomPlatform('');
+    setHeaderRow(0); setMapping([]); setFilePlatform(NONE); setFileCustomPlatform('');
+    setFileIncomeModel(NONE); setFileFrequency(NONE); setDateOrder(null);
+    setIncludeDuplicates(false); setIncludeFinished(false); setIncludePastDue(true);
   };
 
   const selectSheet = (all: SheetData[], index: number) => {
@@ -109,6 +126,7 @@ export function ImportInvestmentsDialog({ existing, onImport, isPro, currentActi
     setSheetIndex(index);
     setHeaderRow(header);
     setMapping(Array.from({ length: width }, (_, i) => guessed[i] ?? null));
+    setDateOrder(null);
   };
 
   // ── Archivo ────────────────────────────────────────────────────────────
@@ -134,6 +152,7 @@ export function ImportInvestmentsDialog({ existing, onImport, isPro, currentActi
       setSheets(usable);
       selectSheet(usable, usable.indexOf(best));
     } catch (e) {
+      setBusy(false);
       if (e instanceof ZodError) setError(`Error de validación:\n${formatZodError(e)}`);
       else setError(e instanceof Error ? e.message : 'No se ha podido leer el archivo.');
     }
@@ -160,9 +179,12 @@ export function ImportInvestmentsDialog({ existing, onImport, isPro, currentActi
     () => (sheet ? gridToRows(sheet.grid, headerRow, mapping) : []),
     [sheet, headerRow, mapping],
   );
+  const detectedOrder = useMemo(() => detectDateOrder(rows), [rows]);
+  const returnsAsFraction = useMemo(() => detectFractionReturns(rows), [rows]);
+  const effectiveDateOrder = dateOrder ?? detectedOrder.suggested;
 
   const defaultPlatform = useMemo(() => {
-    if (filePlatform === FILE_PLATFORM_NONE) return null;
+    if (filePlatform === NONE) return null;
     if (filePlatform === 'other') {
       return fileCustomPlatform.trim() ? { platform: 'other' as Platform, customPlatformName: fileCustomPlatform.trim() } : null;
     }
@@ -170,20 +192,30 @@ export function ImportInvestmentsDialog({ existing, onImport, isPro, currentActi
   }, [filePlatform, fileCustomPlatform]);
 
   const { candidates, withoutName } = useMemo(
-    () => buildImportCandidates(rows, existing, { defaultPlatform }),
-    [rows, existing, defaultPlatform],
+    () => buildImportCandidates(rows, existing, {
+      defaultPlatform,
+      defaultIncomeModel: fileIncomeModel === NONE ? null : (fileIncomeModel as IncomeModel),
+      defaultFrequency: fileFrequency === NONE ? null : (fileFrequency as PaymentFrequency),
+      dateOrder: effectiveDateOrder,
+      returnsAsFraction,
+    }),
+    [rows, existing, defaultPlatform, fileIncomeModel, fileFrequency, effectiveDateOrder, returnsAsFraction],
   );
 
-  const toImport = candidates.filter(c => !c.duplicate);
   const slots = isPro ? Infinity : Math.max(0, PLAN_FEATURES.free.investments - currentActivePendingCount);
-  const accepted = toImport.slice(0, slots);
-  const overLimit = toImport.length - accepted.length;
+  const selection = selectForImport(candidates, { includeDuplicates, includeFinished, includePastDue, slots });
+  const { accepted } = selection;
+  const acceptedSet = new Set(accepted);
   const readyCount = accepted.filter(c => c.complete).length;
   const draftCount = accepted.length - readyCount;
-  const duplicateCount = candidates.length - toImport.length;
 
   const platformMapped = mapping.includes('platform');
-  const rowsWithoutPlatform = candidates.filter(c => c.missing.includes('investments.field.platform')).length;
+  const anyMissing = (field: string) => candidates.some(c => c.missing.includes(field));
+  const showPlatformDefault = !platformMapped || anyMissing('investments.field.platform') || filePlatform !== NONE;
+  const showModelDefault = anyMissing('investments.field.incomeModel') || fileIncomeModel !== NONE;
+  const showFrequencyDefault = anyMissing('investments.field.paymentFrequency') || fileFrequency !== NONE;
+  const showDateOrder = detectedOrder.suggested === 'mdy' || detectedOrder.ambiguous || dateOrder !== null;
+
   const unmappedImportant = (['projectName', 'amount', 'investmentDate', 'expectedEndDate', 'expectedReturn', 'incomeModel'] as ImportField[])
     .filter(f => !mapping.includes(f) && !(f === 'expectedEndDate' && mapping.includes('termMonths')));
 
@@ -197,6 +229,7 @@ export function ImportInvestmentsDialog({ existing, onImport, isPro, currentActi
   const confirm = async () => {
     if (accepted.length === 0) return;
     setBusy(true);
+    setError(null);
     const { inserted, failed } = await onImport(accepted.map(c => c.investment), false);
     setBusy(false);
     if (inserted === 0) {
@@ -205,12 +238,11 @@ export function ImportInvestmentsDialog({ existing, onImport, isPro, currentActi
     }
     setOpen(false);
     reset();
-    const ready = accepted.filter(c => c.complete).length;
     const parts = [
-      ready > 0 ? plural(ready, 'lista', 'listas') : '',
-      inserted - ready > 0 ? `${inserted - ready} en «Pendientes de completar»` : '',
+      readyCount > 0 ? plural(readyCount, 'lista', 'listas') : '',
+      draftCount > 0 ? `${draftCount} en «Pendientes de completar»` : '',
     ].filter(Boolean);
-    if (failed > 0) toast.warning(`${inserted} importadas (${parts.join(', ')}). ${failed} no se han podido guardar.`);
+    if (failed > 0) toast.warning(`${inserted} importadas. ${failed} no se han podido guardar: vuelve a importar el archivo y saldrán solo las que faltan.`);
     else toast.success(`${plural(inserted, 'inversión importada', 'inversiones importadas')}: ${parts.join(', ')}.`);
   };
 
@@ -218,14 +250,14 @@ export function ImportInvestmentsDialog({ existing, onImport, isPro, currentActi
   const exampleFor = (col: number) => {
     for (let r = headerRow + 1; r < Math.min(sheet?.grid.length ?? 0, headerRow + 30); r++) {
       const v = sheet!.grid[r]?.[col]?.trim();
-      if (v) return /^\d{4}-\d{2}-\d{2}$/.test(v) ? v.split('-').reverse().join('/') : v;
+      if (v) return /^\d{4}-\d{2}-\d{2}$/.test(v) ? toDisplayDate(v) : v;
     }
     return '';
   };
 
   // ─── Render ──────────────────────────────────────────────────────────────
   return (
-    <Dialog open={open} onOpenChange={o => { setOpen(o); if (!o) reset(); }}>
+    <Dialog open={open} onOpenChange={o => { if (busy) return; setOpen(o); if (!o) reset(); }}>
       <DialogTrigger asChild>
         <Button variant="outline">
           <Upload className="mr-2 h-4 w-4" />
@@ -261,6 +293,9 @@ export function ImportInvestmentsDialog({ existing, onImport, isPro, currentActi
               <Download className="mr-2 h-4 w-4" />
               ¿No tienes ninguno? Descarga nuestra plantilla
             </Button>
+            <p className="text-xs text-muted-foreground">
+              Se importan las inversiones, no los cobros ya recibidos: esos los registras desde cada inversión.
+            </p>
           </div>
         ) : (
           <div className="space-y-5 min-w-0">
@@ -302,27 +337,83 @@ export function ImportInvestmentsDialog({ existing, onImport, isPro, currentActi
                   );
                 })}
               </div>
+              {returnsAsFraction && (
+                <p className="text-xs text-muted-foreground">
+                  La rentabilidad viene en tanto por uno (0,09): la leemos como porcentaje (9 %). Compruébalo en la vista previa.
+                </p>
+              )}
               {unmappedImportant.length > 0 && (
                 <p className="text-xs text-muted-foreground">
-                  Ninguna columna para: {unmappedImportant.map(f => FIELD_LABEL[f].toLowerCase()).join(', ')}. Si el archivo lo tiene, elígelo arriba; si no, lo completarás en cada inversión.
+                  Ninguna columna para: {unmappedImportant.map(f => FIELD_LABEL[f].toLowerCase()).join(', ')}. Si el archivo lo tiene, elígelo arriba.
                 </p>
               )}
             </section>
 
-            {/* Plataforma del archivo */}
-            {(!platformMapped || rowsWithoutPlatform > 0 || filePlatform !== FILE_PLATFORM_NONE) && (
+            {/* Formato de fecha */}
+            {showDateOrder && (
               <section className="space-y-2">
-                <Label>{platformMapped ? 'Plataforma de las filas que no la indican' : '¿De qué plataforma son estas inversiones?'}</Label>
-                <div className="flex flex-col sm:flex-row gap-2">
-                  <Select value={filePlatform} onValueChange={setFilePlatform}>
-                    <SelectTrigger className="sm:w-64"><SelectValue /></SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value={FILE_PLATFORM_NONE}>Sin indicar</SelectItem>
-                      {PLATFORMS.map(p => <SelectItem key={p.value} value={p.value}>{p.label}</SelectItem>)}
-                    </SelectContent>
-                  </Select>
-                  {filePlatform === 'other' && (
-                    <Input placeholder="Nombre (Civislend, Mintos…)" value={fileCustomPlatform} onChange={e => setFileCustomPlatform(e.target.value)} className="sm:w-64" />
+                <Label>¿Cómo están escritas las fechas?</Label>
+                <Select value={effectiveDateOrder} onValueChange={v => setDateOrder(v as DateOrder)}>
+                  <SelectTrigger className="sm:w-72"><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="dmy">Día/mes/año (25/01/2024)</SelectItem>
+                    <SelectItem value="mdy">Mes/día/año (01/25/2024)</SelectItem>
+                  </SelectContent>
+                </Select>
+                <p className="text-xs text-muted-foreground">
+                  {detectedOrder.suggested === 'mdy'
+                    ? 'Algunas fechas solo tienen sentido como mes/día (Excel en inglés). Comprueba en la vista previa que las fechas son las buenas.'
+                    : 'Hay fechas escritas de las dos formas: las que no existen se quedarán vacías para que las pongas tú.'}
+                </p>
+              </section>
+            )}
+
+            {/* Datos para las filas que no los indican */}
+            {(showPlatformDefault || showModelDefault || showFrequencyDefault) && (
+              <section className="space-y-3">
+                <div>
+                  <h4 className="text-sm font-medium">Para las que no lo indican</h4>
+                  <p className="text-xs text-muted-foreground">Si todas tus inversiones del archivo comparten un dato, elígelo aquí y te ahorras completarlo una a una.</p>
+                </div>
+                <div className="grid gap-3 sm:grid-cols-3">
+                  {showPlatformDefault && (
+                    <div className="space-y-1.5">
+                      <Label className="text-xs">Plataforma</Label>
+                      <Select value={filePlatform} onValueChange={setFilePlatform}>
+                        <SelectTrigger><SelectValue /></SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value={NONE}>Sin indicar</SelectItem>
+                          {PLATFORMS.map(p => <SelectItem key={p.value} value={p.value}>{p.label}</SelectItem>)}
+                        </SelectContent>
+                      </Select>
+                      {filePlatform === 'other' && (
+                        <Input placeholder="Nombre (Civislend, Mintos…)" value={fileCustomPlatform} onChange={e => setFileCustomPlatform(e.target.value)} />
+                      )}
+                    </div>
+                  )}
+                  {showModelDefault && (
+                    <div className="space-y-1.5">
+                      <Label className="text-xs">Tipo de rendimiento</Label>
+                      <Select value={fileIncomeModel} onValueChange={setFileIncomeModel}>
+                        <SelectTrigger><SelectValue /></SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value={NONE}>Sin indicar</SelectItem>
+                          {INCOME_MODEL_OPTIONS.map(o => <SelectItem key={o.value} value={o.value}>{t(o.labelKey)}</SelectItem>)}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                  )}
+                  {showFrequencyDefault && (
+                    <div className="space-y-1.5">
+                      <Label className="text-xs">Frecuencia de cobro (periódicas)</Label>
+                      <Select value={fileFrequency} onValueChange={setFileFrequency}>
+                        <SelectTrigger><SelectValue /></SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value={NONE}>Sin indicar</SelectItem>
+                          {PAYMENT_FREQUENCY_OPTIONS.map(o => <SelectItem key={o.value} value={o.value}>{t(o.labelKey)}</SelectItem>)}
+                        </SelectContent>
+                      </Select>
+                    </div>
                   )}
                 </div>
               </section>
@@ -342,11 +433,26 @@ export function ImportInvestmentsDialog({ existing, onImport, isPro, currentActi
                   <p><span className="font-medium">{plural(draftCount, 'inversión', 'inversiones')} con datos por completar.</span> <span className="text-muted-foreground">Se guardan con lo que tienen y aparecerán en «Pendientes de completar».</span></p>
                 </div>
               )}
-              {duplicateCount > 0 && (
-                <div className="flex items-center gap-3 px-4 py-3 text-muted-foreground">
-                  <Info className="h-4 w-4 shrink-0" />
-                  <p>{plural(duplicateCount, 'ya estaba', 'ya estaban')} en tu cartera (misma plataforma, proyecto, importe y fecha): no se repite{duplicateCount === 1 ? '' : 'n'}.</p>
-                </div>
+              {selection.duplicates > 0 && (
+                <OptionRow
+                  checked={includeDuplicates} onChange={setIncludeDuplicates}
+                  text={`${plural(selection.duplicates, 'ya está', 'ya están')} en tu cartera (misma plataforma y proyecto, sin importe ni fecha distintos).`}
+                  label={selection.duplicates === 1 ? 'Importarla también (si de verdad invertiste dos veces)' : 'Importarlas también (si de verdad invertiste dos veces)'}
+                />
+              )}
+              {selection.finished > 0 && (
+                <OptionRow
+                  checked={includeFinished} onChange={setIncludeFinished}
+                  text={`${plural(selection.finished, 'figura', 'figuran')} como finalizada${selection.finished === 1 ? '' : 's'} en el archivo.`}
+                  label={selection.finished === 1 ? 'Importarla también (tendrás que cerrarla con su cobro final)' : 'Importarlas también (tendrás que cerrarlas con su cobro final)'}
+                />
+              )}
+              {selection.pastDue > 0 && (
+                <OptionRow
+                  checked={includePastDue} onChange={setIncludePastDue}
+                  text={`${plural(selection.pastDue, 'tiene', 'tienen')} el vencimiento ya pasado: aparecerán como «Vencida sin cobrar» para que confirmes si cobraste o se ha retrasado.`}
+                  label={selection.pastDue === 1 ? 'Importarla' : 'Importarlas'}
+                />
               )}
               {withoutName.length > 0 && (
                 <div className="flex items-center gap-3 px-4 py-3 text-muted-foreground">
@@ -354,29 +460,29 @@ export function ImportInvestmentsDialog({ existing, onImport, isPro, currentActi
                   <p>{plural(withoutName.length, 'fila', 'filas')} sin nombre de proyecto no se importa{withoutName.length === 1 ? '' : 'n'} (fila{withoutName.length === 1 ? '' : 's'} {withoutName.slice(0, 8).join(', ')}{withoutName.length > 8 ? '…' : ''}).</p>
                 </div>
               )}
-              {accepted.length === 0 && duplicateCount === 0 && (
+              {candidates.length === 0 && (
                 <p className="px-4 py-3 text-muted-foreground">No hay inversiones que importar. Revisa qué columna es el nombre del proyecto.</p>
               )}
             </section>
 
-            {overLimit > 0 && (
+            {selection.overLimit > 0 && (
               <Alert className="border-amber-300 bg-amber-50 dark:border-amber-700 dark:bg-amber-950/30">
                 <AlertCircle className="h-4 w-4 text-amber-600" />
                 <AlertDescription className="text-amber-900 dark:text-amber-300 text-sm">
-                  El plan gratuito permite {PLAN_FEATURES.free.investments} inversiones: se importarán las {accepted.length} primeras y {plural(overLimit, 'quedará fuera', 'quedarán fuera')}.
+                  El plan gratuito permite {PLAN_FEATURES.free.investments} inversiones: se importarán las {accepted.length} primeras y {plural(selection.overLimit, 'quedará fuera', 'quedarán fuera')}.
                   Los pagos aún no están disponibles; si necesitas más, escríbenos a soporte@crowdfolio.es.
                 </AlertDescription>
               </Alert>
             )}
 
             {/* Vista previa */}
-            {candidates.length > 0 && <PreviewTable candidates={candidates} accepted={new Set(accepted)} t={t} />}
+            {candidates.length > 0 && <PreviewTable candidates={candidates} accepted={acceptedSet} t={t} />}
 
             <DialogFooter className="flex gap-2 sm:gap-2">
               <Button variant="outline" onClick={reset} disabled={busy}>Elegir otro archivo</Button>
               <Button onClick={confirm} disabled={busy || accepted.length === 0} className="flex-1">
                 {busy && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                {accepted.length > 0 ? `Importar ${plural(accepted.length, 'inversión', 'inversiones')}` : 'Importar'}
+                {busy ? 'Importando…' : accepted.length > 0 ? `Importar ${plural(accepted.length, 'inversión', 'inversiones')}` : 'Importar'}
               </Button>
             </DialogFooter>
           </div>
@@ -384,6 +490,29 @@ export function ImportInvestmentsDialog({ existing, onImport, isPro, currentActi
       </DialogContent>
     </Dialog>
   );
+}
+
+function OptionRow({ checked, onChange, text, label }: { checked: boolean; onChange: (v: boolean) => void; text: string; label: string }) {
+  return (
+    <div className="flex items-start gap-3 px-4 py-3">
+      <Info className="h-4 w-4 shrink-0 mt-0.5 text-muted-foreground" />
+      <div className="space-y-2">
+        <p className="text-muted-foreground">{text}</p>
+        <label className="flex items-center gap-2 cursor-pointer">
+          <Checkbox checked={checked} onCheckedChange={v => onChange(v === true)} />
+          <span>{label}</span>
+        </label>
+      </div>
+    </div>
+  );
+}
+
+function rowState(c: ImportCandidate, included: boolean): { text: string; muted: boolean } | null {
+  if (included) return null;
+  if (c.duplicate) return { text: 'Ya en tu cartera', muted: true };
+  if (c.finished) return { text: 'Finalizada', muted: true };
+  if (c.pastDue) return { text: 'Vencida', muted: true };
+  return { text: 'Fuera del límite', muted: true };
 }
 
 function PreviewTable({ candidates, accepted, t }: { candidates: ImportCandidate[]; accepted: Set<ImportCandidate>; t: (k: string) => string }) {
@@ -399,29 +528,30 @@ function PreviewTable({ candidates, accepted, t }: { candidates: ImportCandidate
               <th className="px-3 py-2 font-medium">Proyecto</th>
               <th className="px-3 py-2 font-medium text-right">Importe</th>
               <th className="px-3 py-2 font-medium">Fecha</th>
+              <th className="px-3 py-2 font-medium">Vencimiento</th>
               <th className="px-3 py-2 font-medium">Estado</th>
             </tr>
           </thead>
           <tbody className="divide-y">
             {shown.map(c => {
               const inv = c.investment;
-              const out = !accepted.has(c);
+              const excluded = rowState(c, accepted.has(c));
               return (
-                <tr key={c.rowNumber} className={out ? 'opacity-50' : ''}>
+                <tr key={c.rowNumber} className={excluded ? 'opacity-50' : ''}>
                   <td className="px-3 py-2 text-muted-foreground">{c.rowNumber}</td>
                   <td className="px-3 py-2">
                     <p className="font-medium">{inv.projectName}</p>
                     <p className="text-xs text-muted-foreground">
-                      {inv.platform === 'other' ? inv.customPlatformName ?? '—' : PLATFORMS.find(p => p.value === inv.platform)?.label}
+                      {inv.platform === 'other' ? inv.customPlatformName ?? 'Sin plataforma' : PLATFORMS.find(p => p.value === inv.platform)?.label}
+                      {inv.expectedReturn != null && ` · ${String(inv.expectedReturn).replace('.', ',')} %`}
                     </p>
                   </td>
                   <td className="px-3 py-2 text-right whitespace-nowrap">{inv.amount != null ? formatCurrency(inv.amount) : '—'}</td>
-                  <td className="px-3 py-2 whitespace-nowrap">{inv.investmentDate ? inv.investmentDate.split('-').reverse().join('/') : '—'}</td>
+                  <td className="px-3 py-2 whitespace-nowrap">{inv.investmentDate ? toDisplayDate(inv.investmentDate) : '—'}</td>
+                  <td className="px-3 py-2 whitespace-nowrap">{inv.expectedEndDate ? toDisplayDate(inv.expectedEndDate) : '—'}</td>
                   <td className="px-3 py-2">
-                    {c.duplicate ? (
-                      <span className="text-xs text-muted-foreground">Ya en tu cartera</span>
-                    ) : out ? (
-                      <span className="text-xs text-muted-foreground">Fuera del límite</span>
+                    {excluded ? (
+                      <span className="text-xs text-muted-foreground">{excluded.text}</span>
                     ) : c.complete ? (
                       <Badge variant="secondary" className="text-xs bg-green-100 text-green-800 dark:bg-green-900/40 dark:text-green-300">Lista</Badge>
                     ) : (
@@ -429,7 +559,7 @@ function PreviewTable({ candidates, accepted, t }: { candidates: ImportCandidate
                         {c.missing.map(m => <Badge key={m} variant="outline" className="text-xs">Falta {t(m).toLowerCase()}</Badge>)}
                       </div>
                     )}
-                    {c.warnings.length > 0 && !c.duplicate && (
+                    {c.warnings.length > 0 && !excluded && (
                       <p className="mt-1 text-xs text-amber-700 dark:text-amber-400">{c.warnings.join(' · ')}</p>
                     )}
                   </td>

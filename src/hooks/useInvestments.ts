@@ -611,27 +611,35 @@ export function useInvestments() {
     // Id nuevo siempre (un JSON exportado trae los ids de la cuenta de origen).
     const withIds = newInvestments.map(inv => ({ inv, id: crypto.randomUUID() }));
     const insertedIds = new Set<string>();
+    const toRow = ({ inv, id }: { inv: ImportInvestmentInput; id: string }) => ({
+      id, user_id: user.id, platform: inv.platform,
+      custom_platform_name: inv.customPlatformName || null,
+      project_name: inv.projectName, amount: inv.amount ?? null,
+      investment_date: inv.investmentDate || null,
+      expected_end_date: inv.expectedEndDate || null,
+      expected_return: inv.expectedReturn ?? null, status: inv.status,
+      income_model: inv.incomeModel || null,
+      payment_frequency: inv.paymentFrequency || null,
+      first_payment_date: inv.firstPaymentDate || null,
+      principal_return_type: inv.principalReturnType || null,
+      notes: inv.notes || null,
+      original_end_date: inv.originalEndDate || null,
+      interest_end_date: inv.interestEndDate || null,
+      was_extended: inv.wasExtended ?? false,
+    });
     const CHUNK = 100;
     for (let i = 0; i < withIds.length; i += CHUNK) {
       const chunk = withIds.slice(i, i + CHUNK);
-      const { error } = await supabase.from('investments').insert(chunk.map(({ inv, id }) => ({
-        id, user_id: user.id, platform: inv.platform,
-        custom_platform_name: inv.customPlatformName || null,
-        project_name: inv.projectName, amount: inv.amount ?? null,
-        investment_date: inv.investmentDate || null,
-        expected_end_date: inv.expectedEndDate || null,
-        expected_return: inv.expectedReturn ?? null, status: inv.status,
-        income_model: inv.incomeModel || null,
-        payment_frequency: inv.paymentFrequency || null,
-        first_payment_date: inv.firstPaymentDate || null,
-        principal_return_type: inv.principalReturnType || null,
-        notes: inv.notes || null,
-        original_end_date: inv.originalEndDate || null,
-        interest_end_date: inv.interestEndDate || null,
-        was_extended: inv.wasExtended ?? false,
-      })));
-      if (error) { console.error('Error importing investments:', error); continue; }
-      chunk.forEach(({ id }) => insertedIds.add(id));
+      const { error } = await supabase.from('investments').insert(chunk.map(toRow));
+      if (!error) { chunk.forEach(({ id }) => insertedIds.add(id)); continue; }
+      // Un lote se rechaza entero si falla una fila: se reintenta de una en una
+      // para no perder las demás.
+      console.error('Error importing investments (batch), retrying one by one:', error);
+      for (const item of chunk) {
+        const { error: rowError } = await supabase.from('investments').insert(toRow(item));
+        if (rowError) console.error('Error importing investment:', rowError);
+        else insertedIds.add(item.id);
+      }
     }
 
     for (const { inv, id } of withIds) {

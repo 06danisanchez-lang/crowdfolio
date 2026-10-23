@@ -24,6 +24,7 @@ export type ImportField =
   | 'incomeModel'
   | 'paymentFrequency'
   | 'principalReturnType'
+  | 'status'
   | 'notes';
 
 /** Una celda por columna; null = la columna no se importa. */
@@ -146,6 +147,12 @@ export const IMPORT_FIELDS: FieldDef[] = [
     ],
   },
   {
+    field: 'status',
+    label: 'Estado (activa, finalizada…)',
+    synonyms: ['estado', 'situacion', 'status', 'estado de la inversion', 'estado inversion', 'estado del proyecto'],
+    exclude: ['fecha'],
+  },
+  {
     field: 'notes',
     label: 'Notas',
     synonyms: ['notas', 'nota', 'comentarios', 'comentario', 'observaciones', 'notes'],
@@ -241,7 +248,8 @@ export interface SheetRow {
   raw: Record<string, string>;
 }
 
-const TOTAL_ROW = /^(total|totales|suma|subtotal)\b/;
+// Solo la celda entera: «Total Living» es un nombre de proyecto válido.
+const TOTAL_ROW = /^(total|totales|suma|subtotal|total general|total invertido|total cartera)$/;
 
 /** Filas de datos (bajo la cabecera) con los datos que el usuario ha asignado. */
 export function gridToRows(grid: Grid, headerRow: number, mapping: ColumnMapping): SheetRow[] {
@@ -256,13 +264,27 @@ export function gridToRows(grid: Grid, headerRow: number, mapping: ColumnMapping
     if (values.length === 0) continue;
     // Filas de totales al pie de la tabla.
     const firstCell = normalizeText(cells.find(c => c.trim()) ?? '');
-    if (TOTAL_ROW.test(firstCell)) continue;
+    const nameCell = normalizeText(raw.projectName ?? '');
+    if (TOTAL_ROW.test(firstCell) || TOTAL_ROW.test(nameCell)) continue;
     rows.push({ rowNumber: r + 1, raw });
   }
   return rows;
 }
 
 // ─── CSV ──────────────────────────────────────────────────────────────────────
+
+/**
+ * Bytes de un CSV → texto. Excel en español guarda los CSV en Windows-1252,
+ * no en UTF-8: leído como UTF-8, «Inversión» sale «Inversi�n» y ni las
+ * cabeceras ni los nombres de proyecto se leen bien.
+ */
+export function decodeCsvBytes(bytes: ArrayBuffer): string {
+  try {
+    return new TextDecoder('utf-8', { fatal: true }).decode(bytes);
+  } catch {
+    return new TextDecoder('windows-1252').decode(bytes);
+  }
+}
 
 /** Separador: el Excel en español guarda los CSV con «;». */
 function detectDelimiter(text: string): string {

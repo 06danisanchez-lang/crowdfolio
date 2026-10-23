@@ -1,5 +1,5 @@
 import { loadExcelJS } from '@/lib/lazy/exportLibs';
-import { detectHeaderRow, guessMapping, Grid, parseCsvGrid } from './importSheet';
+import { decodeCsvBytes, detectHeaderRow, guessMapping, Grid, parseCsvGrid } from './importSheet';
 
 /**
  * Archivo subido (.xlsx o .csv) → celdas como texto, listas para importSheet.
@@ -86,7 +86,7 @@ export function pickBestSheet(sheets: SheetData[]): SheetData | null {
 export async function readSpreadsheetFile(file: File): Promise<SheetData[]> {
   const ext = file.name.toLowerCase().split('.').pop();
   if (ext === 'xlsx' || ext === 'xlsm') return readXlsxBuffer(await file.arrayBuffer());
-  if (ext === 'csv' || ext === 'txt') return [{ name: file.name, grid: parseCsvGrid(await file.text()) }];
+  if (ext === 'csv' || ext === 'txt') return [{ name: file.name, grid: parseCsvGrid(decodeCsvBytes(await file.arrayBuffer())) }];
   if (ext === 'xls' || ext === 'numbers' || ext === 'ods') {
     throw new Error('Este formato no se puede leer. Guárdalo como Excel (.xlsx) o CSV y vuelve a subirlo.');
   }

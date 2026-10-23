@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { detectHeaderRow, gridToRows, guessMapping, parseCsvGrid } from './importSheet';
+import { decodeCsvBytes, detectHeaderRow, gridToRows, guessMapping, parseCsvGrid } from './importSheet';
 import { buildImportCandidates } from './importRows';
 import { excelCellToString, pickBestSheet, readXlsxBuffer } from './readSpreadsheet';
 import ExcelJS from 'exceljs';
@@ -11,7 +11,7 @@ describe('guessMapping', () => {
       'Rentabilidad anual (%)', 'Tipo', 'Frecuencia de cobro', 'Observaciones', 'Estado',
     ])).toEqual([
       'platform', 'projectName', 'amount', 'investmentDate', 'expectedEndDate',
-      'expectedReturn', 'incomeModel', 'paymentFrequency', 'notes', null,
+      'expectedReturn', 'incomeModel', 'paymentFrequency', 'notes', 'status',
     ]);
   });
 
@@ -33,7 +33,7 @@ describe('guessMapping', () => {
       'Estado', 'Notas', 'Modelo de Rendimiento', 'Frecuencia de Pago', 'Tipo Devolución Principal', 'Vencimiento Prometido',
     ])).toEqual([
       'platform', 'projectName', 'amount', 'investmentDate', 'expectedEndDate', 'expectedReturn',
-      null, 'notes', 'incomeModel', 'paymentFrequency', 'principalReturnType', 'originalEndDate',
+      'status', 'notes', 'incomeModel', 'paymentFrequency', 'principalReturnType', 'originalEndDate',
     ]);
   });
 
@@ -58,6 +58,21 @@ describe('detectHeaderRow y gridToRows', () => {
     const rows = gridToRows(grid, header, guessMapping(grid[header]));
     expect(rows.map(r => r.rowNumber)).toEqual([4, 6]);
     expect(rows[0].raw).toEqual({ projectName: 'Piso Ruzafa', amount: '1.000', investmentDate: '01/02/2024' });
+  });
+});
+
+describe('filas de totales', () => {
+  it('«Total Living» es un proyecto, «Total» no', () => {
+    const grid = [['Proyecto', 'Importe'], ['Total Living', '1.000'], ['Total', '1.000']];
+    expect(gridToRows(grid, 0, guessMapping(grid[0])).map(r => r.raw.projectName)).toEqual(['Total Living']);
+  });
+});
+
+describe('decodeCsvBytes', () => {
+  it('CSV de Excel en español (Windows-1252) y en UTF-8', () => {
+    const latin1 = new Uint8Array([0x49, 0x6e, 0x76, 0x65, 0x72, 0x73, 0x69, 0xf3, 0x6e]); // «Inversión»
+    expect(decodeCsvBytes(latin1.buffer)).toBe('Inversión');
+    expect(decodeCsvBytes(new TextEncoder().encode('Inversión').buffer as ArrayBuffer)).toBe('Inversión');
   });
 });
 

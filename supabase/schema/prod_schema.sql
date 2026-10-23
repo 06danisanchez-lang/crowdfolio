@@ -1,9 +1,9 @@
 -- Instantánea del esquema `public` de PRODUCCIÓN (estructura, sin datos).
 -- NO EDITAR A MANO: se regenera con supabase/schema/dump_schema.sql (ver CLAUDE.md).
 --
--- snapshot_version: 20261009113334
--- última migración registrada en producción: 20261009111435
--- comprobación (md5 de la salida normalizada, 150 sentencias): ed3221b54940ed3b617dc1e9ff541099
+-- snapshot_version: 20261023163408
+-- última migración registrada en producción: 20261023151234
+-- comprobación (md5 de la salida normalizada, 151 sentencias): 70872f42651a244a6506f3c8fcc4bfd1
 --
 -- scripts/db-test.sh carga primero supabase/schema/stubs.sql, después este
 -- archivo y por último las migraciones con versión > snapshot_version.
@@ -76,10 +76,10 @@ create table public.investments (
   platform text not null,
   custom_platform_name text,
   project_name text not null,
-  amount numeric(12,2) not null,
-  investment_date date not null,
+  amount numeric(12,2),
+  investment_date date,
   expected_end_date date,
-  expected_return numeric(5,2) not null,
+  expected_return numeric(5,2),
   status text default 'active'::text not null,
   notes text,
   created_at timestamp with time zone default now() not null,
@@ -252,6 +252,8 @@ alter table public.investments add constraint investments_loss_quita_amount_chec
 alter table public.investments add constraint investments_loss_quita_pair_check CHECK (((loss_quita_amount IS NULL) = (loss_quita_date IS NULL)));
 
 alter table public.investments add constraint investments_pkey PRIMARY KEY (id);
+
+alter table public.investments add constraint investments_required_unless_draft_check CHECK (((status = 'draft'::text) OR ((amount IS NOT NULL) AND (investment_date IS NOT NULL) AND (expected_return IS NOT NULL))));
 
 alter table public.notifications add constraint notifications_pkey PRIMARY KEY (id);
 

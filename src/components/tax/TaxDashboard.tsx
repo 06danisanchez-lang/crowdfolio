@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { Receipt, Calculator, ArrowLeftRight, AlertTriangle, RefreshCw, Info } from 'lucide-react';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { useTaxSummary } from '@/hooks/useTaxSummary';
+import { MissingIncomeBanner } from './MissingIncomeBanner';
 import { useTaxExpenses } from '@/hooks/useTaxExpenses';
 import { useLanguage } from '@/contexts/LanguageContext';
 import { useAuth } from '@/contexts/AuthContext';
@@ -27,9 +28,11 @@ interface TaxDashboardProps {
   onOpenInvestment?: (investmentId: string) => void;
   /** Lleva a Inversiones, donde se listan las pendientes de completar. */
   onViewIncomplete?: () => void;
+  /** Abre Cobros (para importar los cobros que faltan). */
+  onViewPayments?: () => void;
 }
 
-export function TaxDashboard({ isPro = false, onProRequired, onOpenInvestment, onViewIncomplete }: TaxDashboardProps) {
+export function TaxDashboard({ isPro = false, onProRequired, onOpenInvestment, onViewIncomplete, onViewPayments }: TaxDashboardProps) {
   const [selectedYear, setSelectedYear] = useState(new Date().getFullYear());
   const [expenseFormOpen, setExpenseFormOpen] = useState(false);
   const [prefillCategory, setPrefillCategory] = useState<TaxExpenseCategory | undefined>();
@@ -40,7 +43,7 @@ export function TaxDashboard({ isPro = false, onProRequired, onOpenInvestment, o
   const { t } = useLanguage();
   const { user } = useAuth();
 
-  const { summary, projection, isLoading, availableYears, excludedIncompleteCount, enrichedPayments, defaultLossSummary, manualGppOperations, notAssessedDefaultedInvestments, error, refetch } = useTaxSummary(selectedYear);
+  const { summary, projection, isLoading, availableYears, excludedIncompleteCount, missingIncome, enrichedPayments, defaultLossSummary, manualGppOperations, notAssessedDefaultedInvestments, error, refetch } = useTaxSummary(selectedYear);
   const { 
     expenses, 
     addExpense, 
@@ -115,7 +118,7 @@ export function TaxDashboard({ isPro = false, onProRequired, onOpenInvestment, o
           </p>
         </div>
         <div className="flex flex-wrap items-center gap-3">
-          {!hasNoData && <TaxExportButton summary={summary} expenses={expenses} enrichedPayments={enrichedPayments} defaultLossSummary={defaultLossSummary} manualGppOperations={manualGppOperations} userEmail={user?.email ?? ''} isPro={isPro} onProRequired={onProRequired} />}
+          {!hasNoData && <TaxExportButton summary={summary} expenses={expenses} enrichedPayments={enrichedPayments} defaultLossSummary={defaultLossSummary} manualGppOperations={manualGppOperations} missingIncome={missingIncome} userEmail={user?.email ?? ''} isPro={isPro} onProRequired={onProRequired} />}
           <TaxYearSelector
             selectedYear={selectedYear}
             onYearChange={setSelectedYear}
@@ -142,6 +145,8 @@ export function TaxDashboard({ isPro = false, onProRequired, onOpenInvestment, o
       ))}
 
       {/* KPI Summary Cards */}
+      <MissingIncomeBanner year={selectedYear} missing={missingIncome} onOpenInvestment={onOpenInvestment} onViewPayments={onViewPayments} />
+
       {excludedIncompleteCount > 0 && (
         <div className="flex flex-wrap items-center gap-x-2 gap-y-1 p-3 rounded-lg bg-muted/50 border text-sm text-muted-foreground">
           <span>{t('tax.incomplete.warning').replace('{count}', String(excludedIncompleteCount))}</span>

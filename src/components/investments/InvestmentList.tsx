@@ -81,6 +81,8 @@ interface InvestmentListProps {
   allowDraftSave?: boolean;
   initialStatusFilter?: InvestmentStatus | 'all';
   openInvestmentId?: string | null;
+  /** Abre Cobros filtrado por esta inversión. */
+  onViewPayments?: (investmentId: string) => void;
   onInvestmentOpened?: () => void;
 }
 
@@ -105,6 +107,7 @@ export function InvestmentList({
   allowDraftSave,
   initialStatusFilter = 'all',
   openInvestmentId,
+  onViewPayments,
   onInvestmentOpened,
 }: InvestmentListProps) {
   const { t } = useLanguage();
@@ -810,6 +813,7 @@ export function InvestmentList({
         onUpdatePaymentWithholding={onUpdatePaymentWithholding}
         onOpenCloseModal={(id) => { setViewingInvestmentId(null); setClosingInvestmentId(id); }}
         onUpdateFiscalStatus={(inv) => { setViewingInvestmentId(null); openQuestionnaire(inv.id, 'update'); }}
+        onViewPayments={onViewPayments && ((id) => { setViewingInvestmentId(null); onViewPayments(id); })}
       />
 
       <CloseInvestmentModal

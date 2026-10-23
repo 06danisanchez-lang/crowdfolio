@@ -62,6 +62,8 @@ const Index = () => {
   const [currentView, setCurrentView] = useState<View>('dashboard');
   const [investmentsFilter, setInvestmentsFilter] = useState<'active' | 'all'>('all');
   const [pendingOpenInvestmentId, setPendingOpenInvestmentId] = useState<string | null>(null);
+  // Cobros filtrados por una inversión (al llegar desde su ficha).
+  const [paymentsInvestmentId, setPaymentsInvestmentId] = useState<string | null>(null);
   const [notificationsSheetOpen, setNotificationsSheetOpen] = useState(false);
   const [savingNotificationId, setSavingNotificationId] = useState<string | null>(null);
   const [upgradeModalOpen, setUpgradeModalOpen] = useState(false);
@@ -129,6 +131,12 @@ const Index = () => {
   const handleViewChange = (view: View) => {
     setCurrentView(view);
     setInvestmentsFilter('all');
+    setPaymentsInvestmentId(null);
+  };
+
+  const openPaymentsOf = (investmentId: string) => {
+    setPaymentsInvestmentId(investmentId);
+    setCurrentView('payments');
   };
 
   const openInvestmentDetail = (investmentId: string) => {
@@ -514,6 +522,7 @@ const Index = () => {
               initialStatusFilter={investmentsFilter}
               openInvestmentId={pendingOpenInvestmentId}
               onInvestmentOpened={() => setPendingOpenInvestmentId(null)}
+              onViewPayments={openPaymentsOf}
             />
           </div>
         );
@@ -540,7 +549,11 @@ const Index = () => {
               <h1 className="text-xl sm:text-2xl lg:text-3xl font-bold">{t('payments.title')}</h1>
               <p className="text-muted-foreground">{t('payments.subtitle')}</p>
             </div>
-            <PaymentsView onProRequired={() => openUpgradeModal('unlimited_investments')} />
+            <PaymentsView
+              onProRequired={() => openUpgradeModal('unlimited_investments')}
+              onOpenInvestment={openInvestmentDetail}
+              initialInvestmentId={paymentsInvestmentId}
+            />
           </div>
         );
       case 'future-investments':

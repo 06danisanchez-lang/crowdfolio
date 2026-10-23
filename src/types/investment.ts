@@ -253,3 +253,18 @@ export const PRINCIPAL_RETURN_TYPE_OPTIONS: { value: PrincipalReturnType; labelK
   { value: 'amortizing', labelKey: 'investments.principalReturn.amortizing' },
   { value: 'unknown', labelKey: 'investments.principalReturn.unknown' },
 ];
+
+/**
+ * Inversión a importar (Excel/CSV o JSON). Como Investment, pero un borrador
+ * puede no tener importe, fecha, rentabilidad ni tipo de rendimiento.
+ */
+export type ImportInvestmentInput = Omit<
+  Investment,
+  'id' | 'amount' | 'investmentDate' | 'expectedReturn' | 'incomeModel' | 'payments' | 'createdAt' | 'updatedAt'
+> & {
+  amount: number | null;
+  investmentDate: string | null;
+  expectedReturn: number | null;
+  incomeModel: IncomeModel | null;
+  payments?: Payment[];
+};

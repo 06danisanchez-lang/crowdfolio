@@ -565,8 +565,12 @@ export function InvestmentList({
                       expectedEndDate: draft.expectedEndDate,
                       incomeModel: draft.incomeModel,
                       paymentFrequency: draft.paymentFrequency,
-                      status: draft.status,
+                      // Un borrador también enseña qué datos le faltan, no solo «Borrador».
+                      status: draft.status === 'draft' ? 'active' : draft.status,
                     });
+                    if (draft.incomeModel === 'equity' && !draft.equityType) {
+                      status.missingFields.push('investments.field.equityType');
+                    }
                     return (
                       <div key={draft.id} className="flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-4 p-3 rounded-md border">
                         <div className="flex-1 min-w-0">

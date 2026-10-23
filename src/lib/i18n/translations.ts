@@ -685,6 +685,7 @@ export const translations: Record<Lang, Record<string, string>> = {
     'investments.schedule.status.matched': 'Cobrado',
     'investments.schedule.status.missed': 'No recibido',
     'investments.schedule.status.skipped': 'Omitido',
+    'investments.schedule.status.assumed': 'Cobrada, falta el detalle',
 
     // Payments view ("Cobros")
     'payments.title': 'Cobros',
@@ -1407,6 +1408,7 @@ export const translations: Record<Lang, Record<string, string>> = {
     'investments.schedule.status.matched': 'Matched',
     'investments.schedule.status.missed': 'Missed',
     'investments.schedule.status.skipped': 'Skipped',
+    'investments.schedule.status.assumed': 'Received, details missing',
 
     // Payments view ("Cobros")
     'payments.title': 'Payments',

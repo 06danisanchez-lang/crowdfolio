@@ -4,6 +4,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import { Investment, InvestmentSummary, Platform, InvestmentStatus, Payment, DraftInvestment, IncomeModel, PaymentFrequency, PrincipalReturnType, EquityType, InvestmentScheduleEntry, ImportInvestmentInput, PaymentType } from '@/types/investment';
 import { getAccrualEndDate } from '@/lib/investment/calculations';
 import { isInvestmentComplete } from '@/lib/investment/completeness';
+import { applyAssumedPaid } from '@/lib/investment/assumedPaid';
 import { generateScheduleWithDelay } from '@/lib/investment/scheduleGenerator';
 import { matchScheduleToPayments } from '@/lib/investment/scheduleMatching';
 import { isBlockedDefaultedTransition, isBlockedIncomeModelChange } from '@/lib/investment/defaultTransitionGuard';
@@ -136,7 +137,10 @@ export function useInvestments() {
       // Cuotas previstas ↔ cobros registrados (en memoria; ver scheduleMatching.ts)
       for (const inv of mapped) {
         if (schedMap[inv.id]) {
-          schedMap[inv.id] = matchScheduleToPayments(inv.incomeModel, schedMap[inv.id], inv.payments ?? []);
+          schedMap[inv.id] = applyAssumedPaid(
+            matchScheduleToPayments(inv.incomeModel, schedMap[inv.id], inv.payments ?? []),
+            inv.assumedPaidUntil,
+          );
         }
       }
 
@@ -291,6 +295,7 @@ export function useInvestments() {
       original_end_date: investment.originalEndDate || null,
       interest_end_date: investment.interestEndDate || null,
       was_extended: investment.wasExtended ?? false,
+      assumed_paid_until: investment.assumedPaidUntil || null,
       ...fxFieldsToColumns(investment, investment.amount),
     }).select().single();
     if (error) { console.error('Error adding investment:', error); return null; }
@@ -400,6 +405,7 @@ export function useInvestments() {
     if (updates.amount !== undefined) dbUpdates.amount = updates.amount ?? null;
     if (updates.investmentDate !== undefined) dbUpdates.investment_date = updates.investmentDate || null;
     if (updates.expectedEndDate !== undefined) dbUpdates.expected_end_date = updates.expectedEndDate;
+    if (updates.assumedPaidUntil !== undefined) dbUpdates.assumed_paid_until = updates.assumedPaidUntil || null;
     if (updates.expectedReturn !== undefined) dbUpdates.expected_return = updates.expectedReturn ?? null;
     if (updates.status !== undefined) dbUpdates.status = updates.status;
     if (updates.notes !== undefined) dbUpdates.notes = updates.notes;
@@ -667,6 +673,7 @@ export function useInvestments() {
       original_end_date: inv.originalEndDate || null,
       interest_end_date: inv.interestEndDate || null,
       was_extended: inv.wasExtended ?? false,
+      assumed_paid_until: inv.assumedPaidUntil || null,
     });
     const CHUNK = 100;
     for (let i = 0; i < withIds.length; i += CHUNK) {

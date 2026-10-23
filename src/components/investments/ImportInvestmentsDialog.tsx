@@ -29,6 +29,8 @@ import {
 import { pickBestSheet, readSpreadsheetFile, SheetData } from '@/lib/investment/readSpreadsheet';
 import { downloadImportTemplate } from '@/lib/investment/importTemplate';
 import { formatCurrency } from '@/lib/tax/calculations';
+import { hasPastInstallments } from '@/lib/investment/assumedPaid';
+import { toDateOnlyString } from '@/lib/dateOnly';
 
 /**
  * Importar inversiones desde cualquier Excel o CSV.
@@ -105,6 +107,7 @@ export function ImportInvestmentsDialog({ existing, onImport, isPro, currentActi
   const [includeDuplicates, setIncludeDuplicates] = useState(false);
   const [includeFinished, setIncludeFinished] = useState(false);
   const [includePastDue, setIncludePastDue] = useState(true);
+  const [pastInstallmentsPaid, setPastInstallmentsPaid] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const sheet = sheets[sheetIndex];
@@ -114,7 +117,7 @@ export function ImportInvestmentsDialog({ existing, onImport, isPro, currentActi
     setError(null); setBusy(false); setFileName(''); setSheets([]); setSheetIndex(0);
     setHeaderRow(0); setMapping([]); setFilePlatform(NONE); setFileCustomPlatform('');
     setFileIncomeModel(NONE); setFileFrequency(NONE); setDateOrder(null);
-    setIncludeDuplicates(false); setIncludeFinished(false); setIncludePastDue(true);
+    setIncludeDuplicates(false); setIncludeFinished(false); setIncludePastDue(true); setPastInstallmentsPaid(false);
   };
 
   const selectSheet = (all: SheetData[], index: number) => {
@@ -207,6 +210,11 @@ export function ImportInvestmentsDialog({ existing, onImport, isPro, currentActi
   const { accepted } = selection;
   const acceptedSet = new Set(accepted);
   const readyCount = accepted.filter(c => c.complete).length;
+  /** Periódicas o amortizables con cuotas previstas antes de hoy. */
+  const withPastInstallments = (c: ImportCandidate) =>
+    (c.investment.incomeModel === 'periodic_fixed' || c.investment.incomeModel === 'amortizing') &&
+    hasPastInstallments({ investmentDate: c.investment.investmentDate, paymentFrequency: c.investment.paymentFrequency ?? null });
+  const pastInstallmentsCount = accepted.filter(withPastInstallments).length;
   const draftCount = accepted.length - readyCount;
 
   const platformMapped = mapping.includes('platform');
@@ -230,7 +238,11 @@ export function ImportInvestmentsDialog({ existing, onImport, isPro, currentActi
     if (accepted.length === 0) return;
     setBusy(true);
     setError(null);
-    const { inserted, failed } = await onImport(accepted.map(c => c.investment), false);
+    const today = toDateOnlyString(new Date());
+    const { inserted, failed } = await onImport(accepted.map(c => ({
+      ...c.investment,
+      assumedPaidUntil: pastInstallmentsPaid && withPastInstallments(c) ? today : null,
+    })), false);
     setBusy(false);
     if (inserted === 0) {
       setError('No se ha podido guardar ninguna inversión. Inténtalo de nuevo o escríbenos a soporte@crowdfolio.es.');
@@ -452,6 +464,13 @@ export function ImportInvestmentsDialog({ existing, onImport, isPro, currentActi
                   checked={includePastDue} onChange={setIncludePastDue}
                   text={`${plural(selection.pastDue, 'tiene', 'tienen')} el vencimiento ya pasado: aparecerán como «Vencida sin cobrar» para que confirmes si cobraste o se ha retrasado.`}
                   label={selection.pastDue === 1 ? 'Importarla' : 'Importarlas'}
+                />
+              )}
+              {pastInstallmentsCount > 0 && (
+                <OptionRow
+                  checked={pastInstallmentsPaid} onChange={setPastInstallmentsPaid}
+                  text={`${plural(pastInstallmentsCount, 'tiene', 'tienen')} cuotas de intereses anteriores a hoy. Sin sus cobros saldrían como atrasadas.`}
+                  label="Ya las he cobrado: registraré el detalle después (el informe fiscal lo marcará como pendiente hasta entonces)"
                 />
               )}
               {withoutName.length > 0 && (

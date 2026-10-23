@@ -75,6 +75,7 @@ import {
 import { cn } from '@/lib/utils';
 import { useAuth } from '@/contexts/AuthContext';
 import { useInvestmentDraft } from '@/hooks/useInvestmentDraft';
+import { hasPastInstallments } from '@/lib/investment/assumedPaid';
 import { useLanguage } from '@/contexts/LanguageContext';
 
 const END_DATE_REQUIRED_MODELS = ['bullet', 'periodic_fixed', 'amortizing'] as const;
@@ -470,6 +471,18 @@ export function InvestmentForm({
   const watchCurrency = (form.watch('currency') as string | undefined) || EUR;
   const isForeign = !isFuture && isForeignCurrency(watchCurrency);
   const watchInvestmentDate = form.watch('investmentDate') as Date | undefined;
+  // Cuotas anteriores a hoy ya cobradas («cobrada, falta el detalle», ver assumedPaid.ts).
+  const initialAssumedPaidUntil = initialData && 'assumedPaidUntil' in initialData ? (initialData as Investment).assumedPaidUntil ?? null : null;
+  const [pastInstallmentsPaid, setPastInstallmentsPaid] = useState<boolean>(!!initialAssumedPaidUntil);
+  const watchFrequency = form.watch('paymentFrequency') as PaymentFrequency | undefined;
+  const watchFirstPaymentDate = form.watch('firstPaymentDate') as Date | undefined;
+  const showPastInstallmentsQuestion = !isFuture
+    && (watchIncomeModel === 'periodic_fixed' || watchIncomeModel === 'amortizing')
+    && hasPastInstallments({
+      investmentDate: watchInvestmentDate ? toDateOnlyString(watchInvestmentDate) : null,
+      firstPaymentDate: watchFirstPaymentDate ? toDateOnlyString(watchFirstPaymentDate) : null,
+      paymentFrequency: watchFrequency ?? null,
+    });
   const fxValue: ForeignAmountInput = {
     originalAmount: (form.watch('fxOriginalAmount') as number | null | undefined) ?? null,
     exchangeRate: (form.watch('fxRate') as number | null | undefined) ?? null,
@@ -767,6 +780,9 @@ export function InvestmentForm({
         sourceUrl: data.sourceUrl || undefined,
         investmentDate: toDateOnlyString(data.investmentDate),
         expectedEndDate: data.expectedEndDate ? toDateOnlyString(data.expectedEndDate) : undefined,
+        assumedPaidUntil: showPastInstallmentsQuestion && pastInstallmentsPaid
+          ? (initialAssumedPaidUntil ?? toDateOnlyString(new Date()))
+          : null,
         ...maturitySubmitFields(data),
         ...fxSubmitFields(data),
       });
@@ -1160,6 +1176,25 @@ export function InvestmentForm({
                 </FormItem>
               )}
             />
+          )}
+
+          {showPastInstallmentsQuestion && (
+            <label className="flex items-start gap-3 rounded-md border p-3 text-sm cursor-pointer">
+              <input
+                type="checkbox"
+                checked={pastInstallmentsPaid}
+                onChange={e => setPastInstallmentsPaid(e.target.checked)}
+                className="mt-0.5 h-4 w-4 shrink-0 accent-[#253765]"
+              />
+              <span>
+                <span className="font-medium">Las cuotas anteriores a hoy ya las he cobrado</span>
+                <span className="block text-xs text-muted-foreground">
+                  No salen como atrasadas. Registra sus cobros cuando puedas (por ejemplo, importando el extracto
+                  desde Cobros): hasta entonces el informe fiscal las cuenta como datos que faltan.
+                  Si alguna no ha llegado, déjalo sin marcar.
+                </span>
+              </span>
+            </label>
           )}
 
           {watchIncomeModel === 'amortizing' && (

@@ -111,6 +111,9 @@ export interface Investment extends InvestmentFxFields {
   /** Hasta cuándo genera intereses si se marcó un retraso (cobrará lo prometido,
    * más tarde). Vacío = hasta expectedEndDate. Ver getAccrualEndDate(). */
   interestEndDate?: string | null;
+  /** Cuotas hasta esta fecha cobradas según el usuario, sin el cobro registrado
+   * («cobrada, falta el detalle»). Ver lib/investment/assumedPaid.ts. */
+  assumedPaidUntil?: string | null;
   lossInsolvencyStatus?: LossInsolvencyStatus | null;
   lossInsolvencyConcludedDate?: string | null;
   lossQuitaAmount?: number | null;
@@ -196,6 +199,9 @@ export interface DraftInvestment extends InvestmentFxFields {
   /** Hasta cuándo genera intereses si se marcó un retraso (cobrará lo prometido,
    * más tarde). Vacío = hasta expectedEndDate. Ver getAccrualEndDate(). */
   interestEndDate?: string | null;
+  /** Cuotas hasta esta fecha cobradas según el usuario, sin el cobro registrado
+   * («cobrada, falta el detalle»). Ver lib/investment/assumedPaid.ts. */
+  assumedPaidUntil?: string | null;
   lossInsolvencyStatus?: LossInsolvencyStatus | null;
   lossInsolvencyConcludedDate?: string | null;
   lossQuitaAmount?: number | null;
@@ -215,7 +221,8 @@ export interface InvestmentScheduleEntry {
   expectedDate: string;
   expectedAmount: number;
   type: 'interest' | 'principal' | 'mixed';
-  status?: 'pending' | 'matched' | 'missed' | 'skipped';
+  /** 'assumed' = cobrada según el usuario, sin el cobro registrado (en memoria, ver assumedPaid.ts). */
+  status?: 'pending' | 'matched' | 'missed' | 'skipped' | 'assumed';
   matchedPaymentId?: string | null;
 }
 

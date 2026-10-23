@@ -28,12 +28,12 @@ export type ImportField =
   | 'notes';
 
 /** Una celda por columna; null = la columna no se importa. */
-export type ColumnMapping = (ImportField | null)[];
+export type ColumnMapping<F extends string = ImportField> = (F | null)[];
 
 export type Grid = string[][];
 
-interface FieldDef {
-  field: ImportField;
+export interface FieldDef<F extends string = ImportField> {
+  field: F;
   label: string;
   /** Títulos de columna que significan este dato (ya normalizados). */
   synonyms: string[];
@@ -41,7 +41,7 @@ interface FieldDef {
   exclude?: string[];
 }
 
-export const IMPORT_FIELDS: FieldDef[] = [
+export const IMPORT_FIELDS: FieldDef<ImportField>[] = [
   {
     field: 'platform',
     label: 'Plataforma',
@@ -167,7 +167,7 @@ export const FIELD_LABEL: Record<ImportField, string> = Object.fromEntries(
 export function normalizeText(s: string): string {
   return s
     .normalize('NFD')
-    .replace(/[̀-ͯ]/g, '')
+    .replace(/[\u0300-\u036f]/g, '')
     .toLowerCase()
     .replace(/[^a-z0-9]+/g, ' ')
     .trim();
@@ -178,7 +178,7 @@ function containsWords(haystack: string, needle: string): boolean {
 }
 
 /** Puntuación de un título para un dato: 0 = no es ese dato. */
-function scoreHeader(header: string, def: FieldDef): number {
+function scoreHeader<F extends string>(header: string, def: FieldDef<F>): number {
   const h = normalizeText(header);
   if (!h) return 0;
   if (def.exclude?.some(x => h.includes(x)) && !def.synonyms.includes(h)) return 0;
@@ -194,20 +194,23 @@ function scoreHeader(header: string, def: FieldDef): number {
  * Propone qué dato es cada columna. Cada dato se asigna como mucho a una
  * columna (la de título más parecido).
  */
-export function guessMapping(headers: string[]): ColumnMapping {
-  const best: { field: ImportField; score: number }[] = headers.map(h => {
-    let top: { field: ImportField; score: number } = { field: 'notes', score: 0 };
-    for (const def of IMPORT_FIELDS) {
+export function guessMapping<F extends string = ImportField>(
+  headers: string[],
+  defs: FieldDef<F>[] = IMPORT_FIELDS as unknown as FieldDef<F>[],
+): ColumnMapping<F> {
+  const best: { field: F | null; score: number }[] = headers.map(h => {
+    let top: { field: F | null; score: number } = { field: null, score: 0 };
+    for (const def of defs) {
       const score = scoreHeader(h, def);
       if (score > top.score) top = { field: def.field, score };
     }
     return top;
   });
 
-  const mapping: ColumnMapping = headers.map(() => null);
-  const taken = new Map<ImportField, number>();
+  const mapping: ColumnMapping<F> = headers.map(() => null);
+  const taken = new Map<F, number>();
   best.forEach(({ field, score }, col) => {
-    if (score === 0) return;
+    if (score === 0 || field === null) return;
     const other = taken.get(field);
     if (other === undefined) {
       taken.set(field, col);
@@ -221,8 +224,8 @@ export function guessMapping(headers: string[]): ColumnMapping {
   return mapping;
 }
 
-function countRecognized(row: string[]): number {
-  return guessMapping(row).filter(Boolean).length;
+function countRecognized<F extends string>(row: string[], defs: FieldDef<F>[]): number {
+  return guessMapping(row, defs).filter(Boolean).length;
 }
 
 /**
@@ -230,11 +233,14 @@ function countRecognized(row: string[]): number {
  * reconocibles (muchos Excel llevan un título o el logo de la plataforma
  * encima de la tabla). Si ninguna tiene al menos dos, la primera no vacía.
  */
-export function detectHeaderRow(grid: Grid): number {
+export function detectHeaderRow<F extends string = ImportField>(
+  grid: Grid,
+  defs: FieldDef<F>[] = IMPORT_FIELDS as unknown as FieldDef<F>[],
+): number {
   let bestRow = -1;
   let bestScore = 1;
   for (let r = 0; r < Math.min(grid.length, 20); r++) {
-    const score = countRecognized(grid[r]);
+    const score = countRecognized(grid[r], defs);
     if (score > bestScore) { bestScore = score; bestRow = r; }
   }
   if (bestRow >= 0) return bestRow;
@@ -252,7 +258,7 @@ export interface SheetRow {
 const TOTAL_ROW = /^(total|totales|suma|subtotal|total general|total invertido|total cartera)$/;
 
 /** Filas de datos (bajo la cabecera) con los datos que el usuario ha asignado. */
-export function gridToRows(grid: Grid, headerRow: number, mapping: ColumnMapping): SheetRow[] {
+export function gridToRows<F extends string>(grid: Grid, headerRow: number, mapping: ColumnMapping<F>): SheetRow[] {
   const rows: SheetRow[] = [];
   for (let r = headerRow + 1; r < grid.length; r++) {
     const cells = grid[r];

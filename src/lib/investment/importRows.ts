@@ -176,7 +176,7 @@ const TEXT_DATE = /^(\d{1,2})([/.-])(\d{1,2})\2(\d{2}|\d{4})$/;
  * Fecha de texto o de celda → 'YYYY-MM-DD'. Día/mes por defecto; mes/día si
  * el usuario lo ha elegido. Año de dos cifras = 20xx.
  */
-function parseLooseDate(raw: string | undefined, order: DateOrder): string | null {
+export function parseLooseDate(raw: string | undefined, order: DateOrder): string | null {
   const s = (raw ?? '').trim();
   const m = TEXT_DATE.exec(s);
   if (m) {
@@ -195,11 +195,14 @@ const DATE_FIELDS = ['investmentDate', 'expectedEndDate', 'originalEndDate'] as 
  * solo existe leída día/mes (25/01/2024). El usuario lo confirma en pantalla:
  * una sola errata no debe girar todas las fechas sin que se entere.
  */
-export function detectDateOrder(rows: SheetRow[]): { suggested: DateOrder; ambiguous: boolean } {
+export function detectDateOrder(
+  rows: SheetRow[],
+  fields: readonly string[] = DATE_FIELDS,
+): { suggested: DateOrder; ambiguous: boolean } {
   let firstOver12 = false;
   let secondOver12 = false;
   for (const r of rows) {
-    for (const field of DATE_FIELDS) {
+    for (const field of fields) {
       const m = TEXT_DATE.exec((r.raw[field] ?? '').trim());
       if (!m) continue;
       if (Number(m[1]) > 12) firstOver12 = true;

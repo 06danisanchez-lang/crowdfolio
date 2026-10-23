@@ -20,6 +20,7 @@ import {
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { cn } from '@/lib/utils';
 import { groupByMonth, isCapitalReturn, sumReceived } from '@/lib/payments/receivedSummary';
+import { ImportPaymentsDialog } from './ImportPaymentsDialog';
 
 interface PaymentsViewProps {
   onProRequired?: () => void;
@@ -36,6 +37,8 @@ export function PaymentsView({ onProRequired }: PaymentsViewProps) {
     error,
     isLimited,
     lockedCount,
+    importTargets,
+    importPayments,
   } = usePaymentsOverview();
 
   const [platformFilter, setPlatformFilter] = useState<string>('all');
@@ -106,6 +109,10 @@ export function PaymentsView({ onProRequired }: PaymentsViewProps) {
 
   return (
     <div className="space-y-6">
+      <div className="flex justify-end">
+        <ImportPaymentsDialog targets={importTargets} onImport={importPayments} />
+      </div>
+
       {/* Free plan locked investments banner */}
       {isLimited && (
         <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 rounded-lg border border-amber-300 bg-amber-50 px-4 py-3">

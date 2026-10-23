@@ -1,5 +1,5 @@
 import { loadExcelJS } from '@/lib/lazy/exportLibs';
-import { decodeCsvBytes, detectHeaderRow, guessMapping, Grid, parseCsvGrid } from './importSheet';
+import { decodeCsvBytes, detectHeaderRow, FieldDef, guessMapping, Grid, IMPORT_FIELDS, parseCsvGrid } from './importSheet';
 
 /**
  * Archivo subido (.xlsx o .csv) → celdas como texto, listas para importSheet.
@@ -71,13 +71,16 @@ export async function readXlsxBuffer(buffer: ArrayBuffer): Promise<SheetData[]> 
  * Hoja con más pinta de ser la tabla de inversiones: la que tiene más
  * cabeceras reconocibles (un Excel puede tener una portada o un resumen delante).
  */
-export function pickBestSheet(sheets: SheetData[]): SheetData | null {
+export function pickBestSheet<F extends string>(
+  sheets: SheetData[],
+  defs: FieldDef<F>[] = IMPORT_FIELDS as unknown as FieldDef<F>[],
+): SheetData | null {
   let best: SheetData | null = null;
   let bestScore = -1;
   for (const sheet of sheets) {
     if (!sheet.grid.some(r => r.some(c => c))) continue;
-    const headerRow = detectHeaderRow(sheet.grid);
-    const score = guessMapping(sheet.grid[headerRow] ?? []).filter(Boolean).length;
+    const headerRow = detectHeaderRow(sheet.grid, defs);
+    const score = guessMapping(sheet.grid[headerRow] ?? [], defs).filter(Boolean).length;
     if (score > bestScore) { best = sheet; bestScore = score; }
   }
   return best;

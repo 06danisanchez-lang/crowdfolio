@@ -100,6 +100,9 @@ const Index = () => {
   // For Free plan limit: count ALL active+pending (incl. locked) toward the 3-investment cap
   const activePendingCount = allInvestments.filter(i => i.status === 'active' || i.status === 'pending').length;
 
+  // Para no importar dos veces la misma inversión (incluidos los borradores).
+  const importExisting = useMemo(() => [...allInvestments, ...incompleteInvestments], [allInvestments, incompleteInvestments]);
+
   // Las vencidas pendientes de cerrar también avisan (están en completedInvestments con status 'pending').
   const alertInvestments = useMemo(
     () => [...activeInvestments, ...completedInvestments.filter(i => i.status === 'pending')],
@@ -490,7 +493,7 @@ const Index = () => {
                 <p className="text-muted-foreground">{t('investments.subtitle')}{!isPro && ` (${activePendingCount}/3)`}</p>
               </div>
               <div className="flex flex-wrap gap-2">
-                <ImportExport investments={investments} onImport={importInvestments} exportData={exportInvestments} isPro={isPro} currentActivePendingCount={activePendingCount} />
+                <ImportExport investments={investments} existing={importExisting} onImport={importInvestments} exportData={exportInvestments} isPro={isPro} currentActivePendingCount={activePendingCount} />
                 <InvestmentForm onSubmit={addInvestment} onSubmitDraft={addDraftInvestment} investmentCount={activePendingCount} isPro={isPro} onProRequired={() => openUpgradeModal('unlimited_investments')} />
               </div>
             </div>

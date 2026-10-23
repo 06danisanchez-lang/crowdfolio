@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
-import { Investment, InvestmentSummary, Platform, InvestmentStatus, Payment, DraftInvestment, IncomeModel, PaymentFrequency, PrincipalReturnType, EquityType, InvestmentScheduleEntry } from '@/types/investment';
+import { Investment, InvestmentSummary, Platform, InvestmentStatus, Payment, DraftInvestment, IncomeModel, PaymentFrequency, PrincipalReturnType, EquityType, InvestmentScheduleEntry, ImportInvestmentInput } from '@/types/investment';
 import { getAccrualEndDate } from '@/lib/investment/calculations';
 import { isInvestmentComplete } from '@/lib/investment/completeness';
 import { generateScheduleWithDelay } from '@/lib/investment/scheduleGenerator';
@@ -594,54 +594,81 @@ export function useInvestments() {
     ));
   }, []);
 
-  const importInvestments = useCallback(async (newInvestments: Investment[], replace: boolean = false) => {
-    if (!user) return;
+  /**
+   * Guarda inversiones importadas (Excel/CSV o JSON). Los borradores pueden
+   * llevar importe, fecha o rentabilidad vacíos (null): el usuario los
+   * completa después. Devuelve cuántas se han guardado.
+   */
+  const importInvestments = useCallback(async (
+    newInvestments: ImportInvestmentInput[], replace: boolean = false,
+  ): Promise<{ inserted: number; failed: number }> => {
+    if (!user) return { inserted: 0, failed: newInvestments.length };
     if (replace) {
       const { error: deleteError } = await supabase.from('investments').delete().eq('user_id', user.id);
-      if (deleteError) { console.error('Error deleting investments:', deleteError); return; }
+      if (deleteError) { console.error('Error deleting investments:', deleteError); return { inserted: 0, failed: newInvestments.length }; }
     }
-    for (const inv of newInvestments) {
-      const { data, error } = await supabase.from('investments').insert({
-        user_id: user.id, platform: inv.platform,
-        custom_platform_name: inv.customPlatformName || null,
-        project_name: inv.projectName, amount: inv.amount,
-        investment_date: inv.investmentDate,
-        expected_end_date: inv.expectedEndDate || null,
-        expected_return: inv.expectedReturn, status: inv.status,
-        income_model: inv.incomeModel || null,
-        payment_frequency: inv.paymentFrequency || null,
-        first_payment_date: inv.firstPaymentDate || null,
-        principal_return_type: inv.principalReturnType || null,
-        notes: inv.notes || null,
-        original_end_date: inv.originalEndDate || null,
-        interest_end_date: inv.interestEndDate || null,
-        was_extended: inv.wasExtended ?? false,
-      }).select().single();
-      if (error) { console.error('Error importing investment:', error); continue; }
 
-      // Generate schedule for imported investment
-      await saveScheduleForInvestment(data.id, {
-        amount: inv.amount,
-        expectedReturn: inv.expectedReturn,
-        incomeModel: inv.incomeModel,
-        paymentFrequency: inv.paymentFrequency,
-        principalReturnType: inv.principalReturnType,
-        investmentDate: inv.investmentDate,
-        expectedEndDate: inv.expectedEndDate,
-        firstPaymentDate: inv.firstPaymentDate,
-        interestEndDate: inv.interestEndDate,
-      });
+    // Id nuevo siempre (un JSON exportado trae los ids de la cuenta de origen).
+    const withIds = newInvestments.map(inv => ({ inv, id: crypto.randomUUID() }));
+    const insertedIds = new Set<string>();
+    const toRow = ({ inv, id }: { inv: ImportInvestmentInput; id: string }) => ({
+      id, user_id: user.id, platform: inv.platform,
+      custom_platform_name: inv.customPlatformName || null,
+      project_name: inv.projectName, amount: inv.amount ?? null,
+      investment_date: inv.investmentDate || null,
+      expected_end_date: inv.expectedEndDate || null,
+      expected_return: inv.expectedReturn ?? null, status: inv.status,
+      income_model: inv.incomeModel || null,
+      payment_frequency: inv.paymentFrequency || null,
+      first_payment_date: inv.firstPaymentDate || null,
+      principal_return_type: inv.principalReturnType || null,
+      notes: inv.notes || null,
+      original_end_date: inv.originalEndDate || null,
+      interest_end_date: inv.interestEndDate || null,
+      was_extended: inv.wasExtended ?? false,
+    });
+    const CHUNK = 100;
+    for (let i = 0; i < withIds.length; i += CHUNK) {
+      const chunk = withIds.slice(i, i + CHUNK);
+      const { error } = await supabase.from('investments').insert(chunk.map(toRow));
+      if (!error) { chunk.forEach(({ id }) => insertedIds.add(id)); continue; }
+      // Un lote se rechaza entero si falla una fila: se reintenta de una en una
+      // para no perder las demás.
+      console.error('Error importing investments (batch), retrying one by one:', error);
+      for (const item of chunk) {
+        const { error: rowError } = await supabase.from('investments').insert(toRow(item));
+        if (rowError) console.error('Error importing investment:', rowError);
+        else insertedIds.add(item.id);
+      }
+    }
 
+    for (const { inv, id } of withIds) {
+      if (!insertedIds.has(id)) continue;
+      // Calendario solo para las que tienen todos los datos (un borrador no tiene previsión).
+      if (inv.status !== 'draft' && inv.amount != null && inv.investmentDate && inv.expectedReturn != null && inv.incomeModel) {
+        await saveScheduleForInvestment(id, {
+          amount: inv.amount,
+          expectedReturn: inv.expectedReturn,
+          incomeModel: inv.incomeModel,
+          paymentFrequency: inv.paymentFrequency,
+          principalReturnType: inv.principalReturnType,
+          investmentDate: inv.investmentDate,
+          expectedEndDate: inv.expectedEndDate,
+          firstPaymentDate: inv.firstPaymentDate,
+          interestEndDate: inv.interestEndDate,
+        });
+      }
       if (inv.payments && inv.payments.length > 0) {
         const paymentsToInsert = inv.payments.map(p => ({
-          investment_id: data.id, date: p.date, amount: p.amount, type: p.type, notes: p.notes || null,
+          investment_id: id, date: p.date, amount: p.amount, type: p.type, notes: p.notes || null,
           withholding_applied: p.withholdingApplied ?? 0,
         }));
         const { error: paymentsError } = await supabase.from('payments').insert(paymentsToInsert);
         if (paymentsError) console.error('Error importing payments:', paymentsError);
       }
     }
-    fetchInvestments();
+    await fetchInvestments();
+    return { inserted: insertedIds.size, failed: withIds.length - insertedIds.size };
   }, [user, fetchInvestments, saveScheduleForInvestment]);
 
   const exportInvestments = useCallback(() => JSON.stringify(investments, null, 2), [investments]);

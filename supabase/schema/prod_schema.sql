@@ -1,9 +1,9 @@
 -- Instantánea del esquema `public` de PRODUCCIÓN (estructura, sin datos).
 -- NO EDITAR A MANO: se regenera con supabase/schema/dump_schema.sql (ver CLAUDE.md).
 --
--- snapshot_version: 20261023163408
--- última migración registrada en producción: 20261023151234
--- comprobación (md5 de la salida normalizada, 151 sentencias): 70872f42651a244a6506f3c8fcc4bfd1
+-- snapshot_version: 20261023175047
+-- última migración registrada en producción: 20261023173010
+-- comprobación (md5 de la salida normalizada, 151 sentencias): 1c596c7dc8dea9f0d0d4bd4f6cd2f78d
 --
 -- scripts/db-test.sh carga primero supabase/schema/stubs.sql, después este
 -- archivo y por último las migraciones con versión > snapshot_version.
@@ -113,7 +113,8 @@ create table public.investments (
   loss_rules_version integer,
   first_payment_date date,
   original_end_date date,
-  interest_end_date date
+  interest_end_date date,
+  assumed_paid_until date
 );
 
 create table public.notifications (

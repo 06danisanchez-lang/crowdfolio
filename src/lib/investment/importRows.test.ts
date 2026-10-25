@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import {
-  buildInvestmentFromRow, buildImportCandidates, detectDateOrder, detectFractionReturns, matchPlatform, parseImportNumber,
+  buildInvestmentFromRow, buildImportCandidates, detectDateOrder, detectFractionReturns, matchPlatform, parseImportNumber, parseTermMonths, platformFromSheetName,
   selectForImport,
 } from './importRows';
 
@@ -290,5 +290,43 @@ describe('selectForImport', () => {
     const s = selectForImport(base, { includeDuplicates: true, includeFinished: true, includePastDue: false, slots: 2 });
     expect(s.accepted.map(c => c.investment.projectName)).toEqual(['A', 'B']);
     expect(s.overLimit).toBe(1);
+  });
+});
+
+describe('plazo con unidades', () => {
+  it('«18 meses», «18 m», «2 años», «1,5 años»; no «18,5» ni «mucho»', () => {
+    expect(parseTermMonths('18 meses')).toBe(18);
+    expect(parseTermMonths('18 m')).toBe(18);
+    expect(parseTermMonths('2 años')).toBe(24);
+    expect(parseTermMonths('1,5 años')).toBe(18);
+    expect(parseTermMonths('18,5')).toBeNull();
+    expect(parseTermMonths('mucho')).toBeNull();
+    expect(buildInvestmentFromRow(row({ expectedEndDate: '', termMonths: '18 meses' })).investment.expectedEndDate).toBe('2025-08-01');
+  });
+});
+
+describe('fechas sin día', () => {
+  it('«oct 2025» se deja vacía con un aviso que lo dice, sin suponer el día', () => {
+    const built = buildInvestmentFromRow(row({ investmentDate: 'oct 2025' }));
+    expect(built.investment.investmentDate).toBeNull();
+    expect(built.warnings[0]).toContain('sin día');
+  });
+});
+
+describe('plataforma por el nombre de la hoja', () => {
+  it('solo si la hoja se llama como una plataforma', () => {
+    expect(platformFromSheetName('Urbanitae')).toEqual({ platform: 'urbanitae' });
+    expect(platformFromSheetName('civislend')).toEqual({ platform: 'other', customPlatformName: 'Civislend' });
+    expect(platformFromSheetName('Hoja1')).toBeNull();
+    expect(platformFromSheetName('2025')).toBeNull();
+  });
+  it('la celda de la fila manda sobre la hoja, y la hoja sobre la elegida para el archivo', () => {
+    const rows = [
+      { rowNumber: 2, sheetName: 'Wecity', raw: { projectName: 'Teià', platform: '' } },
+      { rowNumber: 3, sheetName: 'Wecity', raw: { projectName: 'Getafe', platform: 'Housers' } },
+      { rowNumber: 2, sheetName: 'Hoja1', raw: { projectName: 'Otro', platform: '' } },
+    ];
+    const { candidates } = buildImportCandidates(rows, [], { defaultPlatform: { platform: 'urbanitae' } });
+    expect(candidates.map(c => [c.sheetName, c.investment.platform])).toEqual([['Wecity', 'wecity'], ['Wecity', 'housers'], ['Hoja1', 'urbanitae']]);
   });
 });

@@ -45,6 +45,8 @@ export interface ImportedInvestment {
 
 export interface ImportCandidate {
   rowNumber: number;
+  /** Hoja de la que sale (si se importan varias hojas a la vez). */
+  sheetName?: string;
   investment: ImportedInvestment;
   complete: boolean;
   /** Claves de traducción `investments.field.*` de lo que falta. */
@@ -146,6 +148,29 @@ export function matchPlatform(
   return { platform: 'other', customPlatformName: existing ?? text };
 }
 
+/**
+ * Plataformas reales que no tienen ficha propia en Crowdfolio (se guardan como
+ * «Otra» con su nombre). Solo sirven para reconocer el NOMBRE DE UNA HOJA como
+ * plataforma: una hoja «2025» o «Hoja1» no es una plataforma.
+ */
+const KNOWN_OTHER_PLATFORMS = ['Civislend', 'Mintos', 'Fellow Funders', 'Reental', 'Bulkestate', 'Crowdestate', 'EvoEstate'];
+
+/**
+ * Plataforma a partir del nombre de una hoja («Urbanitae», «Civislend»).
+ * Solo si es una plataforma conocida o una que el usuario ya usa; si no, null.
+ */
+export function platformFromSheetName(
+  sheetName: string | undefined,
+  knownCustom: string[] = [],
+): { platform: Platform; customPlatformName?: string } | null {
+  const n = normalizeText(sheetName ?? '');
+  if (!n) return null;
+  const known = PLATFORMS.find(p => p.value !== 'other' && normalizeText(p.label) === n);
+  if (known) return { platform: known.value };
+  const other = [...knownCustom, ...KNOWN_OTHER_PLATFORMS].find(c => normalizeText(c) === n);
+  return other ? { platform: 'other', customPlatformName: other } : null;
+}
+
 /** Divisa de la plataforma (Crowdcube opera en libras). */
 function platformCurrency(platform: Platform): string {
   return PLATFORMS.find(p => p.value === platform)?.defaultCurrency ?? 'EUR';
@@ -169,6 +194,24 @@ export function parseImportNumber(raw: string | undefined): number | null {
   if (parsed.error || parsed.value === null || !Number.isFinite(parsed.value)) return null;
   return parsed.value;
 }
+
+/**
+ * Plazo en meses: «18», «18 meses», «18 m», «2 años» (= 24), «1,5 años» (= 18).
+ * null si no es un número entero de meses entre 1 y 360.
+ */
+export function parseTermMonths(raw: string | undefined): number | null {
+  const s = (raw ?? '').trim().toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+  const m = /^(\d+(?:[.,]\d+)?)\s*(meses|mes|m|anos|ano|a)?\.?$/.exec(s);
+  if (!m) return null;
+  const n = Number(m[1].replace(',', '.'));
+  const months = m[2] && m[2].startsWith('a') ? n * 12 : n;
+  if (!Number.isInteger(months) || months <= 0 || months > 360) return null;
+  return months;
+}
+
+/** «oct 2025», «octubre de 2025», «10/2025»: mes y año, sin día. */
+const MONTH_YEAR = /^([a-z]{3,10}\.?\s*(de\s+)?\d{2,4}|\d{1,2}[/.-]\d{4})$/;
+const isMonthYear = (raw: string) => MONTH_YEAR.test(raw.trim().toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, ''));
 
 const TEXT_DATE = /^(\d{1,2})([/.-])(\d{1,2})\2(\d{2}|\d{4})$/;
 
@@ -282,7 +325,9 @@ export function buildInvestmentFromRow(raw: RawRow, opts: BuildOptions = {}): Bu
   // Fecha de inversión: ni futura ni absurda (un 0 en Excel es 1900).
   let investmentDate = parseLooseDate(raw.investmentDate, order);
   if (raw.investmentDate && !investmentDate) {
-    notUnderstood('fecha de inversión', raw.investmentDate, `Fecha de inversión «${raw.investmentDate}» no reconocida`);
+    notUnderstood('fecha de inversión', raw.investmentDate, isMonthYear(raw.investmentDate)
+      ? `Fecha de inversión «${raw.investmentDate}» sin día: complétala`
+      : `Fecha de inversión «${raw.investmentDate}» no reconocida`);
   } else if (investmentDate && (investmentDate > today || investmentDate < MIN_DATE)) {
     notUnderstood('fecha de inversión', raw.investmentDate, `Fecha de inversión «${raw.investmentDate}» dudosa: revísala`);
     investmentDate = null;
@@ -291,13 +336,17 @@ export function buildInvestmentFromRow(raw: RawRow, opts: BuildOptions = {}): Bu
   // Vencimiento
   let expectedEndDate = parseLooseDate(raw.expectedEndDate, order) ?? undefined;
   if (raw.expectedEndDate && !expectedEndDate) {
-    notUnderstood('vencimiento', raw.expectedEndDate, `Vencimiento «${raw.expectedEndDate}» no reconocido`);
+    notUnderstood('vencimiento', raw.expectedEndDate, isMonthYear(raw.expectedEndDate)
+      ? `Vencimiento «${raw.expectedEndDate}» sin día: complétalo`
+      : `Vencimiento «${raw.expectedEndDate}» no reconocido`);
   }
   // Sin fecha de vencimiento pero con plazo en meses: fecha de inversión + plazo.
   if (!expectedEndDate && investmentDate && raw.termMonths) {
-    const months = parseImportNumber(raw.termMonths);
-    if (months !== null && Number.isInteger(months) && months > 0 && months <= 360) {
+    const months = parseTermMonths(raw.termMonths);
+    if (months !== null) {
       expectedEndDate = toDateOnlyString(addMonths(fromDateOnlyString(investmentDate), months));
+    } else {
+      notUnderstood('plazo', raw.termMonths, `Plazo «${raw.termMonths}» no reconocido`);
     }
   }
   if (expectedEndDate && investmentDate && expectedEndDate <= investmentDate) {
@@ -432,7 +481,7 @@ export function buildImportCandidates(
   rows: SheetRow[],
   existing: ExistingInvestmentKey[],
   opts: BuildOptions = {},
-): { candidates: ImportCandidate[]; withoutName: number[] } {
+): { candidates: ImportCandidate[]; withoutName: number[]; withoutNameLabels: string[] } {
   const byName = new Map<string, ExistingInvestmentKey[]>();
   for (const ex of existing) {
     if (!ex.projectName) continue;
@@ -445,17 +494,30 @@ export function buildImportCandidates(
 
   const candidates: ImportCandidate[] = [];
   const withoutName: number[] = [];
+  const withoutNameLabels: string[] = [];
   for (const row of rows) {
-    const built = buildInvestmentFromRow(row.raw, { ...opts, knownCustomPlatforms });
+    // Varias hojas a la vez: si la fila no dice la plataforma y la hoja se
+    // llama como una («Urbanitae»), esa es su plataforma. Va antes que la
+    // elegida para todo el archivo.
+    const sheetPlatform = !(row.raw.platform ?? '').trim() ? platformFromSheetName(row.sheetName, knownCustomPlatforms) : null;
+    const built = buildInvestmentFromRow(row.raw, {
+      ...opts,
+      knownCustomPlatforms,
+      ...(sheetPlatform ? { defaultPlatform: sheetPlatform } : {}),
+    });
     const inv = built.investment;
-    if (!inv.projectName) { withoutName.push(row.rowNumber); continue; }
+    if (!inv.projectName) {
+      withoutName.push(row.rowNumber);
+      withoutNameLabels.push(row.sheetName ? `${row.sheetName} ${row.rowNumber}` : String(row.rowNumber));
+      continue;
+    }
     // Fila de ejemplo de la plantilla que el usuario no ha borrado.
     if (normalizeText(inv.projectName).startsWith('ejemplo ')) continue;
     const sameName = byName.get(`${platformKey(inv.platform, inv.customPlatformName)}|${normalizeText(inv.projectName)}`) ?? [];
     const duplicate = sameName.some(ex => isSameInvestment(inv, ex));
-    candidates.push({ ...built, rowNumber: row.rowNumber, duplicate });
+    candidates.push({ ...built, rowNumber: row.rowNumber, ...(row.sheetName ? { sheetName: row.sheetName } : {}), duplicate });
   }
-  return { candidates, withoutName };
+  return { candidates, withoutName, withoutNameLabels };
 }
 
 export interface ImportSelection {

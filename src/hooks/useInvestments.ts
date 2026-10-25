@@ -436,6 +436,15 @@ export function useInvestments() {
     if (updates.currency !== undefined) {
       Object.assign(dbUpdates, fxFieldsToColumns(updates, updates.amount ?? current?.amount ?? null));
     }
+    // Vencida «por confirmar» cuya fecha pasa a ser futura (se corrigió, o se movió
+    // por una prórroga o un retraso): vuelve a estar activa. Es lo contrario del
+    // paso automático a 'pending' al cargar.
+    const reactivated = updates.status === undefined
+      && current?.status === 'pending'
+      && !!updates.expectedEndDate
+      && updates.expectedEndDate >= toDateOnlyString(new Date());
+    if (reactivated) dbUpdates.status = 'active';
+
     const { error } = await supabase.from('investments').update(dbUpdates).eq('id', id);
     if (error) {
       console.error('Error updating investment:', error);
@@ -464,7 +473,7 @@ export function useInvestments() {
     // Auto-draft: demote to draft if edit breaks tracking_ready
     let demotedToDraft = false;
     if (current) {
-      const mergedStatus = updates.status ?? current.status ?? 'active';
+      const mergedStatus = updates.status ?? (reactivated ? 'active' : current.status) ?? 'active';
       const mergedIncomeModel = updates.incomeModel ?? current.incomeModel;
       const mergedComplete = isInvestmentComplete({
         platform: updates.platform ?? current.platform,
@@ -484,9 +493,16 @@ export function useInvestments() {
       }
     }
 
+    // El aviso «¿Ha vencido…?» de la fecha anterior ya no aplica.
+    if (reactivated && user) {
+      await supabase.from('notifications').update({ read: true })
+        .eq('user_id', user.id).eq('type', 'maturity_overdue').eq('read', false)
+        .contains('data', { investmentId: id });
+    }
+
     await fetchInvestments();
     return { demotedToDraft, error: scheduleError };
-  }, [fetchInvestments, allRawInvestments, saveScheduleForInvestment, scheduleMap]);
+  }, [fetchInvestments, allRawInvestments, saveScheduleForInvestment, scheduleMap, user]);
 
   const deleteInvestment = useCallback(async (id: string) => {
     const { error } = await supabase.from('investments').delete().eq('id', id);

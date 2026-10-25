@@ -45,3 +45,13 @@ describe('buildMaturityFromForm — edición', () => {
       .toEqual({ originalEndDate: '2026-01-01', interestEndDate: null, wasExtended: true });
   });
 });
+
+describe('buildMaturityFromForm — la fecha estaba mal', () => {
+  it('mover la fecha como corrección no guarda retraso', () => {
+    expect(buildMaturityFromForm(prev, { expectedEndDate: '2028-03-02', kind: 'correction' })).toEqual({});
+  });
+  it('corrección sobre una inversión ya retrasada conserva su retraso anterior', () => {
+    const moved = { ...prev, expectedEndDate: '2026-07-01', originalEndDate: '2026-01-01', interestEndDate: '2026-01-01' };
+    expect(buildMaturityFromForm(moved, { expectedEndDate: '2026-08-01', promisedEndDate: '2026-01-01', kind: 'correction' })).toEqual({});
+  });
+});

@@ -7,7 +7,7 @@ import { CalendarIcon, Plus, AlertTriangle, Info } from 'lucide-react';
 import { Investment, Platform, InvestmentStatus, PLATFORMS, STATUS_OPTIONS, INCOME_MODEL_OPTIONS, PAYMENT_FREQUENCY_OPTIONS, PRINCIPAL_RETURN_TYPE_OPTIONS, EQUITY_TYPE_OPTIONS, IncomeModel, PaymentFrequency, PrincipalReturnType, EquityType } from '@/types/investment';
 import { getInvestmentCompletionStatus } from '@/lib/investment/completeness';
 import { generateSchedule } from '@/lib/investment/scheduleGenerator';
-import { buildMaturityFromForm, deriveMaturityKind, MaturityChangeKind } from '@/lib/investment/maturityChange';
+import { buildMaturityFromForm, deriveMaturityKind, FormMaturityKind } from '@/lib/investment/maturityChange';
 import { parseSpanishNumber, formatSpanishNumber } from '@/lib/investment/parseSpanishNumber';
 import { PLAN_FEATURES } from '@/lib/stripe/config';
 import { toDateOnlyString, fromDateOnlyString } from '@/lib/dateOnly';
@@ -219,7 +219,7 @@ const investmentSchema = z.object({
   investmentDate: z.date(),
   expectedEndDate: z.date().optional(),
   promisedEndDate: z.date().optional(),
-  maturityKind: z.enum(['extended', 'delayed'] as const).optional(),
+  maturityKind: z.enum(['extended', 'delayed', 'correction'] as const).optional(),
   expectedReturn: expectedReturnSchema,
   incomeModel: z.enum(['bullet', 'periodic_fixed', 'amortizing', 'variable_or_unknown', 'equity'] as const),
   paymentFrequency: z.enum(['monthly', 'quarterly', 'semiannual', 'annual'] as const).optional(),
@@ -270,7 +270,7 @@ const draftInvestmentSchema = z.object({
   investmentDate: z.date().optional(),
   expectedEndDate: z.date().optional(),
   promisedEndDate: z.date().optional(),
-  maturityKind: z.enum(['extended', 'delayed'] as const).optional(),
+  maturityKind: z.enum(['extended', 'delayed', 'correction'] as const).optional(),
   expectedReturn: expectedReturnSchema.nullable().optional(),
   incomeModel: z.enum(['bullet', 'periodic_fixed', 'amortizing', 'variable_or_unknown', 'equity'] as const).optional(),
   paymentFrequency: z.enum(['monthly', 'quarterly', 'semiannual', 'annual'] as const).optional(),
@@ -315,7 +315,7 @@ interface EditFormValues {
   investmentDate?: Date;
   expectedEndDate?: Date;
   promisedEndDate?: Date;
-  maturityKind?: MaturityChangeKind;
+  maturityKind?: FormMaturityKind;
   expectedReturn?: number;
   incomeModel?: IncomeModel;
   paymentFrequency?: PaymentFrequency;
@@ -674,7 +674,7 @@ export function InvestmentForm({
   const maturitySubmitFields = (data: any) => buildMaturityFromForm(previousMaturity, {
     expectedEndDate: data.expectedEndDate ? toDateOnlyString(data.expectedEndDate) : undefined,
     promisedEndDate: data.promisedEndDate ? toDateOnlyString(data.promisedEndDate) : undefined,
-    kind: (data.maturityKind as MaturityChangeKind | undefined) ?? 'delayed',
+    kind: (data.maturityKind as FormMaturityKind | undefined) ?? 'delayed',
   });
 
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -872,16 +872,21 @@ export function InvestmentForm({
   // CF sabe cuánto retraso lleva aunque se dé de alta con la fecha nueva.
   const watchExpectedEnd = form.watch('expectedEndDate') as Date | undefined;
   const watchPromisedEnd = form.watch('promisedEndDate') as Date | undefined;
-  const watchMaturityKind = (form.watch('maturityKind') as MaturityChangeKind | undefined) ?? 'delayed';
+  const watchMaturityKind = (form.watch('maturityKind') as FormMaturityKind | undefined) ?? 'delayed';
   const expectedEndStr = watchExpectedEnd ? toDateOnlyString(watchExpectedEnd) : undefined;
   const promisedEndStr = watchPromisedEnd ? toDateOnlyString(watchPromisedEnd) : undefined;
   const maturityMovedForward = !!expectedEndStr && !!previousMaturity?.expectedEndDate && expectedEndStr > previousMaturity.expectedEndDate;
   const showMaturityKind = (!!promisedEndStr && !!expectedEndStr && promisedEndStr < expectedEndStr) || (maturityMovedForward && !promisedEndStr);
+  // Al mover la fecha en una edición sin tocar el prometido, puede ser que la fecha
+  // de antes estuviera mal: entonces no hay retraso que guardar.
+  const canBeCorrection = maturityMovedForward && promisedEndStr === (previousMaturity?.originalEndDate || undefined);
+  const isCorrection = canBeCorrection && watchMaturityKind === 'correction';
+  const maturityKindOptions: FormMaturityKind[] = canBeCorrection ? ['correction', 'extended', 'delayed'] : ['extended', 'delayed'];
   const [showPromised, setShowPromised] = useState(false);
 
   const renderPromisedMaturity = () => (
     <div className="space-y-3 rounded-lg border p-3">
-      {!(showPromised || watchPromisedEnd || maturityMovedForward) ? (
+      {isCorrection && !watchPromisedEnd ? null : !(showPromised || watchPromisedEnd || maturityMovedForward) ? (
         <button
           type="button"
           className="text-left text-sm text-primary underline-offset-2 hover:underline"
@@ -933,8 +938,8 @@ export function InvestmentForm({
       {showMaturityKind && (
         <div className="space-y-2">
           <p className="text-sm font-medium">{t('investments.action.extendKindQuestion')}</p>
-          <div className="grid gap-2 sm:grid-cols-2">
-            {(['extended', 'delayed'] as const).map(kind => (
+          <div className={cn('grid gap-2', maturityKindOptions.length === 3 ? 'sm:grid-cols-3' : 'sm:grid-cols-2')}>
+            {maturityKindOptions.map(kind => (
               <button
                 key={kind}
                 type="button"
@@ -950,7 +955,9 @@ export function InvestmentForm({
               </button>
             ))}
           </div>
-          <p className="text-xs text-muted-foreground">Si no lo sabes, déjalo en «Retraso»: CF no supondrá intereses extra.</p>
+          {!isCorrection && (
+            <p className="text-xs text-muted-foreground">Si no lo sabes, déjalo en «Retraso»: CF no supondrá intereses extra.</p>
+          )}
         </div>
       )}
     </div>

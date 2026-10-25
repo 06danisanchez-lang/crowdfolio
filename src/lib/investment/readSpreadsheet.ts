@@ -1,5 +1,5 @@
 import { loadExcelJS } from '@/lib/lazy/exportLibs';
-import { decodeCsvBytes, detectHeaderRow, FieldDef, guessMapping, Grid, IMPORT_FIELDS, parseCsvGrid } from './importSheet';
+import { decodeCsvBytes, detectHeaderRow, FieldDef, guessMapping, Grid, IMPORT_FIELDS, normalizeText, parseCsvGrid } from './importSheet';
 
 /**
  * Archivo subido (.xlsx o .csv) → celdas como texto, listas para importSheet.
@@ -46,7 +46,7 @@ export async function readXlsxBuffer(buffer: ArrayBuffer): Promise<SheetData[]> 
   try {
     await workbook.xlsx.load(buffer);
   } catch {
-    throw new Error('No se ha podido abrir el Excel. Si es un .xls antiguo, guárdalo como .xlsx o .csv y vuelve a subirlo.');
+    throw new Error('No se ha podido abrir el Excel. Ábrelo en Excel y usa «Archivo → Guardar como → Libro de Excel (.xlsx)», y vuelve a subirlo.');
   }
   const sheets: SheetData[] = [];
   workbook.eachSheet(ws => {
@@ -86,12 +86,29 @@ export function pickBestSheet<F extends string>(
   return best;
 }
 
+/**
+ * Hojas con la misma tabla que `best` (mismos títulos de columna, en el mismo
+ * orden): un Excel con una hoja por plataforma o por año. Incluye `best` y
+ * respeta el orden del archivo. Una hoja de resumen con otros títulos no entra.
+ */
+export function compatibleSheets(sheets: SheetData[], best: SheetData): SheetData[] {
+  const signature = (sheet: SheetData) => {
+    const row = sheet.grid[detectHeaderRow(sheet.grid)] ?? [];
+    return row.map(normalizeText).join('|').replace(/\|+$/, '');
+  };
+  const target = signature(best);
+  if (!target || guessMapping(best.grid[detectHeaderRow(best.grid)] ?? []).filter(Boolean).length < 2) return [best];
+  return sheets.filter(s => s === best || signature(s) === target);
+}
+
 export async function readSpreadsheetFile(file: File): Promise<SheetData[]> {
   const ext = file.name.toLowerCase().split('.').pop();
   if (ext === 'xlsx' || ext === 'xlsm') return readXlsxBuffer(await file.arrayBuffer());
   if (ext === 'csv' || ext === 'txt') return [{ name: file.name, grid: parseCsvGrid(decodeCsvBytes(await file.arrayBuffer())) }];
   if (ext === 'xls' || ext === 'numbers' || ext === 'ods') {
-    throw new Error('Este formato no se puede leer. Guárdalo como Excel (.xlsx) o CSV y vuelve a subirlo.');
+    throw new Error(ext === 'xls'
+      ? 'Es un Excel antiguo (.xls) y todavía no podemos leerlo. Ábrelo en Excel y usa «Archivo → Guardar como → Libro de Excel (.xlsx)»: con eso basta, no tienes que cambiar nada más.'
+      : 'Este formato no se puede leer. Guárdalo como Excel (.xlsx) o CSV y vuelve a subirlo.');
   }
   throw new Error('Sube un archivo Excel (.xlsx) o CSV.');
 }

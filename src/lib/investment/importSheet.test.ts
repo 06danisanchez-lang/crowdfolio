@@ -1,7 +1,7 @@
 import { describe, it, expect } from 'vitest';
-import { decodeCsvBytes, detectHeaderRow, gridToRows, guessMapping, parseCsvGrid } from './importSheet';
+import { decodeCsvBytes, detectHeaderRow, gridToRows, guessInvestmentMapping, guessMapping, parseCsvGrid } from './importSheet';
 import { buildImportCandidates } from './importRows';
-import { excelCellToString, pickBestSheet, readXlsxBuffer } from './readSpreadsheet';
+import { compatibleSheets, excelCellToString, pickBestSheet, readXlsxBuffer } from './readSpreadsheet';
 import ExcelJS from 'exceljs';
 
 describe('guessMapping', () => {
@@ -124,5 +124,56 @@ describe('Excel (.xlsx)', () => {
       expectedReturn: 11, incomeModel: null, status: 'draft',
     });
     expect(candidates[1].missing).toEqual(['investments.field.incomeModel', 'investments.field.expectedEndDate']);
+  });
+});
+
+describe('filas de resumen con más texto', () => {
+  it('«TOTAL 2025», «Subtotal Urbanitae» y «Media» sin fecha no son inversiones; «Total Living» con fecha sí', () => {
+    const grid = [
+      ['Proyecto', 'Importe', 'Rentabilidad', 'Fecha'],
+      ['Total Living', '1.000', '10', '01/02/2024'],
+      ['Piso Ruzafa', '500', '9', '03/04/2024'],
+      ['Subtotal Urbanitae', '1.500', '', ''],
+      ['TOTAL 2025', '1.500', '', ''],
+      ['Media', '', '9,5', ''],
+      ['Rentabilidad media', '', '9,5', ''],
+    ];
+    const skipped: number[] = [];
+    const rows = gridToRows(grid, 0, guessMapping(grid[0]), { summaryUnless: 'investmentDate', skipped });
+    expect(rows.map(r => r.raw.projectName)).toEqual(['Total Living', 'Piso Ruzafa']);
+    expect(skipped).toEqual([4, 5, 6, 7]);
+  });
+  it('sin la opción, se comporta como antes (lo usa la importación de cobros)', () => {
+    const grid = [['Proyecto', 'Importe'], ['TOTAL 2025', '1.500']];
+    expect(gridToRows(grid, 0, guessMapping(grid[0]))).toHaveLength(1);
+  });
+});
+
+describe('guessInvestmentMapping: columnas que no encajan con su contenido', () => {
+  it('«Inversión» con nombres de proyecto es el nombre, y «Cantidad» el importe', () => {
+    const grid = [
+      ['Inversión', 'Plataforma', 'Cantidad', 'Interés', 'Fecha', 'Fin'],
+      ['Valdebebas', 'Urbanitae', '1.500,00', '12,00%', '05/03/2025', '05/09/2026'],
+      ['Teià', 'Wecity', '3.000,00', '8,00%', '10/06/2024', '10/06/2026'],
+    ];
+    expect(guessInvestmentMapping(grid, 0)).toEqual(
+      ['projectName', 'platform', 'amount', 'expectedReturn', 'investmentDate', 'expectedEndDate'],
+    );
+  });
+  it('«Inversión» con cifras sigue siendo el importe', () => {
+    const grid = [['Proyecto', 'Inversión', 'Fecha'], ['Valdebebas', '1.500 €', '05/03/2025']];
+    expect(guessInvestmentMapping(grid, 0)).toEqual(['projectName', 'amount', 'investmentDate']);
+  });
+  it('una columna de importe con texto se descarta aunque no haya dónde ponerla', () => {
+    const grid = [['Proyecto', 'Importe', 'Plazo'], ['Valdebebas', 'mucho', '18 meses'], ['Teià', 'poco', '24 meses']];
+    expect(guessInvestmentMapping(grid, 0)).toEqual(['projectName', null, 'termMonths']);
+  });
+});
+
+describe('compatibleSheets', () => {
+  it('agrupa las hojas con la misma tabla y deja fuera el resumen', () => {
+    const table = (name: string) => ({ name, grid: [['Proyecto', 'Importe', 'Fecha'], ['A', '1', '01/01/2025']] });
+    const sheets = [{ name: 'Resumen', grid: [['Plataforma', 'Total invertido'], ['Urbanitae', '5000']] }, table('Urbanitae'), table('Wecity')];
+    expect(compatibleSheets(sheets, sheets[1]).map(s => s.name)).toEqual(['Urbanitae', 'Wecity']);
   });
 });

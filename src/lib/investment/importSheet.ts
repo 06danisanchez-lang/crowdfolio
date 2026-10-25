@@ -252,13 +252,34 @@ export interface SheetRow {
   /** Número de fila tal como lo ve el usuario en Excel (1 = primera). */
   rowNumber: number;
   raw: Record<string, string>;
+  /** Hoja de la que sale la fila (cuando se importan varias hojas a la vez). */
+  sheetName?: string;
 }
 
 // Solo la celda entera: «Total Living» es un nombre de proyecto válido.
 const TOTAL_ROW = /^(total|totales|suma|subtotal|total general|total invertido|total cartera)$/;
+// Filas de resumen con más texto: «TOTAL 2025», «Subtotal Urbanitae», «Rentabilidad media».
+const SUMMARY_WORD = /(^| )(total|totales|suma|subtotal|media|promedio|average|sum)( |$)/;
+
+export interface GridToRowsOptions<F extends string> {
+  /**
+   * Saltar también las filas con la palabra total, suma, media… si no traen
+   * este dato. En inversiones es la fecha de inversión: una inversión de verdad
+   * la tiene; una fila de totales, no («Total Living» con su fecha se importa).
+   */
+  summaryUnless?: F;
+  /** Filas saltadas por parecer totales o medias (para decírselo al usuario). */
+  skipped?: number[];
+  sheetName?: string;
+}
 
 /** Filas de datos (bajo la cabecera) con los datos que el usuario ha asignado. */
-export function gridToRows<F extends string>(grid: Grid, headerRow: number, mapping: ColumnMapping<F>): SheetRow[] {
+export function gridToRows<F extends string>(
+  grid: Grid,
+  headerRow: number,
+  mapping: ColumnMapping<F>,
+  opts: GridToRowsOptions<F> = {},
+): SheetRow[] {
   const rows: SheetRow[] = [];
   for (let r = headerRow + 1; r < grid.length; r++) {
     const cells = grid[r];
@@ -271,10 +292,62 @@ export function gridToRows<F extends string>(grid: Grid, headerRow: number, mapp
     // Filas de totales al pie de la tabla.
     const firstCell = normalizeText(cells.find(c => c.trim()) ?? '');
     const nameCell = normalizeText(raw.projectName ?? '');
-    if (TOTAL_ROW.test(firstCell) || TOTAL_ROW.test(nameCell)) continue;
-    rows.push({ rowNumber: r + 1, raw });
+    if (TOTAL_ROW.test(firstCell) || TOTAL_ROW.test(nameCell)) {
+      opts.skipped?.push(r + 1);
+      continue;
+    }
+    if (opts.summaryUnless && !raw[opts.summaryUnless] && (SUMMARY_WORD.test(firstCell) || SUMMARY_WORD.test(nameCell))) {
+      opts.skipped?.push(r + 1);
+      continue;
+    }
+    rows.push({ rowNumber: r + 1, raw, ...(opts.sheetName ? { sheetName: opts.sheetName } : {}) });
   }
   return rows;
+}
+
+// ─── Columnas que no encajan con su contenido ────────────────────────────────
+
+/** ¿Parece una cifra? «1.500,00 €», «12 %», «0,12», «18 meses». */
+function looksNumeric(value: string): boolean {
+  const v = value.replace(/\u00a0/g, ' ').trim().toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+  return /^[-+]?[\d.,\s]*\d[\d.,\s]*(€|eur|euros|%|meses|mes|m|anos|ano)?\.?$/.test(v);
+}
+
+const NUMERIC_FIELDS: ImportField[] = ['amount', 'expectedReturn', 'termMonths'];
+/** Títulos que, si la columna trae texto, son el nombre de la inversión. */
+const NAME_LIKE_HEADERS = ['inversion', 'inversiones'];
+
+/**
+ * Como guessMapping, pero comprueba que las columnas de cifras (importe,
+ * rentabilidad, plazo) traen cifras. Una columna titulada «Inversión» con
+ * nombres de proyecto («Valdebebas») no es el importe: se le quita ese dato,
+ * se busca otra columna para él («Cantidad») y, si no hay columna de nombre,
+ * esa pasa a ser el nombre. El contenido solo sirve para DESCARTAR una
+ * propuesta, nunca para adivinar una columna sin título reconocible.
+ */
+export function guessInvestmentMapping(grid: Grid, headerRow: number): ColumnMapping {
+  const headers = grid[headerRow] ?? [];
+  const sample = (col: number) =>
+    grid.slice(headerRow + 1, headerRow + 61).map(r => (r?.[col] ?? '').trim()).filter(Boolean);
+  const mostlyText = (col: number) => {
+    const values = sample(col);
+    if (values.length === 0) return false;
+    return values.filter(looksNumeric).length < values.length / 2;
+  };
+  const blocked = new Set<number>();
+  let mapping = guessMapping(headers);
+  for (let i = 0; i < headers.length; i++) {
+    const bad = mapping.findIndex((f, col) => f !== null && NUMERIC_FIELDS.includes(f) && !blocked.has(col) && mostlyText(col));
+    if (bad < 0) break;
+    blocked.add(bad);
+    mapping = guessMapping(headers.map((h, c) => (blocked.has(c) ? '' : h)));
+  }
+  for (const col of blocked) {
+    if (!mapping.includes('projectName') && NAME_LIKE_HEADERS.includes(normalizeText(headers[col] ?? ''))) {
+      mapping[col] = 'projectName';
+    }
+  }
+  return mapping;
 }
 
 // ─── CSV ──────────────────────────────────────────────────────────────────────

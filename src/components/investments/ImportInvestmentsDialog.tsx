@@ -21,12 +21,12 @@ import { PLAN_FEATURES } from '@/lib/stripe/config';
 import { investmentsArraySchema, MAX_IMPORT_FILE_SIZE, MAX_INVESTMENTS_PER_IMPORT } from '@/lib/validation/investmentSchema';
 import { parseImportDate } from '@/lib/investment/parseImportDate';
 import {
-  ColumnMapping, detectHeaderRow, FIELD_LABEL, gridToRows, guessMapping, IMPORT_FIELDS, ImportField,
+  ColumnMapping, detectHeaderRow, FIELD_LABEL, gridToRows, guessInvestmentMapping, IMPORT_FIELDS, ImportField, SheetRow,
 } from '@/lib/investment/importSheet';
 import {
   buildImportCandidates, DateOrder, detectDateOrder, detectFractionReturns, ExistingInvestmentKey, ImportCandidate, selectForImport,
 } from '@/lib/investment/importRows';
-import { pickBestSheet, readSpreadsheetFile, SheetData } from '@/lib/investment/readSpreadsheet';
+import { compatibleSheets, pickBestSheet, readSpreadsheetFile, SheetData } from '@/lib/investment/readSpreadsheet';
 import { downloadImportTemplate } from '@/lib/investment/importTemplate';
 import { formatCurrency } from '@/lib/tax/calculations';
 import { hasPastInstallments } from '@/lib/investment/assumedPaid';
@@ -53,6 +53,7 @@ interface Props {
 }
 
 const NONE = '__none__';
+const ALL_SHEETS = '__all__';
 
 function columnLetter(i: number): string {
   let s = '';
@@ -95,6 +96,9 @@ export function ImportInvestmentsDialog({ existing, onImport, isPro, currentActi
   const [fileName, setFileName] = useState('');
   const [sheets, setSheets] = useState<SheetData[]>([]);
   const [sheetIndex, setSheetIndex] = useState(0);
+  /** Hojas con la misma tabla (una por plataforma, por año…) y si se importan juntas. */
+  const [group, setGroup] = useState<SheetData[]>([]);
+  const [allSheets, setAllSheets] = useState(false);
   const [headerRow, setHeaderRow] = useState(0);
   const [mapping, setMapping] = useState<ColumnMapping>([]);
   // Lo que el usuario elige para las filas que no lo indican
@@ -114,7 +118,7 @@ export function ImportInvestmentsDialog({ existing, onImport, isPro, currentActi
   const step: 'idle' | 'review' = sheet ? 'review' : 'idle';
 
   const reset = () => {
-    setError(null); setBusy(false); setFileName(''); setSheets([]); setSheetIndex(0);
+    setError(null); setBusy(false); setFileName(''); setSheets([]); setSheetIndex(0); setGroup([]); setAllSheets(false);
     setHeaderRow(0); setMapping([]); setFilePlatform(NONE); setFileCustomPlatform('');
     setFileIncomeModel(NONE); setFileFrequency(NONE); setDateOrder(null);
     setIncludeDuplicates(false); setIncludeFinished(false); setIncludePastDue(true); setPastInstallmentsPaid(false);
@@ -125,7 +129,7 @@ export function ImportInvestmentsDialog({ existing, onImport, isPro, currentActi
     const header = detectHeaderRow(grid);
     const headers = grid[header] ?? [];
     const width = Math.max(headers.length, ...grid.slice(header, header + 50).map(r => r.length));
-    const guessed = guessMapping(headers);
+    const guessed = guessInvestmentMapping(grid, header);
     setSheetIndex(index);
     setHeaderRow(header);
     setMapping(Array.from({ length: width }, (_, i) => guessed[i] ?? null));
@@ -151,8 +155,11 @@ export function ImportInvestmentsDialog({ existing, onImport, isPro, currentActi
       const usable = read.filter(s => s.grid.some(r => r.some(c => c)));
       if (usable.length === 0) throw new Error('El archivo está vacío.');
       const best = pickBestSheet(usable)!;
+      const sameTable = compatibleSheets(usable, best);
       setFileName(file.name);
       setSheets(usable);
+      setGroup(sameTable);
+      setAllSheets(sameTable.length > 1);
       selectSheet(usable, usable.indexOf(best));
     } catch (e) {
       setBusy(false);
@@ -178,10 +185,21 @@ export function ImportInvestmentsDialog({ existing, onImport, isPro, currentActi
   };
 
   // ── Revisión ───────────────────────────────────────────────────────────
-  const rows = useMemo(
-    () => (sheet ? gridToRows(sheet.grid, headerRow, mapping) : []),
-    [sheet, headerRow, mapping],
-  );
+  const { rows, skippedLabels } = useMemo(() => {
+    if (!sheet) return { rows: [] as SheetRow[], skippedLabels: [] as string[] };
+    const targets = allSheets ? group : [sheet];
+    const all: SheetRow[] = [];
+    const labels: string[] = [];
+    for (const s of targets) {
+      const skipped: number[] = [];
+      // Todas las hojas del grupo tienen los mismos títulos en el mismo orden:
+      // la asignación de columnas vale para todas (cada una con su fila de títulos).
+      const header = s === sheet ? headerRow : detectHeaderRow(s.grid);
+      all.push(...gridToRows(s.grid, header, mapping, { summaryUnless: 'investmentDate', skipped, sheetName: s.name }));
+      labels.push(...skipped.map(n => (allSheets ? `${s.name} ${n}` : String(n))));
+    }
+    return { rows: all, skippedLabels: labels };
+  }, [sheet, headerRow, mapping, allSheets, group]);
   const detectedOrder = useMemo(() => detectDateOrder(rows), [rows]);
   const returnsAsFraction = useMemo(() => detectFractionReturns(rows), [rows]);
   const effectiveDateOrder = dateOrder ?? detectedOrder.suggested;
@@ -194,7 +212,7 @@ export function ImportInvestmentsDialog({ existing, onImport, isPro, currentActi
     return { platform: filePlatform as Platform };
   }, [filePlatform, fileCustomPlatform]);
 
-  const { candidates, withoutName } = useMemo(
+  const { candidates, withoutNameLabels: withoutName } = useMemo(
     () => buildImportCandidates(rows, existing, {
       defaultPlatform,
       defaultIncomeModel: fileIncomeModel === NONE ? null : (fileIncomeModel as IncomeModel),
@@ -306,21 +324,40 @@ export function ImportInvestmentsDialog({ existing, onImport, isPro, currentActi
               ¿No tienes ninguno? Descarga nuestra plantilla
             </Button>
             <p className="text-xs text-muted-foreground">
-              Se importan las inversiones, no los cobros ya recibidos: esos los registras desde cada inversión.
+              Aquí se importan las inversiones. Los cobros ya recibidos se importan aparte, desde Cobros.
             </p>
           </div>
         ) : (
           <div className="space-y-5 min-w-0">
             {/* Hoja */}
             {sheets.length > 1 && (
-              <div className="flex items-center gap-3">
-                <Label className="shrink-0">Hoja</Label>
-                <Select value={String(sheetIndex)} onValueChange={v => selectSheet(sheets, Number(v))}>
-                  <SelectTrigger className="w-64"><SelectValue /></SelectTrigger>
-                  <SelectContent>
-                    {sheets.map((s, i) => <SelectItem key={i} value={String(i)}>{s.name}</SelectItem>)}
-                  </SelectContent>
-                </Select>
+              <div className="space-y-1.5">
+                <div className="flex items-center gap-3">
+                  <Label className="shrink-0">Hoja</Label>
+                  <Select
+                    value={allSheets ? ALL_SHEETS : String(sheetIndex)}
+                    onValueChange={v => {
+                      if (v === ALL_SHEETS) {
+                        setAllSheets(true);
+                        selectSheet(sheets, sheets.indexOf(group[0]));
+                      } else {
+                        setAllSheets(false);
+                        selectSheet(sheets, Number(v));
+                      }
+                    }}
+                  >
+                    <SelectTrigger className="w-72"><SelectValue /></SelectTrigger>
+                    <SelectContent>
+                      {group.length > 1 && <SelectItem value={ALL_SHEETS}>{`Todas las hojas con inversiones (${group.length})`}</SelectItem>}
+                      {sheets.map((s, i) => <SelectItem key={i} value={String(i)}>{s.name}</SelectItem>)}
+                    </SelectContent>
+                  </Select>
+                </div>
+                {allSheets && (
+                  <p className="text-xs text-muted-foreground">
+                    Se importan juntas: {group.map(s => s.name).join(', ')}. Si una fila no dice la plataforma y la hoja se llama como una, se usa esa.
+                  </p>
+                )}
               </div>
             )}
 
@@ -356,7 +393,7 @@ export function ImportInvestmentsDialog({ existing, onImport, isPro, currentActi
               )}
               {unmappedImportant.length > 0 && (
                 <p className="text-xs text-muted-foreground">
-                  Ninguna columna para: {unmappedImportant.map(f => FIELD_LABEL[f].toLowerCase()).join(', ')}. Si el archivo lo tiene, elígelo arriba.
+                  Ninguna columna para: {unmappedImportant.map(f => FIELD_LABEL[f].toLowerCase()).join(', ')}. Si el archivo lo tiene, elige esa columna en la lista de arriba.
                 </p>
               )}
             </section>
@@ -479,6 +516,12 @@ export function ImportInvestmentsDialog({ existing, onImport, isPro, currentActi
                   <p>{plural(withoutName.length, 'fila', 'filas')} sin nombre de proyecto no se importa{withoutName.length === 1 ? '' : 'n'} (fila{withoutName.length === 1 ? '' : 's'} {withoutName.slice(0, 8).join(', ')}{withoutName.length > 8 ? '…' : ''}).</p>
                 </div>
               )}
+              {skippedLabels.length > 0 && (
+                <div className="flex items-center gap-3 px-4 py-3 text-muted-foreground">
+                  <Info className="h-4 w-4 shrink-0" />
+                  <p>{plural(skippedLabels.length, 'fila parece', 'filas parecen')} de totales o medias y no se importa{skippedLabels.length === 1 ? '' : 'n'} (fila{skippedLabels.length === 1 ? '' : 's'} {skippedLabels.slice(0, 8).join(', ')}{skippedLabels.length > 8 ? '…' : ''}).</p>
+                </div>
+              )}
               {candidates.length === 0 && (
                 <p className="px-4 py-3 text-muted-foreground">No hay inversiones que importar. Revisa qué columna es el nombre del proyecto.</p>
               )}
@@ -495,7 +538,7 @@ export function ImportInvestmentsDialog({ existing, onImport, isPro, currentActi
             )}
 
             {/* Vista previa */}
-            {candidates.length > 0 && <PreviewTable candidates={candidates} accepted={acceptedSet} t={t} />}
+            {candidates.length > 0 && <PreviewTable candidates={candidates} accepted={acceptedSet} t={t} showSheet={allSheets} />}
 
             <DialogFooter className="flex gap-2 sm:gap-2">
               <Button variant="outline" onClick={reset} disabled={busy}>Elegir otro archivo</Button>
@@ -534,7 +577,7 @@ function rowState(c: ImportCandidate, included: boolean): { text: string; muted:
   return { text: 'Fuera del límite', muted: true };
 }
 
-function PreviewTable({ candidates, accepted, t }: { candidates: ImportCandidate[]; accepted: Set<ImportCandidate>; t: (k: string) => string }) {
+function PreviewTable({ candidates, accepted, t, showSheet }: { candidates: ImportCandidate[]; accepted: Set<ImportCandidate>; t: (k: string) => string; showSheet: boolean }) {
   const shown = candidates.slice(0, 100);
   return (
     <section className="space-y-2">
@@ -556,8 +599,8 @@ function PreviewTable({ candidates, accepted, t }: { candidates: ImportCandidate
               const inv = c.investment;
               const excluded = rowState(c, accepted.has(c));
               return (
-                <tr key={c.rowNumber} className={excluded ? 'opacity-50' : ''}>
-                  <td className="px-3 py-2 text-muted-foreground">{c.rowNumber}</td>
+                <tr key={`${c.sheetName ?? ''}:${c.rowNumber}`} className={excluded ? 'opacity-50' : ''}>
+                  <td className="px-3 py-2 text-muted-foreground whitespace-nowrap">{showSheet && c.sheetName ? `${c.sheetName} · ${c.rowNumber}` : c.rowNumber}</td>
                   <td className="px-3 py-2">
                     <p className="font-medium">{inv.projectName}</p>
                     <p className="text-xs text-muted-foreground">

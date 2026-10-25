@@ -628,8 +628,14 @@ const Index = () => {
         const weeklySummary = unreadNotifications.find(n => n.type === 'weekly_summary');
         const totalUnread = unreadCount + alertCount;
 
+        // Abre la ficha de la inversión del aviso (si el aviso no la trae, el listado).
         const handleViewInvestment = (n: Notification) => {
           markAsRead(n.id);
+          const investmentId = (n.data as Record<string, unknown> | null)?.investmentId as string | undefined;
+          if (investmentId) {
+            openInvestmentDetail(investmentId);
+            return;
+          }
           setInvestmentsFilter('all');
           setCurrentView('investments');
           setNotificationsSheetOpen(false);

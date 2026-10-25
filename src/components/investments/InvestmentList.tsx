@@ -184,7 +184,8 @@ export function InvestmentList({
       }
       onInvestmentOpened?.();
     }
-  }, [openInvestmentId]); // eslint-disable-line react-hooks/exhaustive-deps
+  // También al llegar los datos: si se pidió abrir antes de cargar, se abre al cargar.
+  }, [openInvestmentId, activeInvestments, completedInvestments]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const formatCurrency = (value: number) =>
     new Intl.NumberFormat('es-ES', { style: 'currency', currency: 'EUR', minimumFractionDigits: 0, maximumFractionDigits: 0 }).format(value);

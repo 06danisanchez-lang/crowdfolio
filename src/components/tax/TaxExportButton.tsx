@@ -391,7 +391,7 @@ export function TaxExportButton({
       addTitleRows(wsT, `CÁLCULO POR TRAMOS IRPF ${summary.year}`, 'Cálculo progresivo base imponible del ahorro', 4);
       addTableHeader(wsT, ['Tramo', 'Base Gravada (€)', 'Tipo (%)', 'Cuota (€)'], 4);
 
-      const breakdown = getTaxBreakdown(summary.taxableBase);
+      const breakdown = getTaxBreakdown(summary.taxableBase, summary.year);
       addDataRows(wsT, breakdown, item => [
         `${formatCurrency(item.bracket.min)} – ${item.bracket.max === Infinity ? '∞' : formatCurrency(item.bracket.max)}`,
         item.amount,
@@ -812,7 +812,7 @@ export function TaxExportButton({
       yPos = (doc as any).lastAutoTable.finalY + 15;
 
       // ── Tramos IRPF ──────────────────────────────────────────────────────────
-      const breakdown = getTaxBreakdown(summary.taxableBase);
+      const breakdown = getTaxBreakdown(summary.taxableBase, summary.year);
       if (breakdown.length > 0) {
         doc.setFontSize(14);
         doc.setFont('helvetica', 'bold');

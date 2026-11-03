@@ -505,7 +505,7 @@ export function useTaxSummary(year: number) {
     const currencyByInvestment = new Map(investmentRows.map(r => [r.id, r.currency]));
 
     const taxableBase = Math.max(0, baseImponibleRCMAjustada - totalExpenses);
-    const estimatedTax = calculateProgressiveTax(taxableBase);
+    const estimatedTax = calculateProgressiveTax(taxableBase, year);
     const effectiveRate = calculateEffectiveRate(taxableBase, estimatedTax);
 
     return {

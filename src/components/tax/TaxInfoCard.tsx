@@ -3,9 +3,14 @@ import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/
 import { FileText, Info, AlertCircle, Calculator, ArrowLeftRight, Clock, Receipt } from 'lucide-react';
 import { DEDUCTIBLE_INFO } from '@/lib/tax/suggestedExpenses';
 import { useLanguage } from '@/contexts/LanguageContext';
+import { getSavingsBrackets } from '@/types/tax';
 
-export function TaxInfoCard() {
+// Con punto de miles también en 4 cifras (6.000), como en el resto de la ficha.
+const fmt = (n: number) => String(n).replace(/\B(?=(\d{3})+(?!\d))/g, '.');
+
+export function TaxInfoCard({ year }: { year: number }) {
   const { t } = useLanguage();
+  const brackets = getSavingsBrackets(year);
   return (
     <Card>
       <CardHeader>
@@ -14,8 +19,7 @@ export function TaxInfoCard() {
           Información Fiscal España - IRPF
         </CardTitle>
         <p className="text-xs text-muted-foreground">
-          Los tramos y el cálculo de la cuota de esta ficha son siempre los del ejercicio 2025 (Ley 7/2024),
-          sea cual sea el año que tengas seleccionado arriba: todavía no tenemos cargados los tramos de otros ejercicios.
+          Tramos y cuota del ejercicio {year}.
         </p>
       </CardHeader>
       <CardContent>
@@ -25,36 +29,27 @@ export function TaxInfoCard() {
             <AccordionTrigger className="text-sm">
               <span className="flex items-center gap-2">
                 <Calculator className="h-4 w-4" />
-                Tramos del Ahorro 2025
+                Tramos del Ahorro {year}
               </span>
             </AccordionTrigger>
             <AccordionContent>
               <div className="space-y-2 text-sm">
                 <p className="text-muted-foreground mb-3">
-                  Los rendimientos del capital mobiliario tributan con estos tramos progresivos (ejercicio 2025;
-                  no cambian según el año que tengas seleccionado en el resumen fiscal):
+                  Los rendimientos del capital mobiliario tributan con estos tramos progresivos
+                  (ejercicio {year}):
                 </p>
                 <div className="grid grid-cols-2 gap-2">
-                  <div className="rounded-lg bg-muted/50 p-2">
-                    <span className="text-muted-foreground">0 - 6.000€</span>
-                    <span className="float-right font-medium">19%</span>
-                  </div>
-                  <div className="rounded-lg bg-muted/50 p-2">
-                    <span className="text-muted-foreground">6.000 - 50.000€</span>
-                    <span className="float-right font-medium">21%</span>
-                  </div>
-                  <div className="rounded-lg bg-muted/50 p-2">
-                    <span className="text-muted-foreground">50.000 - 200.000€</span>
-                    <span className="float-right font-medium">23%</span>
-                  </div>
-                  <div className="rounded-lg bg-muted/50 p-2">
-                    <span className="text-muted-foreground">200.000 - 300.000€</span>
-                    <span className="float-right font-medium">27%</span>
-                  </div>
-                  <div className="rounded-lg bg-muted/50 p-2 col-span-2">
-                    <span className="text-muted-foreground">Más de 300.000€</span>
-                    <span className="float-right font-medium">30%</span>
-                  </div>
+                  {brackets.map((b, i) => (
+                    <div
+                      key={b.min}
+                      className={`rounded-lg bg-muted/50 p-2${i === brackets.length - 1 && brackets.length % 2 === 1 ? ' col-span-2' : ''}`}
+                    >
+                      <span className="text-muted-foreground">
+                        {b.max === Infinity ? `Más de ${fmt(b.min)}€` : `${fmt(b.min)} - ${fmt(b.max)}€`}
+                      </span>
+                      <span className="float-right font-medium">{Math.round(b.rate * 100)}%</span>
+                    </div>
+                  ))}
                 </div>
               </div>
             </AccordionContent>

@@ -219,7 +219,7 @@ export function calculateYearlyProjection(
 
   // Calculate tax on total projected taxable base
   const projectedTaxableBase = Math.max(0, totalProjectedGross - deductibleExpenses);
-  const totalProjectedTax = calculateProgressiveTax(projectedTaxableBase);
+  const totalProjectedTax = calculateProgressiveTax(projectedTaxableBase, year);
 
   // Total withholdings = current + projected
   const totalWithholdings = currentWithholdings + projectedWithholdings;

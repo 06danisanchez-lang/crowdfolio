@@ -16,7 +16,7 @@ export default function AvisoLegal() {
         <Card>
           <CardHeader>
             <CardTitle>Aviso Legal</CardTitle>
-            <p className="text-sm text-muted-foreground">Última actualización: febrero 2026</p>
+            <p className="text-sm text-muted-foreground">Última actualización: noviembre 2026</p>
           </CardHeader>
           <CardContent className="prose prose-sm dark:prose-invert max-w-none space-y-6">
             <section>
@@ -24,7 +24,16 @@ export default function AvisoLegal() {
               <p className="text-muted-foreground">
                 En cumplimiento del artículo 10 de la Ley 34/2002, de 11 de julio, de Servicios de la Sociedad de la Información y Comercio Electrónico (LSSICE), se informa al usuario de los datos del titular de este sitio web.
               </p>
-              <p className="text-muted-foreground">[Nombre o razón social, NIF/CIF, domicilio, email de contacto]</p>
+              <ul className="text-muted-foreground list-none pl-0 space-y-1">
+                <li><strong className="text-foreground">Titular:</strong> Daniel Sánchez Ramírez</li>
+                <li><strong className="text-foreground">NIF:</strong> 23322249L</li>
+                <li><strong className="text-foreground">Domicilio:</strong> Valencia, España</li>
+                <li>
+                  <strong className="text-foreground">Correo electrónico:</strong>{' '}
+                  <a href="mailto:soporte@crowdfolio.es" className="underline">soporte@crowdfolio.es</a>
+                </li>
+                <li><strong className="text-foreground">Actividad:</strong> desarrollo y comercialización de software (SaaS)</li>
+              </ul>
             </section>
 
             <section>
@@ -51,7 +60,7 @@ export default function AvisoLegal() {
             <section>
               <h2 className="text-lg font-semibold">5. Legislación aplicable</h2>
               <p className="text-muted-foreground">
-                El presente aviso legal se rige por la legislación española. Para cualquier controversia, las partes se someten a los juzgados y tribunales del domicilio del titular.
+                El presente aviso legal se rige por la legislación española. Para cualquier controversia serán competentes los juzgados y tribunales que correspondan conforme a la ley. Si el usuario es consumidor, los de su domicilio.
               </p>
             </section>
           </CardContent>

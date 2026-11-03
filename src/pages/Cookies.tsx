@@ -16,7 +16,7 @@ export default function Cookies() {
         <Card>
           <CardHeader>
             <CardTitle className="text-2xl">Política de Cookies</CardTitle>
-            <p className="mt-1 text-sm font-medium text-[#79c6fa]">Última actualización: 6 de junio de 2026</p>
+            <p className="mt-1 text-sm font-medium text-[#79c6fa]">Última actualización: 3 de noviembre de 2026</p>
           </CardHeader>
           <CardContent className="prose prose-sm dark:prose-invert max-w-none space-y-8 text-sm leading-relaxed">
 
@@ -67,7 +67,7 @@ export default function Cookies() {
 
               <div className="space-y-3">
                 <h3 className="font-semibold">3.2 Cookies de preferencias</h3>
-                <p className="text-muted-foreground">Estas cookies recuerdan tus preferencias en la aplicación para ofrecerte una experiencia personalizada.</p>
+                <p className="text-muted-foreground">Estos datos recuerdan tus preferencias en la aplicación. No son cookies en sentido estricto sino almacenamiento local de tu navegador (localStorage): no se envían a ningún servidor y no caducan solos, pero puedes borrarlos cuando quieras desde el navegador. Igual que las cookies técnicas, no requieren consentimiento (LSSI art. 22.2).</p>
                 <div className="overflow-x-auto">
                   <table className="w-full text-sm border-collapse">
                     <thead>
@@ -80,16 +80,34 @@ export default function Cookies() {
                     </thead>
                     <tbody className="text-muted-foreground">
                       <tr className="border-b">
-                        <td className="py-2 pr-4 font-mono text-xs whitespace-nowrap">crowdfolio-theme</td>
+                        <td className="py-2 pr-4 font-mono text-xs whitespace-nowrap">theme</td>
                         <td className="py-2 pr-4 whitespace-nowrap">Crowdfolio</td>
                         <td className="py-2 pr-4">Recuerda si has seleccionado el modo claro u oscuro</td>
-                        <td className="py-2 whitespace-nowrap">1 año</td>
+                        <td className="py-2 whitespace-nowrap">Hasta que la borres</td>
                       </tr>
-                      <tr>
-                        <td className="py-2 pr-4 font-mono text-xs whitespace-nowrap">crowdfolio-language</td>
+                      <tr className="border-b">
+                        <td className="py-2 pr-4 font-mono text-xs whitespace-nowrap">app_language</td>
                         <td className="py-2 pr-4 whitespace-nowrap">Crowdfolio</td>
                         <td className="py-2 pr-4">Recuerda el idioma seleccionado (español/inglés)</td>
-                        <td className="py-2 whitespace-nowrap">1 año</td>
+                        <td className="py-2 whitespace-nowrap">Hasta que la borres</td>
+                      </tr>
+                      <tr className="border-b">
+                        <td className="py-2 pr-4 font-mono text-xs whitespace-nowrap">cf_banner_closed</td>
+                        <td className="py-2 pr-4 whitespace-nowrap">Crowdfolio</td>
+                        <td className="py-2 pr-4">Recuerda que has cerrado el aviso de la página de inicio</td>
+                        <td className="py-2 whitespace-nowrap">Hasta que la borres</td>
+                      </tr>
+                      <tr className="border-b">
+                        <td className="py-2 pr-4 font-mono text-xs whitespace-nowrap">dismissed-reminders</td>
+                        <td className="py-2 pr-4 whitespace-nowrap">Crowdfolio</td>
+                        <td className="py-2 pr-4">Recuerda los recordatorios de inversiones futuras que has descartado</td>
+                        <td className="py-2 whitespace-nowrap">Hasta que la borres</td>
+                      </tr>
+                      <tr>
+                        <td className="py-2 pr-4 font-mono text-xs whitespace-nowrap">crowdfolio:new-investment-draft:*</td>
+                        <td className="py-2 pr-4 whitespace-nowrap">Crowdfolio</td>
+                        <td className="py-2 pr-4">Guarda en tu navegador el borrador de una inversión que aún no has terminado de registrar</td>
+                        <td className="py-2 whitespace-nowrap">Hasta que la borres</td>
                       </tr>
                     </tbody>
                   </table>

@@ -16,7 +16,7 @@ export default function PoliticaPrivacidad() {
         <Card>
           <CardHeader>
             <CardTitle className="text-2xl">Política de Privacidad</CardTitle>
-            <p className="mt-1 text-sm font-medium text-[#79c6fa]">Última actualización: 6 de junio de 2026</p>
+            <p className="mt-1 text-sm font-medium text-[#79c6fa]">Última actualización: 3 de noviembre de 2026</p>
           </CardHeader>
           <CardContent className="prose prose-sm dark:prose-invert max-w-none space-y-8 text-sm leading-relaxed">
 
@@ -92,7 +92,7 @@ export default function PoliticaPrivacidad() {
                     <tr className="border-b">
                       <td className="py-2 pr-4 font-medium text-foreground whitespace-nowrap">Supabase, Inc.</td>
                       <td className="py-2 pr-4">Base de datos, autenticación y almacenamiento</td>
-                      <td className="py-2 pr-4 whitespace-nowrap">EE. UU.</td>
+                      <td className="py-2 pr-4 whitespace-nowrap">Datos en Irlanda (UE); empresa de EE. UU.</td>
                       <td className="py-2 whitespace-nowrap">CCT UE</td>
                     </tr>
                     <tr className="border-b">
@@ -155,7 +155,7 @@ export default function PoliticaPrivacidad() {
                   </tbody>
                 </table>
               </div>
-              <p className="text-muted-foreground">Puedes solicitar la eliminación de tu cuenta en cualquier momento desde los ajustes de la aplicación o escribiendo a <a href="mailto:soporte@crowdfolio.es" className="text-[#79c6fa] underline">soporte@crowdfolio.es</a>.</p>
+              <p className="text-muted-foreground">Puedes solicitar la eliminación de tu cuenta en cualquier momento escribiendo a <a href="mailto:soporte@crowdfolio.es" className="text-[#79c6fa] underline">soporte@crowdfolio.es</a>.</p>
             </section>
 
             <section className="space-y-3">
@@ -181,8 +181,7 @@ export default function PoliticaPrivacidad() {
                 <li>Comunicaciones cifradas mediante TLS/HTTPS en todo momento.</li>
                 <li>Contraseñas almacenadas con hash seguro (bcrypt), nunca en texto plano.</li>
                 <li>Acceso a la base de datos restringido mediante Row Level Security (RLS) — cada usuario solo puede acceder a sus propios datos.</li>
-                <li>Autenticación de dos factores disponible.</li>
-                <li>Copias de seguridad automáticas de la base de datos.</li>
+
               </ul>
               <p className="text-muted-foreground">Ningún sistema es infalible. En caso de brecha de seguridad que afecte a tus datos, te notificaremos en un plazo máximo de 72 horas desde que tengamos conocimiento de ella, conforme a lo exigido por el RGPD.</p>
             </section>

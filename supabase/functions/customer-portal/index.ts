@@ -12,6 +12,25 @@ const logStep = (step: string, details?: unknown) => {
   console.log(`[CUSTOMER-PORTAL] ${step}${detailsStr}`);
 };
 
+async function customerBelongsToUser(
+  stripe: Stripe,
+  customerId: string,
+  userId: string,
+  email: string,
+): Promise<boolean> {
+  try {
+    const customer = await stripe.customers.retrieve(customerId);
+    if ("deleted" in customer && customer.deleted) return false;
+    const c = customer as Stripe.Customer;
+    return (
+      c.metadata?.supabase_user_id === userId ||
+      (!!c.email && c.email.toLowerCase() === email.toLowerCase())
+    );
+  } catch {
+    return false;
+  }
+}
+
 serve(async (req) => {
   if (req.method === "OPTIONS") {
     return new Response(null, { headers: corsHeaders });
@@ -51,6 +70,13 @@ serve(async (req) => {
       .maybeSingle();
 
     let customerId: string | null = profile?.stripe_customer_id ?? null;
+
+    // El id guardado solo vale si el cliente de Stripe es de este usuario
+    // (mismo email o metadata.supabase_user_id). Si no, se busca por email.
+    if (customerId && !(await customerBelongsToUser(stripe, customerId, user.id, user.email))) {
+      logStep("Stored customer does not match user, ignoring it", { customerId });
+      customerId = null;
+    }
 
     if (!customerId) {
       logStep("No stored customer ID, falling back to email lookup");

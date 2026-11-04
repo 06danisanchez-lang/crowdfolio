@@ -95,6 +95,8 @@ export const translations: Record<Lang, Record<string, string>> = {
     'dashboard.kpi.estimatedTotal': 'Total estimado a recibir',
     'dashboard.kpi.accruedProfit': 'Beneficio acumulado',
     'dashboard.kpi.activeCount': 'Inversiones activas',
+    'dashboard.kpi.includesOverdueOne': 'Incluye 1 vencida sin cobrar',
+    'dashboard.kpi.includesOverdueMany': 'Incluye {n} vencidas sin cobrar',
     'dashboard.kpi.historicalInvested': 'Total invertido',
     'dashboard.kpi.totalCollected': 'Total cobrado',
     'dashboard.kpi.realizedProfit': 'Beneficio realizado',
@@ -157,7 +159,7 @@ export const translations: Record<Lang, Record<string, string>> = {
     // Investments sections
     'investments.section.active': 'Inversiones activas',
     // Completed investments section
-    'investments.section.completed': 'Finalizadas',
+    'investments.section.completed': 'Vencidas y finalizadas',
     'investments.section.completedEmpty': 'No hay inversiones finalizadas',
     'investments.section.completedDescription': 'Inversiones que ya han completado su ciclo',
 
@@ -744,6 +746,8 @@ export const translations: Record<Lang, Record<string, string>> = {
     'dashboard.kpi.estimatedTotal': 'Estimated total to receive',
     'dashboard.kpi.accruedProfit': 'Accrued profit',
     'dashboard.kpi.activeCount': 'Active investments',
+    'dashboard.kpi.includesOverdueOne': 'Includes 1 overdue, not yet repaid',
+    'dashboard.kpi.includesOverdueMany': 'Includes {n} overdue, not yet repaid',
     'dashboard.kpi.historicalInvested': 'Total invested',
     'dashboard.kpi.totalCollected': 'Total collected',
     'dashboard.kpi.realizedProfit': 'Realized profit',
@@ -806,7 +810,7 @@ export const translations: Record<Lang, Record<string, string>> = {
     // Investments sections
     'investments.section.active': 'Active investments',
     // Completed investments section
-    'investments.section.completed': 'Completed',
+    'investments.section.completed': 'Overdue and completed',
     'investments.section.completedEmpty': 'No completed investments',
     'investments.section.completedDescription': 'Investments that have completed their cycle',
 

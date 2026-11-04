@@ -170,6 +170,16 @@ export const PLATFORMS: { value: Platform; label: string; color: string; country
   { value: 'other', label: 'Otra', color: 'platform-other' },
 ];
 
+/**
+ * Plataformas habituales sin ficha propia: se guardan como «Otra» con su nombre.
+ * Se sugieren al escribir el nombre y sirven para reconocer hojas de un Excel.
+ * No tienen país ni retención por defecto (se comportan igual que «Otra»).
+ */
+export const SUGGESTED_OTHER_PLATFORMS = [
+  'Civislend', 'Hausera', 'Domoblock', 'BDKapital', 'Sego', 'Equito', 'Maclear',
+  'Reental', 'Fellow Funders', 'Mintos', 'Bulkestate', 'Crowdestate', 'EvoEstate',
+] as const;
+
 export interface DraftInvestment extends InvestmentFxFields {
   id: string;
   platform?: Platform | null;

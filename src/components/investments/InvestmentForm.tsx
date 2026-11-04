@@ -4,7 +4,7 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import { format } from 'date-fns';
 import { CalendarIcon, Plus, AlertTriangle, Info } from 'lucide-react';
-import { Investment, Platform, InvestmentStatus, PLATFORMS, STATUS_OPTIONS, INCOME_MODEL_OPTIONS, PAYMENT_FREQUENCY_OPTIONS, PRINCIPAL_RETURN_TYPE_OPTIONS, EQUITY_TYPE_OPTIONS, IncomeModel, PaymentFrequency, PrincipalReturnType, EquityType } from '@/types/investment';
+import { Investment, Platform, InvestmentStatus, PLATFORMS, SUGGESTED_OTHER_PLATFORMS, STATUS_OPTIONS, INCOME_MODEL_OPTIONS, PAYMENT_FREQUENCY_OPTIONS, PRINCIPAL_RETURN_TYPE_OPTIONS, EQUITY_TYPE_OPTIONS, IncomeModel, PaymentFrequency, PrincipalReturnType, EquityType } from '@/types/investment';
 import { getInvestmentCompletionStatus } from '@/lib/investment/completeness';
 import { generateSchedule } from '@/lib/investment/scheduleGenerator';
 import { buildMaturityFromForm, deriveMaturityKind, FormMaturityKind } from '@/lib/investment/maturityChange';
@@ -1037,7 +1037,7 @@ export function InvestmentForm({
               <SelectContent>
                 {PLATFORMS.map((platform) => (
                   <SelectItem key={platform.value} value={platform.value}>
-                    {platform.label}
+                    {platform.value === 'other' ? 'Otra (Civislend, Hausera, Sego…)' : platform.label}
                   </SelectItem>
                 ))}
               </SelectContent>
@@ -1055,8 +1055,11 @@ export function InvestmentForm({
             <FormItem>
               <FormLabel>Nombre de la Plataforma</FormLabel>
               <FormControl>
-                <Input placeholder="Nombre de la plataforma" {...field} />
+                <Input placeholder="Ej: Civislend" list="cf-suggested-platforms" autoComplete="off" {...field} />
               </FormControl>
+              <datalist id="cf-suggested-platforms">
+                {SUGGESTED_OTHER_PLATFORMS.map(name => <option key={name} value={name} />)}
+              </datalist>
               <FormMessage />
             </FormItem>
           )}

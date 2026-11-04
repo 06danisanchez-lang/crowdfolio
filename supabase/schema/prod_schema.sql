@@ -1,9 +1,9 @@
 -- Instantánea del esquema `public` de PRODUCCIÓN (estructura, sin datos).
 -- NO EDITAR A MANO: se regenera con supabase/schema/dump_schema.sql (ver CLAUDE.md).
 --
--- snapshot_version: 20261023175047
--- última migración registrada en producción: 20261023173010
--- comprobación (md5 de la salida normalizada, 151 sentencias): 1c596c7dc8dea9f0d0d4bd4f6cd2f78d
+-- snapshot_version: 20261104074747
+-- última migración registrada en producción: 20261103204500
+-- comprobación (md5 de la salida normalizada, 169 sentencias): 5a0b6b565ff4b161bbf633f8d50f45e4
 --
 -- scripts/db-test.sh carga primero supabase/schema/stubs.sql, después este
 -- archivo y por último las migraciones con versión > snapshot_version.
@@ -25,6 +25,89 @@ create table public._backup_20261009_notifications (
 );
 
 create table public._backup_20261009_payments (
+  id uuid,
+  investment_id uuid,
+  date date,
+  amount numeric(12,2),
+  type text,
+  notes text,
+  created_at timestamp with time zone,
+  withholding_applied numeric(10,2),
+  original_amount numeric,
+  original_currency text,
+  exchange_rate numeric,
+  exchange_rate_date date,
+  amount_eur numeric,
+  foreign_withholding_amount numeric,
+  foreign_withholding_currency text,
+  exchange_rate_source text
+);
+
+create table public._backup_20261024_subscriptions (
+  id uuid,
+  user_id uuid,
+  plan text,
+  status text,
+  stripe_subscription_id text,
+  stripe_customer_id text,
+  current_period_start timestamp with time zone,
+  current_period_end timestamp with time zone,
+  import_count_this_month integer,
+  import_reset_date date,
+  created_at timestamp with time zone,
+  pro_until timestamp with time zone,
+  is_beta_pro boolean,
+  updated_at timestamp with time zone
+);
+
+create table public._backup_20261025_investments (
+  id uuid,
+  user_id uuid,
+  platform text,
+  custom_platform_name text,
+  project_name text,
+  amount numeric(12,2),
+  investment_date date,
+  expected_end_date date,
+  expected_return numeric(5,2),
+  status text,
+  notes text,
+  created_at timestamp with time zone,
+  updated_at timestamp with time zone,
+  income_model text,
+  payment_frequency text,
+  principal_return_type text,
+  source_url text,
+  defaulted_at timestamp with time zone,
+  amount_recovered numeric(10,2),
+  equity_type text,
+  actual_end_date date,
+  close_reason close_reason_type,
+  was_extended boolean,
+  currency text,
+  country text,
+  original_amount numeric,
+  original_currency text,
+  exchange_rate numeric,
+  exchange_rate_date date,
+  amount_eur numeric,
+  exchange_rate_source text,
+  loss_insolvency_status text,
+  loss_insolvency_concluded_date date,
+  loss_quita_amount numeric,
+  loss_quita_date date,
+  loss_enforcement_started boolean,
+  loss_enforcement_date date,
+  loss_enforcement_initiator text,
+  loss_assessed_at timestamp with time zone,
+  loss_rules_version integer,
+  first_payment_date date,
+  original_end_date date,
+  interest_end_date date,
+  assumed_paid_until date
+);
+
+create table public._backup_20261025_payments (
   id uuid,
   investment_id uuid,
   date date,
@@ -302,6 +385,8 @@ alter table public.user_roles add constraint user_roles_user_id_fkey FOREIGN KEY
 
 CREATE INDEX idx_investment_schedule_investment_id ON public.investment_schedule USING btree (investment_id);
 
+CREATE INDEX idx_investment_schedule_matched_payment_id ON public.investment_schedule USING btree (matched_payment_id);
+
 CREATE INDEX idx_investments_user_id ON public.investments USING btree (user_id);
 
 CREATE INDEX idx_opportunities_user_id ON public.opportunities USING btree (user_id);
@@ -309,6 +394,8 @@ CREATE INDEX idx_opportunities_user_id ON public.opportunities USING btree (user
 CREATE INDEX idx_payments_investment_id ON public.payments USING btree (investment_id);
 
 CREATE INDEX idx_tax_expenses_year ON public.tax_expenses USING btree (user_id, year);
+
+CREATE INDEX idx_user_roles_user_id ON public.user_roles USING btree (user_id);
 
 CREATE UNIQUE INDEX notifications_user_dedupe_key ON public.notifications USING btree (user_id, dedupe_key);
 
@@ -372,7 +459,7 @@ revoke all on function handle_new_user_subscription() from public; grant execute
 
 revoke all on function has_role(uuid,text) from public; grant execute on function has_role(uuid,text) to authenticated; grant execute on function has_role(uuid,text) to service_role;
 
-revoke all on function update_updated_at_column() from public; grant execute on function update_updated_at_column() to authenticated; grant execute on function update_updated_at_column() to anon; grant execute on function update_updated_at_column() to service_role; grant execute on function update_updated_at_column() to public;
+revoke all on function update_updated_at_column() from public; grant execute on function update_updated_at_column() to anon; grant execute on function update_updated_at_column() to authenticated; grant execute on function update_updated_at_column() to public; grant execute on function update_updated_at_column() to service_role;
 
 CREATE TRIGGER on_auth_user_created AFTER INSERT ON auth.users FOR EACH ROW EXECUTE FUNCTION handle_new_user();
 
@@ -391,6 +478,12 @@ CREATE TRIGGER update_tax_expenses_updated_at BEFORE UPDATE ON public.tax_expens
 alter table public._backup_20261009_notifications enable row level security;
 
 alter table public._backup_20261009_payments enable row level security;
+
+alter table public._backup_20261024_subscriptions enable row level security;
+
+alter table public._backup_20261025_investments enable row level security;
+
+alter table public._backup_20261025_payments enable row level security;
 
 alter table public.future_investments enable row level security;
 
@@ -414,91 +507,109 @@ alter table public.used_promo_codes enable row level security;
 
 alter table public.user_roles enable row level security;
 
-create policy "Users can delete own future investments" on public.future_investments as permissive for delete to public using ((auth.uid() = user_id));
+create policy "Users can delete own future investments" on public.future_investments as permissive for delete to public using ((( SELECT auth.uid() AS uid) = user_id));
 
-create policy "Users can insert own future investments" on public.future_investments as permissive for insert to public with check ((auth.uid() = user_id));
+create policy "Users can insert own future investments" on public.future_investments as permissive for insert to public with check ((( SELECT auth.uid() AS uid) = user_id));
 
-create policy "Users can update own future investments" on public.future_investments as permissive for update to public using ((auth.uid() = user_id));
+create policy "Users can update own future investments" on public.future_investments as permissive for update to public using ((( SELECT auth.uid() AS uid) = user_id));
 
-create policy "Users can view own future investments" on public.future_investments as permissive for select to public using ((auth.uid() = user_id));
+create policy "Users can view own future investments" on public.future_investments as permissive for select to public using ((( SELECT auth.uid() AS uid) = user_id));
 
 create policy "Users can delete schedule of own investments" on public.investment_schedule as permissive for delete to public using ((EXISTS ( SELECT 1
    FROM investments
-  WHERE ((investments.id = investment_schedule.investment_id) AND (investments.user_id = auth.uid())))));
+  WHERE ((investments.id = investment_schedule.investment_id) AND (investments.user_id = ( SELECT auth.uid() AS uid))))));
 
 create policy "Users can insert schedule to own investments" on public.investment_schedule as permissive for insert to public with check ((EXISTS ( SELECT 1
    FROM investments
-  WHERE ((investments.id = investment_schedule.investment_id) AND (investments.user_id = auth.uid())))));
+  WHERE ((investments.id = investment_schedule.investment_id) AND (investments.user_id = ( SELECT auth.uid() AS uid))))));
 
 create policy "Users can update schedule of own investments" on public.investment_schedule as permissive for update to public using ((EXISTS ( SELECT 1
    FROM investments
-  WHERE ((investments.id = investment_schedule.investment_id) AND (investments.user_id = auth.uid())))));
+  WHERE ((investments.id = investment_schedule.investment_id) AND (investments.user_id = ( SELECT auth.uid() AS uid))))));
 
 create policy "Users can view schedule of own investments" on public.investment_schedule as permissive for select to public using ((EXISTS ( SELECT 1
    FROM investments
-  WHERE ((investments.id = investment_schedule.investment_id) AND (investments.user_id = auth.uid())))));
+  WHERE ((investments.id = investment_schedule.investment_id) AND (investments.user_id = ( SELECT auth.uid() AS uid))))));
 
-create policy "Admins can view all investments" on public.investments as permissive for select to authenticated using (has_role(auth.uid(), 'admin'::text));
+create policy "Admins can view all investments" on public.investments as permissive for select to authenticated using (has_role(( SELECT auth.uid() AS uid), 'admin'::text));
 
-create policy "Users can delete own investments" on public.investments as permissive for delete to public using ((auth.uid() = user_id));
+create policy "Users can delete own investments" on public.investments as permissive for delete to public using ((( SELECT auth.uid() AS uid) = user_id));
 
-create policy "Users can insert own investments" on public.investments as permissive for insert to public with check ((auth.uid() = user_id));
+create policy "Users can insert own investments" on public.investments as permissive for insert to public with check ((( SELECT auth.uid() AS uid) = user_id));
 
-create policy "Users can update own investments" on public.investments as permissive for update to public using ((auth.uid() = user_id));
+create policy "Users can update own investments" on public.investments as permissive for update to public using ((( SELECT auth.uid() AS uid) = user_id));
 
-create policy "Users can view own investments" on public.investments as permissive for select to public using ((auth.uid() = user_id));
+create policy "Users can view own investments" on public.investments as permissive for select to public using ((( SELECT auth.uid() AS uid) = user_id));
 
-create policy "Users can insert own notifications" on public.notifications as permissive for insert to public with check ((auth.uid() = user_id));
+create policy "Users can insert own notifications" on public.notifications as permissive for insert to public with check ((( SELECT auth.uid() AS uid) = user_id));
 
-create policy "Users can update own notifications" on public.notifications as permissive for update to public using ((auth.uid() = user_id));
+create policy "Users can update own notifications" on public.notifications as permissive for update to public using ((( SELECT auth.uid() AS uid) = user_id));
 
-create policy "Users can view own notifications" on public.notifications as permissive for select to public using ((auth.uid() = user_id));
+create policy "Users can view own notifications" on public.notifications as permissive for select to public using ((( SELECT auth.uid() AS uid) = user_id));
 
-create policy "Users can delete own opportunities" on public.opportunities as permissive for delete to public using ((auth.uid() = user_id));
+create policy "Users can delete own opportunities" on public.opportunities as permissive for delete to public using ((( SELECT auth.uid() AS uid) = user_id));
 
-create policy "Users can insert own opportunities" on public.opportunities as permissive for insert to public with check ((auth.uid() = user_id));
+create policy "Users can insert own opportunities" on public.opportunities as permissive for insert to public with check ((( SELECT auth.uid() AS uid) = user_id));
 
-create policy "Users can update own opportunities" on public.opportunities as permissive for update to public using ((auth.uid() = user_id));
+create policy "Users can update own opportunities" on public.opportunities as permissive for update to public using ((( SELECT auth.uid() AS uid) = user_id));
 
-create policy "Users can view own opportunities" on public.opportunities as permissive for select to public using ((auth.uid() = user_id));
+create policy "Users can view own opportunities" on public.opportunities as permissive for select to public using ((( SELECT auth.uid() AS uid) = user_id));
 
-create policy "Admins can view all payments" on public.payments as permissive for select to authenticated using (has_role(auth.uid(), 'admin'::text));
+create policy "Admins can view all payments" on public.payments as permissive for select to authenticated using (has_role(( SELECT auth.uid() AS uid), 'admin'::text));
 
 create policy "Users can delete payments of own investments" on public.payments as permissive for delete to public using ((EXISTS ( SELECT 1
    FROM investments
-  WHERE ((investments.id = payments.investment_id) AND (investments.user_id = auth.uid())))));
+  WHERE ((investments.id = payments.investment_id) AND (investments.user_id = ( SELECT auth.uid() AS uid))))));
 
 create policy "Users can insert payments to own investments" on public.payments as permissive for insert to public with check ((EXISTS ( SELECT 1
    FROM investments
-  WHERE ((investments.id = payments.investment_id) AND (investments.user_id = auth.uid())))));
+  WHERE ((investments.id = payments.investment_id) AND (investments.user_id = ( SELECT auth.uid() AS uid))))));
 
 create policy "Users can update payments of own investments" on public.payments as permissive for update to public using ((EXISTS ( SELECT 1
    FROM investments
-  WHERE ((investments.id = payments.investment_id) AND (investments.user_id = auth.uid())))));
+  WHERE ((investments.id = payments.investment_id) AND (investments.user_id = ( SELECT auth.uid() AS uid))))));
 
 create policy "Users can view payments of own investments" on public.payments as permissive for select to public using ((EXISTS ( SELECT 1
    FROM investments
-  WHERE ((investments.id = payments.investment_id) AND (investments.user_id = auth.uid())))));
+  WHERE ((investments.id = payments.investment_id) AND (investments.user_id = ( SELECT auth.uid() AS uid))))));
 
-create policy "Admins can view all profiles" on public.profiles as permissive for select to authenticated using (has_role(auth.uid(), 'admin'::text));
+create policy "Admins can view all profiles" on public.profiles as permissive for select to authenticated using (has_role(( SELECT auth.uid() AS uid), 'admin'::text));
 
-create policy "Users can update own profile" on public.profiles as permissive for update to public using ((auth.uid() = id));
+create policy "Users can update own profile" on public.profiles as permissive for update to public using ((( SELECT auth.uid() AS uid) = id));
 
-create policy "Users can view own profile" on public.profiles as permissive for select to public using ((auth.uid() = id));
+create policy "Users can view own profile" on public.profiles as permissive for select to public using ((( SELECT auth.uid() AS uid) = id));
 
-create policy "Admins can view all subscriptions" on public.subscriptions as permissive for select to authenticated using (has_role(auth.uid(), 'admin'::text));
+create policy "Admins can view all subscriptions" on public.subscriptions as permissive for select to authenticated using (has_role(( SELECT auth.uid() AS uid), 'admin'::text));
 
-create policy "Users can view own subscription" on public.subscriptions as permissive for select to public using ((auth.uid() = user_id));
+create policy "Users can view own subscription" on public.subscriptions as permissive for select to public using ((( SELECT auth.uid() AS uid) = user_id));
 
-create policy "Users can manage their own tax expenses" on public.tax_expenses as permissive for all to public using ((auth.uid() = user_id)) with check ((auth.uid() = user_id));
+create policy "Users can manage their own tax expenses" on public.tax_expenses as permissive for all to public using ((( SELECT auth.uid() AS uid) = user_id)) with check ((( SELECT auth.uid() AS uid) = user_id));
 
-create policy "Users can view their own promo codes" on public.used_promo_codes as permissive for select to public using ((auth.uid() = user_id));
+create policy "Users can view their own promo codes" on public.used_promo_codes as permissive for select to public using ((( SELECT auth.uid() AS uid) = user_id));
 
-create policy "Users can view own role" on public.user_roles as permissive for select to public using ((auth.uid() = user_id));
+create policy "Users can view own role" on public.user_roles as permissive for select to public using ((( SELECT auth.uid() AS uid) = user_id));
 
 grant delete, insert, references, select, trigger, truncate, update on public._backup_20261009_notifications to service_role;
 
 grant delete, insert, references, select, trigger, truncate, update on public._backup_20261009_payments to service_role;
+
+grant delete, insert, references, select, trigger, truncate, update on public._backup_20261024_subscriptions to anon;
+
+grant delete, insert, references, select, trigger, truncate, update on public._backup_20261024_subscriptions to authenticated;
+
+grant delete, insert, references, select, trigger, truncate, update on public._backup_20261024_subscriptions to service_role;
+
+grant delete, insert, references, select, trigger, truncate, update on public._backup_20261025_investments to anon;
+
+grant delete, insert, references, select, trigger, truncate, update on public._backup_20261025_investments to authenticated;
+
+grant delete, insert, references, select, trigger, truncate, update on public._backup_20261025_investments to service_role;
+
+grant delete, insert, references, select, trigger, truncate, update on public._backup_20261025_payments to anon;
+
+grant delete, insert, references, select, trigger, truncate, update on public._backup_20261025_payments to authenticated;
+
+grant delete, insert, references, select, trigger, truncate, update on public._backup_20261025_payments to service_role;
 
 grant delete, insert, references, select, trigger, truncate, update on public.future_investments to anon;
 
@@ -536,9 +647,9 @@ grant delete, insert, references, select, trigger, truncate, update on public.pa
 
 grant delete, insert, references, select, trigger, truncate, update on public.payments to service_role;
 
-grant delete, insert, references, select, trigger, truncate, update on public.profiles to anon;
+grant delete, insert, references, select, trigger, truncate on public.profiles to anon;
 
-grant delete, insert, references, select, trigger, truncate, update on public.profiles to authenticated;
+grant delete, insert, references, select, trigger, truncate on public.profiles to authenticated;
 
 grant delete, insert, references, select, trigger, truncate, update on public.profiles to service_role;
 
@@ -565,3 +676,5 @@ grant delete, insert, references, select, trigger, truncate, update on public.us
 grant delete, insert, references, select, trigger, truncate, update on public.user_roles to authenticated;
 
 grant delete, insert, references, select, trigger, truncate, update on public.user_roles to service_role;
+
+grant update (avatar_url, full_name, pro_welcome_shown, updated_at) on public.profiles to authenticated;

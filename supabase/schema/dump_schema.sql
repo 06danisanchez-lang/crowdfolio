@@ -58,7 +58,8 @@ parts as (
   select 42, p.proname || p.oid::text,
     format('revoke all on function %s from public;', p.oid::regprocedure)
     || coalesce((select string_agg(format(' grant execute on function %s to %s;', p.oid::regprocedure,
-                   case when x.grantee = 0 then 'public' else quote_ident(r.rolname) end), '')
+                   case when x.grantee = 0 then 'public' else quote_ident(r.rolname) end), ''
+                   order by coalesce(r.rolname, 'public'))
                  from aclexplode(p.proacl) x left join pg_roles r on r.oid = x.grantee
                  where x.privilege_type = 'EXECUTE'
                    and coalesce(r.rolname, 'public') in ('public', 'anon', 'authenticated', 'service_role')), '')
@@ -98,5 +99,16 @@ parts as (
     -- MAINTAIN solo existe desde Postgres 17; se omite para poder cargar en 16
     and x.privilege_type <> 'MAINTAIN'
   group by t.relname, r.rolname
+
+  -- 11. Permisos por columna (p. ej. qué columnas de profiles puede editar el usuario)
+  union all
+  select 81, t.relname || r.rolname || x.privilege_type, format('grant %s (%s) on public.%I to %I;',
+    lower(x.privilege_type), string_agg(quote_ident(a.attname), ', ' order by a.attname), t.relname, r.rolname)
+  from tables t
+  join pg_attribute a on a.attrelid = t.oid and a.attnum > 0 and not a.attisdropped and a.attacl is not null
+  cross join lateral aclexplode(a.attacl) x
+  join pg_roles r on r.oid = x.grantee
+  where r.rolname in ('anon', 'authenticated', 'service_role')
+  group by t.relname, r.rolname, x.privilege_type
 )
 select ddl from parts order by ord, k;

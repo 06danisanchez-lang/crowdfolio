@@ -1,1 +1,6 @@
 project_id = "eazwouasdrcbucxwjfxy"
+# Stripe llama al webhook sin token de Supabase: con verify_jwt la pasarela lo
+# rechaza con 401 antes de llegar al código. La función ya verifica la firma de
+# Stripe (constructEventAsync con STRIPE_WEBHOOK_SECRET).
+[functions.stripe-webhook]
+verify_jwt = false

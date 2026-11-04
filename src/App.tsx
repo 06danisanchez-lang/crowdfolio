@@ -1,4 +1,6 @@
 import { Toaster } from "@/components/ui/toaster";
+import { Analytics } from "@vercel/analytics/react";
+import { analyticsBeforeSend } from "@/lib/analyticsBeforeSend";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClientProvider } from "@tanstack/react-query";
@@ -406,6 +408,7 @@ const App = () => (
             </SubscriptionProvider>
           </AuthProvider>
         </BrowserRouter>
+        <Analytics beforeSend={analyticsBeforeSend} />
       </TooltipProvider>
     </QueryClientProvider>
     </LanguageProvider>

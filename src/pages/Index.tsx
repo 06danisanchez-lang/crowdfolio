@@ -215,6 +215,10 @@ const Index = () => {
     return t('dashboard.kpi.scopeSubtitle').replace('{n}', String(n)).replace('{total}', String(total));
   };
 
+  // Las vencidas sin cobrar ('pending') cuentan como capital activo en el panel,
+  // pero en la lista de Inversiones aparecen en «Vencidas y finalizadas».
+  const overduePendingCount = completedInvestments.filter(i => i.status === 'pending').length;
+
   const renderCurrentKPIs = () => (
     <div className="grid gap-4 grid-cols-1 sm:grid-cols-2 lg:grid-cols-4">
       <KPICard
@@ -241,6 +245,9 @@ const Index = () => {
       <KPICard
         title={t('dashboard.kpi.activeCount')}
         value={summary.activeSummary.count}
+        subtitle={overduePendingCount > 0
+          ? t(overduePendingCount === 1 ? 'dashboard.kpi.includesOverdueOne' : 'dashboard.kpi.includesOverdueMany').replace('{n}', String(overduePendingCount))
+          : undefined}
         icon={PiggyBank}
         helpContent={HELP_CONTENT.dashboard.activeCount}
         onClick={() => { setInvestmentsFilter('active'); setCurrentView('investments'); }}

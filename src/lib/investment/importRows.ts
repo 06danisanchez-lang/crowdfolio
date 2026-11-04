@@ -1,7 +1,7 @@
 import { addMonths } from 'date-fns';
 import { buildMaturityFromForm } from './maturityChange';
 import {
-  PLATFORMS, Platform, IncomeModel, PaymentFrequency, PrincipalReturnType, InvestmentStatus,
+  PLATFORMS, SUGGESTED_OTHER_PLATFORMS, Platform, IncomeModel, PaymentFrequency, PrincipalReturnType, InvestmentStatus,
 } from '@/types/investment';
 import { parseImportDate } from '@/lib/investment/parseImportDate';
 import { parseSpanishNumber } from '@/lib/investment/parseSpanishNumber';
@@ -153,7 +153,7 @@ export function matchPlatform(
  * «Otra» con su nombre). Solo sirven para reconocer el NOMBRE DE UNA HOJA como
  * plataforma: una hoja «2025» o «Hoja1» no es una plataforma.
  */
-const KNOWN_OTHER_PLATFORMS = ['Civislend', 'Mintos', 'Fellow Funders', 'Reental', 'Bulkestate', 'Crowdestate', 'EvoEstate'];
+const KNOWN_OTHER_PLATFORMS: readonly string[] = SUGGESTED_OTHER_PLATFORMS;
 
 /**
  * Plataforma a partir del nombre de una hoja («Urbanitae», «Civislend»).

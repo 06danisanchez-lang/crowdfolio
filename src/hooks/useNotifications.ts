@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
+import { dropStaleMaturitySoon } from '@/lib/notifications/staleMaturity';
 
 const FETCH_TIMEOUT_MS = 15_000;
 
@@ -56,10 +57,10 @@ export function useNotifications() {
 
       if (dbError) throw dbError;
 
-      const typedNotifications = (data || []).map(n => ({
+      const typedNotifications = dropStaleMaturitySoon((data || []).map(n => ({
         ...n,
         data: (n.data || {}) as Record<string, unknown>
-      }));
+      })));
 
       setNotifications(typedNotifications);
       setUnreadCount(typedNotifications.filter(n => !n.read).length);

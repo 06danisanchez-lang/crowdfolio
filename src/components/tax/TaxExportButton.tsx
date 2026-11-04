@@ -732,7 +732,7 @@ export function TaxExportButton({
       doc.setFont('helvetica', 'normal');
       doc.setTextColor(128, 128, 128);
       doc.text(`Documento generado el ${fmtDate(new Date())}`, pageWidth / 2, yPos, { align: 'center' });
-      doc.text('Datos listos para tu declaración o tu gestor', pageWidth / 2, yPos + 5, { align: 'center' });
+      doc.text('Rendimientos y retenciones de toda tu cartera, para tu declaración o tu gestor', pageWidth / 2, yPos + 5, { align: 'center' });
 
       yPos += 10;
       doc.setFontSize(9);
@@ -1261,11 +1261,11 @@ export function TaxExportButton({
         {!isPro ? (
           <div className="px-3 py-2 text-xs text-muted-foreground">
             <p className="font-medium text-foreground">Exportación disponible en Pro</p>
-            <p className="mt-0.5">Exporta el informe en PDF y Excel, listo para tu gestor o declaración.</p>
+            <p className="mt-0.5">Exporta el informe en PDF y Excel para tu gestor o tu declaración.</p>
           </div>
         ) : (
           <div className="px-2 py-1.5 text-xs text-muted-foreground">
-            Datos listos para tu declaración o tu gestor
+            Rendimientos y retenciones de toda tu cartera, para tu declaración o tu gestor
           </div>
         )}
         <DropdownMenuSeparator />

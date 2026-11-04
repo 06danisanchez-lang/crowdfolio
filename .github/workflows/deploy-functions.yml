@@ -66,5 +66,5 @@ jobs:
           fi
           for fn in ${{ steps.changed.outputs.fns }}; do
             echo "Desplegando $fn"
-            supabase functions deploy "$fn" --project-ref "$PROJECT_REF"
+            supabase functions deploy "$fn" --project-ref "$PROJECT_REF" --yes
           done

@@ -115,7 +115,32 @@ export default function Cookies() {
               </div>
 
               <div className="space-y-3">
-                <h3 className="font-semibold">3.3 Cookies de terceros — Stripe</h3>
+                <h3 className="font-semibold">3.3 Origen de la visita</h3>
+                <p className="text-muted-foreground">Si llegas a la web desde un enlace con etiqueta (por ejemplo, <span className="font-mono text-xs">?ref=</span> o <span className="font-mono text-xs">utm_source</span>) o desde otra web, guardamos en el almacenamiento local de tu navegador esa etiqueta y el nombre del dominio de procedencia (no la dirección completa). Si creas una cuenta, ese dato se guarda con ella para saber por qué canal nos conociste. No se comparte con terceros ni se usa para publicidad.</p>
+                <div className="overflow-x-auto">
+                  <table className="w-full text-sm border-collapse">
+                    <thead>
+                      <tr className="border-b">
+                        <th className="text-left py-2 pr-4 font-semibold whitespace-nowrap">Cookie</th>
+                        <th className="text-left py-2 pr-4 font-semibold whitespace-nowrap">Proveedor</th>
+                        <th className="text-left py-2 pr-4 font-semibold">Finalidad</th>
+                        <th className="text-left py-2 font-semibold whitespace-nowrap">Duración</th>
+                      </tr>
+                    </thead>
+                    <tbody className="text-muted-foreground">
+                      <tr>
+                        <td className="py-2 pr-4 font-mono text-xs whitespace-nowrap">cf_attribution</td>
+                        <td className="py-2 pr-4 whitespace-nowrap">Crowdfolio (propia)</td>
+                        <td className="py-2 pr-4">Etiqueta del enlace y dominio desde el que llegaste por primera vez</td>
+                        <td className="py-2 whitespace-nowrap">60 días</td>
+                      </tr>
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+
+              <div className="space-y-3">
+                <h3 className="font-semibold">3.4 Cookies de terceros — Stripe</h3>
                 <p className="text-muted-foreground">Si contratas el plan Pro, Stripe puede establecer cookies propias durante el proceso de pago para garantizar la seguridad de la transacción y prevenir el fraude. Estas cookies son gestionadas íntegramente por Stripe y se rigen por su propia política de privacidad: <a href="https://stripe.com/es/privacy" className="text-[#79c6fa] underline" target="_blank" rel="noopener noreferrer">https://stripe.com/es/privacy</a>.</p>
                 <div className="overflow-x-auto">
                   <table className="w-full text-sm border-collapse">

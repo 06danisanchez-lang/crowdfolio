@@ -2,6 +2,7 @@
 import { createContext, useContext, useEffect, useState, useCallback, useRef, ReactNode } from 'react';
 import { User, Session, AuthChangeEvent } from '@supabase/supabase-js';
 import { supabase } from '@/integrations/supabase/client';
+import { getStoredAttribution } from '@/lib/attribution';
 
 const AUTH_TIMEOUT_MS = 10_000;
 
@@ -57,6 +58,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     const ageMs = Date.now() - createdAt;
     if (ageMs > 30_000) return;
     webhookFiredForRef.current.add(user.id);
+    const attribution = getStoredAttribution();
+    // Alta con Google: el origen no viaja en el registro, se guarda ahora.
+    if (attribution && !user.user_metadata?.attribution) {
+      supabase.auth.updateUser({ data: { attribution } }).catch(() => {});
+    }
     fetch('https://brunosanchez.app.n8n.cloud/webhook/nuevo-usuario', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -64,6 +70,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         email: user.email,
         fecha: new Date().toISOString(),
         origen: 'crowdfolio_google',
+        attribution,
       }),
     }).catch(() => {});
   }, []);
@@ -200,9 +207,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const signUp = async (email: string, password: string) => {
     const redirectUrl = `${getAuthOrigin()}/`;
+    const attribution = getStoredAttribution();
     const { error } = await supabase.auth.signUp({
       email, password,
-      options: { emailRedirectTo: redirectUrl },
+      options: { emailRedirectTo: redirectUrl, ...(attribution ? { data: { attribution } } : {}) },
     });
     return { error: error as Error | null };
   };

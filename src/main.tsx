@@ -2,6 +2,10 @@ import { StrictMode } from "react";
 import { createRoot } from "react-dom/client";
 import App from "./App.tsx";
 import "./index.css";
+import { captureAttribution } from "./lib/attribution";
+
+// Origen de la visita (?ref=, utm_*, dominio de procedencia) para saber de dónde llegan los registros.
+captureAttribution();
 
 // Global error instrumentation (ready for Sentry)
 window.addEventListener('error', (event) => {

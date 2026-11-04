@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { getStoredAttribution } from '@/lib/attribution';
 import { useNavigate, useLocation, Link } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
@@ -146,6 +147,7 @@ export default function Auth() {
               email,
               fecha: new Date().toISOString(),
               origen: 'crowdfolio_prod',
+              attribution: getStoredAttribution(),
             }),
           }).catch(() => {});
 

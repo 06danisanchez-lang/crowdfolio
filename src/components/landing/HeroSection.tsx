@@ -31,7 +31,7 @@ export default function HeroSection() {
           marginBottom: 24,
           textWrap: 'balance',
         } as React.CSSProperties}>
-          Tu cartera de crowdfunding inmobiliario, en un solo lugar.
+          Tu cartera de crowdfunding inmobiliario, con lo que te renta de verdad.
         </h1>
 
         <p className="cf-reveal d1" style={{
@@ -42,7 +42,7 @@ export default function HeroSection() {
           margin: '0 auto 36px',
           textWrap: 'pretty',
         } as React.CSSProperties}>
-          Visualiza toda tu cartera, planifica tus próximas inversiones, recibe alertas de tus proyectos y genera tu informe fiscal para la Renta.
+          Junta en un panel tus proyectos de todas las plataformas. Mira cuánto dinero tienes en riesgo por retrasos e impagos, cuántos meses lleva cada uno y qué rentabilidad te queda frente a la prometida. Y en la Renta, tu informe fiscal unificado.
         </p>
 
         {/* CTAs */}
@@ -73,7 +73,7 @@ export default function HeroSection() {
         </div>
 
         <p className="cf-reveal d2" style={{ marginTop: 22, fontSize: 14.5, color: '#9aa8c6' }}>
-          Gratis para empezar y sin tarjeta.
+          Gratis y sin tarjeta. Puedes subir el Excel que ya llevas.
         </p>
       </div>
 

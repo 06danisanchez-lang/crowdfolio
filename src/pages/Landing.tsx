@@ -73,7 +73,7 @@ export default function Landing() {
 
           {/* Desktop nav links */}
           <nav className="cf-nav-links" style={{ alignItems: 'center', gap: 34 }}>
-            {[['#funcionalidades','Funcionalidades'],['#como-funciona','Cómo funciona'],['#precios','Precios']].map(([href, label]) => (
+            {[['#funcionalidades','Funcionalidades'],['#como-funciona','Cómo funciona'],['#precios','Planes']].map(([href, label]) => (
               <a key={href} href={href} style={NAV_LINK}
                 onMouseEnter={e => (e.currentTarget as HTMLAnchorElement).style.color = '#eef2f9'}
                 onMouseLeave={e => (e.currentTarget as HTMLAnchorElement).style.color = '#b6c2da'}

@@ -26,7 +26,7 @@ export function TaxBreakdownTable({ summary }: TaxBreakdownTableProps) {
     }).format(value);
   };
 
-  const taxBreakdown = getTaxBreakdown(summary.taxableBase);
+  const taxBreakdown = getTaxBreakdown(summary.taxableBase, summary.year);
 
   return (
     <div className="space-y-6">

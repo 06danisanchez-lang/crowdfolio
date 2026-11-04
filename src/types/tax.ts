@@ -82,11 +82,42 @@ export const TAX_EXPENSE_CATEGORY_WARNINGS: Partial<Record<TaxExpenseCategory, s
     'Solo es deducible si es un gasto de administración o depósito. Asesoría, desplazamientos o herramientas de seguimiento no lo son.',
 };
 
-// Spanish savings income tax brackets — 2025 (Ley 7/2024)
-export const SPAIN_TAX_BRACKETS: TaxBracket[] = [
+// Escala de la base liquidable del ahorro (estatal + autonómica), art. 66 y 76 LIRPF.
+// Solo cambia el tramo alto:
+//   2021-2022 (Ley 11/2020): más de 200.000 € al 26 %.
+//   2023-2024 (Ley 31/2022): 200.000-300.000 € al 27 %, más de 300.000 € al 28 %.
+//   2025 en adelante (Ley 7/2024): más de 300.000 € al 30 %.
+const COMMON_LOW_BRACKETS: TaxBracket[] = [
   { min: 0, max: 6000, rate: 0.19 },
   { min: 6000, max: 50000, rate: 0.21 },
   { min: 50000, max: 200000, rate: 0.23 },
+];
+
+export const SAVINGS_BRACKETS_2021: TaxBracket[] = [
+  ...COMMON_LOW_BRACKETS,
+  { min: 200000, max: Infinity, rate: 0.26 },
+];
+
+export const SAVINGS_BRACKETS_2023: TaxBracket[] = [
+  ...COMMON_LOW_BRACKETS,
+  { min: 200000, max: 300000, rate: 0.27 },
+  { min: 300000, max: Infinity, rate: 0.28 },
+];
+
+// Vigente: 2025 (Ley 7/2024)
+export const SPAIN_TAX_BRACKETS: TaxBracket[] = [
+  ...COMMON_LOW_BRACKETS,
   { min: 200000, max: 300000, rate: 0.27 },
   { min: 300000, max: Infinity, rate: 0.30 },
 ];
+
+/**
+ * Tramos del ahorro del ejercicio `year`. Sin año (o con un año posterior al último
+ * cambio conocido) devuelve la escala vigente. Antes de 2021 devuelve la de 2021:
+ * la app no está pensada para declarar ejercicios anteriores.
+ */
+export function getSavingsBrackets(year?: number): TaxBracket[] {
+  if (year == null || year >= 2025) return SPAIN_TAX_BRACKETS;
+  if (year >= 2023) return SAVINGS_BRACKETS_2023;
+  return SAVINGS_BRACKETS_2021;
+}

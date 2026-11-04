@@ -273,7 +273,7 @@ export function TaxDashboard({ isPro = false, onProRequired, onOpenInvestment, o
       </Tabs>
 
       {/* Tax Information Card */}
-      <TaxInfoCard />
+      <TaxInfoCard year={selectedYear} />
     </div>
   );
 }

@@ -1,16 +1,17 @@
-import { SPAIN_TAX_BRACKETS, TaxBracket } from '@/types/tax';
+import { getSavingsBrackets, TaxBracket } from '@/types/tax';
 
 /**
- * Calculate progressive tax for Spanish savings income (rentas del ahorro)
- * Uses 2025 tax brackets (Ley 7/2024)
+ * Cuota de la base del ahorro con la escala progresiva del ejercicio `year`
+ * (sin año: la vigente). Ver getSavingsBrackets.
  */
-export function calculateProgressiveTax(taxableBase: number): number {
+export function calculateProgressiveTax(taxableBase: number, year?: number): number {
   if (taxableBase <= 0) return 0;
+  const brackets = getSavingsBrackets(year);
   
   let remainingBase = taxableBase;
   let totalTax = 0;
   
-  for (const bracket of SPAIN_TAX_BRACKETS) {
+  for (const bracket of brackets) {
     if (remainingBase <= 0) break;
     
     const bracketSize = bracket.max - bracket.min;
@@ -34,13 +35,14 @@ export function calculateWithholding(amount: number): number {
 /**
  * Get the marginal tax rate for a given taxable base
  */
-export function getMarginalRate(taxableBase: number): number {
-  for (const bracket of SPAIN_TAX_BRACKETS) {
+export function getMarginalRate(taxableBase: number, year?: number): number {
+  const brackets = getSavingsBrackets(year);
+  for (const bracket of brackets) {
     if (taxableBase <= bracket.max) {
       return bracket.rate;
     }
   }
-  return SPAIN_TAX_BRACKETS[SPAIN_TAX_BRACKETS.length - 1].rate;
+  return brackets[brackets.length - 1].rate;
 }
 
 /**
@@ -54,13 +56,13 @@ export function calculateEffectiveRate(taxableBase: number, totalTax: number): n
 /**
  * Get tax bracket breakdown for visualization
  */
-export function getTaxBreakdown(taxableBase: number): { bracket: TaxBracket; amount: number; tax: number }[] {
+export function getTaxBreakdown(taxableBase: number, year?: number): { bracket: TaxBracket; amount: number; tax: number }[] {
   if (taxableBase <= 0) return [];
   
   const breakdown: { bracket: TaxBracket; amount: number; tax: number }[] = [];
   let remainingBase = taxableBase;
   
-  for (const bracket of SPAIN_TAX_BRACKETS) {
+  for (const bracket of getSavingsBrackets(year)) {
     if (remainingBase <= 0) break;
     
     const bracketSize = bracket.max - bracket.min;

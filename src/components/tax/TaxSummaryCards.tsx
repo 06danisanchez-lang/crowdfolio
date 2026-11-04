@@ -63,7 +63,7 @@ export function TaxSummaryCards({ summary }: TaxSummaryCardsProps) {
       icon: Calculator,
       color: 'text-red-600 dark:text-red-400',
       bgColor: 'bg-red-50 dark:bg-red-950/30',
-      help: 'Impuesto calculado aplicando los tramos progresivos del ahorro (19% a 30%) sobre tu base imponible.',
+      help: 'Impuesto calculado aplicando los tramos progresivos del ahorro del ejercicio sobre tu base imponible.',
     },
     {
       title: 'Tipo Efectivo',

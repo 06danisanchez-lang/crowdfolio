@@ -3,7 +3,7 @@ import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClientProvider } from "@tanstack/react-query";
 import { queryClient } from "@/lib/queryClient";
-import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
+import { BrowserRouter, Routes, Route, Navigate, useLocation } from "react-router-dom";
 import { AuthProvider, useAuth } from "@/contexts/AuthContext";
 import { SubscriptionProvider } from "@/contexts/SubscriptionContext";
 import { GlobalErrorBoundary } from "@/components/GlobalErrorBoundary";
@@ -320,8 +320,30 @@ function PublicRoute({ children }: { children: React.ReactNode }) {
   return <>{children}</>;
 }
 
+// Título de la pestaña (y del resultado en Google) por página pública. La app
+// privada mantiene el título por defecto de index.html.
+const DEFAULT_TITLE = "Crowdfolio - Gestión de Inversiones en Crowdfunding";
+const PAGE_TITLES: Record<string, string> = {
+  "/landing": "Crowdfolio · Tu cartera de crowdfunding inmobiliario y su informe fiscal",
+  "/auth": "Entrar · Crowdfolio",
+  "/pricing": "Precios · Crowdfolio",
+  [LEGAL_ROUTES.legal]: "Aviso legal · Crowdfolio",
+  [LEGAL_ROUTES.privacy]: "Política de privacidad · Crowdfolio",
+  [LEGAL_ROUTES.terms]: "Términos y condiciones · Crowdfolio",
+  [LEGAL_ROUTES.cookies]: "Política de cookies · Crowdfolio",
+};
+
+function RouteTitle() {
+  const { pathname } = useLocation();
+  useEffect(() => {
+    document.title = PAGE_TITLES[pathname] ?? DEFAULT_TITLE;
+  }, [pathname]);
+  return null;
+}
+
 const AppRoutes = () => (
   <AuthGate>
+    <RouteTitle />
     <Suspense fallback={<LoadingSpinner />}>
     <Routes>
       <Route 

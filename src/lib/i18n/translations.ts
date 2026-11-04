@@ -2,67 +2,6 @@ export type Lang = 'es' | 'en';
 
 export const translations: Record<Lang, Record<string, string>> = {
   es: {
-    // Header / Landing nav
-    'header.signIn': 'Iniciar Sesión',
-    'header.getStarted': 'Empezar Gratis',
-
-    // Hero
-    'hero.badge': 'Control total de tus inversiones',
-    'hero.headline1': 'Tu cartera de',
-    'hero.headline2': 'en un solo lugar.',
-    'hero.subheadline': 'Centraliza tus inversiones y visualiza tu cartera en un único panel, planifica tus inversiones futuras y obtén un informe fiscal unificado.',
-    'hero.bullet1': 'Visualiza toda tu cartera en un único panel',
-    'hero.bullet2': 'Planifica y haz seguimiento de tus futuras inversiones',
-    'hero.bullet3': 'Recibe alertas de cambios y actualizaciones en tu cartera',
-    'hero.bullet4': 'Genera tu informe fiscal unificado para la Renta',
-    'hero.ctaPrimary': 'Crea una cuenta gratis',
-    'hero.ctaSecondary': 'Ver precios',
-    'hero.trustLine': 'Sin tarjeta de crédito · Configura en 2 minutos · Cancela cuando quieras',
-
-    // Stats
-    'stats.label1': 'Inversores activos',
-    'stats.desc1': 'Confían en nosotros',
-    'stats.label2': 'Inversiones gestionadas',
-    'stats.desc2': 'En seguimiento',
-    'stats.label3': 'Plataformas',
-    'stats.desc3': 'Compatibles',
-    'stats.label4': 'Valoración media',
-    'stats.desc4': 'De usuarios',
-
-    // Features
-    'features.sectionBadge': 'Funcionalidades',
-    'features.sectionTitle': 'Todo lo que necesitas para gestionar tus inversiones',
-    'features.sectionDesc': 'Desde el seguimiento básico hasta informes fiscales avanzados, Crowdfolio tiene todo cubierto.',
-    'features.f1.title': 'Módulo Fiscal España',
-    'features.f1.desc': 'Exporta tus retenciones e ingresos listos para el IRPF. Clasificamos automáticamente entre capital mobiliario y ganancias patrimoniales.',
-    'features.f2.title': 'Importación Rápida',
-    'features.f2.desc': 'Importa tus inversiones desde CSV o JSON de forma rápida y sencilla.',
-    'features.f3.title': 'Dashboard Profesional',
-    'features.f3.desc': 'Visualiza rendimientos, distribución de cartera y evolución temporal con gráficos interactivos.',
-    'features.f4.title': 'Análisis de Rentabilidad',
-    'features.f4.desc': 'Calcula TIR, rendimiento anualizado y proyecciones de retorno para cada inversión.',
-    'features.f5.title': 'Avisos de apertura',
-    'features.f5.desc': 'Recibe recordatorios antes de que tus inversiones futuras se abran.',
-    'features.f6.title': 'Datos Seguros',
-    'features.f6.desc': 'Tu información está protegida con cifrado de nivel bancario y backups automáticos.',
-
-    // How it works
-    'how.sectionBadge': 'Qué te ofrece Crowdfolio',
-    'how.sectionTitle': 'Controla tus inversiones y su fiscalidad desde un solo lugar',
-    'how.step1.title': 'Centraliza y visualiza tu cartera',
-    'how.step1.desc': 'Reúne todas tus inversiones en un único panel con datos agregados de rendimiento, distribución y vencimientos.',
-    'how.step2.title': 'Planifica inversiones futuras',
-    'how.step2.desc': 'Guarda las inversiones que te interesan y recibe avisos antes de que abran para llegar a tiempo.',
-    'how.step3.title': 'Informe fiscal unificado',
-    'how.step3.desc': 'Obtén un único informe fiscal que consolida la información de todas tus inversiones y te facilita la declaración.',
-
-    // CTA
-    'cta.headline': '¿Listo para tomar el control de tus inversiones?',
-    'cta.subheadline': 'Únete a cientos de inversores que ya gestionan su cartera con Crowdfolio.',
-    'cta.button': 'Empezar a organizar mi cartera',
-    'cta.benefit1': 'Plan gratuito disponible',
-    'cta.benefit2': 'Sin tarjeta requerida',
-    'cta.benefit3': 'Cancela cuando quieras',
 
     // Footer
     'footer.contact': 'Contacto',
@@ -72,19 +11,6 @@ export const translations: Record<Lang, Record<string, string>> = {
     'footer.terms': 'Términos y condiciones',
     'footer.cookies': 'Cookies',
     'footer.rights': 'Todos los derechos reservados.',
-
-    // Testimonials
-    'testimonials.sectionBadge': 'Testimonios',
-    'testimonials.sectionTitle': 'Lo que dicen nuestros usuarios',
-    'testimonials.t1.name': 'Carlos M.',
-    'testimonials.t1.role': 'Inversor particular',
-    'testimonials.t1.content': 'Por fin puedo ver todas mis inversiones en un solo sitio. La parte fiscal me ahorra horas cada año.',
-    'testimonials.t2.name': 'Laura S.',
-    'testimonials.t2.role': 'Inversora desde 2019',
-    'testimonials.t2.content': 'Los avisos de apertura son geniales. Ahora llego a tiempo a inversiones que antes se me escapaban.',
-    'testimonials.t3.name': 'Miguel A.',
-    'testimonials.t3.role': 'Portfolio de 15+ proyectos',
-    'testimonials.t3.content': 'El dashboard me da una visión clara de mi diversificación. Muy recomendable.',
 
     // Nav (app interior)
     'nav.dashboard': 'Inicio',
@@ -255,9 +181,6 @@ export const translations: Record<Lang, Record<string, string>> = {
     'importexport.exportCsv': 'Exportar como CSV',
     'importexport.exportCsv.desc': 'Compatible con Excel y Google Sheets',
     'importexport.downloadCsv': 'Descargar CSV',
-
-
-
 
     // Tax
     'tax.title': 'Fiscalidad',
@@ -655,7 +578,6 @@ export const translations: Record<Lang, Record<string, string>> = {
     'investments.action.confirmClose': 'Confirmar cierre',
     'investments.detail.expected': 'Esperado',
     'investments.detail.realReturn': 'Rendimiento Real',
-    // Fase 4 — resumen de retornos de una inversión en impago (textos literales
     // distintos de los de arriba: minúscula, sin "Monto"/capitalización propia)
     'investments.detail.investedCapital': 'Capital invertido',
     'investments.detail.recoveredCapital': 'Capital recuperado',
@@ -729,67 +651,6 @@ export const translations: Record<Lang, Record<string, string>> = {
 
   },
   en: {
-    // Header / Landing nav
-    'header.signIn': 'Sign In',
-    'header.getStarted': 'Get Started Free',
-
-    // Hero
-    'hero.badge': 'Full control of your investments',
-    'hero.headline1': 'Your real estate',
-    'hero.headline2': 'in one place.',
-    'hero.subheadline': 'Centralize your investments and visualize your portfolio in a single dashboard, plan your future investments, and get a unified tax report.',
-    'hero.bullet1': 'Visualize your entire portfolio in a single dashboard',
-    'hero.bullet2': 'Plan and track your future investments',
-    'hero.bullet3': 'Get alerts on changes and updates in your portfolio',
-    'hero.bullet4': 'Generate your unified tax report for income tax',
-    'hero.ctaPrimary': 'Create a free account',
-    'hero.ctaSecondary': 'View pricing',
-    'hero.trustLine': 'No credit card · Set up in 2 minutes · Cancel anytime',
-
-    // Stats
-    'stats.label1': 'Active investors',
-    'stats.desc1': 'Trust us',
-    'stats.label2': 'Managed investments',
-    'stats.desc2': 'Under tracking',
-    'stats.label3': 'Platforms',
-    'stats.desc3': 'Compatible',
-    'stats.label4': 'Average rating',
-    'stats.desc4': 'From users',
-
-    // Features
-    'features.sectionBadge': 'Features',
-    'features.sectionTitle': 'Everything you need to manage your investments',
-    'features.sectionDesc': 'From basic tracking to advanced tax reports, Crowdfolio has you covered.',
-    'features.f1.title': 'Spain Tax Module',
-    'features.f1.desc': 'Export your withholdings and income ready for your tax return. We automatically classify between capital income and capital gains.',
-    'features.f2.title': 'Quick Import',
-    'features.f2.desc': 'Import your investments from CSV or JSON quickly and easily.',
-    'features.f3.title': 'Professional Dashboard',
-    'features.f3.desc': 'Visualize returns, portfolio distribution and timeline evolution with interactive charts.',
-    'features.f4.title': 'Return Analysis',
-    'features.f4.desc': 'Calculate IRR, annualized return and return projections for each investment.',
-    'features.f5.title': 'Opening Alerts',
-    'features.f5.desc': 'Get reminders before your future investments open.',
-    'features.f6.title': 'Secure Data',
-    'features.f6.desc': 'Your information is protected with bank-level encryption and automatic backups.',
-
-    // How it works
-    'how.sectionBadge': 'What Crowdfolio offers',
-    'how.sectionTitle': 'Control your investments and tax reporting from one place',
-    'how.step1.title': 'Centralize and visualize your portfolio',
-    'how.step1.desc': 'Bring all your investments into a single dashboard with aggregated data on performance, allocation and maturities.',
-    'how.step2.title': 'Plan future investments',
-    'how.step2.desc': 'Save the investments you\'re interested in and get alerts before they open so you can act in time.',
-    'how.step3.title': 'Unified tax report',
-    'how.step3.desc': 'Get a single tax report that consolidates information from all your investments and makes tax filing easier.',
-
-    // CTA
-    'cta.headline': 'Ready to take control of your investments?',
-    'cta.subheadline': 'Join hundreds of investors already managing their portfolio with Crowdfolio.',
-    'cta.button': 'Start organizing my portfolio',
-    'cta.benefit1': 'Free plan available',
-    'cta.benefit2': 'No card required',
-    'cta.benefit3': 'Cancel anytime',
 
     // Footer
     'footer.contact': 'Contact',
@@ -799,19 +660,6 @@ export const translations: Record<Lang, Record<string, string>> = {
     'footer.terms': 'Terms and conditions',
     'footer.cookies': 'Cookies',
     'footer.rights': 'All rights reserved.',
-
-    // Testimonials
-    'testimonials.sectionBadge': 'Testimonials',
-    'testimonials.sectionTitle': 'What our users say',
-    'testimonials.t1.name': 'Carlos M.',
-    'testimonials.t1.role': 'Individual investor',
-    'testimonials.t1.content': 'I can finally see all my investments in one place. The tax section saves me hours every year.',
-    'testimonials.t2.name': 'Laura S.',
-    'testimonials.t2.role': 'Investor since 2019',
-    'testimonials.t2.content': 'Opening alerts are great. Now I get to investments on time that I used to miss.',
-    'testimonials.t3.name': 'Miguel A.',
-    'testimonials.t3.role': 'Portfolio of 15+ projects',
-    'testimonials.t3.content': 'The dashboard gives me a clear view of my diversification. Highly recommended.',
 
     // Nav (app interior)
     'nav.dashboard': 'Home',
@@ -982,9 +830,6 @@ export const translations: Record<Lang, Record<string, string>> = {
     'importexport.exportCsv': 'Export as CSV',
     'importexport.exportCsv.desc': 'Compatible with Excel and Google Sheets',
     'importexport.downloadCsv': 'Download CSV',
-
-
-
 
     // Tax
     'tax.title': 'Tax',

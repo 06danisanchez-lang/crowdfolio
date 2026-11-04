@@ -35,10 +35,10 @@ function Problem() {
             color: '#3f3623', letterSpacing: '-0.01em',
           }}>
             Tienes inversiones en{' '}
-            <span style={{ color: '#837758' }}>varias plataformas.</span>{' '}
-            Cada una mueve las fechas a su manera y llevas{' '}
-            <span style={{ color: '#837758' }}>un Excel que nunca está al día.</span>{' '}
-            No sabes qué te está rentando de verdad un proyecto que va con meses de retraso. Y cada primavera llegas a la Renta{' '}
+            <span style={{ color: '#837758' }}>cuatro plataformas distintas.</span>{' '}
+            Abres cuatro webs cada semana. Calculas rentabilidades{' '}
+            <span style={{ color: '#837758' }}>en una hoja de Excel</span>{' '}
+            que nunca está al día. Y cada primavera llegas a la Renta{' '}
             <span style={{ color: '#837758' }}>sin saber exactamente cuánto has ganado.</span>
             <span style={{ display: 'block', marginTop: 30, fontWeight: 600, color: '#253765' }}>
               Diversificar tu patrimonio no debería costarte el control.
@@ -65,23 +65,23 @@ function Problem() {
 // ─── 4 Pillars ──────────────────────────────────────────────────────────────────
 const PILLARS = [
   {
-    title: 'Retrasos e impagos',
-    desc: 'Cuánto dinero tienes en riesgo, cuántos meses lleva cada proyecto y qué TAE te queda frente a la prometida. Distingue prórroga de retraso.',
+    title: 'Visualiza tu cartera',
+    desc: 'Toda tu inversión —capital, valor actual y rentabilidad— en un único panel, sea cual sea la plataforma donde inviertas.',
     icon: <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="3" width="7" height="9" rx="1.5"/><rect x="14" y="3" width="7" height="5" rx="1.5"/><rect x="14" y="12" width="7" height="9" rx="1.5"/><rect x="3" y="16" width="7" height="5" rx="1.5"/></svg>,
   },
   {
-    title: 'Toda tu cartera junta',
-    desc: 'Urbanitae, Wecity, Civislend, Housers o la que uses: capital, cobros y vencimientos en un único panel, con avisos dentro de la app.',
+    title: 'Planifica a futuro',
+    desc: 'Guarda y planifica tus próximas inversiones. Anticipa cobros y vencimientos con un calendario claro.',
     icon: <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="4" width="18" height="17" rx="2"/><path d="M3 9h18M8 2v4M16 2v4"/><path d="M8 14l2.5 2.5L16 11"/></svg>,
   },
   {
-    title: 'Sube tu Excel',
-    desc: 'Importa el Excel o CSV que ya llevas, el tuyo o el que descargas de la plataforma. Lo que no se entienda con seguridad queda pendiente para que lo completes: no se inventa nada.',
+    title: 'Recibe alertas',
+    desc: 'Avisos de cobros, cambios de estado y novedades de tus proyectos. Entérate sin tener que entrar a mirar.',
     icon: <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round"><path d="M18 8a6 6 0 0 0-12 0c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.7 21a2 2 0 0 1-3.4 0"/></svg>,
   },
   {
     title: 'Informe fiscal',
-    desc: 'Rendimientos y retenciones de toda tu cartera para la Renta. Si falta algún cobro, el informe te lo dice.',
+    desc: 'Genera tu informe fiscal unificado para la Renta, con los rendimientos y retenciones de toda tu cartera.',
     icon: <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round"><path d="M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8z"/><path d="M14 3v5h5M9 13h6M9 17h6"/></svg>,
   },
 ];
@@ -92,10 +92,10 @@ function Pillars() {
       <div style={WRAP}>
         <div style={{ textAlign: 'center', marginBottom: 56 }}>
           <h2 style={{ fontFamily: DISPLAY_FONT, fontWeight: 600, fontSize: 'clamp(28px,3.8vw,46px)', color: '#eef2f9', margin: '0 0 16px', lineHeight: 1.08 }}>
-            Lo que tu Excel no te dice.
+            Cuatro funciones. Una cartera bajo control.
           </h2>
           <p style={{ fontSize: 18.5, color: '#b6c2da', lineHeight: 1.6, maxWidth: 640, margin: '0 auto' }}>
-            Todo lo que hoy haces a mano, repartido entre webs y hojas de cálculo, reunido en un único panel.
+            Todo lo que hoy haces a mano, repartido entre pestañas y hojas de cálculo, reunido en un único panel.
           </p>
         </div>
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: 20 }}>
@@ -120,9 +120,9 @@ function Pillars() {
 
 // ─── How It Works ───────────────────────────────────────────────────────────────
 const STEPS = [
-  { n: '1', title: 'Añade tus inversiones', desc: 'Sube tu Excel o apúntalas a mano, con la fecha de vencimiento que te prometieron. Sin dar tus claves de ninguna plataforma.' },
-  { n: '2', title: 'Crowdfolio hace las cuentas', desc: 'Meses de retraso, rentabilidad real, cobros pendientes y fiscalidad, calculados con tus datos.' },
-  { n: '3', title: 'Sabes dónde estás', desc: 'Qué va en plazo, qué no y cuánto te está rentando de verdad cada proyecto.' },
+  { n: '1', title: 'Registra tus inversiones', desc: 'Añade tus proyectos de cada plataforma. Una sola vez, en minutos.' },
+  { n: '2', title: 'Crowdfolio lo analiza', desc: 'Consolida tu rentabilidad, calendario y fiscalidad de forma automática.' },
+  { n: '3', title: 'Tomas mejores decisiones', desc: 'Ves dónde estás de verdad y decides tu próxima inversión con datos.' },
 ];
 
 function HowItWorks() {
@@ -158,8 +158,8 @@ function HowItWorks() {
 // ─── Fiscal Pro ─────────────────────────────────────────────────────────────────
 const FISCAL_FEATS = [
   'Rendimientos y retenciones consolidados',
-  'Exportable en PDF y Excel, para revisarlo tú o tu asesor',
-  'Te avisa si falta algún cobro antes de que lo uses',
+  'Exportable en PDF y Excel, listo para el IRPF',
+  'Sin sumar a mano los cobros de cada plataforma',
 ];
 
 function FiscalPro() {
@@ -173,7 +173,7 @@ function FiscalPro() {
             Cada año, la Renta. Cada año, el mismo caos.
           </h2>
           <p style={{ fontSize: 18, color: '#b6c2da', marginBottom: 30, maxWidth: 480, margin: '0 auto 30px' }}>
-            Con Crowdfolio Pro generas en un clic el informe fiscal unificado de toda tu cartera: rendimientos y retenciones, sin sumar a mano los cobros de cada plataforma.
+            Con Crowdfolio Pro generas tu informe fiscal unificado en un clic: rendimientos y retenciones de toda tu cartera, listos para tu declaración.
           </p>
           <ul style={{ listStyle: 'none', padding: 0, display: 'inline-flex', flexDirection: 'column', gap: 14, textAlign: 'left', margin: '0 0 32px' }}>
             {FISCAL_FEATS.map(feat => (
@@ -194,7 +194,7 @@ function FiscalPro() {
             }}
               onMouseEnter={e => { const el = e.currentTarget as HTMLAnchorElement; el.style.background = '#9ad5ff'; el.style.transform = 'translateY(-1px)'; }}
               onMouseLeave={e => { const el = e.currentTarget as HTMLAnchorElement; el.style.background = '#79c6fa'; el.style.transform = 'none'; }}
-            >Ver planes</a>
+            >Ver precios</a>
           </div>
         </div>
       </div>
@@ -223,9 +223,9 @@ function Pricing() {
       <div style={WRAP}>
         <div style={{ textAlign: 'center', marginBottom: 56 }}>
           <h2 style={{ fontFamily: DISPLAY_FONT, fontWeight: 600, fontSize: 'clamp(28px,3.8vw,46px)', color: '#3f3623', margin: '0 0 16px', lineHeight: 1.08 }}>
-            Gratis mientras estamos en beta.
+            Empieza gratis. Sube a Pro cuando lo necesites.
           </h2>
-          <p style={{ fontSize: 18, color: '#5e533c' }}>Sin tarjeta y sin permanencia. Todavía no cobramos nada.</p>
+          <p style={{ fontSize: 18, color: '#5e533c' }}>Sin permanencia. Cancela cuando quieras.</p>
         </div>
 
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', gap: 26, maxWidth: 880, margin: '0 auto' }}>
@@ -237,7 +237,7 @@ function Pricing() {
           }}>
             <div style={{ fontSize: 18, color: '#3f3623', fontWeight: 700, marginBottom: 14 }}>Gratis</div>
             <div style={{ fontFamily: DISPLAY_FONT, fontWeight: 600, fontSize: 46, color: '#3f3623', lineHeight: 1, marginBottom: 4 }}>0 €</div>
-            <div style={{ fontSize: 13.5, color: '#837758', marginBottom: 24 }}>gratis para siempre, con 30 días de Pro al registrarte</div>
+            <div style={{ fontSize: 13.5, color: '#837758', marginBottom: 24 }}>gratis para siempre</div>
             <hr style={{ border: 'none', borderTop: '1px solid #d9d0bd', margin: '0 0 24px' }} />
             <ul style={{ listStyle: 'none', padding: 0, display: 'flex', flexDirection: 'column', gap: 13, marginBottom: 30 }}>
               {FREE_FEATS.map((f, i) => (
@@ -266,13 +266,13 @@ function Pricing() {
             position: 'relative', overflow: 'hidden',
             boxShadow: '0 1px 2px rgba(10,18,40,.20), 0 18px 40px rgba(10,18,40,.28)',
           }}>
-            <span style={{ ...BADGE, position: 'absolute', top: 30, right: 28 }}>Beta</span>
+            <span style={{ ...BADGE, position: 'absolute', top: 30, right: 28 }}>Recomendado</span>
             <div style={{ fontSize: 18, color: '#eef2f9', fontWeight: 700, marginBottom: 14 }}>Pro</div>
             <div style={{ fontFamily: DISPLAY_FONT, fontWeight: 600, lineHeight: 1, marginBottom: 4 }}>
-              <span style={{ fontSize: 46, color: '#eef2f9' }}>0 € </span>
-              <small style={{ fontFamily: "'Hanken Grotesk', sans-serif", fontSize: 16, fontWeight: 500, color: '#b6c2da', letterSpacing: 0 }}>durante la beta</small>
+              <span style={{ fontSize: 46, color: '#eef2f9' }}>5,99 € </span>
+              <small style={{ fontFamily: "'Hanken Grotesk', sans-serif", fontSize: 16, fontWeight: 500, color: '#b6c2da', letterSpacing: 0 }}>/mes</small>
             </div>
-            <div style={{ fontSize: 13.5, color: '#b6c2da', marginBottom: 24 }}>Si necesitas más tras los 30 días, escríbenos a soporte@crowdfolio.es y te lo ampliamos sin coste.</div>
+            <div style={{ fontSize: 13.5, color: '#b6c2da', marginBottom: 24 }}>o 59 €/año — ahorra 2 meses</div>
             <hr style={{ border: 'none', borderTop: '1px solid rgba(150,176,224,0.16)', margin: '0 0 24px' }} />
             <ul style={{ listStyle: 'none', padding: 0, display: 'flex', flexDirection: 'column', gap: 13, marginBottom: 30 }}>
               {PRO_FEATS.map((feat, i) => (
@@ -291,7 +291,7 @@ function Pricing() {
             }}
               onMouseEnter={e => { const el = e.currentTarget as HTMLAnchorElement; el.style.background = '#9ad5ff'; el.style.borderColor = '#9ad5ff'; el.style.transform = 'translateY(-1px)'; }}
               onMouseLeave={e => { const el = e.currentTarget as HTMLAnchorElement; el.style.background = '#79c6fa'; el.style.borderColor = '#79c6fa'; el.style.transform = 'none'; }}
-            >Empezar con 30 días de Pro</a>
+            >Empezar con Pro</a>
           </div>
         </div>
       </div>
@@ -309,7 +309,7 @@ function FinalCTA() {
           Empieza gratis hoy.
         </h2>
         <p style={{ fontSize: 19, color: '#b6c2da', marginBottom: 32 }}>
-          Sin tarjeta y sin compromiso. Sube tu Excel y en unos minutos tendrás tu cartera a la vista.
+          Sin tarjeta y sin compromiso. En unos minutos tendrás tu cartera a la vista.
         </p>
         <div>
           <a href="/auth" style={{
@@ -336,7 +336,7 @@ const FOOTER_COLS = [
     links: [
       { label: 'Funcionalidades', href: '#funcionalidades' },
       { label: 'Cómo funciona', href: '#como-funciona' },
-      { label: 'Planes', href: '#precios' },
+      { label: 'Precios', href: '#precios' },
       { label: 'Crear cuenta', href: '/auth' },
     ],
   },
@@ -367,7 +367,7 @@ function Footer() {
               </span>
             </div>
             <p style={{ fontSize: 14, maxWidth: 280, lineHeight: 1.6 }}>
-              Control de tu cartera de crowdfunding inmobiliario: retrasos, rentabilidad real e informe fiscal para la Renta.
+              Control de tu cartera de crowdfunding inmobiliario: visión global, alertas e informe fiscal para la Renta.
             </p>
           </div>
           {/* Link cols */}

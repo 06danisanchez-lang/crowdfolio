@@ -49,7 +49,7 @@ export default function AnnouncementBanner() {
         display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 12,
       }}>
         <p className="cf-banner-text" style={{ margin: 0, fontWeight: 500 }}>
-          🎉 Oferta de lanzamiento — Regístrate ahora y disfruta de <b style={{ fontWeight: 700 }}>1 mes Pro gratis</b> directamente.
+          🎉 Beta abierta — <b style={{ fontWeight: 700 }}>Crowdfolio Pro gratis</b> mientras dure la beta.
         </p>
         <a
           href="/auth"

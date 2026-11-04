@@ -16,7 +16,7 @@ export default function Terminos() {
         <Card>
           <CardHeader>
             <CardTitle className="text-2xl">Términos y Condiciones de Uso</CardTitle>
-            <p className="mt-1 text-sm font-medium text-[#79c6fa]">Última actualización: 11 de octubre de 2026</p>
+            <p className="mt-1 text-sm font-medium text-[#79c6fa]">Última actualización: 4 de noviembre de 2026</p>
           </CardHeader>
           <CardContent className="prose prose-sm dark:prose-invert max-w-none space-y-8 text-sm leading-relaxed">
 
@@ -91,8 +91,8 @@ export default function Terminos() {
               </div>
 
               <div className="space-y-2">
-                <h3 className="font-semibold">5.3 Periodo de prueba</h3>
-                <p className="text-muted-foreground">Al registrarse, cada usuario disfruta del plan Pro sin coste durante 30 días. Al terminar, la cuenta pasa al plan gratuito salvo que contrate el plan Pro. Mientras la contratación no esté disponible, Crowdfolio puede ampliar el periodo de prueba a petición del usuario en soporte@crowdfolio.es.</p>
+                <h3 className="font-semibold">5.3 Periodo de beta</h3>
+                <p className="text-muted-foreground">Mientras Crowdfolio esté en beta, todos los usuarios disfrutan del plan Pro sin coste. Antes de que termine la beta y empiece a cobrarse el plan Pro, Crowdfolio lo comunicará por correo electrónico o mediante aviso en la aplicación con al menos 30 días de antelación. Al terminar la beta, la cuenta pasa al plan gratuito salvo que el usuario contrate el plan Pro.</p>
               </div>
 
               <div className="space-y-2">

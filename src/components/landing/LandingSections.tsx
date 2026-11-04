@@ -269,10 +269,10 @@ function Pricing() {
             <span style={{ ...BADGE, position: 'absolute', top: 30, right: 28 }}>Recomendado</span>
             <div style={{ fontSize: 18, color: '#eef2f9', fontWeight: 700, marginBottom: 14 }}>Pro</div>
             <div style={{ fontFamily: DISPLAY_FONT, fontWeight: 600, lineHeight: 1, marginBottom: 4 }}>
-              <span style={{ fontSize: 46, color: '#eef2f9' }}>5,99 € </span>
-              <small style={{ fontFamily: "'Hanken Grotesk', sans-serif", fontSize: 16, fontWeight: 500, color: '#b6c2da', letterSpacing: 0 }}>/mes</small>
+              <span style={{ fontSize: 40, color: '#eef2f9' }}>Gratis </span>
+              <small style={{ fontFamily: "'Hanken Grotesk', sans-serif", fontSize: 16, fontWeight: 500, color: '#b6c2da', letterSpacing: 0 }}>durante la beta</small>
             </div>
-            <div style={{ fontSize: 13.5, color: '#b6c2da', marginBottom: 24 }}>o 59 €/año — ahorra 2 meses</div>
+            <div style={{ fontSize: 13.5, color: '#b6c2da', marginBottom: 24 }}>Después, 5,99 €/mes o 59 €/año</div>
             <hr style={{ border: 'none', borderTop: '1px solid rgba(150,176,224,0.16)', margin: '0 0 24px' }} />
             <ul style={{ listStyle: 'none', padding: 0, display: 'flex', flexDirection: 'column', gap: 13, marginBottom: 30 }}>
               {PRO_FEATS.map((feat, i) => (
@@ -291,7 +291,7 @@ function Pricing() {
             }}
               onMouseEnter={e => { const el = e.currentTarget as HTMLAnchorElement; el.style.background = '#9ad5ff'; el.style.borderColor = '#9ad5ff'; el.style.transform = 'translateY(-1px)'; }}
               onMouseLeave={e => { const el = e.currentTarget as HTMLAnchorElement; el.style.background = '#79c6fa'; el.style.borderColor = '#79c6fa'; el.style.transform = 'none'; }}
-            >Empezar con Pro</a>
+            >Empezar gratis con Pro</a>
           </div>
         </div>
       </div>

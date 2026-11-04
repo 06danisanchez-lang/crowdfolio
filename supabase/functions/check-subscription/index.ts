@@ -18,6 +18,25 @@ const STRIPE_PRICES = {
   yearly: "price_1SwsPQQaxtKtYFASptg5zqXs",
 };
 
+async function customerBelongsToUser(
+  stripe: Stripe,
+  customerId: string,
+  userId: string,
+  email: string,
+): Promise<boolean> {
+  try {
+    const customer = await stripe.customers.retrieve(customerId);
+    if ("deleted" in customer && customer.deleted) return false;
+    const c = customer as Stripe.Customer;
+    return (
+      c.metadata?.supabase_user_id === userId ||
+      (!!c.email && c.email.toLowerCase() === email.toLowerCase())
+    );
+  } catch {
+    return false;
+  }
+}
+
 serve(async (req) => {
   if (req.method === "OPTIONS") {
     return new Response(null, { headers: corsHeaders });
@@ -120,7 +139,11 @@ serve(async (req) => {
     let customerId: string | null = profile?.stripe_customer_id || null;
     let activeSub: any = null;
 
-    // 2. Primary path: stored customerId
+    // 2. Primary path: stored customerId, solo si el cliente de Stripe es de este usuario
+    if (customerId && !(await customerBelongsToUser(stripe, customerId, user.id, user.email))) {
+      logStep("Stored customer does not match user, ignoring it", { customerId });
+      customerId = null;
+    }
     if (customerId) {
       logStep("Using stored stripe_customer_id", { customerId });
       activeSub = await findValidSub(customerId);

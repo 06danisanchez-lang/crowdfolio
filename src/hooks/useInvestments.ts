@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import { supabase } from '@/integrations/supabase/client';
+import { fetchAllByIds } from '@/lib/fetchAllByIds';
 import { useAuth } from '@/contexts/AuthContext';
 import { Investment, InvestmentSummary, Platform, InvestmentStatus, Payment, DraftInvestment, IncomeModel, PaymentFrequency, PrincipalReturnType, EquityType, InvestmentScheduleEntry, ImportInvestmentInput, PaymentType } from '@/types/investment';
 import { getAccrualEndDate } from '@/lib/investment/calculations';
@@ -73,21 +74,23 @@ export function useInvestments() {
       let paymentsData: Record<string, unknown>[] = [];
 
       if (investmentIds.length > 0) {
-        const { data, error: paymentsError } = await supabase
+        paymentsData = await fetchAllByIds(investmentIds, chunk => supabase
           .from('payments')
           .select('*')
-          .in('investment_id', investmentIds);
-        if (paymentsError) throw paymentsError;
-        paymentsData = data || [];
+          .in('investment_id', chunk)
+          .order('id'));
       }
 
       // Fetch full schedule data per investment
       const schedMap: Record<string, InvestmentScheduleEntry[]> = {};
       if (investmentIds.length > 0) {
-        const { data: schedData } = await supabase
+        // Como antes, un fallo al leer el calendario no impide ver la cartera.
+        const schedData = await fetchAllByIds(investmentIds, chunk => supabase
           .from('investment_schedule')
           .select('*')
-          .in('investment_id', investmentIds);
+          .in('investment_id', chunk)
+          .order('id'))
+          .catch((err) => { console.error('Error fetching investment schedule:', err); return null; });
         if (schedData) {
           for (const row of schedData) {
             const entry: InvestmentScheduleEntry = {

@@ -4,6 +4,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import { TaxSummary, EnrichedPayment } from '@/types/tax';
 import { Investment, InvestmentScheduleEntry, Payment } from '@/types/investment';
 import { calculateProgressiveTax, calculateEffectiveRate } from '@/lib/tax/calculations';
+import { fetchAllByIds } from '@/lib/fetchAllByIds';
 import { calculateYearlyProjection, TaxProjection } from '@/lib/tax/projections';
 import { useTaxExpenses } from './useTaxExpenses';
 import { isInvestmentComplete } from '@/lib/investment/completeness';
@@ -219,15 +220,14 @@ export function useTaxSummary(year: number) {
         const defaultedIds = allRows.filter(r => r.status === 'defaulted').map(r => r.id);
         const defaultedPrincipalMap: Record<string, { type: string; amount: number; date: string }[]> = {};
         if (defaultedIds.length > 0) {
-          const { data: principalData, error: principalError } = await supabase
+          const principalData = await fetchAllByIds(defaultedIds, chunk => supabase
             .from('payments')
             .select('investment_id, amount, date, type')
-            .in('investment_id', defaultedIds)
-            .eq('type', 'principal');
+            .in('investment_id', chunk)
+            .eq('type', 'principal')
+            .order('id'));
 
-          if (principalError) throw principalError;
-
-          for (const p of principalData || []) {
+          for (const p of principalData) {
             const list = defaultedPrincipalMap[p.investment_id] ?? (defaultedPrincipalMap[p.investment_id] = []);
             list.push({ type: p.type, amount: Number(p.amount), date: p.date });
           }
@@ -238,14 +238,13 @@ export function useTaxSummary(year: number) {
           .map(r => r.id);
         const completedEquityMap: Record<string, { type: string; amount: number; date: string }[]> = {};
         if (completedEquityIds.length > 0) {
-          const { data: equityData, error: equityError } = await supabase
+          const equityData = await fetchAllByIds(completedEquityIds, chunk => supabase
             .from('payments')
             .select('investment_id, amount, date, type')
-            .in('investment_id', completedEquityIds);
+            .in('investment_id', chunk)
+            .order('id'));
 
-          if (equityError) throw equityError;
-
-          for (const p of equityData || []) {
+          for (const p of equityData) {
             const list = completedEquityMap[p.investment_id] ?? (completedEquityMap[p.investment_id] = []);
             list.push({ type: p.type, amount: Number(p.amount), date: p.date });
           }
@@ -258,12 +257,12 @@ export function useTaxSummary(year: number) {
           .map(i => i.id);
         const scheduleMap: Record<string, InvestmentScheduleEntry[]> = {};
         if (periodicIds.length > 0) {
-          const { data: schedData, error: schedError } = await supabase
+          const schedData = await fetchAllByIds(periodicIds, chunk => supabase
             .from('investment_schedule')
             .select('investment_id, expected_date, expected_amount, type')
-            .in('investment_id', periodicIds);
-          if (schedError) throw schedError;
-          for (const row of schedData || []) {
+            .in('investment_id', chunk)
+            .order('id'));
+          for (const row of schedData) {
             const list = scheduleMap[row.investment_id] ?? (scheduleMap[row.investment_id] = []);
             list.push({
               investmentId: row.investment_id,
@@ -282,21 +281,21 @@ export function useTaxSummary(year: number) {
         let nextMissing: MissingIncome = NO_MISSING_INCOME;
         if (periodicRows.length > 0) {
           const ids = periodicRows.map(i => i.id);
-          const [{ data: mSched, error: mSchedError }, { data: mPays, error: mPaysError }] = await Promise.all([
-            supabase.from('investment_schedule').select('investment_id, expected_date, expected_amount, type').in('investment_id', ids),
-            supabase.from('payments').select('id, investment_id, date, amount, type').in('investment_id', ids),
+          const [mSched, mPays] = await Promise.all([
+            fetchAllByIds(ids, chunk => supabase.from('investment_schedule')
+              .select('investment_id, expected_date, expected_amount, type').in('investment_id', chunk).order('id')),
+            fetchAllByIds(ids, chunk => supabase.from('payments')
+              .select('id, investment_id, date, amount, type').in('investment_id', chunk).order('id')),
           ]);
-          if (mSchedError) throw mSchedError;
-          if (mPaysError) throw mPaysError;
           const schedules: Record<string, InvestmentScheduleEntry[]> = {};
-          for (const row of mSched || []) {
+          for (const row of mSched) {
             (schedules[row.investment_id] ??= []).push({
               investmentId: row.investment_id, expectedDate: row.expected_date,
               expectedAmount: Number(row.expected_amount), type: row.type as InvestmentScheduleEntry['type'], status: 'pending',
             });
           }
           const paysBy: Record<string, MissingIncomeInvestment['payments']> = {};
-          for (const p of mPays || []) {
+          for (const p of mPays) {
             (paysBy[p.investment_id] ??= []).push({ id: p.id, date: p.date, amount: Number(p.amount), type: p.type as Payment['type'] });
           }
           nextMissing = findMissingIncome({
@@ -314,20 +313,22 @@ export function useTaxSummary(year: number) {
         const startDate = `${year}-01-01`;
         const endDate = `${year}-12-31`;
 
-        const { data, error: paymentsError } = await supabase
+        const data = (await fetchAllByIds(allIds, chunk => supabase
           .from('payments')
           .select('id, date, amount, type, withholding_applied, investment_id, original_amount, exchange_rate, foreign_withholding_amount, foreign_withholding_currency')
-          .in('investment_id', allIds)
+          .in('investment_id', chunk)
           .gte('date', startDate)
           .lte('date', endDate)
-          .order('date', { ascending: true });
+          .order('date', { ascending: true })
+          .order('id')))
+          // Los grupos de ids llegan uno detrás de otro: se vuelve a ordenar por fecha.
+          .sort((a, b) => (a.date < b.date ? -1 : a.date > b.date ? 1 : 0));
 
         clearTimeout(timeoutId);
         if (requestIdRef.current !== currentId) return;
-        if (paymentsError) throw paymentsError;
 
         const num = (v: unknown) => (v != null ? Number(v) : null);
-        const rawPayments: PaymentWithInvestment[] = (data || []).map((p) => ({
+        const rawPayments: PaymentWithInvestment[] = data.map((p) => ({
           ...p,
           amount: Number(p.amount),
           withholding_applied: p.withholding_applied ? Number(p.withholding_applied) : null,
@@ -552,10 +553,11 @@ export function useTaxSummary(year: number) {
         const { data: investments } = await supabase.from('investments').select('id').eq('user_id', user.id);
         const investmentIds = investments?.map((i) => i.id) || [];
         if (investmentIds.length === 0) { setAvailableYears([new Date().getFullYear()]); return; }
-        const { data: paymentsData } = await supabase.from('payments').select('date').in('investment_id', investmentIds);
+        const paymentsData = await fetchAllByIds(investmentIds, chunk =>
+          supabase.from('payments').select('id, date').in('investment_id', chunk).order('id'));
         const years = new Set<number>();
         years.add(new Date().getFullYear());
-        paymentsData?.forEach((p) => { years.add(new Date(p.date).getFullYear()); });
+        paymentsData.forEach((p) => { years.add(Number(p.date.slice(0, 4))); });
         setAvailableYears(Array.from(years).sort((a, b) => b - a));
       } catch (error) {
         console.error('Error fetching available years:', error);

@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback } from 'react';
 import { supabase } from '@/integrations/supabase/client';
+import { fetchAllByIds } from '@/lib/fetchAllByIds';
 import { useAuth } from '@/contexts/AuthContext';
 import { Investment, Platform, InvestmentStatus, Payment, IncomeModel, PaymentFrequency, PrincipalReturnType } from '@/types/investment';
 
@@ -91,13 +92,11 @@ export function useAdminInvestments() {
       let paymentsData: Record<string, unknown>[] = [];
 
       if (investmentIds.length > 0) {
-        const { data, error: paymentsError } = await supabase
+        paymentsData = await fetchAllByIds(investmentIds, chunk => supabase
           .from('payments')
           .select('*')
-          .in('investment_id', investmentIds);
-
-        if (paymentsError) throw paymentsError;
-        paymentsData = data || [];
+          .in('investment_id', chunk)
+          .order('id'));
       }
 
       // Emails desde profiles (la política "Admins can view all profiles" lo

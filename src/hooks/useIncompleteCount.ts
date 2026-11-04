@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback } from 'react';
 import { supabase } from '@/integrations/supabase/client';
+import { fetchAllByIds } from '@/lib/fetchAllByIds';
 import { useAuth } from '@/contexts/AuthContext';
 import { isInvestmentComplete } from '@/lib/investment/completeness';
 
@@ -25,10 +26,12 @@ export function useIncompleteCount() {
     const ids = data.filter(r => r.income_model === 'periodic_fixed' || r.income_model === 'amortizing').map(r => r.id);
     const schedCounts: Record<string, number> = {};
     if (ids.length > 0) {
-      const { data: schedData } = await supabase
+      const schedData = await fetchAllByIds(ids, chunk => supabase
         .from('investment_schedule')
-        .select('investment_id')
-        .in('investment_id', ids);
+        .select('id, investment_id')
+        .in('investment_id', chunk)
+        .order('id'))
+        .catch(() => null);
       if (schedData) {
         for (const row of schedData) {
           schedCounts[row.investment_id] = (schedCounts[row.investment_id] || 0) + 1;

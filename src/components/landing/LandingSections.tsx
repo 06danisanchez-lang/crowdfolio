@@ -158,7 +158,7 @@ function HowItWorks() {
 // ─── Fiscal Pro ─────────────────────────────────────────────────────────────────
 const FISCAL_FEATS = [
   'Rendimientos y retenciones consolidados',
-  'Exportable en PDF y Excel, listo para el IRPF',
+  'Exportable en PDF y Excel',
   'Sin sumar a mano los cobros de cada plataforma',
 ];
 
@@ -173,7 +173,7 @@ function FiscalPro() {
             Cada año, la Renta. Cada año, el mismo caos.
           </h2>
           <p style={{ fontSize: 18, color: '#b6c2da', marginBottom: 30, maxWidth: 480, margin: '0 auto 30px' }}>
-            Con Crowdfolio Pro generas tu informe fiscal unificado en un clic: rendimientos y retenciones de toda tu cartera, listos para tu declaración.
+            Con Crowdfolio Pro generas tu informe fiscal unificado en un clic: rendimientos y retenciones de toda tu cartera, en un solo documento.
           </p>
           <ul style={{ listStyle: 'none', padding: 0, display: 'inline-flex', flexDirection: 'column', gap: 14, textAlign: 'left', margin: '0 0 32px' }}>
             {FISCAL_FEATS.map(feat => (

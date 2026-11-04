@@ -28,10 +28,10 @@ export const BetaExpiredModal = () => {
       <DialogContent className="sm:max-w-md">
         <DialogHeader>
           <DialogTitle className="text-xl">
-            Tu prueba gratuita de Pro ha finalizado
+            Tu Pro gratuito ha finalizado
           </DialogTitle>
           <DialogDescription className="text-base pt-2 leading-relaxed">
-            Tu mes de prueba gratuita de CrowdFolio Pro ha finalizado. Los pagos
+            Tu periodo de CrowdFolio Pro gratuito ha finalizado. Los pagos
             todavía no están disponibles, pero si quieres seguir con Pro, escríbenos a{' '}
             <a
               href="mailto:soporte@crowdfolio.es"

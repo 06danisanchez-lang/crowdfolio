@@ -826,7 +826,7 @@ export function TaxExportButton({
             ...breakdown.map(item => [
               `${formatCurrency(item.bracket.min)} - ${item.bracket.max === Infinity ? '∞' : formatCurrency(item.bracket.max)}`,
               formatCurrency(item.amount),
-              `${(item.bracket.rate * 100).toFixed(0)}%`,
+              `${(item.bracket.rate * 100).toFixed(0)} %`,
               formatCurrency(item.tax),
             ]),
             ['Total', formatCurrency(summary.taxableBase), '', formatCurrency(summary.estimatedTax)],

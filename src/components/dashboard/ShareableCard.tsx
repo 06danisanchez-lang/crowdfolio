@@ -20,9 +20,7 @@ const ShareableCard = forwardRef<HTMLDivElement, ShareableCardProps>(
       }).format(value);
     };
 
-    const returnPercentage = totalInvested > 0 
-      ? ((totalReturns / totalInvested) * 100).toFixed(1) 
-      : '0';
+    const returnPercentage = totalInvested > 0 ? (totalReturns / totalInvested) * 100 : 0;
 
     return (
       <div
@@ -69,7 +67,7 @@ const ShareableCard = forwardRef<HTMLDivElement, ShareableCardProps>(
               <div className="flex items-baseline gap-2">
                 <p className="text-2xl font-bold text-white">{formatCurrency(totalReturns)}</p>
                 <span className="text-sm font-semibold text-emerald-400">
-                  (+{returnPercentage}%)
+                  (+{formatPercent(returnPercentage)})
                 </span>
               </div>
             </div>

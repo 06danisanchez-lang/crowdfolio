@@ -1,9 +1,9 @@
 -- Instantánea del esquema `public` de PRODUCCIÓN (estructura, sin datos).
 -- NO EDITAR A MANO: se regenera con supabase/schema/dump_schema.sql (ver CLAUDE.md).
 --
--- snapshot_version: 20261104074747
--- última migración registrada en producción: 20261103204500
--- comprobación (md5 de la salida normalizada, 169 sentencias): 5a0b6b565ff4b161bbf633f8d50f45e4
+-- snapshot_version: 20261107112457
+-- última migración registrada en producción: 20261107110500
+-- comprobación (md5 de la salida normalizada, 176 sentencias): 728880d3bc40e9af08e4b6ddc5091ebb
 --
 -- scripts/db-test.sh carga primero supabase/schema/stubs.sql, después este
 -- archivo y por último las migraciones con versión > snapshot_version.
@@ -124,6 +124,23 @@ create table public._backup_20261025_payments (
   foreign_withholding_amount numeric,
   foreign_withholding_currency text,
   exchange_rate_source text
+);
+
+create table public._backup_20261104_subscriptions (
+  id uuid,
+  user_id uuid,
+  plan text,
+  status text,
+  stripe_subscription_id text,
+  stripe_customer_id text,
+  current_period_start timestamp with time zone,
+  current_period_end timestamp with time zone,
+  import_count_this_month integer,
+  import_reset_date date,
+  created_at timestamp with time zone,
+  pro_until timestamp with time zone,
+  is_beta_pro boolean,
+  updated_at timestamp with time zone
 );
 
 create table public.future_investments (
@@ -265,7 +282,8 @@ create table public.profiles (
   stripe_customer_id text,
   created_at timestamp with time zone default now() not null,
   updated_at timestamp with time zone default now() not null,
-  pro_welcome_shown boolean default false not null
+  pro_welcome_shown boolean default false not null,
+  is_demo boolean default false not null
 );
 
 create table public.subscriptions (
@@ -405,11 +423,11 @@ CREATE OR REPLACE FUNCTION public.handle_new_user()
  SECURITY DEFINER
  SET search_path TO 'public'
 AS $function$
-BEGIN
-  INSERT INTO public.profiles (id, email, full_name)
-  VALUES (NEW.id, NEW.email, NEW.raw_user_meta_data->>'full_name');
-  RETURN NEW;
-END;
+begin
+  insert into public.profiles (id, email, full_name, is_demo)
+  values (new.id, new.email, new.raw_user_meta_data->>'full_name', coalesce(new.is_anonymous, false));
+  return new;
+end;
 $function$
 ;
 
@@ -419,12 +437,20 @@ CREATE OR REPLACE FUNCTION public.handle_new_user_subscription()
  SECURITY DEFINER
  SET search_path TO 'public'
 AS $function$
-BEGIN
-  INSERT INTO public.subscriptions (user_id, plan, status, pro_until, is_beta_pro)
-  VALUES (NEW.id, 'free', 'free', NOW() + INTERVAL '30 days', TRUE)
-  ON CONFLICT (user_id) DO NOTHING;
-  RETURN NEW;
-END;
+begin
+  if coalesce(new.is_anonymous, false) then
+    -- Demo: Pro 30 días (la cuenta se borra a los 7).
+    insert into public.subscriptions (user_id, plan, status, pro_until, is_beta_pro)
+    values (new.id, 'free', 'free', now() + interval '30 days', true)
+    on conflict (user_id) do nothing;
+  else
+    -- Alta normal: Pro de beta hasta el fin de la beta (migración 20261104193134).
+    insert into public.subscriptions (user_id, plan, status, pro_until, is_beta_pro)
+    values (new.id, 'free', 'free', timestamptz '2027-12-31 23:59:59+01', true)
+    on conflict (user_id) do nothing;
+  end if;
+  return new;
+end;
 $function$
 ;
 
@@ -438,6 +464,24 @@ AS $function$
     select 1 from public.user_roles
     where user_id = _user_id and role = _role
   )
+$function$
+;
+
+CREATE OR REPLACE FUNCTION public.purge_demo_accounts(_older_than interval DEFAULT '7 days'::interval)
+ RETURNS integer
+ LANGUAGE plpgsql
+ SECURITY DEFINER
+ SET search_path TO ''
+AS $function$
+declare
+  _n integer;
+begin
+  delete from auth.users
+   where is_anonymous is true
+     and created_at < now() - _older_than;
+  get diagnostics _n = row_count;
+  return _n;
+end;
 $function$
 ;
 
@@ -458,6 +502,8 @@ revoke all on function handle_new_user() from public; grant execute on function 
 revoke all on function handle_new_user_subscription() from public; grant execute on function handle_new_user_subscription() to service_role;
 
 revoke all on function has_role(uuid,text) from public; grant execute on function has_role(uuid,text) to authenticated; grant execute on function has_role(uuid,text) to service_role;
+
+revoke all on function purge_demo_accounts(interval) from public; grant execute on function purge_demo_accounts(interval) to service_role;
 
 revoke all on function update_updated_at_column() from public; grant execute on function update_updated_at_column() to anon; grant execute on function update_updated_at_column() to authenticated; grant execute on function update_updated_at_column() to public; grant execute on function update_updated_at_column() to service_role;
 
@@ -484,6 +530,8 @@ alter table public._backup_20261024_subscriptions enable row level security;
 alter table public._backup_20261025_investments enable row level security;
 
 alter table public._backup_20261025_payments enable row level security;
+
+alter table public._backup_20261104_subscriptions enable row level security;
 
 alter table public.future_investments enable row level security;
 
@@ -610,6 +658,12 @@ grant delete, insert, references, select, trigger, truncate, update on public._b
 grant delete, insert, references, select, trigger, truncate, update on public._backup_20261025_payments to authenticated;
 
 grant delete, insert, references, select, trigger, truncate, update on public._backup_20261025_payments to service_role;
+
+grant delete, insert, references, select, trigger, truncate, update on public._backup_20261104_subscriptions to anon;
+
+grant delete, insert, references, select, trigger, truncate, update on public._backup_20261104_subscriptions to authenticated;
+
+grant delete, insert, references, select, trigger, truncate, update on public._backup_20261104_subscriptions to service_role;
 
 grant delete, insert, references, select, trigger, truncate, update on public.future_investments to anon;
 

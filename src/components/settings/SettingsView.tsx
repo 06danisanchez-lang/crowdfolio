@@ -13,7 +13,7 @@ import { BillingSettings } from '@/components/subscription/BillingSettings';
 import { toast } from 'sonner';
 
 export function SettingsView() {
-  const { updatePassword } = useAuth();
+  const { updatePassword, isDemo } = useAuth();
   const { darkMode, toggleDarkMode } = useTheme();
   const { t } = useLanguage();
 
@@ -66,6 +66,14 @@ export function SettingsView() {
       </div>
 
       <div className="max-w-2xl space-y-6">
+        {isDemo ? (
+          <Card>
+            <CardHeader>
+              <CardTitle>{t('settings.security')}</CardTitle>
+              <CardDescription>{t('demo.settingsNote')}</CardDescription>
+            </CardHeader>
+          </Card>
+        ) : (
         <Card>
           <CardHeader>
             <CardTitle>{t('settings.security')}</CardTitle>
@@ -116,6 +124,7 @@ export function SettingsView() {
             </div>
           </CardContent>
         </Card>
+        )}
 
         <Card>
           <CardHeader>

@@ -10,7 +10,7 @@ import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 
 export function ProfileView() {
-  const { user } = useAuth();
+  const { user, isDemo } = useAuth();
   const { profile, avatarUrl, displayName, updateProfile, uploadAvatar, removeAvatar } = useProfile();
   const { t } = useLanguage();
   const [name, setName] = useState('');
@@ -42,6 +42,8 @@ export function ProfileView() {
       </div>
 
       <div className="max-w-2xl space-y-6">
+        {/* En la demo no se suben fotos: los archivos no se borran con la cuenta. */}
+        {!isDemo && (
         <Card>
           <CardHeader>
             <CardTitle>{t('profile.photoTitle')}</CardTitle>
@@ -82,6 +84,7 @@ export function ProfileView() {
             </div>
           </CardContent>
         </Card>
+        )}
 
         <Card>
           <CardHeader>

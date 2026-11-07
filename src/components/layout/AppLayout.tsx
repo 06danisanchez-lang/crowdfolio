@@ -1,4 +1,5 @@
 import { Fragment, useRef, useEffect, useState } from 'react';
+import { DemoBanner } from '@/components/demo/DemoBanner';
 import {
   LayoutDashboard,
   Wallet,
@@ -80,8 +81,9 @@ export function AppLayout({
 
   return (
     <div className="min-h-screen bg-background">
+      <DemoBanner />
       {/* Mobile Header */}
-      <header className="sticky top-0 z-50 flex h-14 items-center justify-between border-b bg-card px-4 lg:hidden">
+      <header className="sticky top-[var(--demo-banner-h,0px)] z-50 flex h-14 items-center justify-between border-b bg-card px-4 lg:hidden">
         <Button variant="ghost" size="icon" aria-label={t('nav.menu')} aria-expanded={sidebarOpen} onClick={() => setSidebarOpen(!sidebarOpen)}>
           <Menu className="h-5 w-5" />
         </Button>
@@ -107,7 +109,7 @@ export function AppLayout({
       <div className="flex">
         {/* Sidebar */}
         <aside className={cn(
-          "fixed inset-y-0 left-0 z-40 w-64 transform border-r bg-card transition-transform lg:sticky lg:top-0 lg:h-screen lg:shrink-0 lg:translate-x-0 flex flex-col",
+          "fixed inset-y-0 top-[var(--demo-banner-h,0px)] left-0 z-40 w-64 transform border-r bg-card transition-transform lg:sticky lg:top-[var(--demo-banner-h,0px)] lg:h-[calc(100vh-var(--demo-banner-h,0px))] lg:shrink-0 lg:translate-x-0 flex flex-col",
           sidebarOpen ? "translate-x-0" : "-translate-x-full"
         )}>
           <div className="flex h-14 items-center gap-3 border-b px-6 shrink-0">

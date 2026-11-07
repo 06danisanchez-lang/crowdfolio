@@ -40,7 +40,8 @@ export function useAdminDashboard() {
     enabled: !!user && isAdmin,
     queryFn: async () => {
       const [profilesRes, subscriptionsRes, investmentsRes] = await Promise.all([
-        supabase.from('profiles').select('id, email, full_name'),
+        // Las cuentas de la demo pública no son usuarios: fuera del panel.
+        supabase.from('profiles').select('id, email, full_name').eq('is_demo', false),
         supabase.from('subscriptions').select('user_id, plan, status, current_period_end'),
         supabase.from('investments').select('id, user_id, amount, platform, custom_platform_name, project_name, status'),
       ]);
@@ -51,7 +52,9 @@ export function useAdminDashboard() {
 
       const profiles = profilesRes.data ?? [];
       const subscriptions = subscriptionsRes.data ?? [];
-      const investments = investmentsRes.data ?? [];
+      const realIds = new Set(profiles.map((p) => p.id));
+      // Inversiones de cuentas demo, fuera también del volumen y las plataformas.
+      const investments = (investmentsRes.data ?? []).filter((i) => realIds.has(i.user_id));
 
       // Index subscriptions by user_id
       const subsByUser = new Map(

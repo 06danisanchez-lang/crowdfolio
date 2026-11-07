@@ -30,11 +30,15 @@ interface AuthContextType {
   session: Session | null;
   isLoading: boolean;
   isAdmin: boolean;
+  /** Cuenta anónima de la demo pública (/demo). */
+  isDemo: boolean;
   hasBootstrapped: boolean;
   signIn: (email: string, password: string) => Promise<{ error: Error | null }>;
   signUp: (email: string, password: string) => Promise<{ error: Error | null }>;
   signInWithGoogle: () => Promise<{ error: Error | null }>;
   signOut: () => Promise<void>;
+  /** Abre una cuenta demo anónima (o reutiliza la que ya hay en este navegador). */
+  startDemo: () => Promise<{ user: User | null; error: Error | null }>;
   resetPassword: (email: string) => Promise<{ error: Error | null }>;
   updatePassword: (newPassword: string) => Promise<{ error: Error | null }>;
 }
@@ -52,6 +56,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const webhookFiredForRef = useRef<Set<string>>(new Set());
 
   const fireNewUserWebhook = useCallback((user: User) => {
+    // La demo pública entra con cuentas anónimas: no son altas.
+    if (user.is_anonymous) return;
     if (webhookFiredForRef.current.has(user.id)) return;
     const createdAt = new Date(user.created_at).getTime();
     const ageMs = Date.now() - createdAt;
@@ -212,6 +218,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     await supabase.auth.signOut();
   };
 
+  const startDemo = async () => {
+    const { data: { session: current } } = await supabase.auth.getSession();
+    if (current?.user) return { user: current.user, error: null };
+    const { data, error } = await supabase.auth.signInAnonymously();
+    return { user: data.user ?? null, error: error as Error | null };
+  };
+
   const signInWithGoogle = async () => {
     const redirectUri = getAuthOrigin();
     const { error } = await supabase.auth.signInWithOAuth({
@@ -234,8 +247,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   return (
     <AuthContext.Provider value={{ 
-      user, session, isLoading, isAdmin, hasBootstrapped,
-      signIn, signUp, signInWithGoogle, signOut, resetPassword, updatePassword 
+      user, session, isLoading, isAdmin, isDemo: !!user?.is_anonymous, hasBootstrapped,
+      signIn, signUp, signInWithGoogle, signOut, startDemo, resetPassword, updatePassword 
     }}>
       {children}
     </AuthContext.Provider>

@@ -27,7 +27,9 @@ const emailSchema = z.object({
 type ViewType = 'login' | 'signup' | 'forgot-password';
 
 export default function Auth() {
-  const [view, setView] = useState<ViewType>('login');
+  // /auth?modo=registro abre directamente el alta (botón «Crear mi cuenta» de la demo).
+  const [view, setView] = useState<ViewType>(() =>
+    new URLSearchParams(window.location.search).get('modo') === 'registro' ? 'signup' : 'login');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState<string | null>(null);

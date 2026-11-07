@@ -32,8 +32,11 @@ create table if not exists auth.users (
   email text,
   raw_user_meta_data jsonb default '{}'::jsonb,
   raw_app_meta_data jsonb default '{}'::jsonb,
+  is_anonymous boolean not null default false,
   created_at timestamptz default now()
 );
+-- Por si la tabla ya existía sin la columna (base reutilizada en el CI)
+alter table auth.users add column if not exists is_anonymous boolean not null default false;
 
 create or replace function auth.jwt() returns jsonb
 language sql stable as $$

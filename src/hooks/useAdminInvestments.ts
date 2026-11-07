@@ -103,13 +103,16 @@ export function useAdminInvestments() {
       // permite solo a administradores). Antes se usaba la RPC get_user_email,
       // que no existe en producción y no comprobaba que quien llama sea admin.
       const userEmails: Record<string, string> = {};
+      // Cuentas de la demo pública: no son usuarios, sus inversiones no se listan.
+      const demoUserIds = new Set<string>();
       if (userIds.length > 0) {
         const { data: profilesData, error: profilesError } = await supabase
           .from('profiles')
-          .select('id, email')
+          .select('id, email, is_demo')
           .in('id', userIds);
         if (profilesError) throw profilesError;
         for (const p of profilesData || []) {
+          if (p.is_demo) demoUserIds.add(p.id);
           if (p.email) userEmails[p.id] = p.email;
         }
       }
@@ -121,6 +124,7 @@ export function useAdminInvestments() {
       const investmentsByUser: Record<string, Investment[]> = {};
       
       for (const inv of investmentsData || []) {
+      if (demoUserIds.has(inv.user_id)) continue;
       const mappedInvestment: Investment = {
           id: inv.id,
           platform: inv.platform as Platform,

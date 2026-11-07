@@ -59,7 +59,7 @@ export default function HeroSection() {
             onMouseLeave={e => { const el = e.currentTarget as HTMLAnchorElement; el.style.background = '#79c6fa'; el.style.transform = 'none'; el.style.boxShadow = '0 6px 18px rgba(121,198,250,.28)'; }}
           >Crear cuenta gratis</a>
 
-          <a href="/auth" className="w-full sm:w-auto" style={{
+          <a href="/demo" className="w-full sm:w-auto" style={{
             display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
             background: 'transparent', color: '#eef2f9',
             fontFamily: "'Hanken Grotesk', sans-serif", fontWeight: 600, fontSize: '16.5px',
@@ -69,11 +69,12 @@ export default function HeroSection() {
           }}
             onMouseEnter={e => { const el = e.currentTarget as HTMLAnchorElement; el.style.borderColor = '#79c6fa'; el.style.color = '#79c6fa'; }}
             onMouseLeave={e => { const el = e.currentTarget as HTMLAnchorElement; el.style.borderColor = 'rgba(150,176,224,0.28)'; el.style.color = '#eef2f9'; }}
-          >Iniciar sesión</a>
+          >Probar la demo</a>
         </div>
 
         <p className="cf-reveal d2" style={{ marginTop: 22, fontSize: 14.5, color: '#9aa8c6' }}>
-          Gratis para empezar y sin tarjeta.
+          Gratis para empezar y sin tarjeta. La demo no pide registro.{' '}
+          <a href="/auth" style={{ color: '#b6c2da', textDecoration: 'underline' }}>¿Ya tienes cuenta? Inicia sesión</a>
         </p>
       </div>
 

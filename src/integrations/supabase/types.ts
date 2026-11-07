@@ -434,6 +434,7 @@ export type Database = {
           email: string | null
           full_name: string | null
           id: string
+          is_demo: boolean
           pro_welcome_shown: boolean
           stripe_customer_id: string | null
           updated_at: string
@@ -444,6 +445,7 @@ export type Database = {
           email?: string | null
           full_name?: string | null
           id: string
+          is_demo?: boolean
           pro_welcome_shown?: boolean
           stripe_customer_id?: string | null
           updated_at?: string
@@ -454,6 +456,7 @@ export type Database = {
           email?: string | null
           full_name?: string | null
           id?: string
+          is_demo?: boolean
           pro_welcome_shown?: boolean
           stripe_customer_id?: string | null
           updated_at?: string

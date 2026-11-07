@@ -28,6 +28,7 @@ const PoliticaPrivacidad = lazy(() => import("./pages/PoliticaPrivacidad"));
 const Terminos = lazy(() => import("./pages/Terminos"));
 const CookiesPage = lazy(() => import("./pages/Cookies"));
 const NotFound = lazy(() => import("./pages/NotFound"));
+const DemoStart = lazy(() => import("./pages/DemoStart"));
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { AlertTriangle, LogOut, Home, RefreshCw, LogIn } from "lucide-react";
@@ -272,7 +273,9 @@ function ProtectedRoute({ children }: { children: React.ReactNode }) {
 
 // Simplified PublicRoute - only runs after AuthGate confirms bootstrap
 function PublicRoute({ children }: { children: React.ReactNode }) {
-  const { user, hasBootstrapped, isLoading } = useAuth();
+  const { user: sessionUser, isDemo, hasBootstrapped, isLoading } = useAuth();
+  // Una cuenta demo no cuenta como sesión aquí: la portada y el registro se ven igual.
+  const user = isDemo ? null : sessionUser;
   const [canRedirect, setCanRedirect] = useState(false);
   const hasCheckedLoopRef = useRef(false);
 
@@ -329,6 +332,7 @@ const PAGE_TITLES: Record<string, string> = {
   "/landing": "Crowdfolio · Tu cartera de crowdfunding inmobiliario y su informe fiscal",
   "/auth": "Entrar · Crowdfolio",
   "/pricing": "Precios · Crowdfolio",
+  "/demo": "Demo · Crowdfolio",
   [LEGAL_ROUTES.legal]: "Aviso legal · Crowdfolio",
   [LEGAL_ROUTES.privacy]: "Política de privacidad · Crowdfolio",
   [LEGAL_ROUTES.terms]: "Términos y condiciones · Crowdfolio",
@@ -380,6 +384,7 @@ const AppRoutes = () => (
           </AdminRoute>
         }
       />
+      <Route path="/demo" element={<DemoStart />} />
       <Route path="/pricing" element={<Pricing onBack={() => window.history.back()} />} />
       <Route path="/reset-password" element={<ResetPassword />} />
       <Route path={LEGAL_ROUTES.legal} element={<AvisoLegal />} />

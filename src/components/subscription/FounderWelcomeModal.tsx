@@ -25,7 +25,8 @@ export const FounderWelcomeModal = () => {
   const [open, setOpen] = useState(false);
 
   useEffect(() => {
-    if (!isPro || !user) return;
+    // En la demo no: el visitante entra directo a ver la cartera.
+    if (!isPro || !user || user.is_anonymous) return;
 
     let cancelled = false;
 

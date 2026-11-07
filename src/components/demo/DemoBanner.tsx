@@ -31,9 +31,11 @@ export function DemoBanner() {
 
   const createAccount = async () => {
     // La cuenta nueva es otra distinta: empieza vacía, sin los datos de ejemplo.
+    // Primero al registro (la página de registro ya trata la demo como «sin sesión»)
+    // y después se cierra la demo; al revés, la app redirigiría a la portada.
+    navigate('/auth?modo=registro');
     await signOut();
     queryClient.clear();
-    navigate('/auth?modo=registro');
   };
 
   return (

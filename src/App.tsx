@@ -28,6 +28,7 @@ const PoliticaPrivacidad = lazy(() => import("./pages/PoliticaPrivacidad"));
 const Terminos = lazy(() => import("./pages/Terminos"));
 const CookiesPage = lazy(() => import("./pages/Cookies"));
 const NotFound = lazy(() => import("./pages/NotFound"));
+const BajaCorreos = lazy(() => import("./pages/BajaCorreos"));
 const DemoStart = lazy(() => import("./pages/DemoStart"));
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -387,6 +388,7 @@ const AppRoutes = () => (
       <Route path="/demo" element={<DemoStart />} />
       <Route path="/pricing" element={<Pricing onBack={() => window.history.back()} />} />
       <Route path="/reset-password" element={<ResetPassword />} />
+      <Route path="/baja-correos" element={<BajaCorreos />} />
       <Route path={LEGAL_ROUTES.legal} element={<AvisoLegal />} />
       <Route path={LEGAL_ROUTES.privacy} element={<PoliticaPrivacidad />} />
       <Route path={LEGAL_ROUTES.terms} element={<Terminos />} />

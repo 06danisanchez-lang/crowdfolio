@@ -4,3 +4,8 @@ project_id = "eazwouasdrcbucxwjfxy"
 # Stripe (constructEventAsync con STRIPE_WEBHOOK_SECRET).
 [functions.stripe-webhook]
 verify_jwt = false
+
+# La llama pg_cron (tarea send-email-digest) sin token de usuario. La función
+# comprueba la cabecera x-cron-secret contra el secreto guardado en Vault.
+[functions.send-digest]
+verify_jwt = false

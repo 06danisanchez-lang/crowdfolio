@@ -13,7 +13,7 @@ export function useProfile() {
       if (!user) return null;
       const { data, error } = await supabase
         .from('profiles')
-        .select('full_name, avatar_url, email')
+        .select('full_name, avatar_url, email, email_notifications')
         .eq('id', user.id)
         .single();
       if (error) throw error;
@@ -36,6 +36,23 @@ export function useProfile() {
       toast.success('Perfil actualizado');
     },
     onError: () => toast.error('Error al actualizar el perfil'),
+  });
+
+  const setEmailNotifications = useMutation({
+    mutationFn: async (enabled: boolean) => {
+      if (!user) throw new Error('No user');
+      const { error } = await supabase
+        .from('profiles')
+        .update({ email_notifications: enabled })
+        .eq('id', user.id);
+      if (error) throw error;
+      return enabled;
+    },
+    onSuccess: (enabled) => {
+      queryClient.invalidateQueries({ queryKey: ['profile', user?.id] });
+      toast.success(enabled ? 'Avisos por correo activados' : 'Avisos por correo desactivados');
+    },
+    onError: () => toast.error('No se ha podido guardar el cambio'),
   });
 
   const uploadAvatar = useMutation({
@@ -101,7 +118,9 @@ export function useProfile() {
     isLoading,
     displayName: profile?.full_name || profile?.email || user?.email || '',
     avatarUrl: profile?.avatar_url || null,
+    emailNotifications: profile?.email_notifications ?? true,
     updateProfile,
+    setEmailNotifications,
     uploadAvatar,
     removeAvatar,
   };

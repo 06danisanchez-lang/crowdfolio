@@ -321,6 +321,8 @@ export const translations: Record<Lang, Record<string, string>> = {
     'settings.preferences': 'Preferencias',
     'settings.darkMode': 'Modo oscuro',
     'settings.darkMode.desc': 'Cambia la apariencia de la aplicación',
+    'settings.emailNotifications': 'Avisos por correo',
+    'settings.emailNotifications.desc': 'Un correo por la mañana cuando una inversión vence en los próximos 7 días o vence sin que conste el cobro. Solo si hay novedades.',
 
     // Subscription / Billing
     'subscription.upgradeTitle': 'Desbloquea Crowdfolio Pro',
@@ -973,6 +975,8 @@ export const translations: Record<Lang, Record<string, string>> = {
     'settings.preferences': 'Preferences',
     'settings.darkMode': 'Dark mode',
     'settings.darkMode.desc': 'Change the application appearance',
+    'settings.emailNotifications': 'Email alerts',
+    'settings.emailNotifications.desc': 'A morning email when an investment matures within 7 days or matures with no payment recorded. Only when there is something new.',
 
     // Subscription / Billing
     'subscription.upgradeTitle': 'Unlock Crowdfolio Pro',

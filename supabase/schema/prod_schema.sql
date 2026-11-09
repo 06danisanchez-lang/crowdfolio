@@ -1,9 +1,9 @@
 -- Instantánea del esquema `public` de PRODUCCIÓN (estructura, sin datos).
 -- NO EDITAR A MANO: se regenera con supabase/schema/dump_schema.sql (ver CLAUDE.md).
 --
--- snapshot_version: 20261107112457
--- última migración registrada en producción: 20261107110500
--- comprobación (md5 de la salida normalizada, 176 sentencias): 728880d3bc40e9af08e4b6ddc5091ebb
+-- snapshot_version: 20261109193223
+-- última migración registrada en producción: 20261109191314
+-- comprobación (md5 de la salida normalizada, 188 sentencias): c42e53bf817bd847c357d2c62667134b
 --
 -- scripts/db-test.sh carga primero supabase/schema/stubs.sql, después este
 -- archivo y por último las migraciones con versión > snapshot_version.
@@ -141,6 +141,12 @@ create table public._backup_20261104_subscriptions (
   pro_until timestamp with time zone,
   is_beta_pro boolean,
   updated_at timestamp with time zone
+);
+
+create table public.email_notification_log (
+  user_id uuid not null,
+  dedupe_key text not null,
+  sent_at timestamp with time zone default now() not null
 );
 
 create table public.future_investments (
@@ -283,7 +289,9 @@ create table public.profiles (
   created_at timestamp with time zone default now() not null,
   updated_at timestamp with time zone default now() not null,
   pro_welcome_shown boolean default false not null,
-  is_demo boolean default false not null
+  is_demo boolean default false not null,
+  email_notifications boolean default true not null,
+  email_unsubscribe_token uuid default gen_random_uuid() not null
 );
 
 create table public.subscriptions (
@@ -330,6 +338,8 @@ create table public.user_roles (
   role text default 'user'::text not null,
   created_at timestamp with time zone default now() not null
 );
+
+alter table public.email_notification_log add constraint email_notification_log_pkey PRIMARY KEY (user_id, dedupe_key);
 
 alter table public.future_investments add constraint future_investments_pkey PRIMARY KEY (id);
 
@@ -379,6 +389,8 @@ alter table public.used_promo_codes add constraint used_promo_codes_user_id_prom
 
 alter table public.user_roles add constraint user_roles_pkey PRIMARY KEY (id);
 
+alter table public.email_notification_log add constraint email_notification_log_user_id_fkey FOREIGN KEY (user_id) REFERENCES auth.users(id) ON DELETE CASCADE;
+
 alter table public.investment_schedule add constraint investment_schedule_investment_id_fkey FOREIGN KEY (investment_id) REFERENCES investments(id) ON DELETE CASCADE;
 
 alter table public.investment_schedule add constraint investment_schedule_matched_payment_id_fkey FOREIGN KEY (matched_payment_id) REFERENCES payments(id) ON DELETE SET NULL;
@@ -416,6 +428,78 @@ CREATE INDEX idx_tax_expenses_year ON public.tax_expenses USING btree (user_id, 
 CREATE INDEX idx_user_roles_user_id ON public.user_roles USING btree (user_id);
 
 CREATE UNIQUE INDEX notifications_user_dedupe_key ON public.notifications USING btree (user_id, dedupe_key);
+
+CREATE UNIQUE INDEX profiles_email_unsubscribe_token_key ON public.profiles USING btree (email_unsubscribe_token);
+
+CREATE OR REPLACE FUNCTION public.email_digest_pending(_today date DEFAULT ((now() AT TIME ZONE 'Europe/Madrid'::text))::date)
+ RETURNS TABLE(user_id uuid, email text, kind text, investment_id uuid, project_name text, platform text, custom_platform_name text, event_date date, promised_date date, dedupe_key text)
+ LANGUAGE sql
+ STABLE SECURITY DEFINER
+ SET search_path TO ''
+AS $function$
+  with items as (
+    select i.user_id, 'overdue'::text as kind, i.id, i.project_name, i.platform, i.custom_platform_name,
+           i.expected_end_date as event_date, i.original_end_date as promised_date,
+           'overdue:' || i.id || ':' || coalesce(i.expected_end_date::text, '') as dedupe_key
+      from public.investments i
+     where i.status = 'pending'
+        or (i.status = 'active' and i.expected_end_date < _today)
+    union all
+    select i.user_id, 'maturity_soon', i.id, i.project_name, i.platform, i.custom_platform_name,
+           i.expected_end_date, i.original_end_date,
+           'maturity_soon:' || i.id || ':' || i.expected_end_date
+      from public.investments i
+     where i.status = 'active'
+       and i.expected_end_date between _today and _today + 7
+  )
+  select it.user_id, u.email::text, it.kind, it.id, it.project_name, it.platform, it.custom_platform_name,
+         it.event_date, it.promised_date, it.dedupe_key
+    from items it
+    join auth.users u on u.id = it.user_id
+    join public.profiles p on p.id = it.user_id
+   where coalesce(u.is_anonymous, false) = false
+     and u.email is not null
+     and p.email_notifications
+     and not p.is_demo
+     and not exists (
+       select 1 from public.email_notification_log l
+        where l.user_id = it.user_id and l.dedupe_key = it.dedupe_key
+     )
+   order by it.user_id, it.kind, it.event_date nulls last;
+$function$
+;
+
+CREATE OR REPLACE FUNCTION public.email_digest_secret_ok(_secret text)
+ RETURNS boolean
+ LANGUAGE plpgsql
+ STABLE SECURITY DEFINER
+ SET search_path TO ''
+AS $function$
+begin
+  return exists (
+    select 1 from vault.decrypted_secrets
+     where name = 'email_digest_cron_secret' and decrypted_secret = _secret
+  );
+end;
+$function$
+;
+
+CREATE OR REPLACE FUNCTION public.email_unsubscribe(_token uuid)
+ RETURNS boolean
+ LANGUAGE plpgsql
+ SECURITY DEFINER
+ SET search_path TO ''
+AS $function$
+declare
+  _n integer;
+begin
+  update public.profiles set email_notifications = false
+   where email_unsubscribe_token = _token;
+  get diagnostics _n = row_count;
+  return _n > 0;
+end;
+$function$
+;
 
 CREATE OR REPLACE FUNCTION public.handle_new_user()
  RETURNS trigger
@@ -497,6 +581,12 @@ AS $function$
   $function$
 ;
 
+revoke all on function email_digest_pending(date) from public; grant execute on function email_digest_pending(date) to service_role;
+
+revoke all on function email_digest_secret_ok(text) from public; grant execute on function email_digest_secret_ok(text) to service_role;
+
+revoke all on function email_unsubscribe(uuid) from public; grant execute on function email_unsubscribe(uuid) to anon; grant execute on function email_unsubscribe(uuid) to authenticated; grant execute on function email_unsubscribe(uuid) to service_role;
+
 revoke all on function handle_new_user() from public; grant execute on function handle_new_user() to service_role;
 
 revoke all on function handle_new_user_subscription() from public; grant execute on function handle_new_user_subscription() to service_role;
@@ -532,6 +622,8 @@ alter table public._backup_20261025_investments enable row level security;
 alter table public._backup_20261025_payments enable row level security;
 
 alter table public._backup_20261104_subscriptions enable row level security;
+
+alter table public.email_notification_log enable row level security;
 
 alter table public.future_investments enable row level security;
 
@@ -665,6 +757,8 @@ grant delete, insert, references, select, trigger, truncate, update on public._b
 
 grant delete, insert, references, select, trigger, truncate, update on public._backup_20261104_subscriptions to service_role;
 
+grant delete, insert, references, select, trigger, truncate, update on public.email_notification_log to service_role;
+
 grant delete, insert, references, select, trigger, truncate, update on public.future_investments to anon;
 
 grant delete, insert, references, select, trigger, truncate, update on public.future_investments to authenticated;
@@ -731,4 +825,4 @@ grant delete, insert, references, select, trigger, truncate, update on public.us
 
 grant delete, insert, references, select, trigger, truncate, update on public.user_roles to service_role;
 
-grant update (avatar_url, full_name, pro_welcome_shown, updated_at) on public.profiles to authenticated;
+grant update (avatar_url, email_notifications, full_name, pro_welcome_shown, updated_at) on public.profiles to authenticated;

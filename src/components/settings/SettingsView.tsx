@@ -1,8 +1,9 @@
 import { useState } from 'react';
-import { Moon, Sun } from 'lucide-react';
+import { Mail, Moon, Sun } from 'lucide-react';
 import { useTheme } from '@/contexts/ThemeContext';
 import { useAuth } from '@/contexts/AuthContext';
 import { useLanguage } from '@/contexts/LanguageContext';
+import { useProfile } from '@/hooks/useProfile';
 import { supabase } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -16,6 +17,7 @@ export function SettingsView() {
   const { updatePassword, isDemo } = useAuth();
   const { darkMode, toggleDarkMode } = useTheme();
   const { t } = useLanguage();
+  const { profile, emailNotifications, setEmailNotifications } = useProfile();
 
   const [newPassword, setNewPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
@@ -141,6 +143,23 @@ export function SettingsView() {
               </div>
               <Switch checked={darkMode} onCheckedChange={toggleDarkMode} />
             </div>
+            {!isDemo && (
+              <div className="mt-6 flex items-center justify-between gap-4">
+                <div className="flex items-center gap-3">
+                  <Mail className="h-4 w-4 shrink-0" />
+                  <div>
+                    <p className="text-sm font-medium">{t('settings.emailNotifications')}</p>
+                    <p className="text-xs text-muted-foreground">{t('settings.emailNotifications.desc')}</p>
+                  </div>
+                </div>
+                <Switch
+                  checked={emailNotifications}
+                  disabled={!profile || setEmailNotifications.isPending}
+                  onCheckedChange={(v) => setEmailNotifications.mutate(v)}
+                  aria-label={t('settings.emailNotifications')}
+                />
+              </div>
+            )}
           </CardContent>
         </Card>
 

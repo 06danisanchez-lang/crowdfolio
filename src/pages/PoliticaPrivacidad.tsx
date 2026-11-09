@@ -39,7 +39,7 @@ export default function PoliticaPrivacidad() {
                 <h3 className="font-semibold">2.1 Datos de registro y cuenta</h3>
                 <p className="text-muted-foreground">Cuando creas una cuenta en Crowdfolio recogemos:</p>
                 <ul className="list-disc pl-5 text-muted-foreground space-y-1">
-                  <li><strong className="text-foreground">Correo electrónico</strong> — necesario para identificarte, enviarte notificaciones y permitir la recuperación de contraseña.</li>
+                  <li><strong className="text-foreground">Correo electrónico</strong> — necesario para identificarte, enviarte notificaciones y permitir la recuperación de contraseña. Los avisos sobre tu cartera (vencimientos próximos o sin cobro registrado) llegan por correo salvo que los desactives en Ajustes o con el enlace de cada correo; solo incluyen nombres de proyectos, plataformas y fechas, nunca importes.</li>
                   <li><strong className="text-foreground">Nombre o alias</strong> — opcional, para personalizar la interfaz.</li>
                   <li><strong className="text-foreground">Contraseña</strong> — almacenada en formato cifrado, nunca en texto plano, necesaria para la autenticación.</li>
                 </ul>

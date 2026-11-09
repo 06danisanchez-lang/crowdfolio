@@ -432,6 +432,8 @@ export type Database = {
           avatar_url: string | null
           created_at: string
           email: string | null
+          email_notifications: boolean
+          email_unsubscribe_token: string
           full_name: string | null
           id: string
           is_demo: boolean
@@ -443,6 +445,8 @@ export type Database = {
           avatar_url?: string | null
           created_at?: string
           email?: string | null
+          email_notifications?: boolean
+          email_unsubscribe_token?: string
           full_name?: string | null
           id: string
           is_demo?: boolean
@@ -454,6 +458,8 @@ export type Database = {
           avatar_url?: string | null
           created_at?: string
           email?: string | null
+          email_notifications?: boolean
+          email_unsubscribe_token?: string
           full_name?: string | null
           id?: string
           is_demo?: boolean
@@ -603,7 +609,10 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
-      [_ in never]: never
+      email_unsubscribe: {
+        Args: { _token: string }
+        Returns: boolean
+      }
     }
     Enums: {
       close_reason_type: "on_time" | "early" | "extended" | "sold"

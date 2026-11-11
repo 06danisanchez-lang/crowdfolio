@@ -43,7 +43,7 @@ export function DemoBanner() {
       <span>
         <strong>Estás en la demo:</strong> estos datos son de ejemplo y se borran a los 7 días.
       </span>
-      <Button size="sm" className="h-7" onClick={createAccount}>Crear mi cuenta</Button>
+      <Button size="sm" className="h-7" onClick={createAccount}>Crear mi cuenta · Pro gratis en la beta</Button>
     </div>
   );
 }

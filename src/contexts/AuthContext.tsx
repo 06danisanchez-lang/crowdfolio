@@ -1,6 +1,7 @@
 /* eslint-disable react-refresh/only-export-components */
 import { createContext, useContext, useEffect, useState, useCallback, useRef, ReactNode } from 'react';
 import { User, Session, AuthChangeEvent } from '@supabase/supabase-js';
+import { attributionMetadata } from '@/lib/attribution';
 import { supabase } from '@/integrations/supabase/client';
 
 const AUTH_TIMEOUT_MS = 10_000;
@@ -70,8 +71,21 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         email: user.email,
         fecha: new Date().toISOString(),
         origen: 'crowdfolio_google',
+        utm_source: user.user_metadata?.signup_source ?? attributionMetadata()?.signup_source ?? null,
+        utm_campaign: user.user_metadata?.signup_campaign ?? attributionMetadata()?.signup_campaign ?? null,
       }),
     }).catch(() => {});
+  }, []);
+
+  // Altas con Google: la procedencia no viaja en el OAuth, se apunta al entrar.
+  // Solo en cuentas recién creadas (10 min) y sin procedencia ya apuntada.
+  const tagNewUserSource = useCallback((user: User) => {
+    if (user.is_anonymous) return;
+    if (user.user_metadata?.signup_source || user.user_metadata?.signup_campaign || user.user_metadata?.signup_ref) return;
+    if (Date.now() - new Date(user.created_at).getTime() > 10 * 60_000) return;
+    const data = attributionMetadata();
+    if (!data) return;
+    supabase.auth.updateUser({ data }).catch(() => {});
   }, []);
 
   const checkAdminRole = useCallback(async (userId: string) => {
@@ -119,6 +133,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
         if (event === 'SIGNED_IN' && newSession?.user) {
           fireNewUserWebhook(newSession.user);
+          tagNewUserSource(newSession.user);
         }
 
         if (newSession?.user) {
@@ -208,7 +223,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     const redirectUrl = `${getAuthOrigin()}/`;
     const { error } = await supabase.auth.signUp({
       email, password,
-      options: { emailRedirectTo: redirectUrl },
+      options: { emailRedirectTo: redirectUrl, data: attributionMetadata() ?? undefined },
     });
     return { error: error as Error | null };
   };

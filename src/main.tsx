@@ -2,6 +2,10 @@ import { StrictMode } from "react";
 import { createRoot } from "react-dom/client";
 import App from "./App.tsx";
 import "./index.css";
+import { captureAttribution } from "./lib/attribution";
+
+// Procedencia (utm/ref) antes de que el router cambie la URL (la demo redirige).
+captureAttribution();
 
 // Global error instrumentation (ready for Sentry)
 window.addEventListener('error', (event) => {

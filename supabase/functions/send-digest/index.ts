@@ -1,5 +1,6 @@
 import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.57.2";
+import { type CandidateRow, duePaymentRows } from "../_shared/digestPayments.ts";
 
 // ============================================================================
 // send-digest
@@ -7,14 +8,20 @@ import { createClient } from "https://esm.sh/@supabase/supabase-js@2.57.2";
 // Correo diario de avisos (migración 20261109191314_avisos_por_correo). La llama
 // pg_cron cada mañana con la cabecera x-cron-secret (secreto guardado en Vault).
 //
-// 1. public.email_digest_pending() dice qué hay de nuevo para cada usuario:
-//    inversiones que vencen en 7 días y vencidas sin cobrar. Ya excluye cuentas
-//    demo, usuarios que se han dado de baja y avisos enviados antes.
+// 1. Qué hay de nuevo para cada usuario (como la campana de la app, sin el
+//    resumen semanal):
+//    - public.email_digest_pending(): vencen en 7 días, vencidas sin cobrar,
+//      rentas de equity sin cobrar y avisos de impago (sin contenido fiscal).
+//    - public.email_digest_schedule_candidates() + matchScheduleToPayments: cuotas
+//      de intereses de los últimos 7 días que siguen sin cobro, con el mismo
+//      emparejamiento por importes que la app (_shared/scheduleMatching.ts).
+//    Ya excluye cuentas demo, usuarios que se han dado de baja y avisos enviados.
 // 2. Un correo por usuario con Resend, solo si tiene algo nuevo.
 // 3. Tras enviarlo, registra cada aviso en email_notification_log para no
 //    repetirlo. Si Resend falla, no se registra y se reintenta al día siguiente.
 //
-// Sin importes ni cálculo fiscal: solo nombres, plataformas y fechas.
+// Sin importes ni cálculo fiscal: solo nombres, plataformas y fechas. De un
+// impago solo se dice que conviene revisarlo; la conclusión fiscal está en la app.
 //
 // Cuerpo opcional (para pruebas): { "dryRun": true } no envía ni registra y
 // devuelve el resumen; { "onlyUserId": "<uuid>" } limita a un usuario.
@@ -35,10 +42,19 @@ const PLATFORM_LABELS: Record<string, string> = {
   wecity: "Wecity",
 };
 
+type Kind =
+  | "maturity_soon"
+  | "overdue"
+  | "payment_due"
+  | "rent_due"
+  | "default_incomplete"
+  | "default_enforcement_year"
+  | "default_review";
+
 interface PendingRow {
   user_id: string;
   email: string;
-  kind: "maturity_soon" | "overdue";
+  kind: Kind;
   investment_id: string;
   project_name: string;
   platform: string;
@@ -83,23 +99,50 @@ function madridToday(): string {
 
 function lineFor(r: PendingRow, today: string): string {
   const name = `<strong>${escapeHtml(r.project_name)}</strong> (${escapeHtml(platformName(r))})`;
-  if (r.kind === "maturity_soon") {
-    const d = r.event_date ? daysBetween(today, r.event_date) : 0;
-    const when = d === 0 ? "vence hoy" : d === 1 ? "vence mañana" : `vence el ${formatDate(r.event_date, today)}`;
-    return `${name} ${when}.`;
+  const date = formatDate(r.event_date, today);
+  switch (r.kind) {
+    case "maturity_soon": {
+      const d = r.event_date ? daysBetween(today, r.event_date) : 0;
+      const when = d === 0 ? "vence hoy" : d === 1 ? "vence mañana" : `vence el ${date}`;
+      return `${name} ${when}.`;
+    }
+    case "overdue":
+      return `${name} venció el ${date} y no consta el cobro. Si ya lo has recibido, regístralo; si no, puedes marcar un retraso o una prórroga.`;
+    case "payment_due":
+      return `${name}: no consta el cobro de intereses previsto para el ${date}. Si ya lo has recibido, regístralo.`;
+    case "rent_due":
+      return `${name}: no consta la renta prevista para el ${date}. Si ya la has recibido, regístrala.`;
+    case "default_incomplete":
+      return `${name}: falta completar la situación del impago. Entra y responde unas preguntas.`;
+    case "default_enforcement_year":
+      return `${name}: se ha cumplido un año desde la ejecución judicial que indicaste. Entra para revisar el impago.`;
+    case "default_review":
+      return `${name}: toca revisar el impago. Si ha cambiado algo (concurso, quita, ejecución judicial), actualízalo.`;
   }
-  return `${name} venció el ${formatDate(r.event_date, today)} y no consta el cobro. Si ya lo has recibido, regístralo; si no, puedes marcar un retraso o una prórroga.`;
 }
 
+const SUBJECTS: Record<Kind, string> = {
+  maturity_soon: "vencimiento cercano",
+  overdue: "vencida sin cobro registrado",
+  payment_due: "cobro previsto sin registrar",
+  rent_due: "renta prevista sin registrar",
+  default_incomplete: "completa la situación del impago",
+  default_enforcement_year: "revisa el impago",
+  default_review: "revisa el impago",
+};
+
 function buildEmail(rows: PendingRow[], unsubscribeUrl: string, today: string) {
-  const soon = rows.filter((r) => r.kind === "maturity_soon");
-  const overdue = rows.filter((r) => r.kind === "overdue");
+  const of = (...kinds: Kind[]) => rows.filter((r) => kinds.includes(r.kind));
+  const sections: [string, PendingRow[]][] = [
+    ["Vencidas sin cobro registrado", of("overdue")],
+    ["Cobros previstos que no constan", of("payment_due", "rent_due")],
+    ["Impagos", of("default_incomplete", "default_enforcement_year", "default_review")],
+    ["Vencen en los próximos 7 días", of("maturity_soon")],
+  ];
   const n = rows.length;
 
   const subject = n === 1
-    ? (rows[0].kind === "maturity_soon"
-      ? `${rows[0].project_name}: vencimiento cercano`
-      : `${rows[0].project_name}: vencida sin cobro registrado`)
+    ? `${rows[0].project_name}: ${SUBJECTS[rows[0].kind]}`
     : `Tu cartera: ${n} avisos nuevos`;
 
   const section = (title: string, list: PendingRow[]) => list.length === 0 ? "" : `
@@ -113,8 +156,7 @@ function buildEmail(rows: PendingRow[], unsubscribeUrl: string, today: string) {
   <div style="max-width:560px;margin:0 auto;background:#ffffff;border-radius:12px;padding:28px">
     <p style="margin:0 0 4px;font-weight:700;color:#0f172a;font-size:18px">Crowdfolio</p>
     <p style="margin:0 0 8px">Hay novedades en tu cartera:</p>
-    ${section("Vencidas sin cobro registrado", overdue)}
-    ${section("Vencen en los próximos 7 días", soon)}
+    ${sections.map(([title, list]) => section(title, list)).join("")}
     <p style="margin:28px 0">
       <a href="${APP_URL}" style="background:#0f172a;color:#ffffff;text-decoration:none;padding:12px 20px;border-radius:8px;display:inline-block">Abrir Crowdfolio</a>
     </p>
@@ -128,8 +170,9 @@ function buildEmail(rows: PendingRow[], unsubscribeUrl: string, today: string) {
 
   const text = [
     "Hay novedades en tu cartera:",
-    ...(overdue.length ? ["", "Vencidas sin cobro registrado:", ...overdue.map((r) => "- " + htmlToText(lineFor(r, today)))] : []),
-    ...(soon.length ? ["", "Vencen en los próximos 7 días:", ...soon.map((r) => "- " + htmlToText(lineFor(r, today)))] : []),
+    ...sections.flatMap(([title, list]) =>
+      list.length ? ["", `${title}:`, ...list.map((r) => "- " + htmlToText(lineFor(r, today)))] : []
+    ),
     "",
     `Abrir Crowdfolio: ${APP_URL}`,
     "",
@@ -167,8 +210,26 @@ serve(async (req) => {
     return new Response(JSON.stringify({ error: error.message }), { status: 500 });
   }
 
+  const { data: candidates, error: cErr } = await supabase.rpc("email_digest_schedule_candidates", { _today: today });
+  if (cErr) {
+    console.error("email_digest_schedule_candidates", cErr);
+    return new Response(JSON.stringify({ error: cErr.message }), { status: 500 });
+  }
+
+  // Las cuotas se deciden aquí: quitar las ya avisadas.
+  let dueRows = duePaymentRows((candidates ?? []) as CandidateRow[], today);
+  if (dueRows.length) {
+    const { data: logged, error: lErr } = await supabase.from("email_notification_log")
+      .select("user_id, dedupe_key")
+      .in("user_id", [...new Set(dueRows.map((r) => r.user_id))])
+      .in("dedupe_key", dueRows.map((r) => r.dedupe_key));
+    if (lErr) return new Response(JSON.stringify({ error: lErr.message }), { status: 500 });
+    const done = new Set((logged ?? []).map((l: { user_id: string; dedupe_key: string }) => `${l.user_id}|${l.dedupe_key}`));
+    dueRows = dueRows.filter((r) => !done.has(`${r.user_id}|${r.dedupe_key}`));
+  }
+
   const byUser = new Map<string, PendingRow[]>();
-  for (const r of (data ?? []) as PendingRow[]) {
+  for (const r of [...((data ?? []) as PendingRow[]), ...dueRows]) {
     if (body.onlyUserId && r.user_id !== body.onlyUserId) continue;
     const list = byUser.get(r.user_id) ?? [];
     list.push(r);
@@ -194,7 +255,7 @@ serve(async (req) => {
     const email = buildEmail(rows, unsubscribeUrl, today);
 
     if (body.dryRun) {
-      preview.push({ userId, avisos: rows.length, asunto: email.subject });
+      preview.push({ userId, avisos: rows.length, tipos: rows.map((r) => r.kind), asunto: email.subject });
       continue;
     }
 

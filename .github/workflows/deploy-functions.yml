@@ -50,9 +50,18 @@ jobs:
             if [ -z "$before" ] || [ "$before" = "0000000000000000000000000000000000000000" ]; then
               before="HEAD~1"
             fi
-            fns=$(git diff --name-only "$before" "${{ github.sha }}" -- supabase/functions \
-              | awk -F/ 'NF>=4 {print $3}' | sort -u \
-              | while read -r f; do [ -d "supabase/functions/$f" ] && echo "$f"; done | tr '\n' ' ')
+            changed=$(git diff --name-only "$before" "${{ github.sha }}" -- supabase/functions \
+              | awk -F/ 'NF>=4 {print $3}' | sort -u)
+            # Las carpetas que empiezan por «_» (como _shared) no son funciones: si
+            # cambian, se despliegan las funciones que las importan.
+            shared=$(echo "$changed" | grep '^_' || true)
+            users=""
+            for s in $shared; do
+              users="$users $(grep -rl "\.\./$s/" supabase/functions --include=*.ts \
+                | awk -F/ '{print $3}' | grep -v '^_' || true)"
+            done
+            fns=$(printf '%s\n' $changed $users | grep -v '^_' | sort -u \
+              | while read -r f; do [ -n "$f" ] && [ -d "supabase/functions/$f" ] && echo "$f"; done | tr '\n' ' ')
           fi
           echo "Funciones: ${fns:-ninguna}"
           echo "fns=$fns" >> "$GITHUB_OUTPUT"

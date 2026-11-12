@@ -43,8 +43,9 @@ update public.profiles set email_notifications = false where id = '00000000-0000
 -- Qué se avisa
 create temp table p as select * from public.email_digest_pending('2026-11-10');
 
-select tests.check((select count(*) from p where user_id = '00000000-0000-0000-0000-0000000000a1') = 3,
-  'el usuario A no recibe exactamente 3 avisos');
+-- 3 de vencimientos + 1 por el impago sin cuestionario (desde 20261112114120)
+select tests.check((select count(*) from p where user_id = '00000000-0000-0000-0000-0000000000a1') = 4,
+  'el usuario A no recibe exactamente 4 avisos');
 select tests.check(exists (select 1 from p where investment_id = '30000000-0000-0000-0000-000000000001' and kind = 'maturity_soon'),
   'no avisa de la que vence en 3 días');
 select tests.check(not exists (select 1 from p where investment_id = '30000000-0000-0000-0000-000000000002'),
@@ -53,8 +54,10 @@ select tests.check(exists (select 1 from p where investment_id = '30000000-0000-
   'no avisa de una activa con la fecha pasada');
 select tests.check(exists (select 1 from p where investment_id = '30000000-0000-0000-0000-000000000004' and kind = 'overdue'),
   'no avisa de una «Por confirmar»');
-select tests.check(not exists (select 1 from p where investment_id in ('30000000-0000-0000-0000-000000000005', '30000000-0000-0000-0000-000000000006')),
-  'avisa de un retraso o un impago (los marca el propio usuario)');
+select tests.check(not exists (select 1 from p where investment_id = '30000000-0000-0000-0000-000000000005'),
+  'avisa de un retraso (lo marca el propio usuario)');
+select tests.check(not exists (select 1 from p where investment_id = '30000000-0000-0000-0000-000000000006' and kind <> 'default_incomplete'),
+  'del impago avisa de algo distinto de completar el cuestionario');
 select tests.check(not exists (select 1 from p where investment_id in ('30000000-0000-0000-0000-000000000007', '30000000-0000-0000-0000-000000000008')),
   'avisa de una completada o de un borrador');
 select tests.check(not exists (select 1 from p where user_id = '00000000-0000-0000-0000-0000000000b1'),

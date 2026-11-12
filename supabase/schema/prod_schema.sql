@@ -1,9 +1,9 @@
 -- Instantánea del esquema `public` de PRODUCCIÓN (estructura, sin datos).
 -- NO EDITAR A MANO: se regenera con supabase/schema/dump_schema.sql (ver CLAUDE.md).
 --
--- snapshot_version: 20261109193223
--- última migración registrada en producción: 20261109191314
--- comprobación (md5 de la salida normalizada, 188 sentencias): c42e53bf817bd847c357d2c62667134b
+-- snapshot_version: 20261112115121
+-- última migración registrada en producción: 20261112114120
+-- comprobación (md5 de la salida normalizada, 190 sentencias): 8b090d7cb7b000eb260e0831d075d9b0
 --
 -- scripts/db-test.sh carga primero supabase/schema/stubs.sql, después este
 -- archivo y por último las migraciones con versión > snapshot_version.
@@ -437,7 +437,18 @@ CREATE OR REPLACE FUNCTION public.email_digest_pending(_today date DEFAULT ((now
  STABLE SECURITY DEFINER
  SET search_path TO ''
 AS $function$
-  with items as (
+  with defaulted as (
+    select i.*,
+           (i.loss_assessed_at at time zone 'Europe/Madrid')::date as assessed_on,
+           ((extract(year from _today) - extract(year from (i.loss_assessed_at at time zone 'Europe/Madrid')::date)) * 12
+             + extract(month from _today) - extract(month from (i.loss_assessed_at at time zone 'Europe/Madrid')::date))::int / 3
+             as quarters
+      from public.investments i
+     where i.status = 'defaulted'
+       and coalesce(i.income_model, 'bullet') <> 'equity'
+  ),
+  items as (
+    -- Vencida sin cobro: «Por confirmar», o activa con el vencimiento ya pasado.
     select i.user_id, 'overdue'::text as kind, i.id, i.project_name, i.platform, i.custom_platform_name,
            i.expected_end_date as event_date, i.original_end_date as promised_date,
            'overdue:' || i.id || ':' || coalesce(i.expected_end_date::text, '') as dedupe_key
@@ -445,12 +456,55 @@ AS $function$
      where i.status = 'pending'
         or (i.status = 'active' and i.expected_end_date < _today)
     union all
+    -- Vence hoy o en los próximos 7 días.
     select i.user_id, 'maturity_soon', i.id, i.project_name, i.platform, i.custom_platform_name,
            i.expected_end_date, i.original_end_date,
            'maturity_soon:' || i.id || ':' || i.expected_end_date
       from public.investments i
      where i.status = 'active'
        and i.expected_end_date between _today and _today + 7
+    union all
+    -- Renta trimestral de equity sin cobro registrado (como useNotificationGenerator).
+    select i.user_id, 'rent_due', i.id, i.project_name, i.platform, i.custom_platform_name,
+           s.expected_date, null::date,
+           'payment_due:' || i.id || ':' || s.expected_date
+      from public.investments i
+      join public.investment_schedule s on s.investment_id = i.id
+     where i.status = 'active'
+       and i.income_model = 'equity'
+       and i.equity_type = 'rentas'
+       and s.type = 'interest'
+       and s.expected_date between _today - 180 and _today
+       and not exists (
+         select 1 from public.payments pay
+          where pay.investment_id = i.id and pay.type = 'capital_return' and pay.date >= s.expected_date
+       )
+    union all
+    -- Impago sin el cuestionario completado.
+    select d.user_id, 'default_incomplete', d.id, d.project_name, d.platform, d.custom_platform_name,
+           null::date, null::date,
+           'default_incomplete:' || d.id
+      from defaulted d
+     where d.loss_assessed_at is null
+    union all
+    -- Un año desde la ejecución judicial, posterior a la respuesta del cuestionario.
+    select d.user_id, 'default_enforcement_year', d.id, d.project_name, d.platform, d.custom_platform_name,
+           (d.loss_enforcement_date + interval '1 year')::date, null::date,
+           'default_enforcement_year:' || d.id || ':' || d.loss_enforcement_date
+      from defaulted d
+     where d.loss_assessed_at is not null
+       and d.loss_enforcement_started
+       and d.loss_enforcement_date is not null
+       and (d.loss_enforcement_date + interval '1 year')::date <= _today
+       and (d.loss_enforcement_date + interval '1 year')::date > d.assessed_on
+    union all
+    -- Revisión trimestral desde la respuesta del cuestionario (mismo calendario que la app).
+    select d.user_id, 'default_review', d.id, d.project_name, d.platform, d.custom_platform_name,
+           (d.assessed_on + make_interval(months => d.quarters * 3))::date, null::date,
+           'default_review:' || d.id || ':' || (d.assessed_on + make_interval(months => d.quarters * 3))::date
+      from defaulted d
+     where d.loss_assessed_at is not null
+       and d.quarters >= 1
   )
   select it.user_id, u.email::text, it.kind, it.id, it.project_name, it.platform, it.custom_platform_name,
          it.event_date, it.promised_date, it.dedupe_key
@@ -466,6 +520,42 @@ AS $function$
         where l.user_id = it.user_id and l.dedupe_key = it.dedupe_key
      )
    order by it.user_id, it.kind, it.event_date nulls last;
+$function$
+;
+
+CREATE OR REPLACE FUNCTION public.email_digest_schedule_candidates(_today date DEFAULT ((now() AT TIME ZONE 'Europe/Madrid'::text))::date)
+ RETURNS TABLE(user_id uuid, email text, investment_id uuid, project_name text, platform text, custom_platform_name text, income_model text, assumed_paid_until date, schedule jsonb, payments jsonb)
+ LANGUAGE sql
+ STABLE SECURITY DEFINER
+ SET search_path TO ''
+AS $function$
+  select i.user_id, u.email::text, i.id, i.project_name, i.platform, i.custom_platform_name,
+         i.income_model, i.assumed_paid_until,
+         (select jsonb_agg(jsonb_build_object(
+                   'expectedDate', s.expected_date, 'expectedAmount', s.expected_amount,
+                   'type', s.type, 'status', s.status, 'matchedPaymentId', s.matched_payment_id)
+                 order by s.expected_date)
+            from public.investment_schedule s where s.investment_id = i.id),
+         coalesce((select jsonb_agg(jsonb_build_object(
+                   'id', pay.id, 'date', pay.date, 'amount', pay.amount, 'type', pay.type)
+                 order by pay.date)
+            from public.payments pay where pay.investment_id = i.id), '[]'::jsonb)
+    from public.investments i
+    join auth.users u on u.id = i.user_id
+    join public.profiles p on p.id = i.user_id
+   where i.status = 'active'
+     and coalesce(i.income_model, 'bullet') <> 'equity'
+     and coalesce(u.is_anonymous, false) = false
+     and u.email is not null
+     and p.email_notifications
+     and not p.is_demo
+     and exists (
+       select 1 from public.investment_schedule s
+        where s.investment_id = i.id
+          and s.type = 'interest'
+          and s.expected_date between _today - 7 and _today
+     )
+   order by i.user_id;
 $function$
 ;
 
@@ -582,6 +672,8 @@ AS $function$
 ;
 
 revoke all on function email_digest_pending(date) from public; grant execute on function email_digest_pending(date) to service_role;
+
+revoke all on function email_digest_schedule_candidates(date) from public; grant execute on function email_digest_schedule_candidates(date) to service_role;
 
 revoke all on function email_digest_secret_ok(text) from public; grant execute on function email_digest_secret_ok(text) to service_role;
 
